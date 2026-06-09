@@ -1,6 +1,7 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import MainLayout from './layouts/MainLayout';
+import Landing from './pages/Landing';
 import Login from './pages/Login';
 import SocioInicio from './pages/SocioInicio';
 import SocioCarrito from './pages/SocioCarrito';
@@ -11,15 +12,15 @@ function App() {
     <AuthProvider>
       <BrowserRouter>
         <Routes>
-          {/* Ruta pública */}
+          {/* Rutas públicas */}
+          <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />
 
-          {/* Rutas privadas envueltas en el Layout (Menú) */}
-          <Route path="/" element={<MainLayout userRole="socio" />}>
-            <Route index element={<Navigate to="/socio" replace />} />
-            <Route path="socio" element={<SocioInicio />} />
-            <Route path="carrito" element={<SocioCarrito />} />
-            <Route path="admin" element={<AdminInicio />} />
+          {/* Rutas privadas envueltas en el Layout del Portal */}
+          <Route element={<MainLayout userRole="socio" />}>
+            <Route path="/socio" element={<SocioInicio />} />
+            <Route path="/carrito" element={<SocioCarrito />} />
+            <Route path="/admin" element={<AdminInicio />} />
           </Route>
         </Routes>
       </BrowserRouter>

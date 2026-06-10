@@ -1,24 +1,49 @@
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+
 export default function SocioInicio() {
+  // MOCK: Toggle para probar la UI condicional (Activo vs Moroso)
+  const [isMoroso, setIsMoroso] = useState(false);
+  const navigate = useNavigate();
+
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-semibold mb-2">Hola, Merlina 👋</h2>
+      <div className="flex justify-between items-center mb-2">
+        <h2 className="text-2xl font-semibold text-slate-800">Hola, Sergio 👋</h2>
+        {/* Botón temporal para alternar el estado y probar ambas vistas */}
+        <button onClick={() => setIsMoroso(!isMoroso)} className="text-xs font-semibold text-slate-500 bg-slate-200 px-3 py-1 rounded-full hover:bg-slate-300 transition-colors">
+          Alternar Estado
+        </button>
+      </div>
       
       {/* Tarjeta de Carnet Virtual / Estado */}
-      <div className="bg-green-600 rounded-2xl p-6 flex flex-col items-center justify-center shadow-lg relative overflow-hidden">
+      <div className={`${isMoroso ? 'bg-red-600 border-red-500' : 'bg-green-600 border-green-500'} rounded-2xl p-6 flex flex-col items-center justify-center shadow-xl relative overflow-hidden border-2 transition-colors duration-500`}>
         {/* Efectos decorativos de fondo */}
         <div className="absolute top-0 right-0 -mr-4 -mt-4 w-32 h-32 bg-white opacity-10 rounded-full blur-2xl"></div>
         <div className="absolute bottom-0 left-0 -ml-4 -mb-4 w-24 h-24 bg-white opacity-10 rounded-full blur-xl"></div>
         
-        <h3 className="text-xl font-bold mb-1 z-10 tracking-wide text-white">SOCIO ACTIVO</h3>
-        <p className="text-green-100 text-sm mb-5 z-10">No adeuda cuotas</p>
+        <h3 className="text-xl font-bold mb-1 z-10 tracking-wide text-white">
+          {isMoroso ? 'SOCIO MOROSO' : 'SOCIO ACTIVO'}
+        </h3>
+        <p className={`${isMoroso ? 'text-red-100' : 'text-green-100'} text-sm mb-5 z-10 font-medium`}>
+          {isMoroso ? 'Adeuda 2 cuotas' : 'No adeuda cuotas'}
+        </p>
         
         {/* Espacio para Código QR */}
         <div className="bg-white p-3 rounded-xl z-10 shadow-inner">
-          <div className="w-40 h-40 border-2 border-dashed border-gray-300 flex items-center justify-center text-gray-400 bg-gray-50 rounded-lg">
-            <span className="text-sm">QR_CODE_AQUI</span>
+          <div className={`w-40 h-40 border-2 border-dashed flex items-center justify-center rounded-lg ${isMoroso ? 'border-red-300 bg-red-50 text-red-400' : 'border-green-300 bg-green-50 text-green-400'}`}>
+            <span className="text-sm font-bold tracking-widest">{isMoroso ? 'QR_BLOQUEADO' : 'QR_ACTIVO'}</span>
           </div>
         </div>
-        <p className="mt-3 text-xs text-green-100 z-10 font-medium">Presentá este código en puerta</p>
+        <p className={`mt-3 text-xs z-10 font-medium ${isMoroso ? 'text-red-100' : 'text-green-100'}`}>
+          {isMoroso ? 'Acceso denegado' : 'Presentá este código en puerta'}
+        </p>
+
+        {isMoroso && (
+          <button onClick={() => navigate('/cuotas')} className="mt-6 z-10 bg-white text-red-600 font-bold py-2.5 px-8 rounded-full shadow-lg hover:bg-red-50 transition-colors transform hover:scale-105 active:scale-95 duration-200">
+            Pagar Cuota
+          </button>
+        )}
       </div>
 
       {/* Calendario Deportivo Simple */}

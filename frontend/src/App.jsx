@@ -7,6 +7,10 @@ import RecuperarPassword from './pages/RecuperarPassword';
 import Login from './pages/Login';
 import SocioInicio from './pages/SocioInicio';
 import SocioCarrito from './pages/SocioCarrito';
+import SocioCuotas from './pages/SocioCuotas';
+import SocioShopping from './pages/SocioShopping';
+import SocioAlquileres from './pages/SocioAlquileres';
+import SocioPerfil from './pages/SocioPerfil';
 import AdminInicio from './pages/AdminInicio';
 
 function App() {
@@ -24,6 +28,10 @@ function App() {
           <Route element={<MainLayout userRole="socio" />}>
             <Route path="/socio" element={<SocioInicio />} />
             <Route path="/carrito" element={<SocioCarrito />} />
+            <Route path="/cuotas" element={<SocioCuotas />} />
+            <Route path="/shopping" element={<SocioShopping />} />
+            <Route path="/alquileres" element={<SocioAlquileres />} />
+            <Route path="/perfil" element={<SocioPerfil />} />
             <Route path="/admin" element={<AdminInicio />} />
           </Route>
         </Routes>

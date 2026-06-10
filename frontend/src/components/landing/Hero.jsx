@@ -1,19 +1,19 @@
 import { Link } from 'react-router-dom';
+import heroBg from '../../assets/hero-bg.PNG';
+import escudoCar from '../../assets/escudo-car.PNG';
 
 export default function Hero() {
   return (
     <div 
       className="relative min-h-screen bg-cover bg-center bg-no-repeat flex flex-col"
-      style={{ backgroundImage: "url('https://images.unsplash.com/photo-1518605368461-1e1252270b20?auto=format&fit=crop&q=80')" }}
+      style={{ backgroundImage: `url(${heroBg})` }}
     >
       {/* Capa de superposición oscura */}
       <div className="absolute inset-0 bg-black/60 z-0"></div>
 
       <header className="relative z-10 w-full p-6 lg:px-12">
         <div className="max-w-7xl mx-auto">
-          <h1 className="text-xl sm:text-2xl font-bold text-white tracking-widest">
-            C.A. ROBERTS
-          </h1>
+          <img src={escudoCar} alt="Escudo C.A. Roberts" className="h-12 w-auto object-contain drop-shadow-lg" />
         </div>
       </header>
 

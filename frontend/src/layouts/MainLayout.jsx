@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import { Link, Outlet } from 'react-router-dom';
 
+// Importación del asset real
+import escudoCar from '../assets/escudo-car.PNG';
+
 export default function MainLayout({ userRole }) {
   // 1. Manejo del Estado del Menú
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -38,8 +41,8 @@ export default function MainLayout({ userRole }) {
 
             {/* Logo / Título Central */}
             <div className="flex-shrink-0 flex items-center">
-              <Link to="/socio" className="font-black text-xl tracking-widest text-white hover:text-blue-400 transition-colors">
-                C.A. ROBERTS
+              <Link to="/socio" className="transition-transform hover:scale-105 active:scale-95">
+                <img src={escudoCar} alt="Escudo Club Atlético Roberts" className="h-10 w-auto object-contain drop-shadow-md" />
               </Link>
             </div>
 

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 export default function Login() {
   const [dni, setDni] = useState('');
@@ -7,13 +8,14 @@ export default function Login() {
   const [status, setStatus] = useState('idle'); // 'idle' | 'error'
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  const { login, isAuthenticated } = useAuth();
 
   // Guard: Protección Inversa
   useEffect(() => {
-    if (localStorage.getItem('isAuthenticated') === 'true') {
+    if (isAuthenticated) {
       navigate('/socio');
     }
-  }, [navigate]);
+  }, [isAuthenticated, navigate]);
 
   const handleLogin = (e) => {
     e.preventDefault();
@@ -21,9 +23,9 @@ export default function Login() {
     setStatus('idle');
     setTimeout(() => {
       setIsLoading(false);
-      // Validación con el mock de Sergio Acosta
-      if (dni === '44196940' && password === 'roberts2026') {
-        localStorage.setItem('isAuthenticated', 'true');
+      // Delegamos la validación al contexto global
+      const success = login(dni, password);
+      if (success) {
         navigate('/socio');
       } else {
         setStatus('error');
@@ -44,7 +46,7 @@ export default function Login() {
 
         {status === 'error' && (
           <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl relative text-center font-bold text-xs tracking-wider">
-            USUARIO O CONTRASEÑA INCORRECTOS
+            DNI O CONTRASEÑA INCORRECTOS
           </div>
         )}
 

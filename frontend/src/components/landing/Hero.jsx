@@ -1,8 +1,11 @@
 import { Link } from 'react-router-dom';
 import heroBg from '../../assets/hero-bg.PNG';
 import escudoCar from '../../assets/escudo-car.PNG';
+import { useAuth } from '../../context/AuthContext';
 
 export default function Hero() {
+  const { isAuthenticated } = useAuth();
+
   return (
     <div 
       className="relative min-h-screen bg-cover bg-center bg-no-repeat flex flex-col"
@@ -24,12 +27,20 @@ export default function Hero() {
           </h2>
           
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-10">
-            <Link to="/registro" className="w-full sm:w-auto px-8 py-3 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-semibold transition-colors duration-300 shadow-lg text-lg">
-              Asociate Hoy
-            </Link>
-            <Link to="/login" className="w-full sm:w-auto px-8 py-3 rounded-full bg-transparent border-2 border-white text-white hover:bg-white/10 font-semibold transition-colors duration-300 shadow-lg text-lg">
-              Soy Socio
-            </Link>
+            {isAuthenticated ? (
+              <Link to="/socio" className="w-full sm:w-auto px-8 py-3 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-semibold transition-colors duration-300 shadow-lg text-lg">
+                Ir a Mi Panel de Socio
+              </Link>
+            ) : (
+              <>
+                <Link to="/registro" className="w-full sm:w-auto px-8 py-3 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-semibold transition-colors duration-300 shadow-lg text-lg">
+                  Asociate Hoy
+                </Link>
+                <Link to="/login" className="w-full sm:w-auto px-8 py-3 rounded-full bg-transparent border-2 border-white text-white hover:bg-white/10 font-semibold transition-colors duration-300 shadow-lg text-lg">
+                  Soy Socio
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </main>

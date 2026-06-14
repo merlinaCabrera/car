@@ -1,19 +1,17 @@
-import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 export default function SocioInicio() {
-  // MOCK: Toggle para probar la UI condicional (Activo vs Moroso)
-  const [isMoroso, setIsMoroso] = useState(false);
   const navigate = useNavigate();
+  const { user } = useAuth();
+
+  // Obtenemos el estado directamente del usuario (si no existe por X motivo, por defecto es falso)
+  const isMoroso = user?.isMoroso || false;
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center mb-2">
-        <h2 className="text-2xl font-semibold text-slate-800">Hola, Sergio 👋</h2>
-        {/* Botón temporal para alternar el estado y probar ambas vistas */}
-        <button onClick={() => setIsMoroso(!isMoroso)} className="text-xs font-semibold text-slate-500 bg-slate-200 px-3 py-1 rounded-full hover:bg-slate-300 transition-colors">
-          Alternar Estado
-        </button>
+        <h2 className="text-2xl font-semibold text-slate-800">Hola, {user?.nombre || 'Socio'} 👋</h2>
       </div>
       
       {/* Tarjeta de Carnet Virtual / Estado */}
@@ -26,7 +24,7 @@ export default function SocioInicio() {
           {isMoroso ? 'SOCIO MOROSO' : 'SOCIO ACTIVO'}
         </h3>
         <p className={`${isMoroso ? 'text-red-100' : 'text-green-100'} text-sm mb-5 z-10 font-medium`}>
-          {isMoroso ? 'Adeuda 2 cuotas' : 'No adeuda cuotas'}
+          {isMoroso ? `Adeuda ${user?.deudas || 'varias'} cuotas` : 'No adeuda cuotas'}
         </p>
         
         {/* Espacio para Código QR */}

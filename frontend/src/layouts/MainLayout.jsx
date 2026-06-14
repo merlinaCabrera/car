@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Link, Outlet } from 'react-router-dom';
+import { Link, Outlet, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 // Importación del asset real
 import escudoCar from '../assets/escudo-car.PNG';
@@ -7,6 +8,8 @@ import escudoCar from '../assets/escudo-car.PNG';
 export default function MainLayout({ userRole }) {
   // 1. Manejo del Estado del Menú
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { logout } = useAuth();
+  const navigate = useNavigate();
 
   // Función de ayuda para cerrar el menú al hacer clic
   const closeMenu = () => setIsMenuOpen(false);
@@ -20,44 +23,55 @@ export default function MainLayout({ userRole }) {
     { name: 'Reserva de Instalaciones', path: '/alquileres' },
   ];
 
+  const handleLogout = () => {
+    logout(); // Destruye la sesión en el contexto global
+    setIsMenuOpen(false); // Cierra el menú
+    navigate('/'); // Redirige a la Landing Page
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 font-sans flex flex-col">
       
       {/* Header Principal Fijo (Sticky) */}
       <header className="bg-slate-900 text-slate-100 sticky top-0 z-40 shadow-lg border-b border-slate-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
+          {/* Patrón Grid de 3 columnas para centrado perfecto */}
+          <div className="grid grid-cols-3 items-center py-3">
             
-            {/* Botón de Menú Hamburguesa */}
-            <button 
-              onClick={() => setIsMenuOpen(true)}
-              className="p-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
-            >
-              <span className="sr-only">Abrir menú principal</span>
-              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            </button>
+            {/* Columna 1: Botón de Menú Hamburguesa (Alineado a la izquierda) */}
+            <div className="justify-self-start">
+              <button 
+                onClick={() => setIsMenuOpen(true)}
+                className="p-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+              >
+                <span className="sr-only">Abrir menú principal</span>
+                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              </button>
+            </div>
 
-            {/* Logo / Título Central */}
-            <div className="flex-shrink-0 flex items-center">
-              <Link to="/socio" className="transition-transform hover:scale-105 active:scale-95">
-                <img src={escudoCar} alt="Escudo Club Atlético Roberts" className="h-10 w-auto object-contain drop-shadow-md" />
+            {/* Columna 2: Logo / Escudo (Centrado perfecto) */}
+            <div className="justify-self-center">
+              <Link to="/" className="block transition-transform hover:scale-105 active:scale-95">
+                <img src={escudoCar} alt="Escudo Club Atlético Roberts" className="h-20 sm:h-24 w-auto object-contain drop-shadow-xl" />
               </Link>
             </div>
 
-            {/* 3. Enlace del Carrito */}
-            <Link 
-              to="/carrito" 
-              className="p-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors relative"
-            >
-              <span className="sr-only">Ver carrito</span>
-              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-              </svg>
-              {/* Badge visual (indicador de items) - Se puede hacer condicional luego */}
-              <span className="absolute top-0 right-0 block h-3 w-3 rounded-full bg-red-500 ring-2 ring-slate-900 translate-x-1 -translate-y-1"></span>
-            </Link>
+            {/* Columna 3: Enlace del Carrito (Alineado a la derecha) */}
+            <div className="justify-self-end">
+              <Link 
+                to="/carrito" 
+                className="flex p-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors relative"
+              >
+                <span className="sr-only">Ver carrito</span>
+                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+                {/* Badge visual (indicador de items) - Se puede hacer condicional luego */}
+                <span className="absolute top-0 right-0 block h-3 w-3 rounded-full bg-red-500 ring-2 ring-slate-900 translate-x-1 -translate-y-1"></span>
+              </Link>
+            </div>
 
           </div>
         </div>
@@ -104,9 +118,9 @@ export default function MainLayout({ userRole }) {
 
         {/* Sección de cierre de sesión opcional al fondo */}
         <div className="p-6 border-t border-slate-800 bg-slate-950">
-          <Link to="/" className="w-full flex items-center justify-center px-4 py-3 border border-red-500/30 text-red-400 rounded-xl hover:text-white hover:bg-red-600 transition-colors font-bold">
+          <button onClick={handleLogout} className="w-full flex items-center justify-center px-4 py-3 border border-red-500/30 text-red-400 rounded-xl hover:text-white hover:bg-red-600 transition-colors font-bold">
             Cerrar Sesión
-          </Link>
+          </button>
         </div>
       </div>
 

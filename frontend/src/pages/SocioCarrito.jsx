@@ -1,22 +1,15 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
+import { useCart } from '../context/CartContext';
 
 export default function SocioCarrito() {
   const [step, setStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
-
-  // Mocks de ítems del carrito
-  const cartItems = [
-    { id: 1, title: 'Cuota Marzo 2026', qty: 1, price: 5000 },
-    { id: 2, title: 'Camiseta Titular M', qty: 2, price: 35000 },
-    { id: 3, title: 'Alquiler Quincho', qty: 1, price: 15000 },
-  ];
-
-  const total = cartItems.reduce((acc, item) => acc + (item.price * item.qty), 0);
+  const { cart, removeFromCart, cartTotal } = useCart();
 
   // Guard: Carrito Vacío
-  if (cartItems.length === 0) {
+  if (cart.length === 0) {
     return (
       <div className="bg-slate-50 min-h-[80vh] flex flex-col justify-center items-center p-4">
         <svg className="w-24 h-24 text-slate-300 mb-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -24,9 +17,9 @@ export default function SocioCarrito() {
         </svg>
         <h2 className="text-2xl font-bold text-slate-700 mb-2 text-center">Tu carrito está vacío</h2>
         <p className="text-slate-500 mb-8 text-center max-w-sm">No tienes cuotas ni productos pendientes de pago en este momento.</p>
-        <button onClick={() => navigate('/cuotas')} className="bg-blue-600 text-white font-bold py-3 px-8 rounded-full shadow-lg hover:bg-blue-700 active:scale-95 transition-all">
-          Ir a pagar cuotas
-        </button>
+        <Link to="/shopping" className="bg-blue-600 text-white font-bold py-3 px-8 rounded-full shadow-lg hover:bg-blue-700 active:scale-95 transition-all">
+          Ir al Catálogo
+        </Link>
       </div>
     );
   }
@@ -57,20 +50,31 @@ export default function SocioCarrito() {
       {step === 1 && (
         <div className="space-y-4 animate-fade-in">
           <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-5 space-y-4">
-            {cartItems.map((item) => (
+            {cart.map((item) => (
               <div key={item.id} className="flex justify-between items-center border-b border-slate-50 pb-3 last:border-0 last:pb-0">
-                <div className="flex flex-col">
-                  <span className="font-semibold text-slate-800">{item.title}</span>
+                <div className="flex flex-col flex-1 pr-4">
+                  <span className="font-semibold text-slate-800">{item.nombre || item.title}</span>
                   <span className="text-xs text-slate-500">Cantidad: {item.qty}</span>
                 </div>
-                <span className="font-bold text-slate-700">${item.price * item.qty}</span>
+                <div className="flex items-center space-x-4">
+                  <span className="font-bold text-slate-700">${(item.precio || item.price) * item.qty}</span>
+                  <button 
+                    onClick={() => removeFromCart(item.id)}
+                    className="text-red-400 hover:text-red-600 hover:bg-red-50 p-2 rounded-lg transition-colors"
+                    title="Eliminar ítem"
+                  >
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                </div>
               </div>
             ))}
           </div>
           
           <div className="bg-blue-900 rounded-3xl shadow-lg p-6 text-white flex justify-between items-center">
             <span className="text-lg font-medium text-blue-100">TOTAL</span>
-            <span className="text-2xl font-bold">${total}</span>
+            <span className="text-2xl font-bold">${cartTotal}</span>
           </div>
 
           <button 
@@ -130,7 +134,7 @@ export default function SocioCarrito() {
       {step === 3 && (
         <div className="space-y-6 animate-fade-in">
           <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-6 text-center">
-            <h3 className="text-xl font-bold text-slate-800 mb-2">Total a transferir: <span className="text-blue-600">${total}</span></h3>
+            <h3 className="text-xl font-bold text-slate-800 mb-2">Total a transferir: <span className="text-blue-600">${cartTotal}</span></h3>
             <div className="bg-slate-50 p-4 rounded-xl text-left text-sm text-slate-600 mb-6 font-mono break-all border border-slate-200">
               CBU: 1234567890123456789012 <br/>
               Alias: CLUB.ROBERTS.PAGOS <br/>

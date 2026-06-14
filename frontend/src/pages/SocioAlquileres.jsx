@@ -1,12 +1,24 @@
 import { useNavigate } from 'react-router-dom';
+import { useCart } from '../context/CartContext';
 
 export default function SocioAlquileres() {
   const navigate = useNavigate();
+  const { addToCart } = useCart();
 
   const handleReservar = (e) => {
     e.preventDefault();
-    // TODO: Construir el objeto de reserva y enviarlo al Global Cart Context.
-    // TODO: Opcional -> Validar disponibilidad en backend antes de agregar.
+    
+    // Extraemos los valores simples del formulario
+    const fecha = e.target[0].value;
+    const turno = e.target[1].options[e.target[1].selectedIndex].text;
+
+    addToCart({
+      id: `alq-quincho-${fecha}`,
+      nombre: `Alquiler Quincho - ${turno} (${fecha})`,
+      precio: 15000,
+      tipo: 'alquiler'
+    });
+
     navigate('/carrito');
   };
 

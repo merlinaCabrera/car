@@ -1,8 +1,10 @@
 import { useState } from 'react';
+import { useCart } from '../context/CartContext';
 
 export default function SocioShopping() {
   const [toast, setToast] = useState('');
   const [loadingId, setLoadingId] = useState(null);
+  const { addToCart } = useCart();
 
   // Mock de productos con nomenclatura y referencias sugeridas
   const productos = [
@@ -16,7 +18,12 @@ export default function SocioShopping() {
     setLoadingId(producto.id);
     setTimeout(() => {
       setLoadingId(null);
-      // TODO: Integrar con el Contexto Global (ej. dispatch({ type: 'ADD_TO_CART', payload: producto }))
+      addToCart({
+        id: `shop-${producto.id}`,
+        nombre: producto.nombre,
+        precio: producto.precio,
+        tipo: 'producto'
+      });
       setToast(`¡${producto.nombre} agregado con éxito!`);
       setTimeout(() => {
         setToast('');

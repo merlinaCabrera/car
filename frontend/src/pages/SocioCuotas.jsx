@@ -1,16 +1,19 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useCart } from '../context/CartContext';
 
 export default function SocioCuotas() {
   const navigate = useNavigate();
   const [loadingId, setLoadingId] = useState(null);
   const [toast, setToast] = useState('');
+  const { addToCart } = useCart();
   
-  // Mock de agregar al carrito y redirigir
-  const handlePagar = (id) => {
-    setLoadingId(id);
+  // Recibimos el objeto completo de la cuota para enviarlo al contexto
+  const handlePagar = (item) => {
+    setLoadingId(item.id);
     setTimeout(() => {
       setLoadingId(null);
+      addToCart({ ...item, tipo: 'cuota' });
       setToast('Item agregado con éxito al carrito');
       setTimeout(() => setToast(''), 3000);
     }, 2000);
@@ -35,7 +38,11 @@ export default function SocioCuotas() {
                 <p className="text-sm text-red-500 font-medium">Vencida</p>
               </div>
               <button 
-                onClick={() => handlePagar(`deuda-${mes}`)}
+                onClick={() => handlePagar({
+                  id: `deuda-${mes}`,
+                  nombre: `Cuota Atrasada ${mes}`,
+                  precio: 6000 // Simulamos un precio con recargo
+                })}
                 disabled={loadingId !== null}
                 className={`flex items-center justify-center bg-red-600 text-white font-semibold py-2 px-5 rounded-full shadow transition-all text-sm w-32 ${loadingId === `deuda-${mes}` ? 'opacity-75 cursor-wait' : 'hover:bg-red-700 active:scale-95'} ${loadingId !== null && loadingId !== `deuda-${mes}` ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
@@ -65,7 +72,11 @@ export default function SocioCuotas() {
             <p className="text-sm text-slate-500">Vence el 10/05</p>
           </div>
           <button 
-            onClick={() => handlePagar('prox')}
+            onClick={() => handlePagar({
+              id: 'cuota-05-2026',
+              nombre: 'Cuota Mayo 2026',
+              precio: 5000 // Precio base
+            })}
             disabled={loadingId !== null}
             className={`flex items-center justify-center bg-slate-700 text-white font-semibold py-2 px-5 rounded-full shadow transition-all text-sm w-32 ${loadingId === 'prox' ? 'opacity-75 cursor-wait' : 'hover:bg-slate-800 active:scale-95'} ${loadingId !== null && loadingId !== 'prox' ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
@@ -93,7 +104,11 @@ export default function SocioCuotas() {
             <div key={plan.value} className="bg-white p-4 rounded-2xl shadow-sm border border-blue-100 flex flex-col items-center justify-center text-center space-y-3">
               <span className="font-bold text-blue-900">{plan.label}</span>
               <button 
-                onClick={() => handlePagar(`adelanto-${plan.value}`)}
+                onClick={() => handlePagar({
+                  id: `adelanto-${plan.value}`,
+                  nombre: `Adelanto ${plan.label}`,
+                  precio: 5000 * parseInt(plan.value) // Múltiplo según meses
+                })}
                 disabled={loadingId !== null}
                 className={`w-full flex items-center justify-center bg-blue-600 text-white font-semibold py-2 rounded-xl shadow-md transition-all text-xs ${loadingId === `adelanto-${plan.value}` ? 'opacity-75 cursor-wait' : 'hover:bg-blue-700 active:scale-95'} ${loadingId !== null && loadingId !== `adelanto-${plan.value}` ? 'opacity-50 cursor-not-allowed' : ''}`}
               >

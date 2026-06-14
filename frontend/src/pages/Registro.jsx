@@ -1,15 +1,50 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 
 export default function Registro() {
   const [status, setStatus] = useState('idle'); // Estados posibles: 'idle' | 'error' | 'success'
+  const [isLoading, setIsLoading] = useState(false);
+  const [emailError, setEmailError] = useState(false);
+  const [formData, setFormData] = useState({
+    nombre: '',
+    apellido: '',
+    dni: '',
+    email: '',
+    fechaNac: ''
+  });
+  const navigate = useNavigate();
+
+  // Guard: Protección Inversa
+  useEffect(() => {
+    if (localStorage.getItem('isAuthenticated') === 'true') {
+      navigate('/socio');
+    }
+  }, [navigate]);
+
+  const isFormValid = Object.values(formData).every(val => val.length > 0) && !emailError;
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    if (name === 'dni') {
+      setFormData({ ...formData, [name]: value.replace(/\D/g, '') });
+    } else if (name === 'email') {
+      setFormData({ ...formData, [name]: value });
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      setEmailError(value.length > 0 && !emailRegex.test(value));
+    } else {
+      setFormData({ ...formData, [name]: value });
+    }
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    // TODO: Conectar con API aquí. 
-    // Para probar la UI de éxito cambia esto a: setStatus('success');
-    // Para probar la UI de error cambia esto a: setStatus('error');
-    setStatus('success'); 
+    if (!isFormValid) return;
+    
+    setIsLoading(true);
+    setTimeout(() => {
+      setIsLoading(false);
+      setStatus('success'); 
+    }, 2000);
   };
 
   return (
@@ -43,6 +78,9 @@ export default function Registro() {
                 <label className="block text-sm font-semibold text-slate-700 mb-1">Nombre</label>
                 <input 
                   type="text" 
+                  name="nombre"
+                  value={formData.nombre}
+                  onChange={handleChange}
                   className={`w-full p-3 border rounded-xl focus:ring-2 focus:outline-none transition-colors ${status === 'error' ? 'border-red-500 focus:ring-red-200' : 'border-slate-200 focus:ring-blue-200 focus:border-blue-500'}`}
                   placeholder="Juan" 
                 />
@@ -51,6 +89,9 @@ export default function Registro() {
                 <label className="block text-sm font-semibold text-slate-700 mb-1">Apellido</label>
                 <input 
                   type="text" 
+                  name="apellido"
+                  value={formData.apellido}
+                  onChange={handleChange}
                   className={`w-full p-3 border rounded-xl focus:ring-2 focus:outline-none transition-colors ${status === 'error' ? 'border-red-500 focus:ring-red-200' : 'border-slate-200 focus:ring-blue-200 focus:border-blue-500'}`}
                   placeholder="Pérez" 
                 />
@@ -60,7 +101,10 @@ export default function Registro() {
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-1">DNI</label>
               <input 
-                type="number" 
+                type="text" 
+                name="dni"
+                value={formData.dni}
+                onChange={handleChange}
                 className={`w-full p-3 border rounded-xl focus:ring-2 focus:outline-none transition-colors ${status === 'error' ? 'border-red-500 focus:ring-red-200' : 'border-slate-200 focus:ring-blue-200 focus:border-blue-500'}`}
                 placeholder="Sin puntos ni espacios" 
               />
@@ -69,16 +113,23 @@ export default function Registro() {
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-1">Email</label>
               <input 
-                type="email" 
-                className={`w-full p-3 border rounded-xl focus:ring-2 focus:outline-none transition-colors ${status === 'error' ? 'border-red-500 focus:ring-red-200' : 'border-slate-200 focus:ring-blue-200 focus:border-blue-500'}`}
+                type="text" 
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                className={`w-full p-3 border rounded-xl focus:ring-2 focus:outline-none transition-colors ${status === 'error' || emailError ? 'border-red-500 focus:ring-red-200' : 'border-slate-200 focus:ring-blue-200 focus:border-blue-500'}`}
                 placeholder="juan@ejemplo.com" 
               />
+              {emailError && <p className="text-red-500 text-xs mt-1 font-medium">Formato de correo inválido</p>}
             </div>
 
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-1">Fecha de Nacimiento</label>
               <input 
                 type="date" 
+                name="fechaNac"
+                value={formData.fechaNac}
+                onChange={handleChange}
                 className={`w-full p-3 border rounded-xl focus:ring-2 focus:outline-none transition-colors text-slate-600 ${status === 'error' ? 'border-red-500 focus:ring-red-200' : 'border-slate-200 focus:ring-blue-200 focus:border-blue-500'}`}
               />
             </div>
@@ -95,8 +146,22 @@ export default function Registro() {
               </p>
             </div>
 
-            <button type="submit" className="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-xl hover:bg-blue-700 transition-colors shadow-lg mt-6">
-              Enviar Solicitud
+            <button 
+              type="submit" 
+              disabled={!isFormValid || isLoading}
+              className={`w-full flex justify-center items-center bg-blue-600 text-white font-bold py-3 px-4 rounded-xl transition-all shadow-lg mt-6 ${(!isFormValid || isLoading) ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-700 active:scale-95'}`}
+            >
+              {isLoading ? (
+                <>
+                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Procesando...
+                </>
+              ) : (
+                'Enviar Solicitud'
+              )}
             </button>
           </form>
         )}

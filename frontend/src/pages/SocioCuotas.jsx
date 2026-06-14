@@ -1,15 +1,23 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 export default function SocioCuotas() {
   const navigate = useNavigate();
+  const [loadingId, setLoadingId] = useState(null);
+  const [toast, setToast] = useState('');
   
   // Mock de agregar al carrito y redirigir
-  const handlePagar = () => {
-    navigate('/carrito');
+  const handlePagar = (id) => {
+    setLoadingId(id);
+    setTimeout(() => {
+      setLoadingId(null);
+      setToast('Item agregado con éxito al carrito');
+      setTimeout(() => setToast(''), 3000);
+    }, 2000);
   };
 
   return (
-    <div className="space-y-8 bg-slate-50 min-h-screen pb-10">
+    <div className="space-y-8 bg-slate-50 min-h-screen pb-10 relative">
       
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-slate-800">Gestión de Cuotas</h2>
@@ -27,10 +35,21 @@ export default function SocioCuotas() {
                 <p className="text-sm text-red-500 font-medium">Vencida</p>
               </div>
               <button 
-                onClick={handlePagar}
-                className="bg-red-600 text-white font-semibold py-2 px-5 rounded-full shadow hover:bg-red-700 active:scale-95 transition-all text-sm"
+                onClick={() => handlePagar(`deuda-${mes}`)}
+                disabled={loadingId !== null}
+                className={`flex items-center justify-center bg-red-600 text-white font-semibold py-2 px-5 rounded-full shadow transition-all text-sm w-32 ${loadingId === `deuda-${mes}` ? 'opacity-75 cursor-wait' : 'hover:bg-red-700 active:scale-95'} ${loadingId !== null && loadingId !== `deuda-${mes}` ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
-                Pagar
+                {loadingId === `deuda-${mes}` ? (
+                  <>
+                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Procesando...
+                  </>
+                ) : (
+                  'Pagar'
+                )}
               </button>
             </div>
           ))}
@@ -46,10 +65,21 @@ export default function SocioCuotas() {
             <p className="text-sm text-slate-500">Vence el 10/05</p>
           </div>
           <button 
-            onClick={handlePagar}
-            className="bg-slate-700 text-white font-semibold py-2 px-5 rounded-full shadow hover:bg-slate-800 active:scale-95 transition-all text-sm"
+            onClick={() => handlePagar('prox')}
+            disabled={loadingId !== null}
+            className={`flex items-center justify-center bg-slate-700 text-white font-semibold py-2 px-5 rounded-full shadow transition-all text-sm w-32 ${loadingId === 'prox' ? 'opacity-75 cursor-wait' : 'hover:bg-slate-800 active:scale-95'} ${loadingId !== null && loadingId !== 'prox' ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
-            Pagar
+            {loadingId === 'prox' ? (
+              <>
+                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Procesando...
+              </>
+            ) : (
+              'Pagar'
+            )}
           </button>
         </div>
       </section>
@@ -63,10 +93,21 @@ export default function SocioCuotas() {
             <div key={plan.value} className="bg-white p-4 rounded-2xl shadow-sm border border-blue-100 flex flex-col items-center justify-center text-center space-y-3">
               <span className="font-bold text-blue-900">{plan.label}</span>
               <button 
-                onClick={handlePagar}
-                className="w-full bg-blue-600 text-white font-semibold py-2 rounded-xl shadow-md hover:bg-blue-700 active:scale-95 transition-all text-xs"
+                onClick={() => handlePagar(`adelanto-${plan.value}`)}
+                disabled={loadingId !== null}
+                className={`w-full flex items-center justify-center bg-blue-600 text-white font-semibold py-2 rounded-xl shadow-md transition-all text-xs ${loadingId === `adelanto-${plan.value}` ? 'opacity-75 cursor-wait' : 'hover:bg-blue-700 active:scale-95'} ${loadingId !== null && loadingId !== `adelanto-${plan.value}` ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
-                Pagar
+                {loadingId === `adelanto-${plan.value}` ? (
+                  <>
+                    <svg className="animate-spin -ml-1 mr-1 h-3 w-3 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    ...
+                  </>
+                ) : (
+                  'Pagar'
+                )}
               </button>
             </div>
           ))}
@@ -87,6 +128,15 @@ export default function SocioCuotas() {
           ))}
         </div>
       </section>
+
+      {/* Toast Notification */}
+      {toast && (
+        <div className="fixed bottom-20 left-1/2 transform -translate-x-1/2 z-50 animate-fade-in-up">
+          <div className="bg-green-500 text-white px-6 py-3 rounded-full shadow-2xl font-semibold text-sm flex items-center space-x-2">
+            <span>{toast}</span>
+          </div>
+        </div>
+      )}
 
     </div>
   );

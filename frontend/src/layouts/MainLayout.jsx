@@ -40,11 +40,11 @@ export default function MainLayout({ userRole }) {
       {/* Header Principal Fijo (Sticky) */}
       <header className="bg-slate-900 text-slate-100 sticky top-0 z-40 shadow-lg border-b border-slate-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Patrón Grid de 3 columnas para centrado perfecto */}
-          <div className="grid grid-cols-3 items-center py-3">
+          {/* Contenedor relativo para centrado absoluto del logo */}
+          <div className="relative flex items-center justify-between py-3">
             
-            {/* Columna 1: Botón de Menú Hamburguesa (Alineado a la izquierda) */}
-            <div className="justify-self-start">
+            {/* Botón de Menú Hamburguesa (A la izquierda) */}
+            <div>
               <button 
                 onClick={() => setIsMenuOpen(true)}
                 className="p-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
@@ -56,15 +56,15 @@ export default function MainLayout({ userRole }) {
               </button>
             </div>
 
-            {/* Columna 2: Logo / Escudo (Centrado perfecto) */}
-            <div className="justify-self-center">
+            {/* Logo / Escudo (Centrado matemático absoluto) */}
+            <div className="absolute left-1/2 transform -translate-x-1/2">
               <Link to="/" className="block transition-transform hover:scale-105 active:scale-95">
-                <img src={escudoCar} alt="Escudo Club Atlético Roberts" className="h-20 sm:h-24 w-auto object-contain drop-shadow-xl" />
+                <img src={escudoCar} alt="Escudo Club Atlético Roberts" className="h-16 sm:h-20 w-auto object-contain drop-shadow-xl" />
               </Link>
             </div>
 
-            {/* Columna 3: Enlace del Carrito (Alineado a la derecha) */}
-            <div className="justify-self-end">
+            {/* Enlace del Carrito (A la derecha) */}
+            <div>
               <Link 
                 to="/carrito" 
                 className="flex p-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors relative"

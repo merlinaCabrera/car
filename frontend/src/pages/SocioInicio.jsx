@@ -9,7 +9,7 @@ export default function SocioInicio() {
   const isMoroso = user?.isMoroso || false;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 mt-8">
       <div className="flex justify-between items-center mb-2">
         <h2 className="text-2xl font-semibold text-slate-800">Hola, {user?.nombre || 'Socio'} 👋</h2>
       </div>

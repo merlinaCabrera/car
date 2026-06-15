@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { QRCodeSVG } from 'qrcode.react';
 
 export default function SocioInicio() {
   const navigate = useNavigate();
@@ -7,6 +8,14 @@ export default function SocioInicio() {
 
   // Obtenemos el estado directamente del usuario (si no existe por X motivo, por defecto es falso)
   const isMoroso = user?.isMoroso || false;
+
+  // Empaquetamos la información del usuario en JSON para el código QR
+  const qrData = JSON.stringify({
+    dni: user?.dni,
+    nombre: user?.nombre,
+    rol: user?.rol,
+    estado: isMoroso ? 'Moroso' : 'Al día'
+  });
 
   return (
     <div className="space-y-6 mt-8">
@@ -28,10 +37,8 @@ export default function SocioInicio() {
         </p>
         
         {/* Espacio para Código QR */}
-        <div className="bg-white p-3 rounded-xl z-10 shadow-inner">
-          <div className={`w-40 h-40 border-2 border-dashed flex items-center justify-center rounded-lg ${isMoroso ? 'border-red-300 bg-red-50 text-red-400' : 'border-green-300 bg-green-50 text-green-400'}`}>
-            <span className="text-sm font-bold tracking-widest">{isMoroso ? 'QR_BLOQUEADO' : 'QR_ACTIVO'}</span>
-          </div>
+        <div className="bg-white p-2 rounded-xl z-10 shadow-inner flex items-center justify-center">
+          <QRCodeSVG value={qrData} size={200} level="H" includeMargin={true} />
         </div>
         <p className={`mt-3 text-xs z-10 font-medium ${isMoroso ? 'text-red-100' : 'text-green-100'}`}>
           {isMoroso ? 'Acceso denegado' : 'Presentá este código en puerta'}

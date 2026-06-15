@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { QRCodeSVG } from 'qrcode.react';
@@ -5,6 +6,13 @@ import { QRCodeSVG } from 'qrcode.react';
 export default function SocioInicio() {
   const navigate = useNavigate();
   const { user } = useAuth();
+
+  // Guard: Expulsar a los administradores de la vista de socios
+  useEffect(() => {
+    if (user?.rol === 'admin') {
+      navigate('/admin', { replace: true });
+    }
+  }, [user, navigate]);
 
   // Obtenemos el estado directamente del usuario (si no existe por X motivo, por defecto es falso)
   const isMoroso = user?.isMoroso || false;

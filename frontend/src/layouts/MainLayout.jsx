@@ -9,7 +9,7 @@ import escudoCar from '../assets/escudo-car.PNG';
 export default function MainLayout({ userRole }) {
   // 1. Manejo del Estado del Menú
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
   const { cart } = useCart();
 
@@ -17,13 +17,26 @@ export default function MainLayout({ userRole }) {
   const closeMenu = () => setIsMenuOpen(false);
 
   // Array de rutas para mapear fácilmente y mantener el código limpio
-  const navLinks = [
-    { name: 'Inicio', path: '/socio' },
-    { name: 'Mi Perfil', path: '/perfil' },
-    { name: 'Gestión de Cuotas', path: '/cuotas' },
-    { name: 'Shopping', path: '/shopping' },
-    { name: 'Reserva de Instalaciones', path: '/alquileres' },
-  ];
+  let navLinks = [];
+  
+  if (user?.rol === 'admin') {
+    navLinks = [
+      { name: 'Inicio', path: '/admin' },
+      { name: 'Aprobar Solicitudes', path: '/admin/solicitudes' },
+      { name: 'Aprobar Pagos', path: '/admin/pagos' },
+    ];
+  } else {
+    navLinks = [
+      { name: 'Mi Código QR', path: '/socio' },
+      { name: 'Mi Perfil', path: '/perfil' },
+      { name: 'Gestión de Cuotas', path: '/cuotas' },
+      { name: 'Shopping', path: '/shopping' },
+      { name: 'Reserva de Instalaciones', path: '/alquileres' },
+    ];
+    if (user?.rol === 'jugador') {
+      navLinks.push({ name: 'Calendario Deportivo', path: '/mi-equipo' });
+    }
+  }
 
   const handleLogout = () => {
     logout(); // Destruye la sesión en el contexto global
@@ -64,23 +77,25 @@ export default function MainLayout({ userRole }) {
             </div>
 
             {/* Enlace del Carrito (A la derecha) */}
-            <div>
-              <Link 
-                to="/carrito" 
-                className="flex p-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors relative"
-              >
-                <span className="sr-only">Ver carrito</span>
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-                </svg>
-                {/* Badge condicional con número de ítems */}
-                {itemCount > 0 && (
-                  <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white ring-2 ring-slate-900">
-                    {itemCount}
-                  </span>
-                )}
-              </Link>
-            </div>
+            {user?.rol !== 'admin' && (
+              <div>
+                <Link 
+                  to="/carrito" 
+                  className="flex p-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors relative"
+                >
+                  <span className="sr-only">Ver carrito</span>
+                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                  </svg>
+                  {/* Badge condicional con número de ítems */}
+                  {itemCount > 0 && (
+                    <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white ring-2 ring-slate-900">
+                      {itemCount}
+                    </span>
+                  )}
+                </Link>
+              </div>
+            )}
 
           </div>
         </div>

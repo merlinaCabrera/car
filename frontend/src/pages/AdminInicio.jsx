@@ -1,53 +1,90 @@
+import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
+
 export default function AdminInicio() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+
   return (
-    <div className="space-y-6 pb-6">
-      <h2 className="text-2xl font-semibold mb-2">Panel de Control</h2>
-      
-      {/* Botón Escáner QR Destacado */}
-      <button className="w-full bg-blue-600 hover:bg-blue-500 text-white py-10 rounded-3xl shadow-lg flex flex-col items-center justify-center gap-3 transition-transform active:scale-[0.98]">
-        <svg className="w-14 h-14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm14 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
-        </svg>
-        <span className="text-xl font-bold tracking-widest">ESCANEAR QR</span>
+    <div className="space-y-8 mt-10 px-4 sm:px-0">
+      {/* Cabecera */}
+      <div className="mb-6">
+        <h2 className="text-3xl font-bold text-slate-800">Hola, {user?.nombre || 'Admin'} 👋</h2>
+      </div>
+
+      {/* Sección 1: Acciones Rápidas (CTA Lector QR) */}
+      <button 
+        onClick={() => navigate('/admin/escaner')}
+        className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-6 px-4 rounded-2xl shadow-xl transition-transform transform active:scale-95 text-lg md:text-2xl flex items-center justify-center gap-3"
+      >
+        <span className="text-2xl md:text-3xl">📷</span> LECTOR DE QR - Control de Acceso
       </button>
 
-      {/* Alertas Administrativas */}
-      <div className="bg-red-900/20 border border-red-900/50 rounded-2xl p-4 flex items-start gap-3 shadow-sm">
-        <svg className="w-6 h-6 text-red-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-        </svg>
-        <div>
-          <h4 className="font-semibold text-red-400">Atención Requerida</h4>
-          <p className="text-sm text-red-200 mt-1">Hay <strong>4 transferencias</strong> pendientes de validación manual.</p>
+      {/* Sección 2: Grilla de Métricas */}
+      <div className="grid grid-cols-3 gap-3 md:gap-6">
+        <div className="bg-slate-800 rounded-2xl p-4 md:p-6 shadow-md border border-slate-700 flex flex-col items-center justify-center transition-colors">
+          <span className="text-slate-400 text-[10px] md:text-sm font-semibold uppercase tracking-wide text-center">Solicitudes</span>
+          <span className="text-2xl md:text-4xl font-bold text-amber-400 mt-1">4</span>
+        </div>
+        <div className="bg-slate-800 rounded-2xl p-4 md:p-6 shadow-md border border-slate-700 flex flex-col items-center justify-center transition-colors">
+          <span className="text-slate-400 text-[10px] md:text-sm font-semibold uppercase tracking-wide text-center">Pagos</span>
+          <span className="text-2xl md:text-4xl font-bold text-orange-400 mt-1">12</span>
+        </div>
+        <div className="bg-slate-800 rounded-2xl p-4 md:p-6 shadow-md border border-slate-700 flex flex-col items-center justify-center transition-colors">
+          <span className="text-slate-400 text-[10px] md:text-sm font-semibold uppercase tracking-wide text-center">Socios</span>
+          <span className="text-2xl md:text-4xl font-bold text-blue-400 mt-1">342</span>
         </div>
       </div>
 
-      {/* Buscador de Socios */}
-      <div className="bg-slate-800 rounded-2xl p-5 shadow-md border border-slate-700/50">
-        <h3 className="text-lg font-semibold mb-4 text-gray-100">Búsqueda Manual</h3>
+      {/* Sección 3: Gestión de Usuarios */}
+      <div className="bg-slate-800 rounded-3xl p-5 md:p-8 shadow-xl border border-slate-700">
+        <h3 className="text-xl font-bold text-white mb-4">Gestión de Roles</h3>
         
-        <div className="relative mb-5">
-          <input 
-            type="text" 
-            placeholder="Ingresar DNI o Apellido..." 
-            className="w-full bg-slate-900 border border-slate-600 rounded-xl py-3.5 pl-11 pr-4 text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-          />
-          <svg className="w-5 h-5 text-gray-400 absolute left-4 top-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
-        </div>
+        <input 
+          type="search" 
+          placeholder="Buscar por DNI o Apellido..." 
+          className="w-full bg-slate-900 text-white border border-slate-700 rounded-xl px-4 py-3 mb-6 focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-slate-500 transition-shadow"
+        />
 
-        {/* Resultados Simulados */}
-        <div className="space-y-3">
-          <div className="bg-slate-700/30 p-3.5 rounded-xl flex justify-between items-center border border-slate-600/50">
+        <div className="space-y-4">
+          {/* Usuario 1 */}
+          <div className="bg-slate-700/50 p-4 rounded-2xl border border-slate-600/50 flex flex-col md:flex-row md:items-center justify-between gap-4 transition-colors hover:bg-slate-700">
             <div>
-              <p className="font-semibold text-gray-200">Gómez, Carlos</p>
-              <p className="text-xs text-gray-400 mt-0.5">DNI: 34.567.890</p>
+              <p className="font-bold text-slate-100 text-lg">Sergio Acosta</p>
+              <p className="text-sm text-slate-400 font-medium">DNI: 44.196.940</p>
             </div>
-            <span className="bg-green-900/30 text-green-400 text-[11px] px-2.5 py-1 rounded-md border border-green-800/50 font-bold uppercase tracking-wider">Al día</span>
+            <div className="flex items-center gap-3">
+              <select defaultValue="socio" className="bg-slate-900 text-slate-200 border border-slate-600 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full md:w-auto outline-none">
+                <option value="socio">Socio</option>
+                <option value="jugador">Jugador</option>
+                <option value="admin">Admin Temporal</option>
+              </select>
+              <button className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-4 rounded-xl transition-colors text-sm whitespace-nowrap">
+                Guardar
+              </button>
+            </div>
+          </div>
+
+          {/* Usuario 2 */}
+          <div className="bg-slate-700/50 p-4 rounded-2xl border border-slate-600/50 flex flex-col md:flex-row md:items-center justify-between gap-4 transition-colors hover:bg-slate-700">
+            <div>
+              <p className="font-bold text-slate-100 text-lg">Thiago Cabrera</p>
+              <p className="text-sm text-slate-400 font-medium">DNI: 47.545.053</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <select defaultValue="jugador" className="bg-slate-900 text-slate-200 border border-slate-600 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full md:w-auto outline-none">
+                <option value="socio">Socio</option>
+                <option value="jugador">Jugador</option>
+                <option value="admin">Admin Temporal</option>
+              </select>
+              <button className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-4 rounded-xl transition-colors text-sm whitespace-nowrap">
+                Guardar
+              </button>
+            </div>
           </div>
         </div>
       </div>
+
     </div>
   );
 }

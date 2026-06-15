@@ -13,6 +13,10 @@ import SocioShopping from './pages/SocioShopping';
 import SocioAlquileres from './pages/SocioAlquileres';
 import SocioPerfil from './pages/SocioPerfil';
 import AdminInicio from './pages/AdminInicio';
+import AdminSolicitudes from './pages/AdminSolicitudes';
+import AdminPagos from './pages/AdminPagos';
+import AdminQRScanner from './pages/AdminQRScanner';
+import JugadorCalendario from './pages/JugadorCalendario';
 
 function App() {
   return (
@@ -34,7 +38,11 @@ function App() {
               <Route path="/shopping" element={<SocioShopping />} />
               <Route path="/alquileres" element={<SocioAlquileres />} />
               <Route path="/perfil" element={<SocioPerfil />} />
+              <Route path="/mi-equipo" element={<JugadorCalendario />} />
               <Route path="/admin" element={<AdminInicio />} />
+              <Route path="/admin/solicitudes" element={<AdminSolicitudes />} />
+              <Route path="/admin/pagos" element={<AdminPagos />} />
+              <Route path="/admin/escaner" element={<AdminQRScanner />} />
             </Route>
           </Routes>
         </BrowserRouter>

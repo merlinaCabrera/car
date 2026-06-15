@@ -11,12 +11,20 @@ export function AuthProvider({ children }) {
 
   const login = (dni, password) => {
     if (dni === '44196940' && password === 'roberts2026') {
-      setUser({ nombre: 'Sergio Acosta', dni: '44196940', isMoroso: false });
-      return true;
+      setUser({ nombre: 'Sergio Acosta', dni: '44196940', isMoroso: false, rol: 'socio' });
+      return 'socio';
     }
     if (dni === '30396607' && password === 'roberts2026') {
-      setUser({ nombre: 'Daniel Arias', dni: '30396607', isMoroso: true, deudas: 2 });
-      return true;
+      setUser({ nombre: 'Daniel Arias', dni: '30396607', isMoroso: true, deudas: 2, rol: 'socio' });
+      return 'socio';
+    }
+    if (dni === '47545053' && password === 'roberts2026') {
+      setUser({ nombre: 'Thiago Cabrera', dni: '47545053', isMoroso: false, rol: 'jugador' });
+      return 'jugador';
+    }
+    if (dni === '12345678' && password === 'roberts2026') {
+      setUser({ nombre: 'Admin General', dni: '12345678', rol: 'admin' });
+      return 'admin';
     }
     return false;
   };

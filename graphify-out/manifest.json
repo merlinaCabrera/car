@@ -154,24 +154,14 @@
     "ast_hash": "88439104b3c207f17d33ef3160e3b080",
     "semantic_hash": "88439104b3c207f17d33ef3160e3b080"
   },
-  "backend/create_tables.py": {
-    "mtime": 1782743560.9765182,
-    "ast_hash": "0f6949f44a3d72846299f507361b5f19",
-    "semantic_hash": ""
-  },
   "backend/database.py": {
     "mtime": 1782743376.9479508,
     "ast_hash": "68d05e412828fb13c881bd509b56f8d8",
     "semantic_hash": ""
   },
   "backend/models.py": {
-    "mtime": 1782743502.0495455,
-    "ast_hash": "108ac1af9be320db2f1cc1fadd483714",
-    "semantic_hash": ""
-  },
-  "backend/test_db.py": {
-    "mtime": 1782743412.0748765,
-    "ast_hash": "2ecd3e5ea72162a1c750a6f6efaaa259",
+    "mtime": 1782748983.0686383,
+    "ast_hash": "f18d67f5dba2ee642949beac2a185ee6",
     "semantic_hash": ""
   },
   "backend/requirements.txt": {
@@ -199,7 +189,22 @@
     "ast_hash": "8e3a10e157f75ada21ab742c022d5430",
     "semantic_hash": ""
   },
-  "init-db/schema.sql": {
+  "backend/alembic/env.py": {
+    "mtime": 1782749312.0127995,
+    "ast_hash": "d1f1d5c47a054b1c08a58f20631b04b2",
+    "semantic_hash": ""
+  },
+  "backend/alembic/versions/cac4e912d733_initial_schema.py": {
+    "mtime": 1782749316.1517696,
+    "ast_hash": "e01c250508c8f7cc50fca76ca35fb22e",
+    "semantic_hash": ""
+  },
+  "backend/schemas.py": {
+    "mtime": 1782749171.0357401,
+    "ast_hash": "8acb98bf1236013b82647ddc4ba6f2fb",
+    "semantic_hash": ""
+  },
+  "init-db-backup/schema.sql": {
     "mtime": 1782746021.4418435,
     "ast_hash": "c6d691eb0d3bbd9a0b6e715b2c207d62",
     "semantic_hash": ""

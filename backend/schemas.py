@@ -1,24 +1,659 @@
-from pydantic import BaseModel, EmailStr
-from typing import Optional
-from datetime import date
+"""
+schemas.py — Pydantic v2 Schemas
+Club Atlético — Sistema de Gestión
 
-# Esquema para crear un usuario (Request)
-class UsuarioCreate(BaseModel):
-    dni: str
-    nombre: str
-    apellido: str
-    email: EmailStr
-    password: str # El password viene en texto plano del front, luego se hashea
+Convenciones de nomenclatura:
+  XxxBase       → campos comunes (no instanciable directamente)
+  XxxCreate     → payload de entrada para POST
+  XxxUpdate     → payload de entrada para PATCH (todos los campos opcionales)
+  XxxResponse   → payload de salida (serializa desde ORM con from_attributes=True)
+  XxxDetail     → respuesta enriquecida con objetos anidados
+
+Todos los Response usan:
+  model_config = ConfigDict(from_attributes=True)
+
+Reglas de validación relevantes:
+  - DNI: 7–8 dígitos numéricos
+  - Estado financiero se calcula en backend; nunca lo envía el frontend
+  - El frontend NUNCA envía password_hash; siempre envía `password` en texto plano
+  - qr_token es de solo lectura desde el backend
+"""
+
+from __future__ import annotations
+
+import uuid
+from datetime import date, datetime
+from decimal import Decimal
+from typing import Annotated, List, Optional
+
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    EmailStr,
+    Field,
+    field_validator,
+    model_validator,
+)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# TIPOS ANOTADOS REUTILIZABLES
+# ─────────────────────────────────────────────────────────────────────────────
+
+DNI = Annotated[str, Field(min_length=7, max_length=10, pattern=r"^\d{7,10}$")]
+Porcentaje = Annotated[Decimal, Field(ge=Decimal("0"), le=Decimal("100"))]
+MontoPositivo = Annotated[Decimal, Field(gt=Decimal("0"))]
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# MÓDULO 0 · CONFIGURACIÓN GLOBAL
+# ─────────────────────────────────────────────────────────────────────────────
+
+class ConfiguracionGlobalBase(BaseModel):
+    valor_cuota_base: MontoPositivo = Field(
+        description="Precio vigente de la cuota social."
+    )
+    meses_antiguedad_beneficio: int = Field(
+        ge=1, description="Meses requeridos para acceder al descuento por antigüedad."
+    )
+    descuento_beneficio: Porcentaje = Field(
+        description="Porcentaje de descuento en alquileres por antigüedad (0–100)."
+    )
+
+
+class ConfiguracionGlobalUpdate(BaseModel):
+    """Todos los campos son opcionales — PATCH parcial."""
+    valor_cuota_base: Optional[MontoPositivo] = None
+    meses_antiguedad_beneficio: Optional[int] = Field(default=None, ge=1)
+    descuento_beneficio: Optional[Porcentaje] = None
+
+
+class ConfiguracionGlobalResponse(ConfiguracionGlobalBase):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    actualizado_por: Optional[int] = None
+    actualizado_at: datetime
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# MÓDULO 1 · ROLES
+# ─────────────────────────────────────────────────────────────────────────────
+
+class RolBase(BaseModel):
+    nombre: str = Field(max_length=50)
+    descripcion: Optional[str] = None
+    peso_jerarquico: int = Field(default=0, ge=0)
+    es_activo: bool = True
+
+
+class RolCreate(RolBase):
+    pass
+
+
+class RolUpdate(BaseModel):
+    nombre: Optional[str] = Field(default=None, max_length=50)
+    descripcion: Optional[str] = None
+    peso_jerarquico: Optional[int] = Field(default=None, ge=0)
+    es_activo: Optional[bool] = None
+
+
+class RolResponse(RolBase):
+    model_config = ConfigDict(from_attributes=True)
+
+    id_rol: int
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# MÓDULO 1 · USUARIOS
+# ─────────────────────────────────────────────────────────────────────────────
+
+class UsuarioBase(BaseModel):
+    dni: DNI
+    nombre: str = Field(min_length=1, max_length=100)
+    apellido: str = Field(min_length=1, max_length=100)
+    email: Optional[EmailStr] = None
+    telefono: Optional[str] = Field(default=None, max_length=30)
+    direccion: Optional[str] = Field(default=None, max_length=200)
+    foto_perfil_url: Optional[str] = None
+    fecha_nacimiento: Optional[date] = None
+    id_titular: Optional[int] = Field(
+        default=None,
+        description="ID del socio titular (para adherentes/familia).",
+    )
+    push_token: Optional[str] = Field(default=None, max_length=255)
+
+
+class UsuarioCreate(UsuarioBase):
+    """
+    Payload para dar de alta un nuevo usuario.
+    El backend hashea `password` antes de guardarlo como `password_hash`.
+    """
+    password: str = Field(min_length=8, description="Contraseña en texto plano.")
+
+    @field_validator("password")
+    @classmethod
+    def password_no_trivial(cls, v: str) -> str:
+        if v.isdigit():
+            raise ValueError("La contraseña no puede ser solo números.")
+        return v
+
+
+class UsuarioCreateMigracion(UsuarioBase):
+    """
+    Payload del script de migración desde Excel.
+    La contraseña se genera automáticamente en el backend como
+    'car' + últimos 5 dígitos del DNI y se envía por email.
+    """
     fecha_ingreso: Optional[date] = None
+    deuda_historica_meses: int = Field(default=0, ge=0)
 
-# Esquema para leer un usuario (Response)
-class Usuario(BaseModel):
+
+class UsuarioUpdate(BaseModel):
+    """Todos los campos opcionales — PATCH parcial."""
+    nombre: Optional[str] = Field(default=None, min_length=1, max_length=100)
+    apellido: Optional[str] = Field(default=None, min_length=1, max_length=100)
+    email: Optional[EmailStr] = None
+    telefono: Optional[str] = Field(default=None, max_length=30)
+    direccion: Optional[str] = Field(default=None, max_length=200)
+    foto_perfil_url: Optional[str] = None
+    fecha_nacimiento: Optional[date] = None
+    push_token: Optional[str] = Field(default=None, max_length=255)
+    is_directivo: Optional[bool] = None   # Solo Admin General; backend valida antigüedad
+
+
+class UsuarioCambiarPassword(BaseModel):
+    """Payload para el forzado de cambio de contraseña en primer ingreso."""
+    password_actual: str
+    password_nuevo: str = Field(min_length=8)
+    password_nuevo_confirmacion: str
+
+    @model_validator(mode="after")
+    def passwords_coinciden(self) -> "UsuarioCambiarPassword":
+        if self.password_nuevo != self.password_nuevo_confirmacion:
+            raise ValueError("Las contraseñas nuevas no coinciden.")
+        if self.password_actual == self.password_nuevo:
+            raise ValueError("La nueva contraseña debe ser diferente a la actual.")
+        return self
+
+
+class UsuarioBaja(BaseModel):
+    """Payload para dar de baja a un usuario (baja lógica, nunca DELETE)."""
+    fecha_baja: date = Field(default_factory=date.today)
+    motivo: Optional[str] = None
+
+
+# ── Respuestas ────────────────────────────────────────────────────────────────
+
+class RolResponseSimple(BaseModel):
+    """Versión ligera de Rol para embeber en UsuarioResponse."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id_rol: int
+    nombre: str
+    peso_jerarquico: int
+
+
+class UsuarioRolResponse(BaseModel):
+    """Asignación de rol con metadata de expiración."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id_rol: int
+    valido_hasta: Optional[datetime] = None
+    asignado_at: datetime
+    rol: RolResponseSimple
+
+
+class UsuarioResponse(UsuarioBase):
+    """
+    Respuesta estándar. No expone password_hash.
+    qr_token y estado financiero son de solo lectura.
+    """
+    model_config = ConfigDict(from_attributes=True)
+
+    id_usuario: int
+    qr_token: uuid.UUID
+    qr_generado_at: datetime
+    mes_cubierto_hasta: Optional[date] = None
+    deuda_historica_meses: int
+    fecha_ingreso: date
+    fecha_baja: Optional[date] = None
+    is_directivo: bool
+    requiere_cambio_password: bool
+    ultimo_login_at: Optional[datetime] = None
+    creado_at: datetime
+    roles_asignados: List[UsuarioRolResponse] = []
+
+
+class UsuarioListResponse(BaseModel):
+    """Versión condensada para listados (sin roles completos ni QR)."""
+    model_config = ConfigDict(from_attributes=True)
+
     id_usuario: int
     dni: str
     nombre: str
     apellido: str
-    email: EmailStr
-    is_directivo: bool
+    email: Optional[str] = None
+    fecha_baja: Optional[date] = None
+    deuda_historica_meses: int
+    mes_cubierto_hasta: Optional[date] = None
 
-    class Config:
-        from_attributes = True # Clave para que Pydantic lea los modelos de SQLAlchemy
+
+class UsuarioQRValidacionResponse(BaseModel):
+    """
+    Respuesta del lector de puerta al escanear un QR.
+    Mínima información necesaria: no expone deuda en pesos ni datos privados.
+    """
+    es_valido: bool
+    id_usuario: Optional[int] = None
+    nombre_completo: Optional[str] = None
+    foto_perfil_url: Optional[str] = None
+    estado_financiero: str  # 'al_dia' | 'moroso' | 'inactivo' | 'desconocido'
+    roles_activos: List[str] = []
+    antiguedad_meses: int = 0
+    mensaje_display: str  # 'SOCIO HABILITADO ✓' | 'SOCIO NO HABILITADO ✗' | etc.
+
+
+# ── Asignación de roles ───────────────────────────────────────────────────────
+
+class AsignarRolPayload(BaseModel):
+    """Payload para asignar un rol a un usuario."""
+    id_usuario: int
+    id_rol: int
+    valido_hasta: Optional[datetime] = Field(
+        default=None,
+        description="Completar solo para roles temporales (ej: admin_temporal).",
+    )
+
+
+class RemoverRolPayload(BaseModel):
+    id_usuario: int
+    id_rol: int
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# MÓDULO 2 · AUDITORÍA
+# ─────────────────────────────────────────────────────────────────────────────
+
+class AuditLogResponse(BaseModel):
+    """Solo lectura — el audit_log nunca se crea desde el frontend."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    usuario_actor: Optional[int] = None
+    accion: str
+    tabla_afectada: str
+    registro_id: Optional[int] = None
+    detalle: Optional[dict] = None
+    ip_origen: Optional[str] = None
+    created_at: datetime
+
+
+class AuditLogFiltros(BaseModel):
+    """Filtros para el endpoint GET /audit-log."""
+    accion: Optional[str] = None
+    tabla_afectada: Optional[str] = None
+    usuario_actor: Optional[int] = None
+    desde: Optional[datetime] = None
+    hasta: Optional[datetime] = None
+    page: int = Field(default=1, ge=1)
+    page_size: int = Field(default=50, ge=1, le=200)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# MÓDULO 3 · PRODUCTOS & SERVICIOS
+# ─────────────────────────────────────────────────────────────────────────────
+
+CATEGORIAS_PRODUCTO = ("cuota_social", "alquiler", "indumentaria", "otro")
+
+
+class ProductoServicioBase(BaseModel):
+    nombre: str = Field(min_length=1, max_length=150)
+    categoria: str = Field(description="cuota_social | alquiler | indumentaria | otro")
+    descripcion: Optional[str] = None
+    precio_actual: MontoPositivo
+    stock: Optional[int] = Field(default=None, ge=0)
+    es_activo: bool = True
+    imagen_url: Optional[str] = None
+
+    @field_validator("categoria")
+    @classmethod
+    def categoria_valida(cls, v: str) -> str:
+        if v not in CATEGORIAS_PRODUCTO:
+            raise ValueError(f"Categoría inválida. Opciones: {CATEGORIAS_PRODUCTO}")
+        return v
+
+
+class ProductoServicioCreate(ProductoServicioBase):
+    pass
+
+
+class ProductoServicioUpdate(BaseModel):
+    nombre: Optional[str] = Field(default=None, min_length=1, max_length=150)
+    descripcion: Optional[str] = None
+    precio_actual: Optional[MontoPositivo] = None
+    stock: Optional[int] = Field(default=None, ge=0)
+    es_activo: Optional[bool] = None
+    imagen_url: Optional[str] = None
+
+
+class ProductoServicioResponse(ProductoServicioBase):
+    model_config = ConfigDict(from_attributes=True)
+
+    id_producto: int
+    creado_at: datetime
+    actualizado_at: datetime
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# MÓDULO 3 · RESERVAS DE INSTALACIONES
+# ─────────────────────────────────────────────────────────────────────────────
+
+ESTADOS_RESERVA = ("bloqueada", "confirmada", "liberada", "expirada")
+
+
+class ReservaInstalacionCreate(BaseModel):
+    id_producto: int
+    instalacion: str = Field(max_length=100, description="'quincho', 'cancha_1', etc.")
+    fecha_inicio: datetime
+    fecha_fin: datetime
+
+    @model_validator(mode="after")
+    def fechas_coherentes(self) -> "ReservaInstalacionCreate":
+        if self.fecha_fin <= self.fecha_inicio:
+            raise ValueError("fecha_fin debe ser posterior a fecha_inicio.")
+        return self
+
+
+class ReservaInstalacionResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id_reserva: int
+    id_producto: int
+    instalacion: str
+    fecha_inicio: datetime
+    fecha_fin: datetime
+    estado: str
+    id_orden: Optional[int] = None
+    creado_at: datetime
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# MÓDULO 3 · ÓRDENES & DETALLES
+# ─────────────────────────────────────────────────────────────────────────────
+
+ESTADOS_ORDEN = (
+    "pendiente_verificacion",
+    "aprobada",
+    "rechazada",
+    "cancelada_socio",
+    "expirada",
+)
+
+
+class DetalleOrdenCreate(BaseModel):
+    """Un ítem dentro del carrito. El precio se resuelve en el backend."""
+    id_producto: int
+    cantidad: int = Field(default=1, ge=1)
+    mes_referencia: Optional[date] = Field(
+        default=None,
+        description="Para cuotas: primer día del mes a pagar (ej: 2025-06-01).",
+    )
+    # id_reserva se asigna automáticamente en el backend al crear la reserva
+
+
+class DetalleOrdenResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id_detalle: int
+    id_producto: int
+    cantidad: int
+    precio_unitario_historico: Decimal
+    mes_referencia: Optional[date] = None
+    id_reserva: Optional[int] = None
+    producto: Optional[ProductoServicioResponse] = None
+
+
+class OrdenCreate(BaseModel):
+    """
+    El socio envía los ítems; el backend calcula monto_total y bloquea stock/reservas.
+    El frontend NUNCA envía monto_total para evitar manipulación.
+    """
+    items: List[DetalleOrdenCreate] = Field(min_length=1)
+
+    @field_validator("items")
+    @classmethod
+    def items_no_vacio(cls, v: List[DetalleOrdenCreate]) -> List[DetalleOrdenCreate]:
+        if not v:
+            raise ValueError("Una orden debe tener al menos un ítem.")
+        return v
+
+
+class OrdenSubirComprobante(BaseModel):
+    """El socio sube la URL del comprobante de transferencia."""
+    comprobante_url: str = Field(min_length=1)
+
+
+class OrdenAprobar(BaseModel):
+    """Payload del Personal Administrativo para aprobar una orden."""
+    notas_admin: Optional[str] = None
+
+
+class OrdenRechazar(BaseModel):
+    """Payload del Personal Administrativo para rechazar una orden."""
+    motivo_rechazo: str = Field(
+        min_length=5,
+        description="Motivo obligatorio para rechazar (ej: 'Monto no coincide').",
+    )
+
+
+class OrdenResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id_orden: int
+    id_usuario: int
+    fecha_creacion: datetime
+    estado: str
+    monto_total: Decimal
+    comprobante_url: Optional[str] = None
+    motivo_rechazo: Optional[str] = None
+    aprobada_por: Optional[int] = None
+    aprobada_at: Optional[datetime] = None
+    expira_at: datetime
+    notas_admin: Optional[str] = None
+    detalles: List[DetalleOrdenResponse] = []
+
+
+class OrdenListResponse(BaseModel):
+    """Versión condensada para la bandeja de entrada del admin."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id_orden: int
+    id_usuario: int
+    fecha_creacion: datetime
+    estado: str
+    monto_total: Decimal
+    comprobante_url: Optional[str] = None
+    expira_at: datetime
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# MÓDULO 4 · DEPORTIVO & EVENTOS
+# ─────────────────────────────────────────────────────────────────────────────
+
+TIPOS_EVENTO = ("partido", "torneo", "entrenamiento", "institucional", "otro")
+ESTADOS_EVENTO = ("programado", "en_curso", "finalizado", "cancelado")
+
+
+class CategoriaDeportivaBase(BaseModel):
+    nombre: str = Field(min_length=1, max_length=100)
+    descripcion: Optional[str] = None
+    es_activa: bool = True
+
+
+class CategoriaDeportivaCreate(CategoriaDeportivaBase):
+    pass
+
+
+class CategoriaDeportivaResponse(CategoriaDeportivaBase):
+    model_config = ConfigDict(from_attributes=True)
+
+    id_categoria: int
+
+
+class UsuarioCategoriaCreate(BaseModel):
+    id_usuario: int
+    id_categoria: int
+    temporada: str = Field(max_length=10, description="Año de temporada. Ej: '2025'.")
+    es_capitan: bool = False
+
+
+class UsuarioCategoriaResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id_usuario: int
+    id_categoria: int
+    temporada: str
+    es_capitan: bool
+    categoria: Optional[CategoriaDeportivaResponse] = None
+
+
+class EventoBase(BaseModel):
+    titulo: str = Field(min_length=1, max_length=200)
+    tipo: str
+    descripcion: Optional[str] = None
+    id_categoria: Optional[int] = None
+    fecha_inicio: datetime
+    fecha_fin: Optional[datetime] = None
+    ubicacion: Optional[str] = Field(default=None, max_length=200)
+
+    @field_validator("tipo")
+    @classmethod
+    def tipo_valido(cls, v: str) -> str:
+        if v not in TIPOS_EVENTO:
+            raise ValueError(f"Tipo inválido. Opciones: {TIPOS_EVENTO}")
+        return v
+
+
+class EventoCreate(EventoBase):
+    pass
+
+
+class EventoUpdate(BaseModel):
+    titulo: Optional[str] = Field(default=None, min_length=1, max_length=200)
+    descripcion: Optional[str] = None
+    fecha_inicio: Optional[datetime] = None
+    fecha_fin: Optional[datetime] = None
+    ubicacion: Optional[str] = Field(default=None, max_length=200)
+    estado: Optional[str] = None
+
+    @field_validator("estado")
+    @classmethod
+    def estado_valido(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and v not in ESTADOS_EVENTO:
+            raise ValueError(f"Estado inválido. Opciones: {ESTADOS_EVENTO}")
+        return v
+
+
+class EventoResponse(EventoBase):
+    model_config = ConfigDict(from_attributes=True)
+
+    id_evento: int
+    estado: str
+    creado_por: Optional[int] = None
+    creado_at: datetime
+
+
+class AsistenciaCreate(BaseModel):
+    """Lo envía el operador de puerta al escanear (el backend resuelve el estado financiero)."""
+    id_evento: int
+    id_usuario: int
+    metodo: str = Field(description="'QR' | 'DNI'")
+
+    @field_validator("metodo")
+    @classmethod
+    def metodo_valido(cls, v: str) -> str:
+        if v not in ("QR", "DNI"):
+            raise ValueError("metodo debe ser 'QR' o 'DNI'.")
+        return v
+
+
+class AsistenciaResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id_asistencia: int
+    id_evento: int
+    id_usuario: int
+    fecha_hora_ingreso: datetime
+    metodo: str
+    registrado_por: int
+    estado_financiero_snapshot: str
+
+
+class ReporteEventoResponse(BaseModel):
+    """Resumen de cierre del evento (resultado de la vista v_reporte_evento)."""
+    id_evento: int
+    titulo: str
+    fecha_inicio: datetime
+    total_ingresos: int
+    ingresos_qr: int
+    ingresos_manual: int
+    socios_al_dia: int
+    socios_morosos: int
+    jugadores_federados: int
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# MÓDULO 5 · NOTIFICACIONES
+# ─────────────────────────────────────────────────────────────────────────────
+
+TIPOS_NOTIFICACION = (
+    "orden_aprobada", "orden_rechazada", "cuota_vencida",
+    "reserva_confirmada", "reserva_cancelada", "rol_asignado",
+    "rol_removido", "convocatoria_partido", "sistema",
+)
+
+
+class NotificacionResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id_notificacion: int
+    tipo: str
+    titulo: str
+    cuerpo: Optional[str] = None
+    leida: bool
+    referencia_id: Optional[int] = None
+    referencia_tabla: Optional[str] = None
+    created_at: datetime
+
+
+class MarcarLeidaPayload(BaseModel):
+    ids: List[int] = Field(min_length=1, description="Lista de IDs de notificaciones a marcar como leídas.")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# AUTENTICACIÓN
+# ─────────────────────────────────────────────────────────────────────────────
+
+class LoginPayload(BaseModel):
+    dni: DNI
+    password: str
+
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    requiere_cambio_password: bool
+    roles: List[str]
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PAGINACIÓN GENÉRICA
+# ─────────────────────────────────────────────────────────────────────────────
+
+class PaginatedResponse(BaseModel):
+    """Wrapper genérico de paginación. Úsalo con Generic[T] en los endpoints."""
+    total: int
+    page: int
+    page_size: int
+    items: list

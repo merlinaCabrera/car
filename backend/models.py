@@ -1,84 +1,900 @@
-from sqlalchemy import Column, Integer, String, Boolean, Date, ForeignKey, Table, Numeric, DateTime, JSON, Text
-from sqlalchemy.orm import relationship
-from database import Base
-import datetime
+"""
+models.py — SQLAlchemy 2.0 Declarative Models
+Club Atlético — Sistema de Gestión
 
-# Tablas puente (Junction Tables) para relaciones Many-to-Many
-usuarios_roles = Table(
-    'usuarios_roles', Base.metadata,
-    Column('id_usuario', Integer, ForeignKey('usuarios.id_usuario'), primary_key=True),
-    Column('id_rol', Integer, ForeignKey('roles.id_rol'), primary_key=True),
-    Column('valido_hasta', DateTime, nullable=True),
-    Column('asignado_por', Integer, ForeignKey('usuarios.id_usuario')),
-    Column('asignado_at', DateTime, default=datetime.datetime.utcnow)
-)
+Cubre el 100% del schema.sql:
+  Módulo 0 · Configuración Global
+  Módulo 1 · Identidad & Accesos
+  Módulo 2 · Auditoría
+  Módulo 3 · E-Commerce & Finanzas
+  Módulo 4 · Deportivo & Eventos
+  Módulo 5 · Notificaciones
 
-usuarios_categorias = Table(
-    'usuarios_categorias', Base.metadata,
-    Column('id_usuario', Integer, ForeignKey('usuarios.id_usuario'), primary_key=True),
-    Column('id_categoria', Integer, ForeignKey('categorias_deportivas.id_categoria'), primary_key=True),
-    Column('temporada', String(10), primary_key=True),
-    Column('es_capitan', Boolean, default=False)
+Notas de arquitectura:
+  - Se usa la API declarativa de SQLAlchemy 2.0 (Mapped / mapped_column).
+  - Los triggers, vistas y funciones PL/pgSQL NO se declaran aquí;
+    se inyectan vía op.execute() en las migraciones de Alembic.
+  - La FK circular ordenes ↔ reservas_instalaciones se resuelve
+    con use_alter=True en el lado débil (reservas_instalaciones.id_orden).
+  - Los campos gestionados por triggers (nombre_completo_search, qr_token,
+    qr_generado_at, actualizado_at) se declaran con server_default / onupdate
+    para que SQLAlchemy los lea correctamente tras un INSERT/UPDATE pero no
+    intente escribirlos por su cuenta.
+"""
+
+from __future__ import annotations
+
+import uuid
+from datetime import date, datetime
+from decimal import Decimal
+from typing import List, Optional
+
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    CheckConstraint,
+    Date,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    Numeric,
+    String,
+    Text,
+    UniqueConstraint,
+    func,
+    text,
 )
+from sqlalchemy.dialects.postgresql import INET, JSONB, TSVECTOR, UUID
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# BASE
+# ─────────────────────────────────────────────────────────────────────────────
+
+class Base(DeclarativeBase):
+    """Base declarativa compartida por todos los modelos."""
+    pass
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# MÓDULO 0 · CONFIGURACIÓN GLOBAL
+# ─────────────────────────────────────────────────────────────────────────────
+
+class ConfiguracionGlobal(Base):
+    """
+    Cerebro financiero del sistema. Solo puede existir una fila (singleton).
+    Acceso exclusivo del Administrador General.
+    El singleton se garantiza con un índice parcial único en la migración:
+        CREATE UNIQUE INDEX idx_configuracion_global_singleton
+        ON configuracion_global ((TRUE));
+    """
+    __tablename__ = "configuracion_global"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+
+    # Cuota social
+    valor_cuota_base: Mapped[Decimal] = mapped_column(
+        Numeric(10, 2), nullable=False,
+        comment="Precio vigente de la cuota. Modifica este campo y toda la deuda se recalcula.",
+    )
+
+    # Beneficios de antigüedad
+    meses_antiguedad_beneficio: Mapped[int] = mapped_column(
+        Integer, nullable=False, server_default=text("6"),
+        comment="Meses requeridos para acceder al descuento por antigüedad.",
+    )
+    descuento_beneficio: Mapped[Decimal] = mapped_column(
+        Numeric(5, 2), nullable=False, server_default=text("15"),
+        comment="Porcentaje (0–100) de descuento en alquileres por antigüedad.",
+    )
+
+    # Auditoría de cambios
+    actualizado_por: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("usuarios.id_usuario", ondelete="SET NULL", use_alter=True,
+                   name="fk_config_actualizado_por"),
+        nullable=True,
+    )
+    actualizado_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now(),
+    )
+
+    # Relación
+    admin_actualizador: Mapped[Optional["Usuario"]] = relationship(
+        "Usuario",
+        foreign_keys=[actualizado_por],
+    )
+
+    def __repr__(self) -> str:
+        return f"<ConfiguracionGlobal cuota={self.valor_cuota_base}>"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# MÓDULO 1 · IDENTIDAD & ACCESOS
+# ─────────────────────────────────────────────────────────────────────────────
 
 class Rol(Base):
-    __tablename__ = 'roles'
-    id_rol = Column(Integer, primary_key=True, index=True)
-    nombre = Column(String(50), unique=True, index=True)
-    descripcion = Column(Text)
-    peso_jerarquico = Column(Integer, default=0)
-    es_activo = Column(Boolean, default=True)
-    usuarios = relationship("Usuario", secondary=usuarios_roles, back_populates="roles")
+    """Catálogo maestro de roles del sistema. Tabla estática; no la modifica el ORM."""
+    __tablename__ = "roles"
+
+    id_rol: Mapped[int] = mapped_column(Integer, primary_key=True)
+    nombre: Mapped[str] = mapped_column(String(50), nullable=False, unique=True)
+    descripcion: Mapped[Optional[str]] = mapped_column(Text)
+    peso_jerarquico: Mapped[int] = mapped_column(
+        Integer, nullable=False, server_default=text("0"),
+        comment="Mayor número = mayor jerarquía. Admin General=100, Socio=10, Invitado=1.",
+    )
+    es_activo: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("true"),
+    )
+
+    # Relaciones
+    usuarios_asignados: Mapped[List["UsuarioRol"]] = relationship(
+        "UsuarioRol", back_populates="rol",
+    )
+
+    def __repr__(self) -> str:
+        return f"<Rol {self.nombre} (peso={self.peso_jerarquico})>"
+
 
 class Usuario(Base):
-    __tablename__ = 'usuarios'
-    id_usuario = Column(Integer, primary_key=True, index=True)
-    dni = Column(String(10), unique=True, index=True)
-    nombre = Column(String(100), nullable=False)
-    apellido = Column(String(100), nullable=False)
-    email = Column(String(150), unique=True)
-    password_hash = Column(String(255), nullable=False)
-    fecha_ingreso = Column(Date, default=datetime.date.today)
-    qr_token = Column(String(36), unique=True) # UUID
-    deuda_historica_meses = Column(Integer, default=0)
-    roles = relationship("Rol", secondary=usuarios_roles, back_populates="usuarios")
+    """
+    Núcleo del sistema. Un registro por persona física.
+    La clave de negocio inmutable es el DNI.
 
-class Orden(Base):
-    __tablename__ = 'ordenes'
-    id_orden = Column(Integer, primary_key=True, index=True)
-    id_usuario = Column(Integer, ForeignKey('usuarios.id_usuario'))
-    estado = Column(String(40), default='pendiente_verificacion')
-    monto_total = Column(Numeric(10, 2))
-    fecha_creacion = Column(DateTime, default=datetime.datetime.utcnow)
-    detalles = relationship("DetalleOrden", back_populates="orden")
+    Campos gestionados por triggers de PostgreSQL (no los escribas desde Python):
+      - nombre_completo_search  →  trigger trg_usuarios_search
+      - actualizado_at          →  trigger trg_usuarios_search
+      - qr_token                →  trigger trg_rotar_qr
+      - qr_generado_at          →  trigger trg_rotar_qr
+    """
+    __tablename__ = "usuarios"
+
+    id_usuario: Mapped[int] = mapped_column(Integer, primary_key=True)
+    dni: Mapped[str] = mapped_column(
+        String(10), nullable=False, unique=True,
+        comment="Clave de negocio inmutable.",
+    )
+
+    # Datos personales
+    nombre: Mapped[str] = mapped_column(String(100), nullable=False)
+    apellido: Mapped[str] = mapped_column(String(100), nullable=False)
+    email: Mapped[Optional[str]] = mapped_column(String(150), unique=True)
+    telefono: Mapped[Optional[str]] = mapped_column(String(30))
+    direccion: Mapped[Optional[str]] = mapped_column(String(200))
+    foto_perfil_url: Mapped[Optional[str]] = mapped_column(Text)
+
+    # Seguridad
+    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    requiere_cambio_password: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("true"),
+        comment="TRUE en primer ingreso. El frontend bloquea hasta que el socio cambie la clave.",
+    )
+    ultimo_login_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+
+    # QR dinámico — gestionado por trigger trg_rotar_qr
+    qr_token: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        nullable=False,
+        unique=True,
+        server_default=text("gen_random_uuid()"),
+        comment="Token opaco. El QR NUNCA contiene datos planos. Se rota al cambiar estado financiero.",
+    )
+    qr_generado_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now(),
+    )
+
+    # Estado financiero (cacheado; la deuda real = deuda_historica_meses × cuota_vigente)
+    mes_cubierto_hasta: Mapped[Optional[date]] = mapped_column(
+        Date,
+        comment="Si pagó por adelantado, queda inmune a aumentos hasta esta fecha.",
+    )
+    deuda_historica_meses: Mapped[int] = mapped_column(
+        Integer, nullable=False, server_default=text("0"),
+        comment="Meses adeudados en cantidad, NUNCA en pesos.",
+    )
+
+    # Ciclo de vida
+    fecha_nacimiento: Mapped[Optional[date]] = mapped_column(Date)
+    fecha_ingreso: Mapped[date] = mapped_column(
+        Date, nullable=False, server_default=func.current_date(),
+    )
+    fecha_baja: Mapped[Optional[date]] = mapped_column(
+        Date,
+        comment="NULL = activo. Registrar fecha al dar de baja, nunca borrar el registro.",
+    )
+
+    # Flags
+    is_directivo: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false"),
+    )
+
+    # Full-text search — gestionado por trigger trg_usuarios_search
+    nombre_completo_search: Mapped[Optional[str]] = mapped_column(
+        TSVECTOR,
+        comment="Gestionado por trigger. No escribir desde el ORM.",
+    )
+
+    # Socios adherentes (familia)
+    id_titular: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("usuarios.id_usuario", ondelete="SET NULL"),
+    )
+
+    # Push notifications
+    push_token: Mapped[Optional[str]] = mapped_column(String(255))
+
+    # Metadatos — actualizado_at gestionado por trigger
+    creado_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now(),
+    )
+    actualizado_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now(),
+    )
+
+    # ── Relaciones ──────────────────────────────────────────────────────────
+
+    # Self-referential: titular ↔ adherentes
+    titular: Mapped[Optional["Usuario"]] = relationship(
+        "Usuario", remote_side="Usuario.id_usuario",
+        foreign_keys=[id_titular], back_populates="adherentes",
+    )
+    adherentes: Mapped[List["Usuario"]] = relationship(
+        "Usuario", foreign_keys=[id_titular], back_populates="titular",
+    )
+
+    # Roles (MULTIROL)
+    roles_asignados: Mapped[List["UsuarioRol"]] = relationship(
+        "UsuarioRol",
+        foreign_keys="UsuarioRol.id_usuario",
+        back_populates="usuario",
+        cascade="all, delete-orphan",
+    )
+
+    # Órdenes generadas por este usuario
+    ordenes: Mapped[List["Orden"]] = relationship(
+        "Orden",
+        foreign_keys="Orden.id_usuario",
+        back_populates="usuario",
+    )
+
+    # Categorías deportivas
+    categorias: Mapped[List["UsuarioCategoria"]] = relationship(
+        "UsuarioCategoria", back_populates="usuario", cascade="all, delete-orphan",
+    )
+
+    # Asistencias (como asistente)
+    asistencias: Mapped[List["Asistencia"]] = relationship(
+        "Asistencia",
+        foreign_keys="Asistencia.id_usuario",
+        back_populates="usuario",
+    )
+
+    # Asistencias registradas por este usuario (como operador de puerta)
+    asistencias_registradas: Mapped[List["Asistencia"]] = relationship(
+        "Asistencia",
+        foreign_keys="Asistencia.registrado_por",
+        back_populates="operador",
+    )
+
+    # Notificaciones
+    notificaciones: Mapped[List["Notificacion"]] = relationship(
+        "Notificacion", back_populates="usuario", cascade="all, delete-orphan",
+    )
+
+    # Eventos creados
+    eventos_creados: Mapped[List["Evento"]] = relationship(
+        "Evento", foreign_keys="Evento.creado_por", back_populates="creador",
+    )
+
+    # ── Índices y constraints ──────────────────────────────────────────────
+    __table_args__ = (
+        Index("idx_usuarios_dni",        "dni"),
+        Index("idx_usuarios_apellido",   "apellido"),
+        Index(
+            "idx_usuarios_fecha_baja",
+            "fecha_baja",
+            postgresql_where=text("fecha_baja IS NULL"),
+        ),
+        Index("idx_usuarios_qr_token",   "qr_token"),
+        Index("idx_usuarios_search",     "nombre_completo_search", postgresql_using="gin"),
+        CheckConstraint("deuda_historica_meses >= 0", name="chk_deuda_no_negativa"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<Usuario {self.apellido}, {self.nombre} (DNI={self.dni})>"
+
+
+class UsuarioRol(Base):
+    """
+    Tabla puente MULTIROL. Soporta roles temporales con fecha de expiración.
+    Un job programado revisa valido_hasta y limpia los roles vencidos.
+    """
+    __tablename__ = "usuarios_roles"
+
+    id_usuario: Mapped[int] = mapped_column(
+        ForeignKey("usuarios.id_usuario", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    id_rol: Mapped[int] = mapped_column(
+        ForeignKey("roles.id_rol", ondelete="RESTRICT"),
+        primary_key=True,
+    )
+
+    # Roles temporales (ej: admin_temporal durante un partido)
+    valido_hasta: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True),
+        comment="NULL = permanente. Completar con cierre de evento para roles temporales.",
+    )
+    asignado_por: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("usuarios.id_usuario"),
+    )
+    asignado_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now(),
+    )
+
+    # Relaciones
+    usuario: Mapped["Usuario"] = relationship(
+        "Usuario",
+        foreign_keys=[id_usuario],
+        back_populates="roles_asignados",
+    )
+    rol: Mapped["Rol"] = relationship("Rol", back_populates="usuarios_asignados")
+    asignador: Mapped[Optional["Usuario"]] = relationship(
+        "Usuario", foreign_keys=[asignado_por],
+    )
+
+    __table_args__ = (
+        Index("idx_usuarios_roles_usuario", "id_usuario"),
+        Index(
+            "idx_usuarios_roles_expiry",
+            "valido_hasta",
+            postgresql_where=text("valido_hasta IS NOT NULL"),
+        ),
+    )
+
+    def __repr__(self) -> str:
+        return f"<UsuarioRol usuario={self.id_usuario} rol={self.id_rol} hasta={self.valido_hasta}>"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# MÓDULO 2 · AUDITORÍA
+# ─────────────────────────────────────────────────────────────────────────────
+
+class AuditLog(Base):
+    """
+    Registro inmutable de toda acción sensible.
+    Regla de negocio: NUNCA UPDATE ni DELETE en esta tabla.
+    Respetarla desde el ORM: no expongas métodos que modifiquen registros.
+    """
+    __tablename__ = "audit_log"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    usuario_actor: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("usuarios.id_usuario", ondelete="SET NULL"),
+    )
+    accion: Mapped[str] = mapped_column(
+        String(100), nullable=False,
+        comment="Ej: APROBAR_ORDEN, CAMBIO_ROL, BAJA_USUARIO, LOGIN_FALLIDO",
+    )
+    tabla_afectada: Mapped[str] = mapped_column(String(60), nullable=False)
+    registro_id: Mapped[Optional[int]] = mapped_column(Integer)
+    detalle: Mapped[Optional[dict]] = mapped_column(
+        JSONB,
+        comment='Estructura: {"antes": {...}, "despues": {...}}',
+    )
+    ip_origen: Mapped[Optional[str]] = mapped_column(INET)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now(),
+    )
+
+    # Relaciones
+    actor: Mapped[Optional["Usuario"]] = relationship("Usuario", foreign_keys=[usuario_actor])
+
+    __table_args__ = (
+        Index("idx_audit_log_actor",       "usuario_actor"),
+        Index("idx_audit_log_accion",      "accion"),
+        Index("idx_audit_log_tabla",       "tabla_afectada", "registro_id"),
+        Index("idx_audit_log_created_at",  "created_at", postgresql_ops={"created_at": "DESC"}),
+    )
+
+    def __repr__(self) -> str:
+        return f"<AuditLog {self.accion} tabla={self.tabla_afectada} id={self.registro_id}>"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# MÓDULO 3 · E-COMMERCE & FINANZAS
+# ─────────────────────────────────────────────────────────────────────────────
 
 class ProductoServicio(Base):
-    __tablename__ = 'productos_servicios'
-    id_producto = Column(Integer, primary_key=True, index=True)
-    nombre = Column(String(150), nullable=False)
-    categoria = Column(String(50))
-    precio_actual = Column(Numeric(10, 2))
-    stock = Column(Integer)
+    """
+    Catálogo unificado: cuotas, alquileres e indumentaria.
+    stock = NULL para servicios sin límite físico (cuota social).
+    """
+    __tablename__ = "productos_servicios"
+
+    id_producto: Mapped[int] = mapped_column(Integer, primary_key=True)
+    nombre: Mapped[str] = mapped_column(String(150), nullable=False)
+    categoria: Mapped[str] = mapped_column(
+        String(50), nullable=False,
+        comment="cuota_social | alquiler | indumentaria | otro",
+    )
+    descripcion: Mapped[Optional[str]] = mapped_column(Text)
+    precio_actual: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
+    stock: Mapped[Optional[int]] = mapped_column(
+        Integer,
+        comment="NULL = sin stock físico (servicios). Integer para indumentaria.",
+    )
+    es_activo: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("true"),
+    )
+    imagen_url: Mapped[Optional[str]] = mapped_column(Text)
+    creado_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now(),
+    )
+    actualizado_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now(),
+    )
+
+    # Relaciones
+    detalles_orden: Mapped[List["DetalleOrden"]] = relationship(
+        "DetalleOrden", back_populates="producto",
+    )
+    reservas: Mapped[List["ReservaInstalacion"]] = relationship(
+        "ReservaInstalacion", back_populates="producto",
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            "categoria IN ('cuota_social', 'alquiler', 'indumentaria', 'otro')",
+            name="chk_producto_categoria",
+        ),
+        Index(
+            "idx_productos_categoria",
+            "categoria",
+            postgresql_where=text("es_activo = TRUE"),
+        ),
+    )
+
+    def __repr__(self) -> str:
+        return f"<ProductoServicio {self.nombre} [{self.categoria}] ${self.precio_actual}>"
+
+
+class ReservaInstalacion(Base):
+    """
+    Agenda de instalaciones. Previene conflictos de doble reserva.
+    Ciclo de vida: bloqueada → confirmada (al aprobar orden) | liberada (al rechazar/expirar).
+    La FK a ordenes usa use_alter=True para romper la dependencia circular.
+    """
+    __tablename__ = "reservas_instalaciones"
+
+    id_reserva: Mapped[int] = mapped_column(Integer, primary_key=True)
+    id_producto: Mapped[int] = mapped_column(
+        ForeignKey("productos_servicios.id_producto"), nullable=False,
+    )
+    instalacion: Mapped[str] = mapped_column(
+        String(100), nullable=False,
+        comment="Nombre físico: 'quincho', 'cancha_1', 'cancha_2', etc.",
+    )
+    fecha_inicio: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    fecha_fin: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    estado: Mapped[str] = mapped_column(
+        String(30), nullable=False, server_default=text("'bloqueada'"),
+    )
+
+    # FK circular — se agrega con ALTER TABLE en la migración (use_alter=True)
+    id_orden: Mapped[Optional[int]] = mapped_column(
+        ForeignKey(
+            "ordenes.id_orden",
+            ondelete="SET NULL",
+            use_alter=True,
+            name="fk_reservas_orden",
+        ),
+    )
+    creado_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now(),
+    )
+
+    # Relaciones
+    producto: Mapped["ProductoServicio"] = relationship(
+        "ProductoServicio", back_populates="reservas",
+    )
+    orden: Mapped[Optional["Orden"]] = relationship(
+        "Orden",
+        foreign_keys=[id_orden],
+        back_populates="reservas",
+    )
+    detalles: Mapped[List["DetalleOrden"]] = relationship(
+        "DetalleOrden", back_populates="reserva",
+    )
+
+    __table_args__ = (
+        CheckConstraint("fecha_fin > fecha_inicio", name="chk_reserva_fechas"),
+        CheckConstraint(
+            "estado IN ('bloqueada', 'confirmada', 'liberada', 'expirada')",
+            name="chk_reserva_estado",
+        ),
+        Index(
+            "idx_reservas_instalacion_tiempo",
+            "instalacion", "fecha_inicio", "fecha_fin",
+            postgresql_where=text("estado IN ('bloqueada', 'confirmada')"),
+        ),
+    )
+
+    def __repr__(self) -> str:
+        return f"<ReservaInstalacion {self.instalacion} {self.fecha_inicio:%Y-%m-%d %H:%M} [{self.estado}]>"
+
+
+class Orden(Base):
+    """
+    Cabecera del movimiento contable. Una orden puede contener múltiples ítems.
+    La aprobación es atómica: cuotas + reservas + stock se actualizan juntos
+    en la función fn_aprobar_orden() del lado de PostgreSQL.
+    """
+    __tablename__ = "ordenes"
+
+    id_orden: Mapped[int] = mapped_column(Integer, primary_key=True)
+    id_usuario: Mapped[int] = mapped_column(
+        ForeignKey("usuarios.id_usuario", ondelete="RESTRICT"), nullable=False,
+    )
+    fecha_creacion: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now(),
+    )
+    estado: Mapped[str] = mapped_column(
+        String(40), nullable=False, server_default=text("'pendiente_verificacion'"),
+    )
+    monto_total: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
+    comprobante_url: Mapped[Optional[str]] = mapped_column(Text)
+    motivo_rechazo: Mapped[Optional[str]] = mapped_column(
+        Text,
+        comment="Obligatorio cuando estado = 'rechazada'.",
+    )
+    aprobada_por: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("usuarios.id_usuario"),
+    )
+    aprobada_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    expira_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=text("NOW() + INTERVAL '48 hours'"),
+        comment="Job programado marca como expirada y libera recursos al superar esta fecha.",
+    )
+    notas_admin: Mapped[Optional[str]] = mapped_column(Text)
+
+    # Relaciones
+    usuario: Mapped["Usuario"] = relationship(
+        "Usuario",
+        foreign_keys=[id_usuario],
+        back_populates="ordenes",
+    )
+    aprobador: Mapped[Optional["Usuario"]] = relationship(
+        "Usuario", foreign_keys=[aprobada_por],
+    )
+    detalles: Mapped[List["DetalleOrden"]] = relationship(
+        "DetalleOrden",
+        back_populates="orden",
+        cascade="all, delete-orphan",
+    )
+    reservas: Mapped[List["ReservaInstalacion"]] = relationship(
+        "ReservaInstalacion",
+        foreign_keys="ReservaInstalacion.id_orden",
+        back_populates="orden",
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            "estado IN ('pendiente_verificacion','aprobada','rechazada','cancelada_socio','expirada')",
+            name="chk_orden_estado",
+        ),
+        Index("idx_ordenes_usuario", "id_usuario"),
+        Index(
+            "idx_ordenes_estado",
+            "estado",
+            postgresql_where=text("estado = 'pendiente_verificacion'"),
+        ),
+        Index(
+            "idx_ordenes_expira_at",
+            "expira_at",
+            postgresql_where=text("estado = 'pendiente_verificacion'"),
+        ),
+    )
+
+    def __repr__(self) -> str:
+        return f"<Orden #{self.id_orden} usuario={self.id_usuario} estado={self.estado}>"
+
 
 class DetalleOrden(Base):
-    __tablename__ = 'detalles_orden'
-    id_detalle = Column(Integer, primary_key=True, index=True)
-    id_orden = Column(Integer, ForeignKey('ordenes.id_orden'))
-    id_producto = Column(Integer, ForeignKey('productos_servicios.id_producto'))
-    cantidad = Column(Integer)
-    precio_unitario_historico = Column(Numeric(10, 2))
-    orden = relationship("Orden", back_populates="detalles")
+    """
+    Ítems de una orden. El precio histórico se congela al momento de la compra.
+    CRÍTICO: al aprobar, usar precio_unitario_historico, NUNCA precio_actual del producto.
+    """
+    __tablename__ = "detalles_orden"
+
+    id_detalle: Mapped[int] = mapped_column(Integer, primary_key=True)
+    id_orden: Mapped[int] = mapped_column(
+        ForeignKey("ordenes.id_orden", ondelete="CASCADE"), nullable=False,
+    )
+    id_producto: Mapped[int] = mapped_column(
+        ForeignKey("productos_servicios.id_producto"), nullable=False,
+    )
+    cantidad: Mapped[int] = mapped_column(
+        Integer, nullable=False, server_default=text("1"),
+    )
+    precio_unitario_historico: Mapped[Decimal] = mapped_column(
+        Numeric(10, 2), nullable=False,
+        comment="Precio congelado al momento de la compra.",
+    )
+    mes_referencia: Mapped[Optional[date]] = mapped_column(
+        Date,
+        comment="Para cuotas: primer día del mes pagado (ej: 2025-06-01 = Junio 2025).",
+    )
+    id_reserva: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("reservas_instalaciones.id_reserva"),
+    )
+
+    # Relaciones
+    orden: Mapped["Orden"] = relationship("Orden", back_populates="detalles")
+    producto: Mapped["ProductoServicio"] = relationship(
+        "ProductoServicio", back_populates="detalles_orden",
+    )
+    reserva: Mapped[Optional["ReservaInstalacion"]] = relationship(
+        "ReservaInstalacion", back_populates="detalles",
+    )
+
+    __table_args__ = (
+        CheckConstraint("cantidad > 0", name="chk_detalle_cantidad_positiva"),
+        Index("idx_detalles_orden_orden",    "id_orden"),
+        Index("idx_detalles_orden_producto", "id_producto"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<DetalleOrden orden={self.id_orden} producto={self.id_producto} x{self.cantidad}>"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# MÓDULO 4 · DEPORTIVO & EVENTOS
+# ─────────────────────────────────────────────────────────────────────────────
+
+class CategoriaDeportiva(Base):
+    """Divisiones del club: Sub-12, Sub-15, Primera División, etc."""
+    __tablename__ = "categorias_deportivas"
+
+    id_categoria: Mapped[int] = mapped_column(Integer, primary_key=True)
+    nombre: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
+    descripcion: Mapped[Optional[str]] = mapped_column(Text)
+    es_activa: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("true"),
+    )
+
+    # Relaciones
+    usuarios: Mapped[List["UsuarioCategoria"]] = relationship(
+        "UsuarioCategoria", back_populates="categoria",
+    )
+    eventos: Mapped[List["Evento"]] = relationship(
+        "Evento", back_populates="categoria",
+    )
+
+    def __repr__(self) -> str:
+        return f"<CategoriaDeportiva {self.nombre}>"
+
+
+class UsuarioCategoria(Base):
+    """
+    Tabla puente: jugador ↔ categoría deportiva.
+    PK compuesta: (id_usuario, id_categoria, temporada) — el mismo jugador puede
+    pertenecer a la misma categoría en diferentes temporadas.
+    """
+    __tablename__ = "usuarios_categorias"
+
+    id_usuario: Mapped[int] = mapped_column(
+        ForeignKey("usuarios.id_usuario", ondelete="CASCADE"), primary_key=True,
+    )
+    id_categoria: Mapped[int] = mapped_column(
+        ForeignKey("categorias_deportivas.id_categoria", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    temporada: Mapped[str] = mapped_column(
+        String(10), primary_key=True,
+        server_default=text("TO_CHAR(CURRENT_DATE, 'YYYY')"),
+        comment="Año de la temporada. Ej: '2025'.",
+    )
+    es_capitan: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false"),
+    )
+
+    # Relaciones
+    usuario: Mapped["Usuario"] = relationship("Usuario", back_populates="categorias")
+    categoria: Mapped["CategoriaDeportiva"] = relationship(
+        "CategoriaDeportiva", back_populates="usuarios",
+    )
+
+    def __repr__(self) -> str:
+        return f"<UsuarioCategoria user={self.id_usuario} cat={self.id_categoria} temporada={self.temporada}>"
+
 
 class Evento(Base):
-    __tablename__ = 'eventos'
-    id_evento = Column(Integer, primary_key=True, index=True)
-    titulo = Column(String(200), nullable=False)
-    fecha_inicio = Column(DateTime, nullable=False)
-    estado = Column(String(30), default='programado')
+    """
+    Partidos, torneos, entrenamientos u otros eventos institucionales.
+    El control de puerta se vincula a un evento activo; las asistencias quedan
+    registradas con marca de tiempo exacta y método de escaneo.
+    """
+    __tablename__ = "eventos"
+
+    id_evento: Mapped[int] = mapped_column(Integer, primary_key=True)
+    titulo: Mapped[str] = mapped_column(String(200), nullable=False)
+    tipo: Mapped[str] = mapped_column(
+        String(50), nullable=False,
+        comment="partido | torneo | entrenamiento | institucional | otro",
+    )
+    descripcion: Mapped[Optional[str]] = mapped_column(Text)
+    id_categoria: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("categorias_deportivas.id_categoria"),
+    )
+    fecha_inicio: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    fecha_fin: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    ubicacion: Mapped[Optional[str]] = mapped_column(String(200))
+    estado: Mapped[str] = mapped_column(
+        String(30), nullable=False, server_default=text("'programado'"),
+    )
+    creado_por: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("usuarios.id_usuario"),
+    )
+    creado_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now(),
+    )
+
+    # Relaciones
+    categoria: Mapped[Optional["CategoriaDeportiva"]] = relationship(
+        "CategoriaDeportiva", back_populates="eventos",
+    )
+    creador: Mapped[Optional["Usuario"]] = relationship(
+        "Usuario", foreign_keys=[creado_por], back_populates="eventos_creados",
+    )
+    asistencias: Mapped[List["Asistencia"]] = relationship(
+        "Asistencia", back_populates="evento",
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            "tipo IN ('partido', 'torneo', 'entrenamiento', 'institucional', 'otro')",
+            name="chk_evento_tipo",
+        ),
+        CheckConstraint(
+            "estado IN ('programado', 'en_curso', 'finalizado', 'cancelado')",
+            name="chk_evento_estado",
+        ),
+        Index("idx_eventos_fecha",  "fecha_inicio", postgresql_ops={"fecha_inicio": "DESC"}),
+        Index(
+            "idx_eventos_estado",
+            "estado",
+            postgresql_where=text("estado IN ('programado', 'en_curso')"),
+        ),
+    )
+
+    def __repr__(self) -> str:
+        return f"<Evento '{self.titulo}' [{self.estado}] {self.fecha_inicio:%Y-%m-%d}>"
+
 
 class Asistencia(Base):
-    __tablename__ = 'asistencias'
-    id_asistencia = Column(Integer, primary_key=True, index=True)
-    id_evento = Column(Integer, ForeignKey('eventos.id_evento'))
-    id_usuario = Column(Integer, ForeignKey('usuarios.id_usuario'))
-    metodo = Column(String(10)) # 'QR' o 'DNI'
+    """
+    Registro inmutable de cada ingreso en puerta, vinculado a un evento.
+    El campo estado_financiero_snapshot guarda el estado AL MOMENTO del escaneo,
+    independientemente de cambios posteriores.
+
+    Dos FKs a usuarios: id_usuario (quien ingresa) y registrado_por (operador de puerta).
+    """
+    __tablename__ = "asistencias"
+
+    id_asistencia: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    id_evento: Mapped[int] = mapped_column(
+        ForeignKey("eventos.id_evento", ondelete="RESTRICT"), nullable=False,
+    )
+    id_usuario: Mapped[int] = mapped_column(
+        ForeignKey("usuarios.id_usuario", ondelete="RESTRICT"), nullable=False,
+    )
+    fecha_hora_ingreso: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now(),
+    )
+    metodo: Mapped[str] = mapped_column(
+        String(10), nullable=False,
+        comment="'QR' = escaneo de código. 'DNI' = búsqueda manual por DNI.",
+    )
+    registrado_por: Mapped[int] = mapped_column(
+        ForeignKey("usuarios.id_usuario"), nullable=False,
+        comment="DNI del operador que hizo el escaneo.",
+    )
+    estado_financiero_snapshot: Mapped[str] = mapped_column(
+        String(20), nullable=False,
+        comment="Snapshot al momento del ingreso: 'al_dia' | 'moroso'.",
+    )
+
+    # Relaciones
+    evento: Mapped["Evento"] = relationship("Evento", back_populates="asistencias")
+    usuario: Mapped["Usuario"] = relationship(
+        "Usuario",
+        foreign_keys=[id_usuario],
+        back_populates="asistencias",
+    )
+    operador: Mapped["Usuario"] = relationship(
+        "Usuario",
+        foreign_keys=[registrado_por],
+        back_populates="asistencias_registradas",
+    )
+
+    __table_args__ = (
+        CheckConstraint("metodo IN ('QR', 'DNI')", name="chk_asistencia_metodo"),
+        CheckConstraint(
+            "estado_financiero_snapshot IN ('al_dia', 'moroso')",
+            name="chk_asistencia_snapshot",
+        ),
+        Index("idx_asistencias_evento",  "id_evento"),
+        Index("idx_asistencias_usuario", "id_usuario"),
+        Index("idx_asistencias_fecha",   "fecha_hora_ingreso",
+              postgresql_ops={"fecha_hora_ingreso": "DESC"}),
+    )
+
+    def __repr__(self) -> str:
+        return f"<Asistencia evento={self.id_evento} user={self.id_usuario} via={self.metodo}>"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# MÓDULO 5 · NOTIFICACIONES
+# ─────────────────────────────────────────────────────────────────────────────
+
+TIPOS_NOTIFICACION = (
+    "orden_aprobada",
+    "orden_rechazada",
+    "cuota_vencida",
+    "reserva_confirmada",
+    "reserva_cancelada",
+    "rol_asignado",
+    "rol_removido",
+    "convocatoria_partido",
+    "sistema",
+)
+
+
+class Notificacion(Base):
+    """Centro de mensajes internos. El campo referencia_id + referencia_tabla
+    permiten al frontend navegar directamente al objeto relacionado."""
+    __tablename__ = "notificaciones"
+
+    id_notificacion: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    id_usuario: Mapped[int] = mapped_column(
+        ForeignKey("usuarios.id_usuario", ondelete="CASCADE"), nullable=False,
+    )
+    tipo: Mapped[str] = mapped_column(String(60), nullable=False)
+    titulo: Mapped[str] = mapped_column(String(150), nullable=False)
+    cuerpo: Mapped[Optional[str]] = mapped_column(Text)
+    leida: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false"),
+    )
+    referencia_id: Mapped[Optional[int]] = mapped_column(Integer)
+    referencia_tabla: Mapped[Optional[str]] = mapped_column(
+        String(60),
+        comment="Nombre de la tabla relacionada: 'ordenes', 'eventos', etc.",
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now(),
+    )
+
+    # Relaciones
+    usuario: Mapped["Usuario"] = relationship(
+        "Usuario", back_populates="notificaciones",
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            f"tipo IN {TIPOS_NOTIFICACION}",
+            name="chk_notificacion_tipo",
+        ),
+        Index(
+            "idx_notificaciones_usuario_no_leidas",
+            "id_usuario", "created_at",
+            postgresql_where=text("leida = FALSE"),
+            postgresql_ops={"created_at": "DESC"},
+        ),
+    )
+
+    def __repr__(self) -> str:
+        return f"<Notificacion [{self.tipo}] user={self.id_usuario} leida={self.leida}>"

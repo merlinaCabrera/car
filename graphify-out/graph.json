@@ -20,14 +20,84 @@
   },
   "nodes": [
     {
-      "label": "create_tables.py",
+      "label": "env.py",
       "file_type": "code",
-      "source_file": "backend/create_tables.py",
+      "source_file": "backend/alembic/env.py",
       "source_location": "L1",
       "_origin": "ast",
-      "id": "backend_create_tables",
+      "id": "backend_alembic_env",
       "community": 6,
-      "norm_label": "create_tables.py"
+      "norm_label": "env.py"
+    },
+    {
+      "label": "run_migrations_offline()",
+      "file_type": "code",
+      "source_file": "backend/alembic/env.py",
+      "source_location": "L29",
+      "_origin": "ast",
+      "id": "backend_alembic_env_run_migrations_offline",
+      "community": 6,
+      "norm_label": "run_migrations_offline()"
+    },
+    {
+      "label": "run_migrations_online()",
+      "file_type": "code",
+      "source_file": "backend/alembic/env.py",
+      "source_location": "L53",
+      "_origin": "ast",
+      "id": "backend_alembic_env_run_migrations_online",
+      "community": 6,
+      "norm_label": "run_migrations_online()"
+    },
+    {
+      "label": "Run migrations in 'offline' mode.      This configures the context with just a U",
+      "file_type": "rationale",
+      "source_file": "backend/alembic/env.py",
+      "source_location": "L30",
+      "_origin": "ast",
+      "id": "backend_alembic_env_rationale_30",
+      "community": 6,
+      "norm_label": "run migrations in 'offline' mode.      this configures the context with just a u"
+    },
+    {
+      "label": "Run migrations in 'online' mode.      In this scenario we need to create an Engi",
+      "file_type": "rationale",
+      "source_file": "backend/alembic/env.py",
+      "source_location": "L54",
+      "_origin": "ast",
+      "id": "backend_alembic_env_rationale_54",
+      "community": 6,
+      "norm_label": "run migrations in 'online' mode.      in this scenario we need to create an engi"
+    },
+    {
+      "label": "cac4e912d733_initial_schema.py",
+      "file_type": "code",
+      "source_file": "backend/alembic/versions/cac4e912d733_initial_schema.py",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "backend_alembic_versions_cac4e912d733_initial_schema",
+      "community": 12,
+      "norm_label": "cac4e912d733_initial_schema.py"
+    },
+    {
+      "label": "upgrade()",
+      "file_type": "code",
+      "source_file": "backend/alembic/versions/cac4e912d733_initial_schema.py",
+      "source_location": "L21",
+      "_origin": "ast",
+      "id": "backend_alembic_versions_cac4e912d733_initial_schema_upgrade",
+      "community": 12,
+      "norm_label": "upgrade()"
+    },
+    {
+      "label": "downgrade()",
+      "file_type": "code",
+      "source_file": "backend/alembic/versions/cac4e912d733_initial_schema.py",
+      "source_location": "L66",
+      "_origin": "ast",
+      "id": "backend_alembic_versions_cac4e912d733_initial_schema_downgrade",
+      "community": 12,
+      "norm_label": "downgrade()"
     },
     {
       "label": "database.py",
@@ -83,7 +153,7 @@
       "label": "Rol",
       "file_type": "code",
       "source_file": "backend/models.py",
-      "source_location": "L13",
+      "source_location": "L24",
       "_origin": "ast",
       "id": "backend_models_rol",
       "community": 6,
@@ -103,21 +173,111 @@
       "label": "Usuario",
       "file_type": "code",
       "source_file": "backend/models.py",
-      "source_location": "L21",
+      "source_location": "L33",
       "_origin": "ast",
       "id": "backend_models_usuario",
       "community": 6,
       "norm_label": "usuario"
     },
     {
-      "label": "test_db.py",
+      "label": "Orden",
       "file_type": "code",
-      "source_file": "backend/test_db.py",
+      "source_file": "backend/models.py",
+      "source_location": "L46",
+      "_origin": "ast",
+      "id": "backend_models_orden",
+      "community": 6,
+      "norm_label": "orden"
+    },
+    {
+      "label": "ProductoServicio",
+      "file_type": "code",
+      "source_file": "backend/models.py",
+      "source_location": "L55",
+      "_origin": "ast",
+      "id": "backend_models_productoservicio",
+      "community": 6,
+      "norm_label": "productoservicio"
+    },
+    {
+      "label": "DetalleOrden",
+      "file_type": "code",
+      "source_file": "backend/models.py",
+      "source_location": "L63",
+      "_origin": "ast",
+      "id": "backend_models_detalleorden",
+      "community": 6,
+      "norm_label": "detalleorden"
+    },
+    {
+      "label": "Evento",
+      "file_type": "code",
+      "source_file": "backend/models.py",
+      "source_location": "L72",
+      "_origin": "ast",
+      "id": "backend_models_evento",
+      "community": 6,
+      "norm_label": "evento"
+    },
+    {
+      "label": "Asistencia",
+      "file_type": "code",
+      "source_file": "backend/models.py",
+      "source_location": "L79",
+      "_origin": "ast",
+      "id": "backend_models_asistencia",
+      "community": 6,
+      "norm_label": "asistencia"
+    },
+    {
+      "label": "schemas.py",
+      "file_type": "code",
+      "source_file": "backend/schemas.py",
       "source_location": "L1",
       "_origin": "ast",
-      "id": "backend_test_db",
-      "community": 6,
-      "norm_label": "test_db.py"
+      "id": "backend_schemas",
+      "community": 7,
+      "norm_label": "schemas.py"
+    },
+    {
+      "label": "UsuarioCreate",
+      "file_type": "code",
+      "source_file": "backend/schemas.py",
+      "source_location": "L6",
+      "_origin": "ast",
+      "id": "backend_schemas_usuariocreate",
+      "community": 7,
+      "norm_label": "usuariocreate"
+    },
+    {
+      "label": "BaseModel",
+      "file_type": "code",
+      "source_file": "",
+      "source_location": "",
+      "_origin": "ast",
+      "id": "basemodel",
+      "community": 7,
+      "norm_label": "basemodel"
+    },
+    {
+      "label": "Usuario",
+      "file_type": "code",
+      "source_file": "backend/schemas.py",
+      "source_location": "L15",
+      "_origin": "ast",
+      "id": "backend_schemas_usuario",
+      "community": 7,
+      "norm_label": "usuario"
+    },
+    {
+      "label": "Config",
+      "file_type": "code",
+      "source_file": "backend/schemas.py",
+      "source_location": "L23",
+      "_origin": "ast",
+      "id": "backend_schemas_config",
+      "community": 7,
+      "norm_label": "config"
     },
     {
       "label": "eslint.config.js",
@@ -646,7 +806,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "frontend_src_layouts_mainlayout",
-      "community": 4,
+      "community": 3,
       "norm_label": "mainlayout.jsx"
     },
     {
@@ -656,7 +816,7 @@
       "source_location": "L9",
       "_origin": "ast",
       "id": "frontend_src_layouts_mainlayout_mainlayout",
-      "community": 4,
+      "community": 3,
       "norm_label": "mainlayout()"
     },
     {
@@ -896,7 +1056,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "frontend_src_pages_sociocuotas",
-      "community": 3,
+      "community": 4,
       "norm_label": "sociocuotas.jsx"
     },
     {
@@ -906,7 +1066,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "frontend_src_pages_sociocuotas_sociocuotas",
-      "community": 3,
+      "community": 4,
       "norm_label": "sociocuotas()"
     },
     {
@@ -1014,95 +1174,144 @@
       "file_type": "code",
       "source_file": "backend/requirements.txt",
       "source_location": null,
-      "id": "backend_requirements",
       "community": 7,
-      "norm_label": "backend requirements"
+      "norm_label": "backend requirements",
+      "id": "backend_requirements"
     },
     {
       "label": "FastAPI",
       "file_type": "code",
       "source_file": "backend/requirements.txt",
       "source_location": null,
-      "id": "fastapi",
       "community": 7,
-      "norm_label": "fastapi"
+      "norm_label": "fastapi",
+      "id": "fastapi"
     },
     {
       "label": "Pydantic",
       "file_type": "code",
       "source_file": "backend/requirements.txt",
       "source_location": null,
-      "id": "pydantic",
       "community": 7,
-      "norm_label": "pydantic"
+      "norm_label": "pydantic",
+      "id": "pydantic"
     },
     {
       "label": "Uvicorn",
       "file_type": "code",
       "source_file": "backend/requirements.txt",
       "source_location": null,
-      "id": "uvicorn",
       "community": 7,
-      "norm_label": "uvicorn"
+      "norm_label": "uvicorn",
+      "id": "uvicorn"
     },
     {
       "label": "Frontend Index HTML",
       "file_type": "document",
       "source_file": "frontend/index.html",
       "source_location": null,
-      "id": "frontend_index",
       "community": 0,
-      "norm_label": "frontend index html"
+      "norm_label": "frontend index html",
+      "id": "frontend_index"
     },
     {
       "label": "Vite",
       "file_type": "concept",
       "source_file": "frontend/README.md",
       "source_location": null,
-      "id": "vite",
       "community": 2,
-      "norm_label": "vite"
+      "norm_label": "vite",
+      "id": "vite"
     },
     {
       "label": "React",
       "file_type": "concept",
       "source_file": "frontend/README.md",
       "source_location": null,
-      "id": "react",
       "community": 0,
-      "norm_label": "react"
+      "norm_label": "react",
+      "id": "react"
     },
     {
       "label": "Vite Logo",
       "file_type": "image",
       "source_file": "frontend/public/vite.svg",
       "source_location": null,
-      "id": "frontend_public_vite_svg",
       "community": 0,
-      "norm_label": "vite logo"
+      "norm_label": "vite logo",
+      "id": "frontend_public_vite_svg"
     }
   ],
   "links": [
     {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/alembic/env.py",
+      "source_location": "L29",
+      "weight": 1.0,
+      "source": "backend_alembic_env",
+      "target": "backend_alembic_env_run_migrations_offline",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/alembic/env.py",
+      "source_location": "L53",
+      "weight": 1.0,
+      "source": "backend_alembic_env",
+      "target": "backend_alembic_env_run_migrations_online",
+      "confidence_score": 1.0
+    },
+    {
       "relation": "imports_from",
       "context": "import",
       "confidence": "EXTRACTED",
-      "source_file": "backend/create_tables.py",
-      "source_location": "L1",
+      "source_file": "backend/alembic/env.py",
+      "source_location": "L21",
       "weight": 1.0,
-      "source": "backend_create_tables",
+      "source": "backend_alembic_env",
       "target": "backend_database",
       "confidence_score": 1.0
     },
     {
-      "relation": "imports",
-      "context": "import",
+      "relation": "rationale_for",
       "confidence": "EXTRACTED",
-      "source_file": "backend/create_tables.py",
-      "source_location": "L2",
+      "source_file": "backend/alembic/env.py",
+      "source_location": "L30",
       "weight": 1.0,
-      "source": "backend_create_tables",
-      "target": "backend_models",
+      "source": "backend_alembic_env_rationale_30",
+      "target": "backend_alembic_env_run_migrations_offline",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/alembic/env.py",
+      "source_location": "L54",
+      "weight": 1.0,
+      "source": "backend_alembic_env_rationale_54",
+      "target": "backend_alembic_env_run_migrations_online",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/alembic/versions/cac4e912d733_initial_schema.py",
+      "source_location": "L66",
+      "weight": 1.0,
+      "source": "backend_alembic_versions_cac4e912d733_initial_schema",
+      "target": "backend_alembic_versions_cac4e912d733_initial_schema_downgrade",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/alembic/versions/cac4e912d733_initial_schema.py",
+      "source_location": "L21",
+      "weight": 1.0,
+      "source": "backend_alembic_versions_cac4e912d733_initial_schema",
+      "target": "backend_alembic_versions_cac4e912d733_initial_schema_upgrade",
       "confidence_score": 1.0
     },
     {
@@ -1123,17 +1332,6 @@
       "source_location": "L3",
       "weight": 1.0,
       "source": "backend_models",
-      "target": "backend_database",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "imports_from",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "backend/test_db.py",
-      "source_location": "L1",
-      "weight": 1.0,
-      "source": "backend_test_db",
       "target": "backend_database",
       "confidence_score": 1.0
     },
@@ -1162,7 +1360,57 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "backend/models.py",
-      "source_location": "L13",
+      "source_location": "L79",
+      "weight": 1.0,
+      "source": "backend_models",
+      "target": "backend_models_asistencia",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/models.py",
+      "source_location": "L63",
+      "weight": 1.0,
+      "source": "backend_models",
+      "target": "backend_models_detalleorden",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/models.py",
+      "source_location": "L72",
+      "weight": 1.0,
+      "source": "backend_models",
+      "target": "backend_models_evento",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/models.py",
+      "source_location": "L46",
+      "weight": 1.0,
+      "source": "backend_models",
+      "target": "backend_models_orden",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/models.py",
+      "source_location": "L55",
+      "weight": 1.0,
+      "source": "backend_models",
+      "target": "backend_models_productoservicio",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/models.py",
+      "source_location": "L24",
       "weight": 1.0,
       "source": "backend_models",
       "target": "backend_models_rol",
@@ -1172,7 +1420,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "backend/models.py",
-      "source_location": "L21",
+      "source_location": "L33",
       "weight": 1.0,
       "source": "backend_models",
       "target": "backend_models_usuario",
@@ -1182,7 +1430,7 @@
       "relation": "inherits",
       "confidence": "EXTRACTED",
       "source_file": "backend/models.py",
-      "source_location": "L13",
+      "source_location": "L24",
       "weight": 1.0,
       "source": "backend_models_rol",
       "target": "base",
@@ -1192,10 +1440,121 @@
       "relation": "inherits",
       "confidence": "EXTRACTED",
       "source_file": "backend/models.py",
-      "source_location": "L21",
+      "source_location": "L79",
+      "weight": 1.0,
+      "source": "backend_models_asistencia",
+      "target": "base",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/models.py",
+      "source_location": "L63",
+      "weight": 1.0,
+      "source": "backend_models_detalleorden",
+      "target": "base",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/models.py",
+      "source_location": "L72",
+      "weight": 1.0,
+      "source": "backend_models_evento",
+      "target": "base",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/models.py",
+      "source_location": "L46",
+      "weight": 1.0,
+      "source": "backend_models_orden",
+      "target": "base",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/models.py",
+      "source_location": "L55",
+      "weight": 1.0,
+      "source": "backend_models_productoservicio",
+      "target": "base",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/models.py",
+      "source_location": "L33",
       "weight": 1.0,
       "source": "backend_models_usuario",
       "target": "base",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/schemas.py",
+      "source_location": "L23",
+      "weight": 1.0,
+      "source": "backend_schemas",
+      "target": "backend_schemas_config",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/schemas.py",
+      "source_location": "L15",
+      "weight": 1.0,
+      "source": "backend_schemas",
+      "target": "backend_schemas_usuario",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/schemas.py",
+      "source_location": "L6",
+      "weight": 1.0,
+      "source": "backend_schemas",
+      "target": "backend_schemas_usuariocreate",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/schemas.py",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "backend_schemas",
+      "target": "pydantic",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/schemas.py",
+      "source_location": "L6",
+      "weight": 1.0,
+      "source": "backend_schemas_usuariocreate",
+      "target": "basemodel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/schemas.py",
+      "source_location": "L15",
+      "weight": 1.0,
+      "source": "backend_schemas_usuario",
+      "target": "basemodel",
       "confidence_score": 1.0
     },
     {
@@ -2912,5 +3271,5 @@
       "source_file": "backend/requirements.txt"
     }
   ],
-  "built_at_commit": "50c9b5af39c3851383b8a23fa2529932a2abf6b2"
+  "built_at_commit": "762cdf0a45958c20860c80d013103dc17d741f64"
 }

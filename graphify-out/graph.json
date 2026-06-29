@@ -1,2799 +1,2900 @@
 {
+  "directed": false,
+  "multigraph": false,
+  "graph": {
+    "hyperedges": [
+      {
+        "id": "web_application_stack",
+        "label": "Web Application Stack",
+        "nodes": [
+          "fastapi",
+          "vite",
+          "react"
+        ],
+        "relation": "participate_in",
+        "confidence": "INFERRED",
+        "confidence_score": 0.9,
+        "source_file": "backend/requirements.txt"
+      }
+    ]
+  },
   "nodes": [
     {
-      "id": "backend_main",
+      "label": "create_tables.py",
+      "file_type": "code",
+      "source_file": "backend/create_tables.py",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "backend_create_tables",
+      "community": 6,
+      "norm_label": "create_tables.py"
+    },
+    {
+      "label": "database.py",
+      "file_type": "code",
+      "source_file": "backend/database.py",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "backend_database",
+      "community": 6,
+      "norm_label": "database.py"
+    },
+    {
+      "label": "get_db()",
+      "file_type": "code",
+      "source_file": "backend/database.py",
+      "source_location": "L19",
+      "_origin": "ast",
+      "id": "backend_database_get_db",
+      "community": 6,
+      "norm_label": "get_db()"
+    },
+    {
       "label": "main.py",
       "file_type": "code",
       "source_file": "backend/main.py",
       "source_location": "L1",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "backend_main",
+      "community": 7,
+      "norm_label": "main.py"
     },
     {
-      "id": "backend_main_ver_estado",
       "label": "ver_estado()",
       "file_type": "code",
       "source_file": "backend/main.py",
       "source_location": "L6",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "backend_main_ver_estado",
+      "community": 7,
+      "norm_label": "ver_estado()"
     },
     {
-      "id": "frontend_eslint_config",
+      "label": "models.py",
+      "file_type": "code",
+      "source_file": "backend/models.py",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "backend_models",
+      "community": 6,
+      "norm_label": "models.py"
+    },
+    {
+      "label": "Rol",
+      "file_type": "code",
+      "source_file": "backend/models.py",
+      "source_location": "L13",
+      "_origin": "ast",
+      "id": "backend_models_rol",
+      "community": 6,
+      "norm_label": "rol"
+    },
+    {
+      "label": "Base",
+      "file_type": "code",
+      "source_file": "",
+      "source_location": "",
+      "_origin": "ast",
+      "id": "base",
+      "community": 6,
+      "norm_label": "base"
+    },
+    {
+      "label": "Usuario",
+      "file_type": "code",
+      "source_file": "backend/models.py",
+      "source_location": "L21",
+      "_origin": "ast",
+      "id": "backend_models_usuario",
+      "community": 6,
+      "norm_label": "usuario"
+    },
+    {
+      "label": "test_db.py",
+      "file_type": "code",
+      "source_file": "backend/test_db.py",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "backend_test_db",
+      "community": 6,
+      "norm_label": "test_db.py"
+    },
+    {
       "label": "eslint.config.js",
       "file_type": "code",
       "source_file": "frontend/eslint.config.js",
       "source_location": "L1",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "frontend_eslint_config",
+      "community": 9,
+      "norm_label": "eslint.config.js"
     },
     {
-      "id": "frontend_package",
       "label": "package.json",
       "file_type": "code",
       "source_file": "frontend/package.json",
       "source_location": "L1",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "frontend_package",
+      "community": 1,
+      "norm_label": "package.json"
     },
     {
-      "id": "frontend_package_name",
       "label": "name",
       "file_type": "code",
       "source_file": "frontend/package.json",
       "source_location": "L2",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "frontend_package_name",
+      "community": 1,
+      "norm_label": "name"
     },
     {
-      "id": "frontend_package_private",
       "label": "private",
       "file_type": "code",
       "source_file": "frontend/package.json",
       "source_location": "L3",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "frontend_package_private",
+      "community": 1,
+      "norm_label": "private"
     },
     {
-      "id": "frontend_package_version",
       "label": "version",
       "file_type": "code",
       "source_file": "frontend/package.json",
       "source_location": "L4",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "frontend_package_version",
+      "community": 1,
+      "norm_label": "version"
     },
     {
-      "id": "frontend_package_type",
       "label": "type",
       "file_type": "code",
       "source_file": "frontend/package.json",
       "source_location": "L5",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "frontend_package_type",
+      "community": 1,
+      "norm_label": "type"
     },
     {
-      "id": "frontend_package_scripts",
       "label": "scripts",
       "file_type": "code",
       "source_file": "frontend/package.json",
       "source_location": "L6",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "frontend_package_scripts",
+      "community": 1,
+      "norm_label": "scripts"
     },
     {
-      "id": "frontend_package_scripts_dev",
       "label": "dev",
       "file_type": "code",
       "source_file": "frontend/package.json",
       "source_location": "L7",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "frontend_package_scripts_dev",
+      "community": 1,
+      "norm_label": "dev"
     },
     {
-      "id": "frontend_package_scripts_build",
       "label": "build",
       "file_type": "code",
       "source_file": "frontend/package.json",
       "source_location": "L8",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "frontend_package_scripts_build",
+      "community": 1,
+      "norm_label": "build"
     },
     {
-      "id": "frontend_package_scripts_lint",
       "label": "lint",
       "file_type": "code",
       "source_file": "frontend/package.json",
       "source_location": "L9",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "frontend_package_scripts_lint",
+      "community": 1,
+      "norm_label": "lint"
     },
     {
-      "id": "frontend_package_scripts_preview",
       "label": "preview",
       "file_type": "code",
       "source_file": "frontend/package.json",
       "source_location": "L10",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "frontend_package_scripts_preview",
+      "community": 1,
+      "norm_label": "preview"
     },
     {
-      "id": "frontend_package_dependencies",
       "label": "dependencies",
       "file_type": "code",
       "source_file": "frontend/package.json",
       "source_location": "L12",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "frontend_package_dependencies",
+      "community": 1,
+      "norm_label": "dependencies"
     },
     {
-      "id": "frontend_package_dependencies_yudiel_react_qr_scanner",
       "label": "@yudiel/react-qr-scanner",
       "file_type": "code",
       "source_file": "frontend/package.json",
       "source_location": "L13",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "frontend_package_dependencies_yudiel_react_qr_scanner",
+      "community": 1,
+      "norm_label": "@yudiel/react-qr-scanner"
     },
     {
-      "id": "frontend_package_dependencies_qrcode_react",
       "label": "qrcode.react",
       "file_type": "code",
       "source_file": "frontend/package.json",
       "source_location": "L14",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "frontend_package_dependencies_qrcode_react",
+      "community": 1,
+      "norm_label": "qrcode.react"
     },
     {
-      "id": "frontend_package_dependencies_react",
       "label": "react",
       "file_type": "code",
       "source_file": "frontend/package.json",
       "source_location": "L15",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "frontend_package_dependencies_react",
+      "community": 1,
+      "norm_label": "react"
     },
     {
-      "id": "frontend_package_dependencies_react_dom",
       "label": "react-dom",
       "file_type": "code",
       "source_file": "frontend/package.json",
       "source_location": "L16",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "frontend_package_dependencies_react_dom",
+      "community": 1,
+      "norm_label": "react-dom"
     },
     {
-      "id": "frontend_package_dependencies_react_router_dom",
       "label": "react-router-dom",
       "file_type": "code",
       "source_file": "frontend/package.json",
       "source_location": "L17",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "frontend_package_dependencies_react_router_dom",
+      "community": 1,
+      "norm_label": "react-router-dom"
     },
     {
-      "id": "frontend_package_devdependencies",
       "label": "devDependencies",
       "file_type": "code",
       "source_file": "frontend/package.json",
       "source_location": "L19",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "frontend_package_devdependencies",
+      "community": 2,
+      "norm_label": "devdependencies"
     },
     {
-      "id": "frontend_package_devdependencies_eslint_js",
       "label": "@eslint/js",
       "file_type": "code",
       "source_file": "frontend/package.json",
       "source_location": "L20",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "frontend_package_devdependencies_eslint_js",
+      "community": 2,
+      "norm_label": "@eslint/js"
     },
     {
-      "id": "frontend_package_devdependencies_types_react",
       "label": "@types/react",
       "file_type": "code",
       "source_file": "frontend/package.json",
       "source_location": "L21",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "frontend_package_devdependencies_types_react",
+      "community": 2,
+      "norm_label": "@types/react"
     },
     {
-      "id": "frontend_package_devdependencies_types_react_dom",
       "label": "@types/react-dom",
       "file_type": "code",
       "source_file": "frontend/package.json",
       "source_location": "L22",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "frontend_package_devdependencies_types_react_dom",
+      "community": 2,
+      "norm_label": "@types/react-dom"
     },
     {
-      "id": "frontend_package_devdependencies_vitejs_plugin_react",
       "label": "@vitejs/plugin-react",
       "file_type": "code",
       "source_file": "frontend/package.json",
       "source_location": "L23",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "frontend_package_devdependencies_vitejs_plugin_react",
+      "community": 2,
+      "norm_label": "@vitejs/plugin-react"
     },
     {
-      "id": "frontend_package_devdependencies_autoprefixer",
       "label": "autoprefixer",
       "file_type": "code",
       "source_file": "frontend/package.json",
       "source_location": "L24",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "frontend_package_devdependencies_autoprefixer",
+      "community": 2,
+      "norm_label": "autoprefixer"
     },
     {
-      "id": "frontend_package_devdependencies_eslint",
       "label": "eslint",
       "file_type": "code",
       "source_file": "frontend/package.json",
       "source_location": "L25",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "frontend_package_devdependencies_eslint",
+      "community": 2,
+      "norm_label": "eslint"
     },
     {
-      "id": "frontend_package_devdependencies_eslint_plugin_react",
       "label": "eslint-plugin-react",
       "file_type": "code",
       "source_file": "frontend/package.json",
       "source_location": "L26",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "frontend_package_devdependencies_eslint_plugin_react",
+      "community": 2,
+      "norm_label": "eslint-plugin-react"
     },
     {
-      "id": "frontend_package_devdependencies_eslint_plugin_react_hooks",
       "label": "eslint-plugin-react-hooks",
       "file_type": "code",
       "source_file": "frontend/package.json",
       "source_location": "L27",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "frontend_package_devdependencies_eslint_plugin_react_hooks",
+      "community": 2,
+      "norm_label": "eslint-plugin-react-hooks"
     },
     {
-      "id": "frontend_package_devdependencies_eslint_plugin_react_refresh",
       "label": "eslint-plugin-react-refresh",
       "file_type": "code",
       "source_file": "frontend/package.json",
       "source_location": "L28",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "frontend_package_devdependencies_eslint_plugin_react_refresh",
+      "community": 2,
+      "norm_label": "eslint-plugin-react-refresh"
     },
     {
-      "id": "frontend_package_devdependencies_globals",
       "label": "globals",
       "file_type": "code",
       "source_file": "frontend/package.json",
       "source_location": "L29",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "frontend_package_devdependencies_globals",
+      "community": 2,
+      "norm_label": "globals"
     },
     {
-      "id": "frontend_package_devdependencies_postcss",
       "label": "postcss",
       "file_type": "code",
       "source_file": "frontend/package.json",
       "source_location": "L30",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "frontend_package_devdependencies_postcss",
+      "community": 2,
+      "norm_label": "postcss"
     },
     {
-      "id": "frontend_package_devdependencies_tailwindcss",
       "label": "tailwindcss",
       "file_type": "code",
       "source_file": "frontend/package.json",
       "source_location": "L31",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "frontend_package_devdependencies_tailwindcss",
+      "community": 2,
+      "norm_label": "tailwindcss"
     },
     {
-      "id": "frontend_package_devdependencies_vite",
       "label": "vite",
       "file_type": "code",
       "source_file": "frontend/package.json",
       "source_location": "L32",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "frontend_package_devdependencies_vite",
+      "community": 2,
+      "norm_label": "vite"
     },
     {
-      "id": "frontend_postcss_config",
       "label": "postcss.config.js",
       "file_type": "code",
       "source_file": "frontend/postcss.config.js",
       "source_location": "L1",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "frontend_postcss_config",
+      "community": 10,
+      "norm_label": "postcss.config.js"
     },
     {
-      "id": "frontend_src_app",
       "label": "App.jsx",
       "file_type": "code",
       "source_file": "frontend/src/App.jsx",
       "source_location": "L1",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "frontend_src_app",
+      "community": 0,
+      "norm_label": "app.jsx"
     },
     {
-      "id": "frontend_src_app_app",
       "label": "App()",
       "file_type": "code",
       "source_file": "frontend/src/App.jsx",
       "source_location": "L21",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "frontend_src_app_app",
+      "community": 0,
+      "norm_label": "app()"
     },
     {
-      "id": "frontend_src_components_landing_calendario",
       "label": "Calendario.jsx",
       "file_type": "code",
       "source_file": "frontend/src/components/landing/Calendario.jsx",
       "source_location": "L1",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "frontend_src_components_landing_calendario",
+      "community": 5,
+      "norm_label": "calendario.jsx"
     },
     {
-      "id": "frontend_src_components_landing_calendario_calendario",
       "label": "Calendario()",
       "file_type": "code",
       "source_file": "frontend/src/components/landing/Calendario.jsx",
       "source_location": "L1",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "frontend_src_components_landing_calendario_calendario",
+      "community": 5,
+      "norm_label": "calendario()"
     },
     {
-      "id": "frontend_src_components_landing_footer",
       "label": "Footer.jsx",
       "file_type": "code",
       "source_file": "frontend/src/components/landing/Footer.jsx",
       "source_location": "L1",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "frontend_src_components_landing_footer",
+      "community": 5,
+      "norm_label": "footer.jsx"
     },
     {
-      "id": "frontend_src_components_landing_footer_footer",
       "label": "Footer()",
       "file_type": "code",
       "source_file": "frontend/src/components/landing/Footer.jsx",
       "source_location": "L3",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "frontend_src_components_landing_footer_footer",
+      "community": 5,
+      "norm_label": "footer()"
     },
     {
-      "id": "frontend_src_components_landing_galeria",
       "label": "Galeria.jsx",
       "file_type": "code",
       "source_file": "frontend/src/components/landing/Galeria.jsx",
       "source_location": "L1",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "frontend_src_components_landing_galeria",
+      "community": 5,
+      "norm_label": "galeria.jsx"
     },
     {
-      "id": "frontend_src_components_landing_galeria_galeria",
       "label": "Galeria()",
       "file_type": "code",
       "source_file": "frontend/src/components/landing/Galeria.jsx",
       "source_location": "L3",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "frontend_src_components_landing_galeria_galeria",
+      "community": 5,
+      "norm_label": "galeria()"
     },
     {
-      "id": "frontend_src_components_landing_hero",
       "label": "Hero.jsx",
       "file_type": "code",
       "source_file": "frontend/src/components/landing/Hero.jsx",
       "source_location": "L1",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "frontend_src_components_landing_hero",
+      "community": 3,
+      "norm_label": "hero.jsx"
     },
     {
-      "id": "frontend_src_components_landing_hero_hero",
       "label": "Hero()",
       "file_type": "code",
       "source_file": "frontend/src/components/landing/Hero.jsx",
       "source_location": "L6",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "frontend_src_components_landing_hero_hero",
+      "community": 3,
+      "norm_label": "hero()"
     },
     {
-      "id": "frontend_src_components_landing_historia",
       "label": "Historia.jsx",
       "file_type": "code",
       "source_file": "frontend/src/components/landing/Historia.jsx",
       "source_location": "L1",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "frontend_src_components_landing_historia",
+      "community": 5,
+      "norm_label": "historia.jsx"
     },
     {
-      "id": "frontend_src_components_landing_historia_historia",
       "label": "Historia()",
       "file_type": "code",
       "source_file": "frontend/src/components/landing/Historia.jsx",
       "source_location": "L3",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "frontend_src_components_landing_historia_historia",
+      "community": 5,
+      "norm_label": "historia()"
     },
     {
-      "id": "frontend_src_context_authcontext",
       "label": "AuthContext.jsx",
       "file_type": "code",
       "source_file": "frontend/src/context/AuthContext.jsx",
       "source_location": "L1",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "frontend_src_context_authcontext",
+      "community": 3,
+      "norm_label": "authcontext.jsx"
     },
     {
-      "id": "frontend_src_context_authcontext_authcontext",
       "label": "AuthContext",
       "file_type": "code",
       "source_file": "frontend/src/context/AuthContext.jsx",
       "source_location": "L3",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "frontend_src_context_authcontext_authcontext",
+      "community": 3,
+      "norm_label": "authcontext"
     },
     {
-      "id": "frontend_src_context_authcontext_authprovider",
       "label": "AuthProvider()",
       "file_type": "code",
       "source_file": "frontend/src/context/AuthContext.jsx",
       "source_location": "L5",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "frontend_src_context_authcontext_authprovider",
+      "community": 3,
+      "norm_label": "authprovider()"
     },
     {
-      "id": "frontend_src_context_authcontext_useauth",
       "label": "useAuth()",
       "file_type": "code",
       "source_file": "frontend/src/context/AuthContext.jsx",
       "source_location": "L44",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "frontend_src_context_authcontext_useauth",
+      "community": 3,
+      "norm_label": "useauth()"
     },
     {
-      "id": "frontend_src_context_cartcontext",
       "label": "CartContext.jsx",
       "file_type": "code",
       "source_file": "frontend/src/context/CartContext.jsx",
       "source_location": "L1",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "frontend_src_context_cartcontext",
+      "community": 4,
+      "norm_label": "cartcontext.jsx"
     },
     {
-      "id": "frontend_src_context_cartcontext_cartcontext",
       "label": "CartContext",
       "file_type": "code",
       "source_file": "frontend/src/context/CartContext.jsx",
       "source_location": "L3",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "frontend_src_context_cartcontext_cartcontext",
+      "community": 4,
+      "norm_label": "cartcontext"
     },
     {
-      "id": "frontend_src_context_cartcontext_cartprovider",
       "label": "CartProvider()",
       "file_type": "code",
       "source_file": "frontend/src/context/CartContext.jsx",
       "source_location": "L5",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "frontend_src_context_cartcontext_cartprovider",
+      "community": 4,
+      "norm_label": "cartprovider()"
     },
     {
-      "id": "frontend_src_context_cartcontext_usecart",
       "label": "useCart()",
       "file_type": "code",
       "source_file": "frontend/src/context/CartContext.jsx",
       "source_location": "L54",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "frontend_src_context_cartcontext_usecart",
+      "community": 4,
+      "norm_label": "usecart()"
     },
     {
-      "id": "frontend_src_layouts_mainlayout",
       "label": "MainLayout.jsx",
       "file_type": "code",
       "source_file": "frontend/src/layouts/MainLayout.jsx",
       "source_location": "L1",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "frontend_src_layouts_mainlayout",
+      "community": 4,
+      "norm_label": "mainlayout.jsx"
     },
     {
-      "id": "frontend_src_layouts_mainlayout_mainlayout",
       "label": "MainLayout()",
       "file_type": "code",
       "source_file": "frontend/src/layouts/MainLayout.jsx",
       "source_location": "L9",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "frontend_src_layouts_mainlayout_mainlayout",
+      "community": 4,
+      "norm_label": "mainlayout()"
     },
     {
-      "id": "frontend_src_main",
-      "label": "Frontend Main Entry",
+      "label": "main.jsx",
       "file_type": "code",
       "source_file": "frontend/src/main.jsx",
-      "source_location": null
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "frontend_src_main",
+      "community": 0,
+      "norm_label": "main.jsx"
     },
     {
-      "id": "frontend_src_pages_admininicio",
       "label": "AdminInicio.jsx",
       "file_type": "code",
       "source_file": "frontend/src/pages/AdminInicio.jsx",
       "source_location": "L1",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "frontend_src_pages_admininicio",
+      "community": 3,
+      "norm_label": "admininicio.jsx"
     },
     {
-      "id": "frontend_src_pages_admininicio_admininicio",
       "label": "AdminInicio()",
       "file_type": "code",
       "source_file": "frontend/src/pages/AdminInicio.jsx",
       "source_location": "L4",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "frontend_src_pages_admininicio_admininicio",
+      "community": 3,
+      "norm_label": "admininicio()"
     },
     {
-      "id": "frontend_src_pages_adminpagos",
       "label": "AdminPagos.jsx",
       "file_type": "code",
       "source_file": "frontend/src/pages/AdminPagos.jsx",
       "source_location": "L1",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "frontend_src_pages_adminpagos",
+      "community": 0,
+      "norm_label": "adminpagos.jsx"
     },
     {
-      "id": "frontend_src_pages_adminpagos_adminpagos",
       "label": "AdminPagos()",
       "file_type": "code",
       "source_file": "frontend/src/pages/AdminPagos.jsx",
       "source_location": "L3",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "frontend_src_pages_adminpagos_adminpagos",
+      "community": 0,
+      "norm_label": "adminpagos()"
     },
     {
-      "id": "frontend_src_pages_adminqrscanner",
       "label": "AdminQRScanner.jsx",
       "file_type": "code",
       "source_file": "frontend/src/pages/AdminQRScanner.jsx",
       "source_location": "L1",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "frontend_src_pages_adminqrscanner",
+      "community": 0,
+      "norm_label": "adminqrscanner.jsx"
     },
     {
-      "id": "frontend_src_pages_adminqrscanner_adminqrscanner",
       "label": "AdminQRScanner()",
       "file_type": "code",
       "source_file": "frontend/src/pages/AdminQRScanner.jsx",
       "source_location": "L5",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "frontend_src_pages_adminqrscanner_adminqrscanner",
+      "community": 0,
+      "norm_label": "adminqrscanner()"
     },
     {
-      "id": "frontend_src_pages_adminsolicitudes",
       "label": "AdminSolicitudes.jsx",
       "file_type": "code",
       "source_file": "frontend/src/pages/AdminSolicitudes.jsx",
       "source_location": "L1",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "frontend_src_pages_adminsolicitudes",
+      "community": 0,
+      "norm_label": "adminsolicitudes.jsx"
     },
     {
-      "id": "frontend_src_pages_adminsolicitudes_adminsolicitudes",
       "label": "AdminSolicitudes()",
       "file_type": "code",
       "source_file": "frontend/src/pages/AdminSolicitudes.jsx",
       "source_location": "L3",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "frontend_src_pages_adminsolicitudes_adminsolicitudes",
+      "community": 0,
+      "norm_label": "adminsolicitudes()"
     },
     {
-      "id": "frontend_src_pages_jugadorcalendario",
       "label": "JugadorCalendario.jsx",
       "file_type": "code",
       "source_file": "frontend/src/pages/JugadorCalendario.jsx",
       "source_location": "L1",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "frontend_src_pages_jugadorcalendario",
+      "community": 0,
+      "norm_label": "jugadorcalendario.jsx"
     },
     {
-      "id": "frontend_src_pages_jugadorcalendario_jugadorcalendario",
       "label": "JugadorCalendario()",
       "file_type": "code",
       "source_file": "frontend/src/pages/JugadorCalendario.jsx",
       "source_location": "L1",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "frontend_src_pages_jugadorcalendario_jugadorcalendario",
+      "community": 0,
+      "norm_label": "jugadorcalendario()"
     },
     {
-      "id": "frontend_src_pages_landing",
       "label": "Landing.jsx",
       "file_type": "code",
       "source_file": "frontend/src/pages/Landing.jsx",
       "source_location": "L1",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "frontend_src_pages_landing",
+      "community": 5,
+      "norm_label": "landing.jsx"
     },
     {
-      "id": "frontend_src_pages_landing_landing",
       "label": "Landing()",
       "file_type": "code",
       "source_file": "frontend/src/pages/Landing.jsx",
       "source_location": "L7",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "frontend_src_pages_landing_landing",
+      "community": 5,
+      "norm_label": "landing()"
     },
     {
-      "id": "frontend_src_pages_login",
       "label": "Login.jsx",
       "file_type": "code",
       "source_file": "frontend/src/pages/Login.jsx",
       "source_location": "L1",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "frontend_src_pages_login",
+      "community": 3,
+      "norm_label": "login.jsx"
     },
     {
-      "id": "frontend_src_pages_login_login",
       "label": "Login()",
       "file_type": "code",
       "source_file": "frontend/src/pages/Login.jsx",
       "source_location": "L5",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "frontend_src_pages_login_login",
+      "community": 3,
+      "norm_label": "login()"
     },
     {
-      "id": "frontend_src_pages_recuperarpassword",
       "label": "RecuperarPassword.jsx",
       "file_type": "code",
       "source_file": "frontend/src/pages/RecuperarPassword.jsx",
       "source_location": "L1",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "frontend_src_pages_recuperarpassword",
+      "community": 0,
+      "norm_label": "recuperarpassword.jsx"
     },
     {
-      "id": "frontend_src_pages_recuperarpassword_recuperarpassword",
       "label": "RecuperarPassword()",
       "file_type": "code",
       "source_file": "frontend/src/pages/RecuperarPassword.jsx",
       "source_location": "L4",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "frontend_src_pages_recuperarpassword_recuperarpassword",
+      "community": 0,
+      "norm_label": "recuperarpassword()"
     },
     {
-      "id": "frontend_src_pages_registro",
       "label": "Registro.jsx",
       "file_type": "code",
       "source_file": "frontend/src/pages/Registro.jsx",
       "source_location": "L1",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "frontend_src_pages_registro",
+      "community": 0,
+      "norm_label": "registro.jsx"
     },
     {
-      "id": "frontend_src_pages_registro_registro",
       "label": "Registro()",
       "file_type": "code",
       "source_file": "frontend/src/pages/Registro.jsx",
       "source_location": "L4",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "frontend_src_pages_registro_registro",
+      "community": 0,
+      "norm_label": "registro()"
     },
     {
-      "id": "frontend_src_pages_socioalquileres",
       "label": "SocioAlquileres.jsx",
       "file_type": "code",
       "source_file": "frontend/src/pages/SocioAlquileres.jsx",
       "source_location": "L1",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "frontend_src_pages_socioalquileres",
+      "community": 4,
+      "norm_label": "socioalquileres.jsx"
     },
     {
-      "id": "frontend_src_pages_socioalquileres_socioalquileres",
       "label": "SocioAlquileres()",
       "file_type": "code",
       "source_file": "frontend/src/pages/SocioAlquileres.jsx",
       "source_location": "L4",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "frontend_src_pages_socioalquileres_socioalquileres",
+      "community": 4,
+      "norm_label": "socioalquileres()"
     },
     {
-      "id": "frontend_src_pages_sociocarrito",
       "label": "SocioCarrito.jsx",
       "file_type": "code",
       "source_file": "frontend/src/pages/SocioCarrito.jsx",
       "source_location": "L1",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "frontend_src_pages_sociocarrito",
+      "community": 4,
+      "norm_label": "sociocarrito.jsx"
     },
     {
-      "id": "frontend_src_pages_sociocarrito_sociocarrito",
       "label": "SocioCarrito()",
       "file_type": "code",
       "source_file": "frontend/src/pages/SocioCarrito.jsx",
       "source_location": "L5",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "frontend_src_pages_sociocarrito_sociocarrito",
+      "community": 4,
+      "norm_label": "sociocarrito()"
     },
     {
-      "id": "frontend_src_pages_sociocuotas",
       "label": "SocioCuotas.jsx",
       "file_type": "code",
       "source_file": "frontend/src/pages/SocioCuotas.jsx",
       "source_location": "L1",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "frontend_src_pages_sociocuotas",
+      "community": 3,
+      "norm_label": "sociocuotas.jsx"
     },
     {
-      "id": "frontend_src_pages_sociocuotas_sociocuotas",
       "label": "SocioCuotas()",
       "file_type": "code",
       "source_file": "frontend/src/pages/SocioCuotas.jsx",
       "source_location": "L6",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "frontend_src_pages_sociocuotas_sociocuotas",
+      "community": 3,
+      "norm_label": "sociocuotas()"
     },
     {
-      "id": "frontend_src_pages_socioinicio",
       "label": "SocioInicio.jsx",
       "file_type": "code",
       "source_file": "frontend/src/pages/SocioInicio.jsx",
       "source_location": "L1",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "frontend_src_pages_socioinicio",
+      "community": 3,
+      "norm_label": "socioinicio.jsx"
     },
     {
-      "id": "frontend_src_pages_socioinicio_socioinicio",
       "label": "SocioInicio()",
       "file_type": "code",
       "source_file": "frontend/src/pages/SocioInicio.jsx",
       "source_location": "L6",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "frontend_src_pages_socioinicio_socioinicio",
+      "community": 3,
+      "norm_label": "socioinicio()"
     },
     {
-      "id": "frontend_src_pages_socioperfil",
       "label": "SocioPerfil.jsx",
       "file_type": "code",
       "source_file": "frontend/src/pages/SocioPerfil.jsx",
       "source_location": "L1",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "frontend_src_pages_socioperfil",
+      "community": 0,
+      "norm_label": "socioperfil.jsx"
     },
     {
-      "id": "frontend_src_pages_socioperfil_socioperfil",
       "label": "SocioPerfil()",
       "file_type": "code",
       "source_file": "frontend/src/pages/SocioPerfil.jsx",
       "source_location": "L1",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "frontend_src_pages_socioperfil_socioperfil",
+      "community": 0,
+      "norm_label": "socioperfil()"
     },
     {
-      "id": "frontend_src_pages_socioshopping",
       "label": "SocioShopping.jsx",
       "file_type": "code",
       "source_file": "frontend/src/pages/SocioShopping.jsx",
       "source_location": "L1",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "frontend_src_pages_socioshopping",
+      "community": 4,
+      "norm_label": "socioshopping.jsx"
     },
     {
-      "id": "frontend_src_pages_socioshopping_socioshopping",
       "label": "SocioShopping()",
       "file_type": "code",
       "source_file": "frontend/src/pages/SocioShopping.jsx",
       "source_location": "L4",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "frontend_src_pages_socioshopping_socioshopping",
+      "community": 4,
+      "norm_label": "socioshopping()"
     },
     {
-      "id": "frontend_tailwind_config",
       "label": "tailwind.config.js",
       "file_type": "code",
       "source_file": "frontend/tailwind.config.js",
       "source_location": "L1",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "frontend_tailwind_config",
+      "community": 11,
+      "norm_label": "tailwind.config.js"
     },
     {
-      "id": "frontend_vite_config",
       "label": "vite.config.js",
       "file_type": "code",
       "source_file": "frontend/vite.config.js",
       "source_location": "L1",
-      "_origin": "ast"
+      "_origin": "ast",
+      "id": "frontend_vite_config",
+      "community": 2,
+      "norm_label": "vite.config.js"
     },
     {
-      "id": "backend_requirements",
+      "label": "README.md",
+      "file_type": "document",
+      "source_file": "frontend/README.md",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "frontend_readme",
+      "community": 8,
+      "norm_label": "readme.md"
+    },
+    {
+      "label": "React + Vite",
+      "file_type": "document",
+      "source_file": "frontend/README.md",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "frontend_readme_react_vite",
+      "community": 8,
+      "norm_label": "react + vite"
+    },
+    {
       "label": "Backend Requirements",
       "file_type": "code",
       "source_file": "backend/requirements.txt",
-      "source_location": null
+      "source_location": null,
+      "id": "backend_requirements",
+      "community": 7,
+      "norm_label": "backend requirements"
     },
     {
-      "id": "fastapi",
       "label": "FastAPI",
       "file_type": "code",
       "source_file": "backend/requirements.txt",
-      "source_location": null
+      "source_location": null,
+      "id": "fastapi",
+      "community": 7,
+      "norm_label": "fastapi"
     },
     {
-      "id": "pydantic",
       "label": "Pydantic",
       "file_type": "code",
       "source_file": "backend/requirements.txt",
-      "source_location": null
+      "source_location": null,
+      "id": "pydantic",
+      "community": 7,
+      "norm_label": "pydantic"
     },
     {
-      "id": "uvicorn",
       "label": "Uvicorn",
       "file_type": "code",
       "source_file": "backend/requirements.txt",
-      "source_location": null
+      "source_location": null,
+      "id": "uvicorn",
+      "community": 7,
+      "norm_label": "uvicorn"
     },
     {
-      "id": "frontend_readme",
-      "label": "Frontend README",
-      "file_type": "document",
-      "source_file": "frontend/README.md",
-      "source_location": null
-    },
-    {
-      "id": "frontend_index",
       "label": "Frontend Index HTML",
       "file_type": "document",
       "source_file": "frontend/index.html",
-      "source_location": null
+      "source_location": null,
+      "id": "frontend_index",
+      "community": 0,
+      "norm_label": "frontend index html"
     },
     {
-      "id": "vite",
       "label": "Vite",
       "file_type": "concept",
       "source_file": "frontend/README.md",
-      "source_location": null
+      "source_location": null,
+      "id": "vite",
+      "community": 2,
+      "norm_label": "vite"
     },
     {
-      "id": "react",
       "label": "React",
       "file_type": "concept",
       "source_file": "frontend/README.md",
-      "source_location": null
+      "source_location": null,
+      "id": "react",
+      "community": 0,
+      "norm_label": "react"
     },
     {
-      "id": "frontend_public_vite_svg",
       "label": "Vite Logo",
       "file_type": "image",
       "source_file": "frontend/public/vite.svg",
-      "source_location": null
+      "source_location": null,
+      "id": "frontend_public_vite_svg",
+      "community": 0,
+      "norm_label": "vite logo"
     }
   ],
-  "edges": [
+  "links": [
     {
-      "source": "backend_main",
-      "target": "fastapi",
       "relation": "imports_from",
       "context": "import",
       "confidence": "EXTRACTED",
-      "source_file": "backend/main.py",
+      "source_file": "backend/create_tables.py",
       "source_location": "L1",
-      "weight": 1.0
+      "weight": 1.0,
+      "source": "backend_create_tables",
+      "target": "backend_database",
+      "confidence_score": 1.0
     },
     {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/create_tables.py",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "backend_create_tables",
+      "target": "backend_models",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/database.py",
+      "source_location": "L19",
+      "weight": 1.0,
+      "source": "backend_database",
+      "target": "backend_database_get_db",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/models.py",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "backend_models",
+      "target": "backend_database",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/test_db.py",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "backend_test_db",
+      "target": "backend_database",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/main.py",
+      "source_location": "L6",
+      "weight": 1.0,
       "source": "backend_main",
       "target": "backend_main_ver_estado",
-      "relation": "contains",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "backend/main.py",
-      "source_location": "L6",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_eslint_config",
-      "target": "js",
-      "relation": "imports_from",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/eslint.config.js",
       "source_location": "L1",
-      "weight": 1.0
+      "weight": 1.0,
+      "source": "backend_main",
+      "target": "fastapi",
+      "confidence_score": 1.0
     },
     {
-      "source": "frontend_eslint_config",
-      "target": "globals",
-      "relation": "imports_from",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/eslint.config.js",
-      "source_location": "L2",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_eslint_config",
-      "target": "eslint_plugin_react",
-      "relation": "imports_from",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/eslint.config.js",
-      "source_location": "L3",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_eslint_config",
-      "target": "eslint_plugin_react_hooks",
-      "relation": "imports_from",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/eslint.config.js",
-      "source_location": "L4",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_eslint_config",
-      "target": "eslint_plugin_react_refresh",
-      "relation": "imports_from",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/eslint.config.js",
-      "source_location": "L5",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_package",
-      "target": "frontend_package_name",
       "relation": "contains",
       "confidence": "EXTRACTED",
-      "source_file": "frontend/package.json",
-      "source_location": "L2",
-      "weight": 1.0
+      "source_file": "backend/models.py",
+      "source_location": "L13",
+      "weight": 1.0,
+      "source": "backend_models",
+      "target": "backend_models_rol",
+      "confidence_score": 1.0
     },
     {
-      "source": "frontend_package",
-      "target": "frontend_package_private",
       "relation": "contains",
       "confidence": "EXTRACTED",
-      "source_file": "frontend/package.json",
-      "source_location": "L3",
-      "weight": 1.0
+      "source_file": "backend/models.py",
+      "source_location": "L21",
+      "weight": 1.0,
+      "source": "backend_models",
+      "target": "backend_models_usuario",
+      "confidence_score": 1.0
     },
     {
-      "source": "frontend_package",
-      "target": "frontend_package_version",
-      "relation": "contains",
+      "relation": "inherits",
       "confidence": "EXTRACTED",
-      "source_file": "frontend/package.json",
-      "source_location": "L4",
-      "weight": 1.0
+      "source_file": "backend/models.py",
+      "source_location": "L13",
+      "weight": 1.0,
+      "source": "backend_models_rol",
+      "target": "base",
+      "confidence_score": 1.0
     },
     {
-      "source": "frontend_package",
-      "target": "frontend_package_type",
-      "relation": "contains",
+      "relation": "inherits",
       "confidence": "EXTRACTED",
-      "source_file": "frontend/package.json",
-      "source_location": "L5",
-      "weight": 1.0
+      "source_file": "backend/models.py",
+      "source_location": "L21",
+      "weight": 1.0,
+      "source": "backend_models_usuario",
+      "target": "base",
+      "confidence_score": 1.0
     },
     {
-      "source": "frontend_package",
-      "target": "frontend_package_scripts",
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/package.json",
-      "source_location": "L6",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_package_scripts",
-      "target": "frontend_package_scripts_dev",
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/package.json",
-      "source_location": "L7",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_package_scripts",
-      "target": "frontend_package_scripts_build",
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/package.json",
-      "source_location": "L8",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_package_scripts",
-      "target": "frontend_package_scripts_lint",
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/package.json",
-      "source_location": "L9",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_package_scripts",
-      "target": "frontend_package_scripts_preview",
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/package.json",
-      "source_location": "L10",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_package",
-      "target": "frontend_package_dependencies",
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/package.json",
       "source_location": "L12",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_package_dependencies",
-      "target": "frontend_package_dependencies_yudiel_react_qr_scanner",
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/package.json",
-      "source_location": "L13",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_package_dependencies_yudiel_react_qr_scanner",
-      "target": "yudiel_react_qr_scanner",
-      "relation": "imports",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/package.json",
-      "source_location": "L13",
       "weight": 1.0,
-      "context": "import"
-    },
-    {
-      "source": "frontend_package_dependencies",
-      "target": "frontend_package_dependencies_qrcode_react",
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/package.json",
-      "source_location": "L14",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_package_dependencies_qrcode_react",
-      "target": "qrcode_react",
-      "relation": "imports",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/package.json",
-      "source_location": "L14",
-      "weight": 1.0,
-      "context": "import"
-    },
-    {
-      "source": "frontend_package_dependencies",
-      "target": "frontend_package_dependencies_react",
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/package.json",
-      "source_location": "L15",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_package_dependencies_react",
-      "target": "react",
-      "relation": "imports",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/package.json",
-      "source_location": "L15",
-      "weight": 1.0,
-      "context": "import"
-    },
-    {
-      "source": "frontend_package_dependencies",
-      "target": "frontend_package_dependencies_react_dom",
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/package.json",
-      "source_location": "L16",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_package_dependencies_react_dom",
-      "target": "react_dom",
-      "relation": "imports",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/package.json",
-      "source_location": "L16",
-      "weight": 1.0,
-      "context": "import"
-    },
-    {
-      "source": "frontend_package_dependencies",
-      "target": "frontend_package_dependencies_react_router_dom",
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/package.json",
-      "source_location": "L17",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_package_dependencies_react_router_dom",
-      "target": "react_router_dom",
-      "relation": "imports",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/package.json",
-      "source_location": "L17",
-      "weight": 1.0,
-      "context": "import"
-    },
-    {
       "source": "frontend_package",
-      "target": "frontend_package_devdependencies",
+      "target": "frontend_package_dependencies",
+      "confidence_score": 1.0
+    },
+    {
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/package.json",
       "source_location": "L19",
-      "weight": 1.0
+      "weight": 1.0,
+      "source": "frontend_package",
+      "target": "frontend_package_devdependencies",
+      "confidence_score": 1.0
     },
     {
-      "source": "frontend_package_devdependencies",
-      "target": "frontend_package_devdependencies_eslint_js",
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/package.json",
-      "source_location": "L20",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_package_devdependencies_eslint_js",
-      "target": "eslint_js",
-      "relation": "imports",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/package.json",
-      "source_location": "L20",
+      "source_location": "L2",
       "weight": 1.0,
-      "context": "import"
+      "source": "frontend_package",
+      "target": "frontend_package_name",
+      "confidence_score": 1.0
     },
     {
-      "source": "frontend_package_devdependencies",
-      "target": "frontend_package_devdependencies_types_react",
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/package.json",
-      "source_location": "L21",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_package_devdependencies_types_react",
-      "target": "types_react",
-      "relation": "imports",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/package.json",
-      "source_location": "L21",
+      "source_location": "L3",
       "weight": 1.0,
-      "context": "import"
+      "source": "frontend_package",
+      "target": "frontend_package_private",
+      "confidence_score": 1.0
     },
     {
-      "source": "frontend_package_devdependencies",
-      "target": "frontend_package_devdependencies_types_react_dom",
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/package.json",
-      "source_location": "L22",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_package_devdependencies_types_react_dom",
-      "target": "types_react_dom",
-      "relation": "imports",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/package.json",
-      "source_location": "L22",
+      "source_location": "L6",
       "weight": 1.0,
-      "context": "import"
+      "source": "frontend_package",
+      "target": "frontend_package_scripts",
+      "confidence_score": 1.0
     },
     {
-      "source": "frontend_package_devdependencies",
-      "target": "frontend_package_devdependencies_vitejs_plugin_react",
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/package.json",
-      "source_location": "L23",
-      "weight": 1.0
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "frontend_package",
+      "target": "frontend_package_type",
+      "confidence_score": 1.0
     },
     {
-      "source": "frontend_package_devdependencies_vitejs_plugin_react",
-      "target": "vitejs_plugin_react",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/package.json",
+      "source_location": "L4",
+      "weight": 1.0,
+      "source": "frontend_package",
+      "target": "frontend_package_version",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/package.json",
+      "source_location": "L8",
+      "weight": 1.0,
+      "source": "frontend_package_scripts",
+      "target": "frontend_package_scripts_build",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/package.json",
+      "source_location": "L7",
+      "weight": 1.0,
+      "source": "frontend_package_scripts",
+      "target": "frontend_package_scripts_dev",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/package.json",
+      "source_location": "L9",
+      "weight": 1.0,
+      "source": "frontend_package_scripts",
+      "target": "frontend_package_scripts_lint",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/package.json",
+      "source_location": "L10",
+      "weight": 1.0,
+      "source": "frontend_package_scripts",
+      "target": "frontend_package_scripts_preview",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/package.json",
+      "source_location": "L14",
+      "weight": 1.0,
+      "source": "frontend_package_dependencies",
+      "target": "frontend_package_dependencies_qrcode_react",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/package.json",
+      "source_location": "L15",
+      "weight": 1.0,
+      "source": "frontend_package_dependencies",
+      "target": "frontend_package_dependencies_react",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/package.json",
+      "source_location": "L16",
+      "weight": 1.0,
+      "source": "frontend_package_dependencies",
+      "target": "frontend_package_dependencies_react_dom",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/package.json",
+      "source_location": "L17",
+      "weight": 1.0,
+      "source": "frontend_package_dependencies",
+      "target": "frontend_package_dependencies_react_router_dom",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/package.json",
+      "source_location": "L13",
+      "weight": 1.0,
+      "source": "frontend_package_dependencies",
+      "target": "frontend_package_dependencies_yudiel_react_qr_scanner",
+      "confidence_score": 1.0
+    },
+    {
       "relation": "imports",
       "confidence": "EXTRACTED",
       "source_file": "frontend/package.json",
-      "source_location": "L23",
+      "source_location": "L15",
       "weight": 1.0,
-      "context": "import"
+      "context": "import",
+      "source": "frontend_package_dependencies_react",
+      "target": "react",
+      "confidence_score": 1.0
     },
     {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/package.json",
+      "source_location": "L24",
+      "weight": 1.0,
       "source": "frontend_package_devdependencies",
       "target": "frontend_package_devdependencies_autoprefixer",
+      "confidence_score": 1.0
+    },
+    {
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/package.json",
-      "source_location": "L24",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_package_devdependencies_autoprefixer",
-      "target": "autoprefixer",
-      "relation": "imports",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/package.json",
-      "source_location": "L24",
+      "source_location": "L25",
       "weight": 1.0,
-      "context": "import"
-    },
-    {
       "source": "frontend_package_devdependencies",
       "target": "frontend_package_devdependencies_eslint",
+      "confidence_score": 1.0
+    },
+    {
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/package.json",
-      "source_location": "L25",
-      "weight": 1.0
+      "source_location": "L20",
+      "weight": 1.0,
+      "source": "frontend_package_devdependencies",
+      "target": "frontend_package_devdependencies_eslint_js",
+      "confidence_score": 1.0
     },
     {
-      "source": "frontend_package_devdependencies_eslint",
-      "target": "eslint",
-      "relation": "imports",
+      "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/package.json",
-      "source_location": "L25",
+      "source_location": "L26",
       "weight": 1.0,
-      "context": "import"
-    },
-    {
       "source": "frontend_package_devdependencies",
       "target": "frontend_package_devdependencies_eslint_plugin_react",
+      "confidence_score": 1.0
+    },
+    {
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/package.json",
-      "source_location": "L26",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_package_devdependencies_eslint_plugin_react",
-      "target": "eslint_plugin_react",
-      "relation": "imports",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/package.json",
-      "source_location": "L26",
+      "source_location": "L27",
       "weight": 1.0,
-      "context": "import"
-    },
-    {
       "source": "frontend_package_devdependencies",
       "target": "frontend_package_devdependencies_eslint_plugin_react_hooks",
+      "confidence_score": 1.0
+    },
+    {
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/package.json",
-      "source_location": "L27",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_package_devdependencies_eslint_plugin_react_hooks",
-      "target": "eslint_plugin_react_hooks",
-      "relation": "imports",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/package.json",
-      "source_location": "L27",
+      "source_location": "L28",
       "weight": 1.0,
-      "context": "import"
-    },
-    {
       "source": "frontend_package_devdependencies",
       "target": "frontend_package_devdependencies_eslint_plugin_react_refresh",
+      "confidence_score": 1.0
+    },
+    {
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/package.json",
-      "source_location": "L28",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_package_devdependencies_eslint_plugin_react_refresh",
-      "target": "eslint_plugin_react_refresh",
-      "relation": "imports",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/package.json",
-      "source_location": "L28",
+      "source_location": "L29",
       "weight": 1.0,
-      "context": "import"
-    },
-    {
       "source": "frontend_package_devdependencies",
       "target": "frontend_package_devdependencies_globals",
+      "confidence_score": 1.0
+    },
+    {
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/package.json",
-      "source_location": "L29",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_package_devdependencies_globals",
-      "target": "globals",
-      "relation": "imports",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/package.json",
-      "source_location": "L29",
+      "source_location": "L30",
       "weight": 1.0,
-      "context": "import"
-    },
-    {
       "source": "frontend_package_devdependencies",
       "target": "frontend_package_devdependencies_postcss",
+      "confidence_score": 1.0
+    },
+    {
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/package.json",
-      "source_location": "L30",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_package_devdependencies_postcss",
-      "target": "postcss",
-      "relation": "imports",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/package.json",
-      "source_location": "L30",
+      "source_location": "L31",
       "weight": 1.0,
-      "context": "import"
-    },
-    {
       "source": "frontend_package_devdependencies",
       "target": "frontend_package_devdependencies_tailwindcss",
+      "confidence_score": 1.0
+    },
+    {
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/package.json",
-      "source_location": "L31",
-      "weight": 1.0
+      "source_location": "L21",
+      "weight": 1.0,
+      "source": "frontend_package_devdependencies",
+      "target": "frontend_package_devdependencies_types_react",
+      "confidence_score": 1.0
     },
     {
-      "source": "frontend_package_devdependencies_tailwindcss",
-      "target": "tailwindcss",
-      "relation": "imports",
+      "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/package.json",
-      "source_location": "L31",
+      "source_location": "L22",
       "weight": 1.0,
-      "context": "import"
+      "source": "frontend_package_devdependencies",
+      "target": "frontend_package_devdependencies_types_react_dom",
+      "confidence_score": 1.0
     },
     {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/package.json",
+      "source_location": "L32",
+      "weight": 1.0,
       "source": "frontend_package_devdependencies",
       "target": "frontend_package_devdependencies_vite",
+      "confidence_score": 1.0
+    },
+    {
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/package.json",
-      "source_location": "L32",
-      "weight": 1.0
+      "source_location": "L23",
+      "weight": 1.0,
+      "source": "frontend_package_devdependencies",
+      "target": "frontend_package_devdependencies_vitejs_plugin_react",
+      "confidence_score": 1.0
     },
     {
-      "source": "frontend_package_devdependencies_vite",
-      "target": "vite",
       "relation": "imports",
       "confidence": "EXTRACTED",
       "source_file": "frontend/package.json",
       "source_location": "L32",
       "weight": 1.0,
-      "context": "import"
+      "context": "import",
+      "source": "frontend_package_devdependencies_vite",
+      "target": "vite",
+      "confidence_score": 1.0
     },
     {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/App.jsx",
+      "source_location": "L21",
+      "weight": 1.0,
       "source": "frontend_src_app",
-      "target": "react_router_dom",
+      "target": "frontend_src_app_app",
+      "confidence_score": 1.0
+    },
+    {
       "relation": "imports_from",
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/App.jsx",
-      "source_location": "L1",
-      "weight": 1.0
-    },
-    {
+      "source_location": "L2",
+      "weight": 1.0,
       "source": "frontend_src_app",
       "target": "frontend_src_context_authcontext",
-      "relation": "imports_from",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/App.jsx",
       "source_location": "L2",
-      "weight": 1.0
-    },
-    {
+      "weight": 1.0,
       "source": "frontend_src_app",
       "target": "frontend_src_context_authcontext_authprovider",
-      "relation": "imports",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/App.jsx",
-      "source_location": "L2",
-      "weight": 1.0
+      "confidence_score": 1.0
     },
     {
-      "source": "frontend_src_app",
-      "target": "frontend_src_context_cartcontext",
       "relation": "imports_from",
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/App.jsx",
       "source_location": "L3",
-      "weight": 1.0
+      "weight": 1.0,
+      "source": "frontend_src_app",
+      "target": "frontend_src_context_cartcontext",
+      "confidence_score": 1.0
     },
     {
-      "source": "frontend_src_app",
-      "target": "frontend_src_context_cartcontext_cartprovider",
       "relation": "imports",
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/App.jsx",
       "source_location": "L3",
-      "weight": 1.0
+      "weight": 1.0,
+      "source": "frontend_src_app",
+      "target": "frontend_src_context_cartcontext_cartprovider",
+      "confidence_score": 1.0
     },
     {
-      "source": "frontend_src_app",
-      "target": "frontend_src_layouts_mainlayout",
       "relation": "imports_from",
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/App.jsx",
       "source_location": "L4",
-      "weight": 1.0
+      "weight": 1.0,
+      "source": "frontend_src_app",
+      "target": "frontend_src_layouts_mainlayout",
+      "confidence_score": 1.0
     },
     {
-      "source": "frontend_src_app",
-      "target": "frontend_src_pages_landing",
-      "relation": "imports_from",
+      "relation": "imports",
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/App.jsx",
-      "source_location": "L5",
-      "weight": 1.0
+      "source_location": "L4",
+      "weight": 1.0,
+      "source": "frontend_src_app",
+      "target": "frontend_src_layouts_mainlayout_mainlayout",
+      "confidence_score": 1.0
     },
     {
-      "source": "frontend_src_app",
-      "target": "frontend_src_pages_registro",
-      "relation": "imports_from",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/App.jsx",
-      "source_location": "L6",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_src_app",
-      "target": "frontend_src_pages_recuperarpassword",
-      "relation": "imports_from",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/App.jsx",
-      "source_location": "L7",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_src_app",
-      "target": "frontend_src_pages_login",
-      "relation": "imports_from",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/App.jsx",
-      "source_location": "L8",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_src_app",
-      "target": "frontend_src_pages_socioinicio",
-      "relation": "imports_from",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/App.jsx",
-      "source_location": "L9",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_src_app",
-      "target": "frontend_src_pages_sociocarrito",
-      "relation": "imports_from",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/App.jsx",
-      "source_location": "L10",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_src_app",
-      "target": "frontend_src_pages_sociocuotas",
-      "relation": "imports_from",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/App.jsx",
-      "source_location": "L11",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_src_app",
-      "target": "frontend_src_pages_socioshopping",
-      "relation": "imports_from",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/App.jsx",
-      "source_location": "L12",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_src_app",
-      "target": "frontend_src_pages_socioalquileres",
-      "relation": "imports_from",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/App.jsx",
-      "source_location": "L13",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_src_app",
-      "target": "frontend_src_pages_socioperfil",
-      "relation": "imports_from",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/App.jsx",
-      "source_location": "L14",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_src_app",
-      "target": "frontend_src_pages_admininicio",
       "relation": "imports_from",
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/App.jsx",
       "source_location": "L15",
-      "weight": 1.0
+      "weight": 1.0,
+      "source": "frontend_src_app",
+      "target": "frontend_src_pages_admininicio",
+      "confidence_score": 1.0
     },
     {
-      "source": "frontend_src_app",
-      "target": "frontend_src_pages_adminsolicitudes",
-      "relation": "imports_from",
+      "relation": "imports",
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/App.jsx",
-      "source_location": "L16",
-      "weight": 1.0
+      "source_location": "L15",
+      "weight": 1.0,
+      "source": "frontend_src_app",
+      "target": "frontend_src_pages_admininicio_admininicio",
+      "confidence_score": 1.0
     },
     {
-      "source": "frontend_src_app",
-      "target": "frontend_src_pages_adminpagos",
       "relation": "imports_from",
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/App.jsx",
       "source_location": "L17",
-      "weight": 1.0
+      "weight": 1.0,
+      "source": "frontend_src_app",
+      "target": "frontend_src_pages_adminpagos",
+      "confidence_score": 1.0
     },
     {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/App.jsx",
+      "source_location": "L17",
+      "weight": 1.0,
       "source": "frontend_src_app",
-      "target": "frontend_src_pages_adminqrscanner",
+      "target": "frontend_src_pages_adminpagos_adminpagos",
+      "confidence_score": 1.0
+    },
+    {
       "relation": "imports_from",
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/App.jsx",
       "source_location": "L18",
-      "weight": 1.0
+      "weight": 1.0,
+      "source": "frontend_src_app",
+      "target": "frontend_src_pages_adminqrscanner",
+      "confidence_score": 1.0
     },
     {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/App.jsx",
+      "source_location": "L18",
+      "weight": 1.0,
       "source": "frontend_src_app",
-      "target": "frontend_src_pages_jugadorcalendario",
+      "target": "frontend_src_pages_adminqrscanner_adminqrscanner",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/App.jsx",
+      "source_location": "L16",
+      "weight": 1.0,
+      "source": "frontend_src_app",
+      "target": "frontend_src_pages_adminsolicitudes",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/App.jsx",
+      "source_location": "L16",
+      "weight": 1.0,
+      "source": "frontend_src_app",
+      "target": "frontend_src_pages_adminsolicitudes_adminsolicitudes",
+      "confidence_score": 1.0
+    },
+    {
       "relation": "imports_from",
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/App.jsx",
       "source_location": "L19",
-      "weight": 1.0
+      "weight": 1.0,
+      "source": "frontend_src_app",
+      "target": "frontend_src_pages_jugadorcalendario",
+      "confidence_score": 1.0
     },
     {
-      "source": "frontend_src_app",
-      "target": "frontend_src_app_app",
-      "relation": "contains",
+      "relation": "imports",
+      "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/App.jsx",
-      "source_location": "L21",
-      "weight": 1.0
+      "source_location": "L19",
+      "weight": 1.0,
+      "source": "frontend_src_app",
+      "target": "frontend_src_pages_jugadorcalendario_jugadorcalendario",
+      "confidence_score": 1.0
     },
     {
-      "source": "frontend_src_components_landing_calendario",
-      "target": "frontend_src_components_landing_calendario_calendario",
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/App.jsx",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "frontend_src_app",
+      "target": "frontend_src_pages_landing",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/App.jsx",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "frontend_src_app",
+      "target": "frontend_src_pages_landing_landing",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/App.jsx",
+      "source_location": "L8",
+      "weight": 1.0,
+      "source": "frontend_src_app",
+      "target": "frontend_src_pages_login",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/App.jsx",
+      "source_location": "L8",
+      "weight": 1.0,
+      "source": "frontend_src_app",
+      "target": "frontend_src_pages_login_login",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/App.jsx",
+      "source_location": "L7",
+      "weight": 1.0,
+      "source": "frontend_src_app",
+      "target": "frontend_src_pages_recuperarpassword",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/App.jsx",
+      "source_location": "L7",
+      "weight": 1.0,
+      "source": "frontend_src_app",
+      "target": "frontend_src_pages_recuperarpassword_recuperarpassword",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/App.jsx",
+      "source_location": "L6",
+      "weight": 1.0,
+      "source": "frontend_src_app",
+      "target": "frontend_src_pages_registro",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/App.jsx",
+      "source_location": "L6",
+      "weight": 1.0,
+      "source": "frontend_src_app",
+      "target": "frontend_src_pages_registro_registro",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/App.jsx",
+      "source_location": "L13",
+      "weight": 1.0,
+      "source": "frontend_src_app",
+      "target": "frontend_src_pages_socioalquileres",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/App.jsx",
+      "source_location": "L13",
+      "weight": 1.0,
+      "source": "frontend_src_app",
+      "target": "frontend_src_pages_socioalquileres_socioalquileres",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/App.jsx",
+      "source_location": "L10",
+      "weight": 1.0,
+      "source": "frontend_src_app",
+      "target": "frontend_src_pages_sociocarrito",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/App.jsx",
+      "source_location": "L10",
+      "weight": 1.0,
+      "source": "frontend_src_app",
+      "target": "frontend_src_pages_sociocarrito_sociocarrito",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/App.jsx",
+      "source_location": "L11",
+      "weight": 1.0,
+      "source": "frontend_src_app",
+      "target": "frontend_src_pages_sociocuotas",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/App.jsx",
+      "source_location": "L11",
+      "weight": 1.0,
+      "source": "frontend_src_app",
+      "target": "frontend_src_pages_sociocuotas_sociocuotas",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/App.jsx",
+      "source_location": "L9",
+      "weight": 1.0,
+      "source": "frontend_src_app",
+      "target": "frontend_src_pages_socioinicio",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/App.jsx",
+      "source_location": "L9",
+      "weight": 1.0,
+      "source": "frontend_src_app",
+      "target": "frontend_src_pages_socioinicio_socioinicio",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/App.jsx",
+      "source_location": "L14",
+      "weight": 1.0,
+      "source": "frontend_src_app",
+      "target": "frontend_src_pages_socioperfil",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/App.jsx",
+      "source_location": "L14",
+      "weight": 1.0,
+      "source": "frontend_src_app",
+      "target": "frontend_src_pages_socioperfil_socioperfil",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/App.jsx",
+      "source_location": "L12",
+      "weight": 1.0,
+      "source": "frontend_src_app",
+      "target": "frontend_src_pages_socioshopping",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/App.jsx",
+      "source_location": "L12",
+      "weight": 1.0,
+      "source": "frontend_src_app",
+      "target": "frontend_src_pages_socioshopping_socioshopping",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/main.jsx",
+      "source_location": "L4",
+      "weight": 1.0,
+      "source": "frontend_src_main",
+      "target": "frontend_src_app",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/main.jsx",
+      "source_location": "L4",
+      "weight": 1.0,
+      "source": "frontend_src_main",
+      "target": "frontend_src_app_app",
+      "confidence_score": 1.0
+    },
+    {
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/landing/Calendario.jsx",
       "source_location": "L1",
-      "weight": 1.0
+      "weight": 1.0,
+      "source": "frontend_src_components_landing_calendario",
+      "target": "frontend_src_components_landing_calendario_calendario",
+      "confidence_score": 1.0
     },
     {
-      "source": "frontend_src_components_landing_footer",
-      "target": "home_merlina_escritorio_car_frontend_src_assets_camoti_azul_png",
       "relation": "imports_from",
       "context": "import",
       "confidence": "EXTRACTED",
-      "source_file": "frontend/src/components/landing/Footer.jsx",
-      "source_location": "L1",
-      "weight": 1.0
+      "source_file": "frontend/src/pages/Landing.jsx",
+      "source_location": "L4",
+      "weight": 1.0,
+      "source": "frontend_src_pages_landing",
+      "target": "frontend_src_components_landing_calendario",
+      "confidence_score": 1.0
     },
     {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/pages/Landing.jsx",
+      "source_location": "L4",
+      "weight": 1.0,
+      "source": "frontend_src_pages_landing",
+      "target": "frontend_src_components_landing_calendario_calendario",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/components/landing/Footer.jsx",
+      "source_location": "L3",
+      "weight": 1.0,
       "source": "frontend_src_components_landing_footer",
       "target": "frontend_src_components_landing_footer_footer",
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/components/landing/Footer.jsx",
-      "source_location": "L3",
-      "weight": 1.0
+      "confidence_score": 1.0
     },
     {
-      "source": "frontend_src_components_landing_galeria",
-      "target": "home_merlina_escritorio_car_frontend_src_assets_jugadores_png",
       "relation": "imports_from",
       "context": "import",
       "confidence": "EXTRACTED",
-      "source_file": "frontend/src/components/landing/Galeria.jsx",
-      "source_location": "L1",
-      "weight": 1.0
+      "source_file": "frontend/src/pages/Landing.jsx",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "frontend_src_pages_landing",
+      "target": "frontend_src_components_landing_footer",
+      "confidence_score": 1.0
     },
     {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/pages/Landing.jsx",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "frontend_src_pages_landing",
+      "target": "frontend_src_components_landing_footer_footer",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/components/landing/Galeria.jsx",
+      "source_location": "L3",
+      "weight": 1.0,
       "source": "frontend_src_components_landing_galeria",
       "target": "frontend_src_components_landing_galeria_galeria",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/pages/Landing.jsx",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "frontend_src_pages_landing",
+      "target": "frontend_src_components_landing_galeria",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/pages/Landing.jsx",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "frontend_src_pages_landing",
+      "target": "frontend_src_components_landing_galeria_galeria",
+      "confidence_score": 1.0
+    },
+    {
       "relation": "contains",
       "confidence": "EXTRACTED",
-      "source_file": "frontend/src/components/landing/Galeria.jsx",
-      "source_location": "L3",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_src_components_landing_hero",
-      "target": "react_router_dom",
-      "relation": "imports_from",
-      "context": "import",
-      "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/landing/Hero.jsx",
-      "source_location": "L1",
-      "weight": 1.0
+      "source_location": "L6",
+      "weight": 1.0,
+      "source": "frontend_src_components_landing_hero",
+      "target": "frontend_src_components_landing_hero_hero",
+      "confidence_score": 1.0
     },
     {
-      "source": "frontend_src_components_landing_hero",
-      "target": "home_merlina_escritorio_car_frontend_src_assets_hero_bg_png",
-      "relation": "imports_from",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/components/landing/Hero.jsx",
-      "source_location": "L2",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_src_components_landing_hero",
-      "target": "home_merlina_escritorio_car_frontend_src_assets_escudo_car_png",
-      "relation": "imports_from",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/components/landing/Hero.jsx",
-      "source_location": "L3",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_src_components_landing_hero",
-      "target": "frontend_src_context_authcontext",
       "relation": "imports_from",
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/landing/Hero.jsx",
       "source_location": "L4",
-      "weight": 1.0
+      "weight": 1.0,
+      "source": "frontend_src_components_landing_hero",
+      "target": "frontend_src_context_authcontext",
+      "confidence_score": 1.0
     },
     {
-      "source": "frontend_src_components_landing_hero",
-      "target": "frontend_src_context_authcontext_useauth",
       "relation": "imports",
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/landing/Hero.jsx",
       "source_location": "L4",
-      "weight": 1.0
-    },
-    {
+      "weight": 1.0,
       "source": "frontend_src_components_landing_hero",
-      "target": "frontend_src_components_landing_hero_hero",
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/components/landing/Hero.jsx",
-      "source_location": "L6",
-      "weight": 1.0
+      "target": "frontend_src_context_authcontext_useauth",
+      "confidence_score": 1.0
     },
     {
-      "source": "frontend_src_components_landing_historia",
-      "target": "home_merlina_escritorio_car_frontend_src_assets_jugadores_png",
       "relation": "imports_from",
       "context": "import",
       "confidence": "EXTRACTED",
-      "source_file": "frontend/src/components/landing/Historia.jsx",
+      "source_file": "frontend/src/pages/Landing.jsx",
       "source_location": "L1",
-      "weight": 1.0
+      "weight": 1.0,
+      "source": "frontend_src_pages_landing",
+      "target": "frontend_src_components_landing_hero",
+      "confidence_score": 1.0
     },
     {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "frontend/src/components/landing/Hero.jsx",
+      "source_location": "L7",
+      "weight": 1.0,
+      "source": "frontend_src_components_landing_hero_hero",
+      "target": "frontend_src_context_authcontext_useauth"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/pages/Landing.jsx",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "frontend_src_pages_landing",
+      "target": "frontend_src_components_landing_hero_hero",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/components/landing/Historia.jsx",
+      "source_location": "L3",
+      "weight": 1.0,
       "source": "frontend_src_components_landing_historia",
       "target": "frontend_src_components_landing_historia_historia",
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/components/landing/Historia.jsx",
-      "source_location": "L3",
-      "weight": 1.0
+      "confidence_score": 1.0
     },
     {
-      "source": "frontend_src_context_authcontext",
-      "target": "react",
       "relation": "imports_from",
       "context": "import",
       "confidence": "EXTRACTED",
-      "source_file": "frontend/src/context/AuthContext.jsx",
-      "source_location": "L1",
-      "weight": 1.0
+      "source_file": "frontend/src/pages/Landing.jsx",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "frontend_src_pages_landing",
+      "target": "frontend_src_components_landing_historia",
+      "confidence_score": 1.0
     },
     {
-      "source": "frontend_src_context_authcontext",
-      "target": "frontend_src_context_authcontext_authcontext",
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/pages/Landing.jsx",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "frontend_src_pages_landing",
+      "target": "frontend_src_components_landing_historia_historia",
+      "confidence_score": 1.0
+    },
+    {
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/context/AuthContext.jsx",
       "source_location": "L3",
-      "weight": 1.0
+      "weight": 1.0,
+      "source": "frontend_src_context_authcontext",
+      "target": "frontend_src_context_authcontext_authcontext",
+      "confidence_score": 1.0
     },
     {
-      "source": "frontend_src_context_authcontext",
-      "target": "frontend_src_context_authcontext_authprovider",
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/context/AuthContext.jsx",
       "source_location": "L5",
-      "weight": 1.0
+      "weight": 1.0,
+      "source": "frontend_src_context_authcontext",
+      "target": "frontend_src_context_authcontext_authprovider",
+      "confidence_score": 1.0
     },
     {
-      "source": "frontend_src_context_authcontext",
-      "target": "frontend_src_context_authcontext_useauth",
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/context/AuthContext.jsx",
       "source_location": "L44",
-      "weight": 1.0
+      "weight": 1.0,
+      "source": "frontend_src_context_authcontext",
+      "target": "frontend_src_context_authcontext_useauth",
+      "confidence_score": 1.0
     },
     {
-      "source": "frontend_src_context_cartcontext",
-      "target": "react",
       "relation": "imports_from",
       "context": "import",
       "confidence": "EXTRACTED",
-      "source_file": "frontend/src/context/CartContext.jsx",
+      "source_file": "frontend/src/context/AuthContext.jsx",
       "source_location": "L1",
-      "weight": 1.0
+      "weight": 1.0,
+      "source": "frontend_src_context_authcontext",
+      "target": "react",
+      "confidence_score": 1.0
     },
     {
-      "source": "frontend_src_context_cartcontext",
-      "target": "frontend_src_context_cartcontext_cartcontext",
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/layouts/MainLayout.jsx",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "frontend_src_layouts_mainlayout",
+      "target": "frontend_src_context_authcontext",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/pages/AdminInicio.jsx",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "frontend_src_pages_admininicio",
+      "target": "frontend_src_context_authcontext",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/pages/Login.jsx",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "frontend_src_pages_login",
+      "target": "frontend_src_context_authcontext",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/pages/SocioCuotas.jsx",
+      "source_location": "L4",
+      "weight": 1.0,
+      "source": "frontend_src_pages_sociocuotas",
+      "target": "frontend_src_context_authcontext",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/pages/SocioInicio.jsx",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "frontend_src_pages_socioinicio",
+      "target": "frontend_src_context_authcontext",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/layouts/MainLayout.jsx",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "frontend_src_layouts_mainlayout",
+      "target": "frontend_src_context_authcontext_useauth",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "frontend/src/layouts/MainLayout.jsx",
+      "source_location": "L12",
+      "weight": 1.0,
+      "source": "frontend_src_layouts_mainlayout_mainlayout",
+      "target": "frontend_src_context_authcontext_useauth"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/pages/AdminInicio.jsx",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "frontend_src_pages_admininicio",
+      "target": "frontend_src_context_authcontext_useauth",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "frontend/src/pages/AdminInicio.jsx",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "frontend_src_pages_admininicio_admininicio",
+      "target": "frontend_src_context_authcontext_useauth"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/pages/Login.jsx",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "frontend_src_pages_login",
+      "target": "frontend_src_context_authcontext_useauth",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "frontend/src/pages/Login.jsx",
+      "source_location": "L11",
+      "weight": 1.0,
+      "source": "frontend_src_pages_login_login",
+      "target": "frontend_src_context_authcontext_useauth"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/pages/SocioCuotas.jsx",
+      "source_location": "L4",
+      "weight": 1.0,
+      "source": "frontend_src_pages_sociocuotas",
+      "target": "frontend_src_context_authcontext_useauth",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "frontend/src/pages/SocioCuotas.jsx",
+      "source_location": "L11",
+      "weight": 1.0,
+      "source": "frontend_src_pages_sociocuotas_sociocuotas",
+      "target": "frontend_src_context_authcontext_useauth"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/pages/SocioInicio.jsx",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "frontend_src_pages_socioinicio",
+      "target": "frontend_src_context_authcontext_useauth",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "frontend/src/pages/SocioInicio.jsx",
+      "source_location": "L8",
+      "weight": 1.0,
+      "source": "frontend_src_pages_socioinicio_socioinicio",
+      "target": "frontend_src_context_authcontext_useauth"
+    },
+    {
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/context/CartContext.jsx",
       "source_location": "L3",
-      "weight": 1.0
+      "weight": 1.0,
+      "source": "frontend_src_context_cartcontext",
+      "target": "frontend_src_context_cartcontext_cartcontext",
+      "confidence_score": 1.0
     },
     {
-      "source": "frontend_src_context_cartcontext",
-      "target": "frontend_src_context_cartcontext_cartprovider",
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/context/CartContext.jsx",
       "source_location": "L5",
-      "weight": 1.0
+      "weight": 1.0,
+      "source": "frontend_src_context_cartcontext",
+      "target": "frontend_src_context_cartcontext_cartprovider",
+      "confidence_score": 1.0
     },
     {
-      "source": "frontend_src_context_cartcontext",
-      "target": "frontend_src_context_cartcontext_usecart",
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/context/CartContext.jsx",
       "source_location": "L54",
-      "weight": 1.0
+      "weight": 1.0,
+      "source": "frontend_src_context_cartcontext",
+      "target": "frontend_src_context_cartcontext_usecart",
+      "confidence_score": 1.0
     },
     {
-      "source": "frontend_src_layouts_mainlayout",
-      "target": "react",
       "relation": "imports_from",
       "context": "import",
       "confidence": "EXTRACTED",
-      "source_file": "frontend/src/layouts/MainLayout.jsx",
+      "source_file": "frontend/src/context/CartContext.jsx",
       "source_location": "L1",
-      "weight": 1.0
+      "weight": 1.0,
+      "source": "frontend_src_context_cartcontext",
+      "target": "react",
+      "confidence_score": 1.0
     },
     {
-      "source": "frontend_src_layouts_mainlayout",
-      "target": "react_router_dom",
       "relation": "imports_from",
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/layouts/MainLayout.jsx",
-      "source_location": "L2",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_src_layouts_mainlayout",
-      "target": "frontend_src_context_authcontext",
-      "relation": "imports_from",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/layouts/MainLayout.jsx",
-      "source_location": "L3",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_src_layouts_mainlayout",
-      "target": "frontend_src_context_authcontext_useauth",
-      "relation": "imports",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/layouts/MainLayout.jsx",
-      "source_location": "L3",
-      "weight": 1.0
-    },
-    {
+      "source_location": "L4",
+      "weight": 1.0,
       "source": "frontend_src_layouts_mainlayout",
       "target": "frontend_src_context_cartcontext",
+      "confidence_score": 1.0
+    },
+    {
       "relation": "imports_from",
       "context": "import",
       "confidence": "EXTRACTED",
-      "source_file": "frontend/src/layouts/MainLayout.jsx",
-      "source_location": "L4",
-      "weight": 1.0
+      "source_file": "frontend/src/pages/SocioAlquileres.jsx",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "frontend_src_pages_socioalquileres",
+      "target": "frontend_src_context_cartcontext",
+      "confidence_score": 1.0
     },
     {
-      "source": "frontend_src_layouts_mainlayout",
-      "target": "frontend_src_context_cartcontext_usecart",
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/pages/SocioCarrito.jsx",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "frontend_src_pages_sociocarrito",
+      "target": "frontend_src_context_cartcontext",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/pages/SocioCuotas.jsx",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "frontend_src_pages_sociocuotas",
+      "target": "frontend_src_context_cartcontext",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/pages/SocioShopping.jsx",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "frontend_src_pages_socioshopping",
+      "target": "frontend_src_context_cartcontext",
+      "confidence_score": 1.0
+    },
+    {
       "relation": "imports",
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/layouts/MainLayout.jsx",
       "source_location": "L4",
-      "weight": 1.0
+      "weight": 1.0,
+      "source": "frontend_src_layouts_mainlayout",
+      "target": "frontend_src_context_cartcontext_usecart",
+      "confidence_score": 1.0
     },
     {
-      "source": "frontend_src_layouts_mainlayout",
-      "target": "home_merlina_escritorio_car_frontend_src_assets_escudo_car_png",
-      "relation": "imports_from",
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "frontend/src/layouts/MainLayout.jsx",
+      "source_location": "L14",
+      "weight": 1.0,
+      "source": "frontend_src_layouts_mainlayout_mainlayout",
+      "target": "frontend_src_context_cartcontext_usecart"
+    },
+    {
+      "relation": "imports",
       "context": "import",
       "confidence": "EXTRACTED",
-      "source_file": "frontend/src/layouts/MainLayout.jsx",
-      "source_location": "L7",
-      "weight": 1.0
+      "source_file": "frontend/src/pages/SocioAlquileres.jsx",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "frontend_src_pages_socioalquileres",
+      "target": "frontend_src_context_cartcontext_usecart",
+      "confidence_score": 1.0
     },
     {
-      "source": "frontend_src_layouts_mainlayout",
-      "target": "frontend_src_layouts_mainlayout_mainlayout",
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "frontend/src/pages/SocioAlquileres.jsx",
+      "source_location": "L6",
+      "weight": 1.0,
+      "source": "frontend_src_pages_socioalquileres_socioalquileres",
+      "target": "frontend_src_context_cartcontext_usecart"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/pages/SocioCarrito.jsx",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "frontend_src_pages_sociocarrito",
+      "target": "frontend_src_context_cartcontext_usecart",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "frontend/src/pages/SocioCarrito.jsx",
+      "source_location": "L9",
+      "weight": 1.0,
+      "source": "frontend_src_pages_sociocarrito_sociocarrito",
+      "target": "frontend_src_context_cartcontext_usecart"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/pages/SocioCuotas.jsx",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "frontend_src_pages_sociocuotas",
+      "target": "frontend_src_context_cartcontext_usecart",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "frontend/src/pages/SocioCuotas.jsx",
+      "source_location": "L10",
+      "weight": 1.0,
+      "source": "frontend_src_pages_sociocuotas_sociocuotas",
+      "target": "frontend_src_context_cartcontext_usecart"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/pages/SocioShopping.jsx",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "frontend_src_pages_socioshopping",
+      "target": "frontend_src_context_cartcontext_usecart",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "frontend/src/pages/SocioShopping.jsx",
+      "source_location": "L7",
+      "weight": 1.0,
+      "source": "frontend_src_pages_socioshopping_socioshopping",
+      "target": "frontend_src_context_cartcontext_usecart"
+    },
+    {
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/layouts/MainLayout.jsx",
       "source_location": "L9",
-      "weight": 1.0
+      "weight": 1.0,
+      "source": "frontend_src_layouts_mainlayout",
+      "target": "frontend_src_layouts_mainlayout_mainlayout",
+      "confidence_score": 1.0
     },
     {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/layouts/MainLayout.jsx",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "frontend_src_layouts_mainlayout",
+      "target": "react",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "frontend/index.html",
+      "source": "frontend_index",
+      "target": "frontend_src_main"
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/main.jsx",
+      "source_location": "L1",
+      "weight": 1.0,
       "source": "frontend_src_main",
       "target": "react",
-      "relation": "imports_from",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/main.jsx",
-      "source_location": "L1",
-      "weight": 1.0
+      "confidence_score": 1.0
     },
     {
-      "source": "frontend_src_main",
-      "target": "client",
-      "relation": "imports_from",
-      "context": "import",
+      "relation": "contains",
       "confidence": "EXTRACTED",
-      "source_file": "frontend/src/main.jsx",
-      "source_location": "L2",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_src_main",
-      "target": "home_merlina_escritorio_car_frontend_src_index_css",
-      "relation": "imports_from",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/main.jsx",
-      "source_location": "L3",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_src_main",
-      "target": "frontend_src_app",
-      "relation": "imports_from",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/main.jsx",
+      "source_file": "frontend/src/pages/AdminInicio.jsx",
       "source_location": "L4",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_src_pages_admininicio",
-      "target": "frontend_src_context_authcontext",
-      "relation": "imports_from",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/pages/AdminInicio.jsx",
-      "source_location": "L1",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_src_pages_admininicio",
-      "target": "frontend_src_context_authcontext_useauth",
-      "relation": "imports",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/pages/AdminInicio.jsx",
-      "source_location": "L1",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_src_pages_admininicio",
-      "target": "react_router_dom",
-      "relation": "imports_from",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/pages/AdminInicio.jsx",
-      "source_location": "L2",
-      "weight": 1.0
-    },
-    {
+      "weight": 1.0,
       "source": "frontend_src_pages_admininicio",
       "target": "frontend_src_pages_admininicio_admininicio",
+      "confidence_score": 1.0
+    },
+    {
       "relation": "contains",
       "confidence": "EXTRACTED",
-      "source_file": "frontend/src/pages/AdminInicio.jsx",
-      "source_location": "L4",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_src_pages_adminpagos",
-      "target": "react",
-      "relation": "imports_from",
-      "context": "import",
-      "confidence": "EXTRACTED",
       "source_file": "frontend/src/pages/AdminPagos.jsx",
-      "source_location": "L1",
-      "weight": 1.0
-    },
-    {
+      "source_location": "L3",
+      "weight": 1.0,
       "source": "frontend_src_pages_adminpagos",
       "target": "frontend_src_pages_adminpagos_adminpagos",
-      "relation": "contains",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/pages/AdminPagos.jsx",
-      "source_location": "L3",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_src_pages_adminqrscanner",
-      "target": "react",
-      "relation": "imports_from",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/pages/AdminQRScanner.jsx",
       "source_location": "L1",
-      "weight": 1.0
+      "weight": 1.0,
+      "source": "frontend_src_pages_adminpagos",
+      "target": "react",
+      "confidence_score": 1.0
     },
     {
-      "source": "frontend_src_pages_adminqrscanner",
-      "target": "react_qr_scanner",
-      "relation": "imports_from",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/pages/AdminQRScanner.jsx",
-      "source_location": "L2",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_src_pages_adminqrscanner",
-      "target": "react_router_dom",
-      "relation": "imports_from",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/pages/AdminQRScanner.jsx",
-      "source_location": "L3",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_src_pages_adminqrscanner",
-      "target": "frontend_src_pages_adminqrscanner_adminqrscanner",
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/pages/AdminQRScanner.jsx",
       "source_location": "L5",
-      "weight": 1.0
+      "weight": 1.0,
+      "source": "frontend_src_pages_adminqrscanner",
+      "target": "frontend_src_pages_adminqrscanner_adminqrscanner",
+      "confidence_score": 1.0
     },
     {
-      "source": "frontend_src_pages_adminsolicitudes",
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/pages/AdminQRScanner.jsx",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "frontend_src_pages_adminqrscanner",
       "target": "react",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/pages/AdminSolicitudes.jsx",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "frontend_src_pages_adminsolicitudes",
+      "target": "frontend_src_pages_adminsolicitudes_adminsolicitudes",
+      "confidence_score": 1.0
+    },
+    {
       "relation": "imports_from",
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/pages/AdminSolicitudes.jsx",
       "source_location": "L1",
-      "weight": 1.0
-    },
-    {
+      "weight": 1.0,
       "source": "frontend_src_pages_adminsolicitudes",
-      "target": "frontend_src_pages_adminsolicitudes_adminsolicitudes",
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/pages/AdminSolicitudes.jsx",
-      "source_location": "L3",
-      "weight": 1.0
+      "target": "react",
+      "confidence_score": 1.0
     },
     {
-      "source": "frontend_src_pages_jugadorcalendario",
-      "target": "frontend_src_pages_jugadorcalendario_jugadorcalendario",
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/pages/JugadorCalendario.jsx",
       "source_location": "L1",
-      "weight": 1.0
+      "weight": 1.0,
+      "source": "frontend_src_pages_jugadorcalendario",
+      "target": "frontend_src_pages_jugadorcalendario_jugadorcalendario",
+      "confidence_score": 1.0
     },
     {
-      "source": "frontend_src_pages_landing",
-      "target": "frontend_src_components_landing_hero",
-      "relation": "imports_from",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/pages/Landing.jsx",
-      "source_location": "L1",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_src_pages_landing",
-      "target": "frontend_src_components_landing_historia",
-      "relation": "imports_from",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/pages/Landing.jsx",
-      "source_location": "L2",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_src_pages_landing",
-      "target": "frontend_src_components_landing_galeria",
-      "relation": "imports_from",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/pages/Landing.jsx",
-      "source_location": "L3",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_src_pages_landing",
-      "target": "frontend_src_components_landing_calendario",
-      "relation": "imports_from",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/pages/Landing.jsx",
-      "source_location": "L4",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_src_pages_landing",
-      "target": "frontend_src_components_landing_footer",
-      "relation": "imports_from",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/pages/Landing.jsx",
-      "source_location": "L5",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_src_pages_landing",
-      "target": "frontend_src_pages_landing_landing",
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/pages/Landing.jsx",
       "source_location": "L7",
-      "weight": 1.0
+      "weight": 1.0,
+      "source": "frontend_src_pages_landing",
+      "target": "frontend_src_pages_landing_landing",
+      "confidence_score": 1.0
     },
     {
-      "source": "frontend_src_pages_login",
-      "target": "react",
-      "relation": "imports_from",
-      "context": "import",
+      "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/pages/Login.jsx",
-      "source_location": "L1",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_src_pages_login",
-      "target": "react_router_dom",
-      "relation": "imports_from",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/pages/Login.jsx",
-      "source_location": "L2",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_src_pages_login",
-      "target": "frontend_src_context_authcontext",
-      "relation": "imports_from",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/pages/Login.jsx",
-      "source_location": "L3",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_src_pages_login",
-      "target": "frontend_src_context_authcontext_useauth",
-      "relation": "imports",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/pages/Login.jsx",
-      "source_location": "L3",
-      "weight": 1.0
-    },
-    {
+      "source_location": "L5",
+      "weight": 1.0,
       "source": "frontend_src_pages_login",
       "target": "frontend_src_pages_login_login",
-      "relation": "contains",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/pages/Login.jsx",
-      "source_location": "L5",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_src_pages_recuperarpassword",
-      "target": "react",
-      "relation": "imports_from",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/pages/RecuperarPassword.jsx",
       "source_location": "L1",
-      "weight": 1.0
+      "weight": 1.0,
+      "source": "frontend_src_pages_login",
+      "target": "react",
+      "confidence_score": 1.0
     },
     {
-      "source": "frontend_src_pages_recuperarpassword",
-      "target": "react_router_dom",
-      "relation": "imports_from",
-      "context": "import",
+      "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/pages/RecuperarPassword.jsx",
-      "source_location": "L2",
-      "weight": 1.0
-    },
-    {
+      "source_location": "L4",
+      "weight": 1.0,
       "source": "frontend_src_pages_recuperarpassword",
       "target": "frontend_src_pages_recuperarpassword_recuperarpassword",
-      "relation": "contains",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/pages/RecuperarPassword.jsx",
-      "source_location": "L4",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_src_pages_registro",
-      "target": "react",
-      "relation": "imports_from",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/pages/Registro.jsx",
       "source_location": "L1",
-      "weight": 1.0
+      "weight": 1.0,
+      "source": "frontend_src_pages_recuperarpassword",
+      "target": "react",
+      "confidence_score": 1.0
     },
     {
-      "source": "frontend_src_pages_registro",
-      "target": "react_router_dom",
-      "relation": "imports_from",
-      "context": "import",
+      "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/pages/Registro.jsx",
-      "source_location": "L2",
-      "weight": 1.0
-    },
-    {
+      "source_location": "L4",
+      "weight": 1.0,
       "source": "frontend_src_pages_registro",
       "target": "frontend_src_pages_registro_registro",
-      "relation": "contains",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/pages/Registro.jsx",
-      "source_location": "L4",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_src_pages_socioalquileres",
-      "target": "react_router_dom",
-      "relation": "imports_from",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/pages/SocioAlquileres.jsx",
       "source_location": "L1",
-      "weight": 1.0
+      "weight": 1.0,
+      "source": "frontend_src_pages_registro",
+      "target": "react",
+      "confidence_score": 1.0
     },
     {
-      "source": "frontend_src_pages_socioalquileres",
-      "target": "frontend_src_context_cartcontext",
-      "relation": "imports_from",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/pages/SocioAlquileres.jsx",
-      "source_location": "L2",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_src_pages_socioalquileres",
-      "target": "frontend_src_context_cartcontext_usecart",
-      "relation": "imports",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/pages/SocioAlquileres.jsx",
-      "source_location": "L2",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_src_pages_socioalquileres",
-      "target": "frontend_src_pages_socioalquileres_socioalquileres",
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/pages/SocioAlquileres.jsx",
       "source_location": "L4",
-      "weight": 1.0
+      "weight": 1.0,
+      "source": "frontend_src_pages_socioalquileres",
+      "target": "frontend_src_pages_socioalquileres_socioalquileres",
+      "confidence_score": 1.0
     },
     {
-      "source": "frontend_src_pages_sociocarrito",
-      "target": "react",
-      "relation": "imports_from",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/pages/SocioCarrito.jsx",
-      "source_location": "L1",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_src_pages_sociocarrito",
-      "target": "react_router_dom",
-      "relation": "imports_from",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/pages/SocioCarrito.jsx",
-      "source_location": "L2",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_src_pages_sociocarrito",
-      "target": "frontend_src_context_cartcontext",
-      "relation": "imports_from",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/pages/SocioCarrito.jsx",
-      "source_location": "L3",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_src_pages_sociocarrito",
-      "target": "frontend_src_context_cartcontext_usecart",
-      "relation": "imports",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/pages/SocioCarrito.jsx",
-      "source_location": "L3",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_src_pages_sociocarrito",
-      "target": "frontend_src_pages_sociocarrito_sociocarrito",
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/pages/SocioCarrito.jsx",
       "source_location": "L5",
-      "weight": 1.0
+      "weight": 1.0,
+      "source": "frontend_src_pages_sociocarrito",
+      "target": "frontend_src_pages_sociocarrito_sociocarrito",
+      "confidence_score": 1.0
     },
     {
-      "source": "frontend_src_pages_sociocuotas",
-      "target": "react",
       "relation": "imports_from",
       "context": "import",
       "confidence": "EXTRACTED",
-      "source_file": "frontend/src/pages/SocioCuotas.jsx",
+      "source_file": "frontend/src/pages/SocioCarrito.jsx",
       "source_location": "L1",
-      "weight": 1.0
+      "weight": 1.0,
+      "source": "frontend_src_pages_sociocarrito",
+      "target": "react",
+      "confidence_score": 1.0
     },
     {
-      "source": "frontend_src_pages_sociocuotas",
-      "target": "react_router_dom",
-      "relation": "imports_from",
-      "context": "import",
+      "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/pages/SocioCuotas.jsx",
-      "source_location": "L2",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_src_pages_sociocuotas",
-      "target": "frontend_src_context_cartcontext",
-      "relation": "imports_from",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/pages/SocioCuotas.jsx",
-      "source_location": "L3",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_src_pages_sociocuotas",
-      "target": "frontend_src_context_cartcontext_usecart",
-      "relation": "imports",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/pages/SocioCuotas.jsx",
-      "source_location": "L3",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_src_pages_sociocuotas",
-      "target": "frontend_src_context_authcontext",
-      "relation": "imports_from",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/pages/SocioCuotas.jsx",
-      "source_location": "L4",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_src_pages_sociocuotas",
-      "target": "frontend_src_context_authcontext_useauth",
-      "relation": "imports",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/pages/SocioCuotas.jsx",
-      "source_location": "L4",
-      "weight": 1.0
-    },
-    {
+      "source_location": "L6",
+      "weight": 1.0,
       "source": "frontend_src_pages_sociocuotas",
       "target": "frontend_src_pages_sociocuotas_sociocuotas",
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/pages/SocioCuotas.jsx",
-      "source_location": "L6",
-      "weight": 1.0
+      "confidence_score": 1.0
     },
     {
-      "source": "frontend_src_pages_socioinicio",
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/pages/SocioCuotas.jsx",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "frontend_src_pages_sociocuotas",
       "target": "react",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/pages/SocioInicio.jsx",
+      "source_location": "L6",
+      "weight": 1.0,
+      "source": "frontend_src_pages_socioinicio",
+      "target": "frontend_src_pages_socioinicio_socioinicio",
+      "confidence_score": 1.0
+    },
+    {
       "relation": "imports_from",
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/pages/SocioInicio.jsx",
       "source_location": "L1",
-      "weight": 1.0
-    },
-    {
+      "weight": 1.0,
       "source": "frontend_src_pages_socioinicio",
-      "target": "react_router_dom",
-      "relation": "imports_from",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/pages/SocioInicio.jsx",
-      "source_location": "L2",
-      "weight": 1.0
+      "target": "react",
+      "confidence_score": 1.0
     },
     {
-      "source": "frontend_src_pages_socioinicio",
-      "target": "frontend_src_context_authcontext",
-      "relation": "imports_from",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/pages/SocioInicio.jsx",
-      "source_location": "L3",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_src_pages_socioinicio",
-      "target": "frontend_src_context_authcontext_useauth",
-      "relation": "imports",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/pages/SocioInicio.jsx",
-      "source_location": "L3",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_src_pages_socioinicio",
-      "target": "qrcode_react",
-      "relation": "imports_from",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/pages/SocioInicio.jsx",
-      "source_location": "L4",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_src_pages_socioinicio",
-      "target": "frontend_src_pages_socioinicio_socioinicio",
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/pages/SocioInicio.jsx",
-      "source_location": "L6",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_src_pages_socioperfil",
-      "target": "frontend_src_pages_socioperfil_socioperfil",
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/pages/SocioPerfil.jsx",
       "source_location": "L1",
-      "weight": 1.0
+      "weight": 1.0,
+      "source": "frontend_src_pages_socioperfil",
+      "target": "frontend_src_pages_socioperfil_socioperfil",
+      "confidence_score": 1.0
     },
     {
-      "source": "frontend_src_pages_socioshopping",
-      "target": "react",
-      "relation": "imports_from",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/pages/SocioShopping.jsx",
-      "source_location": "L1",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_src_pages_socioshopping",
-      "target": "frontend_src_context_cartcontext",
-      "relation": "imports_from",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/pages/SocioShopping.jsx",
-      "source_location": "L2",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_src_pages_socioshopping",
-      "target": "frontend_src_context_cartcontext_usecart",
-      "relation": "imports",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/pages/SocioShopping.jsx",
-      "source_location": "L2",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_src_pages_socioshopping",
-      "target": "frontend_src_pages_socioshopping_socioshopping",
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/pages/SocioShopping.jsx",
       "source_location": "L4",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_vite_config",
-      "target": "vite",
-      "relation": "imports_from",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/vite.config.js",
-      "source_location": "L1",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_vite_config",
-      "target": "plugin_react",
-      "relation": "imports_from",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/vite.config.js",
-      "source_location": "L2",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_src_app",
-      "target": "frontend_src_layouts_mainlayout_mainlayout",
-      "relation": "imports",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/App.jsx",
-      "source_location": "L4",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_src_app",
-      "target": "frontend_src_pages_landing_landing",
-      "relation": "imports",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/App.jsx",
-      "source_location": "L5",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_src_app",
-      "target": "frontend_src_pages_registro_registro",
-      "relation": "imports",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/App.jsx",
-      "source_location": "L6",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_src_app",
-      "target": "frontend_src_pages_recuperarpassword_recuperarpassword",
-      "relation": "imports",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/App.jsx",
-      "source_location": "L7",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_src_app",
-      "target": "frontend_src_pages_login_login",
-      "relation": "imports",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/App.jsx",
-      "source_location": "L8",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_src_app",
-      "target": "frontend_src_pages_socioinicio_socioinicio",
-      "relation": "imports",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/App.jsx",
-      "source_location": "L9",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_src_app",
-      "target": "frontend_src_pages_sociocarrito_sociocarrito",
-      "relation": "imports",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/App.jsx",
-      "source_location": "L10",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_src_app",
-      "target": "frontend_src_pages_sociocuotas_sociocuotas",
-      "relation": "imports",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/App.jsx",
-      "source_location": "L11",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_src_app",
+      "weight": 1.0,
+      "source": "frontend_src_pages_socioshopping",
       "target": "frontend_src_pages_socioshopping_socioshopping",
-      "relation": "imports",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
       "context": "import",
       "confidence": "EXTRACTED",
-      "source_file": "frontend/src/App.jsx",
-      "source_location": "L12",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_src_app",
-      "target": "frontend_src_pages_socioalquileres_socioalquileres",
-      "relation": "imports",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/App.jsx",
-      "source_location": "L13",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_src_app",
-      "target": "frontend_src_pages_socioperfil_socioperfil",
-      "relation": "imports",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/App.jsx",
-      "source_location": "L14",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_src_app",
-      "target": "frontend_src_pages_admininicio_admininicio",
-      "relation": "imports",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/App.jsx",
-      "source_location": "L15",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_src_app",
-      "target": "frontend_src_pages_adminsolicitudes_adminsolicitudes",
-      "relation": "imports",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/App.jsx",
-      "source_location": "L16",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_src_app",
-      "target": "frontend_src_pages_adminpagos_adminpagos",
-      "relation": "imports",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/App.jsx",
-      "source_location": "L17",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_src_app",
-      "target": "frontend_src_pages_adminqrscanner_adminqrscanner",
-      "relation": "imports",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/App.jsx",
-      "source_location": "L18",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_src_app",
-      "target": "frontend_src_pages_jugadorcalendario_jugadorcalendario",
-      "relation": "imports",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/App.jsx",
-      "source_location": "L19",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_src_main",
-      "target": "frontend_src_app_app",
-      "relation": "imports",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/main.jsx",
-      "source_location": "L4",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_src_pages_landing",
-      "target": "frontend_src_components_landing_hero_hero",
-      "relation": "imports",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/pages/Landing.jsx",
-      "source_location": "L1",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_src_pages_landing",
-      "target": "frontend_src_components_landing_historia_historia",
-      "relation": "imports",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/pages/Landing.jsx",
-      "source_location": "L2",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_src_pages_landing",
-      "target": "frontend_src_components_landing_galeria_galeria",
-      "relation": "imports",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/pages/Landing.jsx",
-      "source_location": "L3",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_src_pages_landing",
-      "target": "frontend_src_components_landing_calendario_calendario",
-      "relation": "imports",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/pages/Landing.jsx",
-      "source_location": "L4",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_src_pages_landing",
-      "target": "frontend_src_components_landing_footer_footer",
-      "relation": "imports",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/pages/Landing.jsx",
-      "source_location": "L5",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_src_components_landing_hero_hero",
-      "target": "frontend_src_context_authcontext_useauth",
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "frontend/src/components/landing/Hero.jsx",
-      "source_location": "L7",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_src_layouts_mainlayout_mainlayout",
-      "target": "frontend_src_context_authcontext_useauth",
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "frontend/src/layouts/MainLayout.jsx",
-      "source_location": "L12",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_src_layouts_mainlayout_mainlayout",
-      "target": "frontend_src_context_cartcontext_usecart",
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "frontend/src/layouts/MainLayout.jsx",
-      "source_location": "L14",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_src_pages_admininicio_admininicio",
-      "target": "frontend_src_context_authcontext_useauth",
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "frontend/src/pages/AdminInicio.jsx",
-      "source_location": "L5",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_src_pages_login_login",
-      "target": "frontend_src_context_authcontext_useauth",
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "frontend/src/pages/Login.jsx",
-      "source_location": "L11",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_src_pages_socioalquileres_socioalquileres",
-      "target": "frontend_src_context_cartcontext_usecart",
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "frontend/src/pages/SocioAlquileres.jsx",
-      "source_location": "L6",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_src_pages_sociocarrito_sociocarrito",
-      "target": "frontend_src_context_cartcontext_usecart",
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "frontend/src/pages/SocioCarrito.jsx",
-      "source_location": "L9",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_src_pages_sociocuotas_sociocuotas",
-      "target": "frontend_src_context_cartcontext_usecart",
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "frontend/src/pages/SocioCuotas.jsx",
-      "source_location": "L10",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_src_pages_sociocuotas_sociocuotas",
-      "target": "frontend_src_context_authcontext_useauth",
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "frontend/src/pages/SocioCuotas.jsx",
-      "source_location": "L11",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_src_pages_socioinicio_socioinicio",
-      "target": "frontend_src_context_authcontext_useauth",
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "frontend/src/pages/SocioInicio.jsx",
-      "source_location": "L8",
-      "weight": 1.0
-    },
-    {
-      "source": "frontend_src_pages_socioshopping_socioshopping",
-      "target": "frontend_src_context_cartcontext_usecart",
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
       "source_file": "frontend/src/pages/SocioShopping.jsx",
-      "source_location": "L7",
-      "weight": 1.0
-    },
-    {
-      "source": "backend_requirements",
-      "target": "fastapi",
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "backend/requirements.txt"
-    },
-    {
-      "source": "backend_requirements",
-      "target": "pydantic",
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "backend/requirements.txt"
-    },
-    {
-      "source": "backend_requirements",
-      "target": "uvicorn",
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "backend/requirements.txt"
-    },
-    {
-      "source": "frontend_readme",
-      "target": "vite",
-      "relation": "conceptually_related_to",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "frontend/README.md"
-    },
-    {
-      "source": "frontend_readme",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "frontend_src_pages_socioshopping",
       "target": "react",
-      "relation": "conceptually_related_to",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "frontend/README.md"
+      "confidence_score": 1.0
     },
     {
-      "source": "frontend_index",
-      "target": "frontend_src_main",
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/vite.config.js",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "frontend_vite_config",
+      "target": "vite",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/README.md",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "frontend_readme",
+      "target": "frontend_readme_react_vite",
+      "confidence_score": 1.0
+    },
+    {
       "relation": "references",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
-      "source_file": "frontend/index.html"
+      "source_file": "backend/requirements.txt",
+      "source": "backend_requirements",
+      "target": "fastapi"
     },
     {
-      "source": "frontend_index",
-      "target": "frontend_public_vite_svg",
       "relation": "references",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
-      "source_file": "frontend/index.html"
+      "source_file": "backend/requirements.txt",
+      "source": "backend_requirements",
+      "target": "pydantic"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "backend/requirements.txt",
+      "source": "backend_requirements",
+      "target": "uvicorn"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "frontend/index.html",
+      "source": "frontend_index",
+      "target": "frontend_public_vite_svg"
     }
   ],
   "hyperedges": [
@@ -2811,6 +2912,5 @@
       "source_file": "backend/requirements.txt"
     }
   ],
-  "input_tokens": 2578,
-  "output_tokens": 704
+  "built_at_commit": "50c9b5af39c3851383b8a23fa2529932a2abf6b2"
 }

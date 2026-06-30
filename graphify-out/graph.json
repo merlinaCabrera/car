@@ -286,18 +286,18 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "backend_main",
-      "community": 7,
+      "community": 12,
       "norm_label": "main.py"
     },
     {
-      "label": "ver_estado()",
+      "label": "read_root()",
       "file_type": "code",
       "source_file": "backend/main.py",
-      "source_location": "L6",
+      "source_location": "L33",
       "_origin": "ast",
-      "id": "backend_main_ver_estado",
-      "community": 7,
-      "norm_label": "ver_estado()"
+      "id": "backend_main_read_root",
+      "community": 12,
+      "norm_label": "read_root()"
     },
     {
       "label": "models.py",
@@ -780,6 +780,86 @@
       "norm_label": "centro de mensajes internos. el campo referencia_id + referencia_tabla     permi"
     },
     {
+      "label": "auth.py",
+      "file_type": "code",
+      "source_file": "backend/routers/auth.py",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "backend_routers_auth",
+      "community": 12,
+      "norm_label": "auth.py"
+    },
+    {
+      "label": "login_for_access_token()",
+      "file_type": "code",
+      "source_file": "backend/routers/auth.py",
+      "source_location": "L17",
+      "_origin": "ast",
+      "id": "backend_routers_auth_login_for_access_token",
+      "community": 12,
+      "norm_label": "login_for_access_token()"
+    },
+    {
+      "label": "Session",
+      "file_type": "code",
+      "source_file": "",
+      "source_location": "",
+      "_origin": "ast",
+      "id": "backend_routers_auth_py_session",
+      "community": 12,
+      "norm_label": "session"
+    },
+    {
+      "label": "usuarios.py",
+      "file_type": "code",
+      "source_file": "backend/routers/usuarios.py",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "backend_routers_usuarios",
+      "community": 12,
+      "norm_label": "usuarios.py"
+    },
+    {
+      "label": "get_db()",
+      "file_type": "code",
+      "source_file": "backend/routers/usuarios.py",
+      "source_location": "L16",
+      "_origin": "ast",
+      "id": "backend_routers_usuarios_get_db",
+      "community": 12,
+      "norm_label": "get_db()"
+    },
+    {
+      "label": "crear_usuario()",
+      "file_type": "code",
+      "source_file": "backend/routers/usuarios.py",
+      "source_location": "L24",
+      "_origin": "ast",
+      "id": "backend_routers_usuarios_crear_usuario",
+      "community": 12,
+      "norm_label": "crear_usuario()"
+    },
+    {
+      "label": "Session",
+      "file_type": "code",
+      "source_file": "",
+      "source_location": "",
+      "_origin": "ast",
+      "id": "backend_routers_usuarios_py_session",
+      "community": 12,
+      "norm_label": "session"
+    },
+    {
+      "label": "listar_usuarios()",
+      "file_type": "code",
+      "source_file": "backend/routers/usuarios.py",
+      "source_location": "L47",
+      "_origin": "ast",
+      "id": "backend_routers_usuarios_listar_usuarios",
+      "community": 12,
+      "norm_label": "listar_usuarios()"
+    },
+    {
       "label": "schemas.py",
       "file_type": "code",
       "source_file": "backend/schemas.py",
@@ -886,7 +966,7 @@
       "source_location": "L127",
       "_origin": "ast",
       "id": "backend_schemas_usuariocreate",
-      "community": 23,
+      "community": 12,
       "norm_label": "usuariocreate"
     },
     {
@@ -896,7 +976,7 @@
       "source_location": "L136",
       "_origin": "ast",
       "id": "backend_schemas_usuariocreate_password_no_trivial",
-      "community": 23,
+      "community": 12,
       "norm_label": ".password_no_trivial()"
     },
     {
@@ -1006,7 +1086,7 @@
       "source_location": "L259",
       "_origin": "ast",
       "id": "backend_schemas_asignarrolpayload",
-      "community": 3,
+      "community": 7,
       "norm_label": "asignarrolpayload"
     },
     {
@@ -1436,7 +1516,7 @@
       "source_location": "L128",
       "_origin": "ast",
       "id": "backend_schemas_rationale_128",
-      "community": 23,
+      "community": 12,
       "norm_label": "payload para dar de alta un nuevo usuario.     el backend hashea `password` ante"
     },
     {
@@ -1536,7 +1616,7 @@
       "source_location": "L260",
       "_origin": "ast",
       "id": "backend_schemas_rationale_260",
-      "community": 3,
+      "community": 7,
       "norm_label": "payload para asignar un rol a un usuario."
     },
     {
@@ -1648,6 +1728,56 @@
       "id": "backend_schemas_rationale_655",
       "community": 33,
       "norm_label": "wrapper generico de paginacion. usalo con generic[t] en los endpoints."
+    },
+    {
+      "label": "security.py",
+      "file_type": "code",
+      "source_file": "backend/security.py",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "backend_security",
+      "community": 12,
+      "norm_label": "security.py"
+    },
+    {
+      "label": "verify_password()",
+      "file_type": "code",
+      "source_file": "backend/security.py",
+      "source_location": "L17",
+      "_origin": "ast",
+      "id": "backend_security_verify_password",
+      "community": 12,
+      "norm_label": "verify_password()"
+    },
+    {
+      "label": "get_password_hash()",
+      "file_type": "code",
+      "source_file": "backend/security.py",
+      "source_location": "L21",
+      "_origin": "ast",
+      "id": "backend_security_get_password_hash",
+      "community": 12,
+      "norm_label": "get_password_hash()"
+    },
+    {
+      "label": "create_access_token()",
+      "file_type": "code",
+      "source_file": "backend/security.py",
+      "source_location": "L26",
+      "_origin": "ast",
+      "id": "backend_security_create_access_token",
+      "community": 12,
+      "norm_label": "create_access_token()"
+    },
+    {
+      "label": "timedelta",
+      "file_type": "code",
+      "source_file": "",
+      "source_location": "",
+      "_origin": "ast",
+      "id": "timedelta",
+      "community": 12,
+      "norm_label": "timedelta"
     },
     {
       "label": "eslint.config.js",
@@ -2544,7 +2674,7 @@
       "file_type": "code",
       "source_file": "backend/requirements.txt",
       "source_location": null,
-      "community": 7,
+      "community": 12,
       "norm_label": "backend requirements",
       "id": "backend_requirements"
     },
@@ -2553,7 +2683,7 @@
       "file_type": "code",
       "source_file": "backend/requirements.txt",
       "source_location": null,
-      "community": 7,
+      "community": 12,
       "norm_label": "fastapi",
       "id": "fastapi"
     },
@@ -2562,7 +2692,7 @@
       "file_type": "code",
       "source_file": "backend/requirements.txt",
       "source_location": null,
-      "community": 7,
+      "community": 12,
       "norm_label": "pydantic",
       "id": "pydantic"
     },
@@ -2571,7 +2701,7 @@
       "file_type": "code",
       "source_file": "backend/requirements.txt",
       "source_location": null,
-      "community": 7,
+      "community": 12,
       "norm_label": "uvicorn",
       "id": "uvicorn"
     },
@@ -2816,13 +2946,35 @@
       "confidence_score": 1.0
     },
     {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/auth.py",
+      "source_location": "L8",
+      "weight": 1.0,
+      "source": "backend_routers_auth",
+      "target": "backend_database",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/usuarios.py",
+      "source_location": "L6",
+      "weight": 1.0,
+      "source": "backend_routers_usuarios",
+      "target": "backend_database",
+      "confidence_score": 1.0
+    },
+    {
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "backend/main.py",
-      "source_location": "L6",
+      "source_location": "L33",
       "weight": 1.0,
       "source": "backend_main",
-      "target": "backend_main_ver_estado",
+      "target": "backend_main_read_root",
       "confidence_score": 1.0
     },
     {
@@ -3003,6 +3155,28 @@
       "source_location": "L1",
       "weight": 1.0,
       "source": "backend_models_rationale_1",
+      "target": "backend_models",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/auth.py",
+      "source_location": "L6",
+      "weight": 1.0,
+      "source": "backend_routers_auth",
+      "target": "backend_models",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/usuarios.py",
+      "source_location": "L4",
+      "weight": 1.0,
+      "source": "backend_routers_usuarios",
       "target": "backend_models",
       "confidence_score": 1.0
     },
@@ -3454,6 +3628,211 @@
       "weight": 1.0,
       "source": "backend_models_rationale_858",
       "target": "backend_models_notificacion",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/auth.py",
+      "source_location": "L17",
+      "weight": 1.0,
+      "source": "backend_routers_auth",
+      "target": "backend_routers_auth_login_for_access_token",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/auth.py",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "backend_routers_auth",
+      "target": "fastapi",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/auth.py",
+      "source_location": "L7",
+      "weight": 1.0,
+      "source": "backend_routers_auth",
+      "target": "backend_schemas",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/auth.py",
+      "source_location": "L9",
+      "weight": 1.0,
+      "source": "backend_routers_auth",
+      "target": "backend_security",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/auth.py",
+      "source_location": "L17",
+      "weight": 1.0,
+      "source": "backend_routers_auth_login_for_access_token",
+      "target": "backend_routers_auth_py_session",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/auth.py",
+      "source_location": "L17",
+      "weight": 1.0,
+      "source": "backend_routers_auth_login_for_access_token",
+      "target": "backend_schemas_loginpayload",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "backend/routers/auth.py",
+      "source_location": "L45",
+      "weight": 1.0,
+      "source": "backend_routers_auth_login_for_access_token",
+      "target": "backend_security_create_access_token"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "backend/routers/auth.py",
+      "source_location": "L22",
+      "weight": 1.0,
+      "source": "backend_routers_auth_login_for_access_token",
+      "target": "backend_security_verify_password"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "backend/routers/auth.py",
+      "source_location": "L44",
+      "weight": 1.0,
+      "source": "backend_routers_auth_login_for_access_token",
+      "target": "timedelta"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/usuarios.py",
+      "source_location": "L24",
+      "weight": 1.0,
+      "source": "backend_routers_usuarios",
+      "target": "backend_routers_usuarios_crear_usuario",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/usuarios.py",
+      "source_location": "L16",
+      "weight": 1.0,
+      "source": "backend_routers_usuarios",
+      "target": "backend_routers_usuarios_get_db",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/usuarios.py",
+      "source_location": "L47",
+      "weight": 1.0,
+      "source": "backend_routers_usuarios",
+      "target": "backend_routers_usuarios_listar_usuarios",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/usuarios.py",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "backend_routers_usuarios",
+      "target": "fastapi",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/usuarios.py",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "backend_routers_usuarios",
+      "target": "backend_schemas",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/usuarios.py",
+      "source_location": "L7",
+      "weight": 1.0,
+      "source": "backend_routers_usuarios",
+      "target": "backend_security",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/usuarios.py",
+      "source_location": "L24",
+      "weight": 1.0,
+      "source": "backend_routers_usuarios_crear_usuario",
+      "target": "backend_routers_usuarios_py_session",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/usuarios.py",
+      "source_location": "L24",
+      "weight": 1.0,
+      "source": "backend_routers_usuarios_crear_usuario",
+      "target": "backend_schemas_usuariocreate",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "backend/routers/usuarios.py",
+      "source_location": "L31",
+      "weight": 1.0,
+      "source": "backend_routers_usuarios_crear_usuario",
+      "target": "backend_security_get_password_hash"
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/usuarios.py",
+      "source_location": "L47",
+      "weight": 1.0,
+      "source": "backend_routers_usuarios_listar_usuarios",
+      "target": "backend_routers_usuarios_py_session",
       "confidence_score": 1.0
     },
     {
@@ -4861,6 +5240,47 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
+      "source_file": "backend/security.py",
+      "source_location": "L26",
+      "weight": 1.0,
+      "source": "backend_security",
+      "target": "backend_security_create_access_token",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/security.py",
+      "source_location": "L21",
+      "weight": 1.0,
+      "source": "backend_security",
+      "target": "backend_security_get_password_hash",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/security.py",
+      "source_location": "L17",
+      "weight": 1.0,
+      "source": "backend_security",
+      "target": "backend_security_verify_password",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "generic_arg",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/security.py",
+      "source_location": "L26",
+      "weight": 1.0,
+      "source": "backend_security_create_access_token",
+      "target": "timedelta",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
       "source_file": "frontend/package.json",
       "source_location": "L12",
       "weight": 1.0,
@@ -5948,7 +6368,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "frontend/src/pages/Login.jsx",
-      "source_location": "L11",
+      "source_location": "L13",
       "weight": 1.0,
       "source": "frontend_src_pages_login_login",
       "target": "frontend_src_context_authcontext_useauth"
@@ -6572,5 +6992,5 @@
       "source_file": "backend/requirements.txt"
     }
   ],
-  "built_at_commit": "2c2afe7ba22464dfd54db40ebe5a713cf7aeccb9"
+  "built_at_commit": "bd2c077518d5a69f875df80d27d06868326f810c"
 }

@@ -1,0 +1,62 @@
+{
+  "alembic/env.py": {
+    "mtime": 1782774270.9788911,
+    "ast_hash": "5f7c9208266fab03771292f48d388037",
+    "semantic_hash": ""
+  },
+  "alembic/versions/188f9a5748c8_0002_seed_data.py": {
+    "mtime": 1782774376.8051653,
+    "ast_hash": "11b17288b7ee47679e7bf52ad81de8b3",
+    "semantic_hash": ""
+  },
+  "alembic/versions/208ea0e312f5_0006_comercios_asociados.py": {
+    "mtime": 1782775282.9123893,
+    "ast_hash": "1c4240ca525c6e8dfec28e007ef4b385",
+    "semantic_hash": ""
+  },
+  "alembic/versions/76b421c257e8_0005_add_views.py": {
+    "mtime": 1782773484.0321624,
+    "ast_hash": "91f43d92ea0b2b13a9c38a95524a1e4c",
+    "semantic_hash": ""
+  },
+  "alembic/versions/a0c06916cf98_0004_add_functions_triggers.py": {
+    "mtime": 1782773466.0743372,
+    "ast_hash": "c132b0eb65586b82e99805f7cd08adc7",
+    "semantic_hash": ""
+  },
+  "alembic/versions/c70045881479_0003_add_extensions.py": {
+    "mtime": 1782773729.1201737,
+    "ast_hash": "01cd1688a516aee8c10cc0fb411e5fe4",
+    "semantic_hash": ""
+  },
+  "alembic/versions/c90509324888_0001_initial_tables.py": {
+    "mtime": 1782774332.8796575,
+    "ast_hash": "a95552ff3cc4619c63670387c3968887",
+    "semantic_hash": ""
+  },
+  "database.py": {
+    "mtime": 1782743376.9479508,
+    "ast_hash": "68d05e412828fb13c881bd509b56f8d8",
+    "semantic_hash": ""
+  },
+  "main.py": {
+    "mtime": 1780686488.9082923,
+    "ast_hash": "7eac24a627c7be9682cf578de4197d68",
+    "semantic_hash": ""
+  },
+  "models.py": {
+    "mtime": 1782775255.3427942,
+    "ast_hash": "8a0011ba660bb102f8013e668edfebdb",
+    "semantic_hash": ""
+  },
+  "schemas.py": {
+    "mtime": 1782770717.375915,
+    "ast_hash": "15ce5bee260a057b0c204abae7f41f0b",
+    "semantic_hash": ""
+  },
+  "requirements.txt": {
+    "mtime": 1780686741.6340485,
+    "ast_hash": "97e4275fbd4c6082a79bd9ff985eed37",
+    "semantic_hash": ""
+  }
+}

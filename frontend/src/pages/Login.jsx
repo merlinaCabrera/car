@@ -1,113 +1,82 @@
-import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 export default function Login() {
-  const [dni, setDni] = useState('');
-  const [password, setPassword] = useState('');
-  const [status, setStatus] = useState('idle'); // 'idle' | 'error'
-  const [isLoading, setIsLoading] = useState(false);
-  const navigate = useNavigate();
-  const { login, isAuthenticated } = useAuth();
+    const [formData, setFormData] = useState({
+        dni: '',
+        password: '',
+    });
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
+    const navigate = useNavigate();
+    const { login } = useAuth();
 
-  // Guard: Protección Inversa
-  useEffect(() => {
-    if (isAuthenticated) {
-      navigate('/socio');
-    }
-  }, [isAuthenticated, navigate]);
+    const handleChange = (e) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({ ...prev, [name]: value }));
+    };
 
-  const handleLogin = (e) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setStatus('idle');
-    setTimeout(() => {
-      setIsLoading(false);
-      // Delegamos la validación al contexto global
-      const success = login(dni, password);
-      if (success) {
-        navigate('/socio');
-      } else {
-        setStatus('error');
-      }
-    }, 2000);
-  };
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setError(null);
+        setLoading(true);
 
-  const isFormValid = dni.length > 0 && password.length > 0;
+        try {
+            const response = await fetch('http://127.0.0.1:8000/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData),
+            });
 
-  return (
-    <div className="min-h-screen bg-slate-50 flex flex-col justify-center items-center p-4">
-      <div className="w-full max-w-md bg-white rounded-3xl shadow-xl p-8 border border-slate-100">
-        
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-blue-900 tracking-tight">Portal del Socio</h1>
-          <p className="text-slate-500 mt-2">Ingrese a su cuenta</p>
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.detail || 'Credenciales incorrectas.');
+            }
+
+            const data = await response.json();
+            
+            // Llamamos a la función login del contexto para actualizar el estado global
+            login(data);
+
+            // Redirigimos al usuario según su rol
+            const isAdmin = data.roles.some(rol => rol.includes('admin'));
+            if (isAdmin) {
+                navigate('/admin', { replace: true });
+            } else {
+                navigate('/socio', { replace: true });
+            }
+
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
+            <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 space-y-6">
+                <div className="text-center">
+                    <h1 className="text-3xl font-bold text-slate-800">Iniciar Sesión</h1>
+                    <p className="text-slate-500 mt-2">Accede a tu panel de socio.</p>
+                </div>
+
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    <input type="text" name="dni" placeholder="DNI" value={formData.dni} onChange={handleChange} required className="w-full p-3 rounded-lg border bg-slate-50 focus:border-blue-500 focus:ring-blue-500" />
+                    <input type="password" name="password" placeholder="Contraseña" value={formData.password} onChange={handleChange} required className="w-full p-3 rounded-lg border bg-slate-50 focus:border-blue-500 focus:ring-blue-500" />
+                    
+                    {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+
+                    <button type="submit" disabled={loading} className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-slate-400 disabled:cursor-not-allowed">
+                        {loading ? 'Ingresando...' : 'Ingresar'}
+                    </button>
+                </form>
+                <p className="text-center text-sm text-slate-600">
+                    ¿No tienes cuenta?{' '}
+                    <Link to="/registro" className="font-medium text-blue-600 hover:text-blue-500">Regístrate aquí</Link>
+                </p>
+            </div>
         </div>
-
-        {status === 'error' && (
-          <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl relative text-center font-bold text-xs tracking-wider">
-            DNI O CONTRASEÑA INCORRECTOS
-          </div>
-        )}
-
-        <form onSubmit={handleLogin} className="space-y-5">
-          <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-1">Usuario (DNI)</label>
-            <input 
-              type="text" 
-              value={dni}
-              onChange={(e) => setDni(e.target.value.replace(/\D/g, ''))}
-              className={`w-full p-3 border rounded-xl focus:ring-2 focus:outline-none transition-colors ${status === 'error' ? 'border-red-500 focus:ring-red-200' : 'border-slate-200 focus:ring-blue-200 focus:border-blue-500'}`}
-              placeholder="Ingrese su DNI sin puntos" 
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-1">Contraseña</label>
-            <input 
-              type="password" 
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className={`w-full p-3 border rounded-xl focus:ring-2 focus:outline-none transition-colors ${status === 'error' ? 'border-red-500 focus:ring-red-200' : 'border-slate-200 focus:ring-blue-200 focus:border-blue-500'}`}
-              placeholder="••••••••" 
-            />
-          </div>
-
-          <button 
-            type="submit" 
-            disabled={!isFormValid || isLoading}
-            className={`w-full flex items-center justify-center bg-blue-600 text-white font-bold py-3 px-4 rounded-xl transition-all shadow-lg mt-2 ${(!isFormValid || isLoading) ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-700 active:scale-95'}`}
-          >
-            {isLoading ? (
-              <>
-                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Procesando...
-              </>
-            ) : (
-              'Ingresar'
-            )}
-          </button>
-        </form>
-
-        <div className="mt-8 flex flex-col items-center space-y-4">
-          <Link to="/recuperar-password" className="text-sm text-blue-600 hover:text-blue-800 font-semibold transition-colors">
-            Olvidé mi contraseña
-          </Link>
-          <Link to="/registro" className="text-sm text-slate-600 hover:text-blue-600 transition-colors">
-            ¿No es socio? <span className="font-semibold underline">Envíe solicitud aquí</span>
-          </Link>
-          
-          <div className="w-full border-t border-slate-100 pt-4 mt-2 text-center">
-            <Link to="/" className="text-sm text-slate-400 hover:text-blue-600 transition-colors">
-              ← Volver al inicio
-            </Link>
-          </div>
-        </div>
-
-      </div>
-    </div>
-  );
+    );
 }

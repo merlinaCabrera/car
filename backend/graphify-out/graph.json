@@ -1,0 +1,3864 @@
+{
+  "directed": false,
+  "multigraph": false,
+  "graph": {},
+  "nodes": [
+    {
+      "label": "env.py",
+      "file_type": "code",
+      "source_file": "alembic/env.py",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "alembic_env",
+      "community": 3,
+      "norm_label": "env.py"
+    },
+    {
+      "label": "include_object()",
+      "file_type": "code",
+      "source_file": "alembic/env.py",
+      "source_location": "L28",
+      "_origin": "ast",
+      "id": "alembic_env_include_object",
+      "community": 3,
+      "norm_label": "include_object()"
+    },
+    {
+      "label": "run_migrations_offline()",
+      "file_type": "code",
+      "source_file": "alembic/env.py",
+      "source_location": "L33",
+      "_origin": "ast",
+      "id": "alembic_env_run_migrations_offline",
+      "community": 3,
+      "norm_label": "run_migrations_offline()"
+    },
+    {
+      "label": "run_migrations_online()",
+      "file_type": "code",
+      "source_file": "alembic/env.py",
+      "source_location": "L45",
+      "_origin": "ast",
+      "id": "alembic_env_run_migrations_online",
+      "community": 3,
+      "norm_label": "run_migrations_online()"
+    },
+    {
+      "label": "188f9a5748c8_0002_seed_data.py",
+      "file_type": "code",
+      "source_file": "alembic/versions/188f9a5748c8_0002_seed_data.py",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "alembic_versions_188f9a5748c8_0002_seed_data",
+      "community": 10,
+      "norm_label": "188f9a5748c8_0002_seed_data.py"
+    },
+    {
+      "label": "upgrade()",
+      "file_type": "code",
+      "source_file": "alembic/versions/188f9a5748c8_0002_seed_data.py",
+      "source_location": "L24",
+      "_origin": "ast",
+      "id": "alembic_versions_188f9a5748c8_0002_seed_data_upgrade",
+      "community": 10,
+      "norm_label": "upgrade()"
+    },
+    {
+      "label": "downgrade()",
+      "file_type": "code",
+      "source_file": "alembic/versions/188f9a5748c8_0002_seed_data.py",
+      "source_location": "L44",
+      "_origin": "ast",
+      "id": "alembic_versions_188f9a5748c8_0002_seed_data_downgrade",
+      "community": 10,
+      "norm_label": "downgrade()"
+    },
+    {
+      "label": "208ea0e312f5_0006_comercios_asociados.py",
+      "file_type": "code",
+      "source_file": "alembic/versions/208ea0e312f5_0006_comercios_asociados.py",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "alembic_versions_208ea0e312f5_0006_comercios_asociados",
+      "community": 11,
+      "norm_label": "208ea0e312f5_0006_comercios_asociados.py"
+    },
+    {
+      "label": "upgrade()",
+      "file_type": "code",
+      "source_file": "alembic/versions/208ea0e312f5_0006_comercios_asociados.py",
+      "source_location": "L21",
+      "_origin": "ast",
+      "id": "alembic_versions_208ea0e312f5_0006_comercios_asociados_upgrade",
+      "community": 11,
+      "norm_label": "upgrade()"
+    },
+    {
+      "label": "downgrade()",
+      "file_type": "code",
+      "source_file": "alembic/versions/208ea0e312f5_0006_comercios_asociados.py",
+      "source_location": "L48",
+      "_origin": "ast",
+      "id": "alembic_versions_208ea0e312f5_0006_comercios_asociados_downgrade",
+      "community": 11,
+      "norm_label": "downgrade()"
+    },
+    {
+      "label": "76b421c257e8_0005_add_views.py",
+      "file_type": "code",
+      "source_file": "alembic/versions/76b421c257e8_0005_add_views.py",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "alembic_versions_76b421c257e8_0005_add_views",
+      "community": 12,
+      "norm_label": "76b421c257e8_0005_add_views.py"
+    },
+    {
+      "label": "upgrade()",
+      "file_type": "code",
+      "source_file": "alembic/versions/76b421c257e8_0005_add_views.py",
+      "source_location": "L26",
+      "_origin": "ast",
+      "id": "alembic_versions_76b421c257e8_0005_add_views_upgrade",
+      "community": 12,
+      "norm_label": "upgrade()"
+    },
+    {
+      "label": "downgrade()",
+      "file_type": "code",
+      "source_file": "alembic/versions/76b421c257e8_0005_add_views.py",
+      "source_location": "L92",
+      "_origin": "ast",
+      "id": "alembic_versions_76b421c257e8_0005_add_views_downgrade",
+      "community": 12,
+      "norm_label": "downgrade()"
+    },
+    {
+      "label": "a0c06916cf98_0004_add_functions_triggers.py",
+      "file_type": "code",
+      "source_file": "alembic/versions/a0c06916cf98_0004_add_functions_triggers.py",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "alembic_versions_a0c06916cf98_0004_add_functions_triggers",
+      "community": 6,
+      "norm_label": "a0c06916cf98_0004_add_functions_triggers.py"
+    },
+    {
+      "label": "upgrade()",
+      "file_type": "code",
+      "source_file": "alembic/versions/a0c06916cf98_0004_add_functions_triggers.py",
+      "source_location": "L23",
+      "_origin": "ast",
+      "id": "alembic_versions_a0c06916cf98_0004_add_functions_triggers_upgrade",
+      "community": 6,
+      "norm_label": "upgrade()"
+    },
+    {
+      "label": "downgrade()",
+      "file_type": "code",
+      "source_file": "alembic/versions/a0c06916cf98_0004_add_functions_triggers.py",
+      "source_location": "L249",
+      "_origin": "ast",
+      "id": "alembic_versions_a0c06916cf98_0004_add_functions_triggers_downgrade",
+      "community": 6,
+      "norm_label": "downgrade()"
+    },
+    {
+      "label": "Inyecta en la base de datos:       1. fn_actualizar_search_usuario()  + trigger",
+      "file_type": "rationale",
+      "source_file": "alembic/versions/a0c06916cf98_0004_add_functions_triggers.py",
+      "source_location": "L24",
+      "_origin": "ast",
+      "id": "alembic_versions_a0c06916cf98_0004_add_functions_triggers_rationale_24",
+      "community": 6,
+      "norm_label": "inyecta en la base de datos:       1. fn_actualizar_search_usuario()  + trigger"
+    },
+    {
+      "label": "Elimina en orden inverso: primero triggers (dependen de funciones),     luego la",
+      "file_type": "rationale",
+      "source_file": "alembic/versions/a0c06916cf98_0004_add_functions_triggers.py",
+      "source_location": "L250",
+      "_origin": "ast",
+      "id": "alembic_versions_a0c06916cf98_0004_add_functions_triggers_rationale_250",
+      "community": 6,
+      "norm_label": "elimina en orden inverso: primero triggers (dependen de funciones),     luego la"
+    },
+    {
+      "label": "c70045881479_0003_add_extensions.py",
+      "file_type": "code",
+      "source_file": "alembic/versions/c70045881479_0003_add_extensions.py",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "alembic_versions_c70045881479_0003_add_extensions",
+      "community": 13,
+      "norm_label": "c70045881479_0003_add_extensions.py"
+    },
+    {
+      "label": "upgrade()",
+      "file_type": "code",
+      "source_file": "alembic/versions/c70045881479_0003_add_extensions.py",
+      "source_location": "L21",
+      "_origin": "ast",
+      "id": "alembic_versions_c70045881479_0003_add_extensions_upgrade",
+      "community": 13,
+      "norm_label": "upgrade()"
+    },
+    {
+      "label": "downgrade()",
+      "file_type": "code",
+      "source_file": "alembic/versions/c70045881479_0003_add_extensions.py",
+      "source_location": "L24",
+      "_origin": "ast",
+      "id": "alembic_versions_c70045881479_0003_add_extensions_downgrade",
+      "community": 13,
+      "norm_label": "downgrade()"
+    },
+    {
+      "label": "c90509324888_0001_initial_tables.py",
+      "file_type": "code",
+      "source_file": "alembic/versions/c90509324888_0001_initial_tables.py",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "alembic_versions_c90509324888_0001_initial_tables",
+      "community": 14,
+      "norm_label": "c90509324888_0001_initial_tables.py"
+    },
+    {
+      "label": "upgrade()",
+      "file_type": "code",
+      "source_file": "alembic/versions/c90509324888_0001_initial_tables.py",
+      "source_location": "L21",
+      "_origin": "ast",
+      "id": "alembic_versions_c90509324888_0001_initial_tables_upgrade",
+      "community": 14,
+      "norm_label": "upgrade()"
+    },
+    {
+      "label": "downgrade()",
+      "file_type": "code",
+      "source_file": "alembic/versions/c90509324888_0001_initial_tables.py",
+      "source_location": "L249",
+      "_origin": "ast",
+      "id": "alembic_versions_c90509324888_0001_initial_tables_downgrade",
+      "community": 14,
+      "norm_label": "downgrade()"
+    },
+    {
+      "label": "database.py",
+      "file_type": "code",
+      "source_file": "database.py",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "database",
+      "community": 3,
+      "norm_label": "database.py"
+    },
+    {
+      "label": "get_db()",
+      "file_type": "code",
+      "source_file": "database.py",
+      "source_location": "L19",
+      "_origin": "ast",
+      "id": "database_get_db",
+      "community": 3,
+      "norm_label": "get_db()"
+    },
+    {
+      "label": "main.py",
+      "file_type": "code",
+      "source_file": "main.py",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "main",
+      "community": 29,
+      "norm_label": "main.py"
+    },
+    {
+      "label": "ver_estado()",
+      "file_type": "code",
+      "source_file": "main.py",
+      "source_location": "L6",
+      "_origin": "ast",
+      "id": "main_ver_estado",
+      "community": 29,
+      "norm_label": "ver_estado()"
+    },
+    {
+      "label": "models.py",
+      "file_type": "code",
+      "source_file": "models.py",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "models",
+      "community": 5,
+      "norm_label": "models.py"
+    },
+    {
+      "label": "Base",
+      "file_type": "code",
+      "source_file": "models.py",
+      "source_location": "L56",
+      "_origin": "ast",
+      "id": "models_base",
+      "community": 4,
+      "norm_label": "base"
+    },
+    {
+      "label": "DeclarativeBase",
+      "file_type": "code",
+      "source_file": "",
+      "source_location": "",
+      "_origin": "ast",
+      "id": "declarativebase",
+      "community": 4,
+      "norm_label": "declarativebase"
+    },
+    {
+      "label": "ConfiguracionGlobal",
+      "file_type": "code",
+      "source_file": "models.py",
+      "source_location": "L65",
+      "_origin": "ast",
+      "id": "models_configuracionglobal",
+      "community": 17,
+      "norm_label": "configuracionglobal"
+    },
+    {
+      "label": ".__repr__()",
+      "file_type": "code",
+      "source_file": "models.py",
+      "source_location": "L109",
+      "_origin": "ast",
+      "id": "models_configuracionglobal_repr",
+      "community": 17,
+      "norm_label": ".__repr__()"
+    },
+    {
+      "label": "Rol",
+      "file_type": "code",
+      "source_file": "models.py",
+      "source_location": "L117",
+      "_origin": "ast",
+      "id": "models_rol",
+      "community": 22,
+      "norm_label": "rol"
+    },
+    {
+      "label": ".__repr__()",
+      "file_type": "code",
+      "source_file": "models.py",
+      "source_location": "L137",
+      "_origin": "ast",
+      "id": "models_rol_repr",
+      "community": 22,
+      "norm_label": ".__repr__()"
+    },
+    {
+      "label": "Usuario",
+      "file_type": "code",
+      "source_file": "models.py",
+      "source_location": "L141",
+      "_origin": "ast",
+      "id": "models_usuario",
+      "community": 23,
+      "norm_label": "usuario"
+    },
+    {
+      "label": ".__repr__()",
+      "file_type": "code",
+      "source_file": "models.py",
+      "source_location": "L304",
+      "_origin": "ast",
+      "id": "models_usuario_repr",
+      "community": 23,
+      "norm_label": ".__repr__()"
+    },
+    {
+      "label": "UsuarioRol",
+      "file_type": "code",
+      "source_file": "models.py",
+      "source_location": "L308",
+      "_origin": "ast",
+      "id": "models_usuariorol",
+      "community": 24,
+      "norm_label": "usuariorol"
+    },
+    {
+      "label": ".__repr__()",
+      "file_type": "code",
+      "source_file": "models.py",
+      "source_location": "L356",
+      "_origin": "ast",
+      "id": "models_usuariorol_repr",
+      "community": 24,
+      "norm_label": ".__repr__()"
+    },
+    {
+      "label": "AuditLog",
+      "file_type": "code",
+      "source_file": "models.py",
+      "source_location": "L364",
+      "_origin": "ast",
+      "id": "models_auditlog",
+      "community": 15,
+      "norm_label": "auditlog"
+    },
+    {
+      "label": ".__repr__()",
+      "file_type": "code",
+      "source_file": "models.py",
+      "source_location": "L401",
+      "_origin": "ast",
+      "id": "models_auditlog_repr",
+      "community": 15,
+      "norm_label": ".__repr__()"
+    },
+    {
+      "label": "ProductoServicio",
+      "file_type": "code",
+      "source_file": "models.py",
+      "source_location": "L409",
+      "_origin": "ast",
+      "id": "models_productoservicio",
+      "community": 21,
+      "norm_label": "productoservicio"
+    },
+    {
+      "label": ".__repr__()",
+      "file_type": "code",
+      "source_file": "models.py",
+      "source_location": "L459",
+      "_origin": "ast",
+      "id": "models_productoservicio_repr",
+      "community": 21,
+      "norm_label": ".__repr__()"
+    },
+    {
+      "label": "ReservaInstalacion",
+      "file_type": "code",
+      "source_file": "models.py",
+      "source_location": "L463",
+      "_origin": "ast",
+      "id": "models_reservainstalacion",
+      "community": 25,
+      "norm_label": "reservainstalacion"
+    },
+    {
+      "label": ".__repr__()",
+      "file_type": "code",
+      "source_file": "models.py",
+      "source_location": "L524",
+      "_origin": "ast",
+      "id": "models_reservainstalacion_repr",
+      "community": 25,
+      "norm_label": ".__repr__()"
+    },
+    {
+      "label": "Orden",
+      "file_type": "code",
+      "source_file": "models.py",
+      "source_location": "L528",
+      "_origin": "ast",
+      "id": "models_orden",
+      "community": 5,
+      "norm_label": "orden"
+    },
+    {
+      "label": ".__repr__()",
+      "file_type": "code",
+      "source_file": "models.py",
+      "source_location": "L602",
+      "_origin": "ast",
+      "id": "models_orden_repr",
+      "community": 5,
+      "norm_label": ".__repr__()"
+    },
+    {
+      "label": "DetalleOrden",
+      "file_type": "code",
+      "source_file": "models.py",
+      "source_location": "L606",
+      "_origin": "ast",
+      "id": "models_detalleorden",
+      "community": 18,
+      "norm_label": "detalleorden"
+    },
+    {
+      "label": ".__repr__()",
+      "file_type": "code",
+      "source_file": "models.py",
+      "source_location": "L650",
+      "_origin": "ast",
+      "id": "models_detalleorden_repr",
+      "community": 18,
+      "norm_label": ".__repr__()"
+    },
+    {
+      "label": "CategoriaDeportiva",
+      "file_type": "code",
+      "source_file": "models.py",
+      "source_location": "L658",
+      "_origin": "ast",
+      "id": "models_categoriadeportiva",
+      "community": 16,
+      "norm_label": "categoriadeportiva"
+    },
+    {
+      "label": ".__repr__()",
+      "file_type": "code",
+      "source_file": "models.py",
+      "source_location": "L677",
+      "_origin": "ast",
+      "id": "models_categoriadeportiva_repr",
+      "community": 16,
+      "norm_label": ".__repr__()"
+    },
+    {
+      "label": "UsuarioCategoria",
+      "file_type": "code",
+      "source_file": "models.py",
+      "source_location": "L681",
+      "_origin": "ast",
+      "id": "models_usuariocategoria",
+      "community": 26,
+      "norm_label": "usuariocategoria"
+    },
+    {
+      "label": ".__repr__()",
+      "file_type": "code",
+      "source_file": "models.py",
+      "source_location": "L711",
+      "_origin": "ast",
+      "id": "models_usuariocategoria_repr",
+      "community": 26,
+      "norm_label": ".__repr__()"
+    },
+    {
+      "label": "Evento",
+      "file_type": "code",
+      "source_file": "models.py",
+      "source_location": "L715",
+      "_origin": "ast",
+      "id": "models_evento",
+      "community": 19,
+      "norm_label": "evento"
+    },
+    {
+      "label": ".__repr__()",
+      "file_type": "code",
+      "source_file": "models.py",
+      "source_location": "L774",
+      "_origin": "ast",
+      "id": "models_evento_repr",
+      "community": 19,
+      "norm_label": ".__repr__()"
+    },
+    {
+      "label": "Asistencia",
+      "file_type": "code",
+      "source_file": "models.py",
+      "source_location": "L778",
+      "_origin": "ast",
+      "id": "models_asistencia",
+      "community": 4,
+      "norm_label": "asistencia"
+    },
+    {
+      "label": ".__repr__()",
+      "file_type": "code",
+      "source_file": "models.py",
+      "source_location": "L836",
+      "_origin": "ast",
+      "id": "models_asistencia_repr",
+      "community": 4,
+      "norm_label": ".__repr__()"
+    },
+    {
+      "label": "Notificacion",
+      "file_type": "code",
+      "source_file": "models.py",
+      "source_location": "L857",
+      "_origin": "ast",
+      "id": "models_notificacion",
+      "community": 20,
+      "norm_label": "notificacion"
+    },
+    {
+      "label": ".__repr__()",
+      "file_type": "code",
+      "source_file": "models.py",
+      "source_location": "L899",
+      "_origin": "ast",
+      "id": "models_notificacion_repr",
+      "community": 20,
+      "norm_label": ".__repr__()"
+    },
+    {
+      "label": "ComercioAsociado",
+      "file_type": "code",
+      "source_file": "models.py",
+      "source_location": "L903",
+      "_origin": "ast",
+      "id": "models_comercioasociado",
+      "community": 5,
+      "norm_label": "comercioasociado"
+    },
+    {
+      "label": "models.py \u2014 SQLAlchemy 2.0 Declarative Models Club Atl\u00e9tico \u2014 Sistema de Gesti\u00f3n",
+      "file_type": "rationale",
+      "source_file": "models.py",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "models_rationale_1",
+      "community": 5,
+      "norm_label": "models.py \u2014 sqlalchemy 2.0 declarative models club atletico \u2014 sistema de gestion"
+    },
+    {
+      "label": "Base declarativa compartida por todos los modelos.",
+      "file_type": "rationale",
+      "source_file": "models.py",
+      "source_location": "L57",
+      "_origin": "ast",
+      "id": "models_rationale_57",
+      "community": 4,
+      "norm_label": "base declarativa compartida por todos los modelos."
+    },
+    {
+      "label": "Cerebro financiero del sistema. Solo puede existir una fila (singleton).     Acc",
+      "file_type": "rationale",
+      "source_file": "models.py",
+      "source_location": "L66",
+      "_origin": "ast",
+      "id": "models_rationale_66",
+      "community": 17,
+      "norm_label": "cerebro financiero del sistema. solo puede existir una fila (singleton).     acc"
+    },
+    {
+      "label": "Cat\u00e1logo maestro de roles del sistema. Tabla est\u00e1tica; no la modifica el ORM.",
+      "file_type": "rationale",
+      "source_file": "models.py",
+      "source_location": "L118",
+      "_origin": "ast",
+      "id": "models_rationale_118",
+      "community": 22,
+      "norm_label": "catalogo maestro de roles del sistema. tabla estatica; no la modifica el orm."
+    },
+    {
+      "label": "N\u00facleo del sistema. Un registro por persona f\u00edsica.     La clave de negocio inmu",
+      "file_type": "rationale",
+      "source_file": "models.py",
+      "source_location": "L142",
+      "_origin": "ast",
+      "id": "models_rationale_142",
+      "community": 23,
+      "norm_label": "nucleo del sistema. un registro por persona fisica.     la clave de negocio inmu"
+    },
+    {
+      "label": "Tabla puente MULTIROL. Soporta roles temporales con fecha de expiraci\u00f3n.     Un",
+      "file_type": "rationale",
+      "source_file": "models.py",
+      "source_location": "L309",
+      "_origin": "ast",
+      "id": "models_rationale_309",
+      "community": 24,
+      "norm_label": "tabla puente multirol. soporta roles temporales con fecha de expiracion.     un"
+    },
+    {
+      "label": "Registro inmutable de toda acci\u00f3n sensible.     Regla de negocio: NUNCA UPDATE n",
+      "file_type": "rationale",
+      "source_file": "models.py",
+      "source_location": "L365",
+      "_origin": "ast",
+      "id": "models_rationale_365",
+      "community": 15,
+      "norm_label": "registro inmutable de toda accion sensible.     regla de negocio: nunca update n"
+    },
+    {
+      "label": "Cat\u00e1logo unificado: cuotas, alquileres e indumentaria.     stock = NULL para ser",
+      "file_type": "rationale",
+      "source_file": "models.py",
+      "source_location": "L410",
+      "_origin": "ast",
+      "id": "models_rationale_410",
+      "community": 21,
+      "norm_label": "catalogo unificado: cuotas, alquileres e indumentaria.     stock = null para ser"
+    },
+    {
+      "label": "Agenda de instalaciones. Previene conflictos de doble reserva.     Ciclo de vida",
+      "file_type": "rationale",
+      "source_file": "models.py",
+      "source_location": "L464",
+      "_origin": "ast",
+      "id": "models_rationale_464",
+      "community": 25,
+      "norm_label": "agenda de instalaciones. previene conflictos de doble reserva.     ciclo de vida"
+    },
+    {
+      "label": "Cabecera del movimiento contable. Una orden puede contener m\u00faltiples \u00edtems.",
+      "file_type": "rationale",
+      "source_file": "models.py",
+      "source_location": "L529",
+      "_origin": "ast",
+      "id": "models_rationale_529",
+      "community": 5,
+      "norm_label": "cabecera del movimiento contable. una orden puede contener multiples items."
+    },
+    {
+      "label": "\u00cdtems de una orden. El precio hist\u00f3rico se congela al momento de la compra.",
+      "file_type": "rationale",
+      "source_file": "models.py",
+      "source_location": "L607",
+      "_origin": "ast",
+      "id": "models_rationale_607",
+      "community": 18,
+      "norm_label": "items de una orden. el precio historico se congela al momento de la compra."
+    },
+    {
+      "label": "Divisiones del club: Sub-12, Sub-15, Primera Divisi\u00f3n, etc.",
+      "file_type": "rationale",
+      "source_file": "models.py",
+      "source_location": "L659",
+      "_origin": "ast",
+      "id": "models_rationale_659",
+      "community": 16,
+      "norm_label": "divisiones del club: sub-12, sub-15, primera division, etc."
+    },
+    {
+      "label": "Tabla puente: jugador \u2194 categor\u00eda deportiva.     PK compuesta: (id_usuario, id_c",
+      "file_type": "rationale",
+      "source_file": "models.py",
+      "source_location": "L682",
+      "_origin": "ast",
+      "id": "models_rationale_682",
+      "community": 26,
+      "norm_label": "tabla puente: jugador \u2194 categoria deportiva.     pk compuesta: (id_usuario, id_c"
+    },
+    {
+      "label": "Partidos, torneos, entrenamientos u otros eventos institucionales.     El contro",
+      "file_type": "rationale",
+      "source_file": "models.py",
+      "source_location": "L716",
+      "_origin": "ast",
+      "id": "models_rationale_716",
+      "community": 19,
+      "norm_label": "partidos, torneos, entrenamientos u otros eventos institucionales.     el contro"
+    },
+    {
+      "label": "Registro inmutable de cada ingreso en puerta, vinculado a un evento.     El camp",
+      "file_type": "rationale",
+      "source_file": "models.py",
+      "source_location": "L779",
+      "_origin": "ast",
+      "id": "models_rationale_779",
+      "community": 4,
+      "norm_label": "registro inmutable de cada ingreso en puerta, vinculado a un evento.     el camp"
+    },
+    {
+      "label": "Centro de mensajes internos. El campo referencia_id + referencia_tabla     permi",
+      "file_type": "rationale",
+      "source_file": "models.py",
+      "source_location": "L858",
+      "_origin": "ast",
+      "id": "models_rationale_858",
+      "community": 20,
+      "norm_label": "centro de mensajes internos. el campo referencia_id + referencia_tabla     permi"
+    },
+    {
+      "label": "schemas.py",
+      "file_type": "code",
+      "source_file": "schemas.py",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "schemas",
+      "community": 0,
+      "norm_label": "schemas.py"
+    },
+    {
+      "label": "ConfiguracionGlobalBase",
+      "file_type": "code",
+      "source_file": "schemas.py",
+      "source_location": "L52",
+      "_origin": "ast",
+      "id": "schemas_configuracionglobalbase",
+      "community": 0,
+      "norm_label": "configuracionglobalbase"
+    },
+    {
+      "label": "BaseModel",
+      "file_type": "code",
+      "source_file": "",
+      "source_location": "",
+      "_origin": "ast",
+      "id": "basemodel",
+      "community": 1,
+      "norm_label": "basemodel"
+    },
+    {
+      "label": "ConfiguracionGlobalUpdate",
+      "file_type": "code",
+      "source_file": "schemas.py",
+      "source_location": "L64",
+      "_origin": "ast",
+      "id": "schemas_configuracionglobalupdate",
+      "community": 33,
+      "norm_label": "configuracionglobalupdate"
+    },
+    {
+      "label": "ConfiguracionGlobalResponse",
+      "file_type": "code",
+      "source_file": "schemas.py",
+      "source_location": "L71",
+      "_origin": "ast",
+      "id": "schemas_configuracionglobalresponse",
+      "community": 0,
+      "norm_label": "configuracionglobalresponse"
+    },
+    {
+      "label": "RolBase",
+      "file_type": "code",
+      "source_file": "schemas.py",
+      "source_location": "L83",
+      "_origin": "ast",
+      "id": "schemas_rolbase",
+      "community": 0,
+      "norm_label": "rolbase"
+    },
+    {
+      "label": "RolCreate",
+      "file_type": "code",
+      "source_file": "schemas.py",
+      "source_location": "L90",
+      "_origin": "ast",
+      "id": "schemas_rolcreate",
+      "community": 0,
+      "norm_label": "rolcreate"
+    },
+    {
+      "label": "RolUpdate",
+      "file_type": "code",
+      "source_file": "schemas.py",
+      "source_location": "L94",
+      "_origin": "ast",
+      "id": "schemas_rolupdate",
+      "community": 0,
+      "norm_label": "rolupdate"
+    },
+    {
+      "label": "RolResponse",
+      "file_type": "code",
+      "source_file": "schemas.py",
+      "source_location": "L101",
+      "_origin": "ast",
+      "id": "schemas_rolresponse",
+      "community": 0,
+      "norm_label": "rolresponse"
+    },
+    {
+      "label": "UsuarioBase",
+      "file_type": "code",
+      "source_file": "schemas.py",
+      "source_location": "L111",
+      "_origin": "ast",
+      "id": "schemas_usuariobase",
+      "community": 2,
+      "norm_label": "usuariobase"
+    },
+    {
+      "label": "UsuarioCreate",
+      "file_type": "code",
+      "source_file": "schemas.py",
+      "source_location": "L127",
+      "_origin": "ast",
+      "id": "schemas_usuariocreate",
+      "community": 2,
+      "norm_label": "usuariocreate"
+    },
+    {
+      "label": ".password_no_trivial()",
+      "file_type": "code",
+      "source_file": "schemas.py",
+      "source_location": "L136",
+      "_origin": "ast",
+      "id": "schemas_usuariocreate_password_no_trivial",
+      "community": 2,
+      "norm_label": ".password_no_trivial()"
+    },
+    {
+      "label": "UsuarioCreateMigracion",
+      "file_type": "code",
+      "source_file": "schemas.py",
+      "source_location": "L142",
+      "_origin": "ast",
+      "id": "schemas_usuariocreatemigracion",
+      "community": 2,
+      "norm_label": "usuariocreatemigracion"
+    },
+    {
+      "label": "UsuarioUpdate",
+      "file_type": "code",
+      "source_file": "schemas.py",
+      "source_location": "L152",
+      "_origin": "ast",
+      "id": "schemas_usuarioupdate",
+      "community": 40,
+      "norm_label": "usuarioupdate"
+    },
+    {
+      "label": "UsuarioCambiarPassword",
+      "file_type": "code",
+      "source_file": "schemas.py",
+      "source_location": "L165",
+      "_origin": "ast",
+      "id": "schemas_usuariocambiarpassword",
+      "community": 28,
+      "norm_label": "usuariocambiarpassword"
+    },
+    {
+      "label": ".passwords_coinciden()",
+      "file_type": "code",
+      "source_file": "schemas.py",
+      "source_location": "L172",
+      "_origin": "ast",
+      "id": "schemas_usuariocambiarpassword_passwords_coinciden",
+      "community": 28,
+      "norm_label": ".passwords_coinciden()"
+    },
+    {
+      "label": "UsuarioBaja",
+      "file_type": "code",
+      "source_file": "schemas.py",
+      "source_location": "L180",
+      "_origin": "ast",
+      "id": "schemas_usuariobaja",
+      "community": 41,
+      "norm_label": "usuariobaja"
+    },
+    {
+      "label": "RolResponseSimple",
+      "file_type": "code",
+      "source_file": "schemas.py",
+      "source_location": "L188",
+      "_origin": "ast",
+      "id": "schemas_rolresponsesimple",
+      "community": 42,
+      "norm_label": "rolresponsesimple"
+    },
+    {
+      "label": "UsuarioRolResponse",
+      "file_type": "code",
+      "source_file": "schemas.py",
+      "source_location": "L197",
+      "_origin": "ast",
+      "id": "schemas_usuariorolresponse",
+      "community": 43,
+      "norm_label": "usuariorolresponse"
+    },
+    {
+      "label": "UsuarioResponse",
+      "file_type": "code",
+      "source_file": "schemas.py",
+      "source_location": "L207",
+      "_origin": "ast",
+      "id": "schemas_usuarioresponse",
+      "community": 2,
+      "norm_label": "usuarioresponse"
+    },
+    {
+      "label": "UsuarioListResponse",
+      "file_type": "code",
+      "source_file": "schemas.py",
+      "source_location": "L228",
+      "_origin": "ast",
+      "id": "schemas_usuariolistresponse",
+      "community": 44,
+      "norm_label": "usuariolistresponse"
+    },
+    {
+      "label": "UsuarioQRValidacionResponse",
+      "file_type": "code",
+      "source_file": "schemas.py",
+      "source_location": "L242",
+      "_origin": "ast",
+      "id": "schemas_usuarioqrvalidacionresponse",
+      "community": 45,
+      "norm_label": "usuarioqrvalidacionresponse"
+    },
+    {
+      "label": "AsignarRolPayload",
+      "file_type": "code",
+      "source_file": "schemas.py",
+      "source_location": "L259",
+      "_origin": "ast",
+      "id": "schemas_asignarrolpayload",
+      "community": 30,
+      "norm_label": "asignarrolpayload"
+    },
+    {
+      "label": "RemoverRolPayload",
+      "file_type": "code",
+      "source_file": "schemas.py",
+      "source_location": "L269",
+      "_origin": "ast",
+      "id": "schemas_removerrolpayload",
+      "community": 0,
+      "norm_label": "removerrolpayload"
+    },
+    {
+      "label": "AuditLogResponse",
+      "file_type": "code",
+      "source_file": "schemas.py",
+      "source_location": "L278",
+      "_origin": "ast",
+      "id": "schemas_auditlogresponse",
+      "community": 32,
+      "norm_label": "auditlogresponse"
+    },
+    {
+      "label": "AuditLogFiltros",
+      "file_type": "code",
+      "source_file": "schemas.py",
+      "source_location": "L292",
+      "_origin": "ast",
+      "id": "schemas_auditlogfiltros",
+      "community": 31,
+      "norm_label": "auditlogfiltros"
+    },
+    {
+      "label": "ProductoServicioBase",
+      "file_type": "code",
+      "source_file": "schemas.py",
+      "source_location": "L310",
+      "_origin": "ast",
+      "id": "schemas_productoserviciobase",
+      "community": 9,
+      "norm_label": "productoserviciobase"
+    },
+    {
+      "label": ".categoria_valida()",
+      "file_type": "code",
+      "source_file": "schemas.py",
+      "source_location": "L321",
+      "_origin": "ast",
+      "id": "schemas_productoserviciobase_categoria_valida",
+      "community": 9,
+      "norm_label": ".categoria_valida()"
+    },
+    {
+      "label": "ProductoServicioCreate",
+      "file_type": "code",
+      "source_file": "schemas.py",
+      "source_location": "L327",
+      "_origin": "ast",
+      "id": "schemas_productoserviciocreate",
+      "community": 9,
+      "norm_label": "productoserviciocreate"
+    },
+    {
+      "label": "ProductoServicioUpdate",
+      "file_type": "code",
+      "source_file": "schemas.py",
+      "source_location": "L331",
+      "_origin": "ast",
+      "id": "schemas_productoservicioupdate",
+      "community": 1,
+      "norm_label": "productoservicioupdate"
+    },
+    {
+      "label": "ProductoServicioResponse",
+      "file_type": "code",
+      "source_file": "schemas.py",
+      "source_location": "L340",
+      "_origin": "ast",
+      "id": "schemas_productoservicioresponse",
+      "community": 9,
+      "norm_label": "productoservicioresponse"
+    },
+    {
+      "label": "ReservaInstalacionCreate",
+      "file_type": "code",
+      "source_file": "schemas.py",
+      "source_location": "L355",
+      "_origin": "ast",
+      "id": "schemas_reservainstalacioncreate",
+      "community": 47,
+      "norm_label": "reservainstalacioncreate"
+    },
+    {
+      "label": ".fechas_coherentes()",
+      "file_type": "code",
+      "source_file": "schemas.py",
+      "source_location": "L362",
+      "_origin": "ast",
+      "id": "schemas_reservainstalacioncreate_fechas_coherentes",
+      "community": 47,
+      "norm_label": ".fechas_coherentes()"
+    },
+    {
+      "label": "ReservaInstalacionResponse",
+      "file_type": "code",
+      "source_file": "schemas.py",
+      "source_location": "L368",
+      "_origin": "ast",
+      "id": "schemas_reservainstalacionresponse",
+      "community": 1,
+      "norm_label": "reservainstalacionresponse"
+    },
+    {
+      "label": "DetalleOrdenCreate",
+      "file_type": "code",
+      "source_file": "schemas.py",
+      "source_location": "L394",
+      "_origin": "ast",
+      "id": "schemas_detalleordencreate",
+      "community": 7,
+      "norm_label": "detalleordencreate"
+    },
+    {
+      "label": "DetalleOrdenResponse",
+      "file_type": "code",
+      "source_file": "schemas.py",
+      "source_location": "L405",
+      "_origin": "ast",
+      "id": "schemas_detalleordenresponse",
+      "community": 1,
+      "norm_label": "detalleordenresponse"
+    },
+    {
+      "label": "OrdenCreate",
+      "file_type": "code",
+      "source_file": "schemas.py",
+      "source_location": "L417",
+      "_origin": "ast",
+      "id": "schemas_ordencreate",
+      "community": 7,
+      "norm_label": "ordencreate"
+    },
+    {
+      "label": ".items_no_vacio()",
+      "file_type": "code",
+      "source_file": "schemas.py",
+      "source_location": "L426",
+      "_origin": "ast",
+      "id": "schemas_ordencreate_items_no_vacio",
+      "community": 7,
+      "norm_label": ".items_no_vacio()"
+    },
+    {
+      "label": "OrdenSubirComprobante",
+      "file_type": "code",
+      "source_file": "schemas.py",
+      "source_location": "L432",
+      "_origin": "ast",
+      "id": "schemas_ordensubircomprobante",
+      "community": 38,
+      "norm_label": "ordensubircomprobante"
+    },
+    {
+      "label": "OrdenAprobar",
+      "file_type": "code",
+      "source_file": "schemas.py",
+      "source_location": "L437",
+      "_origin": "ast",
+      "id": "schemas_ordenaprobar",
+      "community": 35,
+      "norm_label": "ordenaprobar"
+    },
+    {
+      "label": "OrdenRechazar",
+      "file_type": "code",
+      "source_file": "schemas.py",
+      "source_location": "L442",
+      "_origin": "ast",
+      "id": "schemas_ordenrechazar",
+      "community": 37,
+      "norm_label": "ordenrechazar"
+    },
+    {
+      "label": "OrdenResponse",
+      "file_type": "code",
+      "source_file": "schemas.py",
+      "source_location": "L450",
+      "_origin": "ast",
+      "id": "schemas_ordenresponse",
+      "community": 0,
+      "norm_label": "ordenresponse"
+    },
+    {
+      "label": "OrdenListResponse",
+      "file_type": "code",
+      "source_file": "schemas.py",
+      "source_location": "L467",
+      "_origin": "ast",
+      "id": "schemas_ordenlistresponse",
+      "community": 36,
+      "norm_label": "ordenlistresponse"
+    },
+    {
+      "label": "CategoriaDeportivaBase",
+      "file_type": "code",
+      "source_file": "schemas.py",
+      "source_location": "L488",
+      "_origin": "ast",
+      "id": "schemas_categoriadeportivabase",
+      "community": 0,
+      "norm_label": "categoriadeportivabase"
+    },
+    {
+      "label": "CategoriaDeportivaCreate",
+      "file_type": "code",
+      "source_file": "schemas.py",
+      "source_location": "L494",
+      "_origin": "ast",
+      "id": "schemas_categoriadeportivacreate",
+      "community": 0,
+      "norm_label": "categoriadeportivacreate"
+    },
+    {
+      "label": "CategoriaDeportivaResponse",
+      "file_type": "code",
+      "source_file": "schemas.py",
+      "source_location": "L498",
+      "_origin": "ast",
+      "id": "schemas_categoriadeportivaresponse",
+      "community": 0,
+      "norm_label": "categoriadeportivaresponse"
+    },
+    {
+      "label": "UsuarioCategoriaCreate",
+      "file_type": "code",
+      "source_file": "schemas.py",
+      "source_location": "L504",
+      "_origin": "ast",
+      "id": "schemas_usuariocategoriacreate",
+      "community": 1,
+      "norm_label": "usuariocategoriacreate"
+    },
+    {
+      "label": "UsuarioCategoriaResponse",
+      "file_type": "code",
+      "source_file": "schemas.py",
+      "source_location": "L511",
+      "_origin": "ast",
+      "id": "schemas_usuariocategoriaresponse",
+      "community": 1,
+      "norm_label": "usuariocategoriaresponse"
+    },
+    {
+      "label": "EventoBase",
+      "file_type": "code",
+      "source_file": "schemas.py",
+      "source_location": "L521",
+      "_origin": "ast",
+      "id": "schemas_eventobase",
+      "community": 8,
+      "norm_label": "eventobase"
+    },
+    {
+      "label": ".tipo_valido()",
+      "file_type": "code",
+      "source_file": "schemas.py",
+      "source_location": "L532",
+      "_origin": "ast",
+      "id": "schemas_eventobase_tipo_valido",
+      "community": 8,
+      "norm_label": ".tipo_valido()"
+    },
+    {
+      "label": "EventoCreate",
+      "file_type": "code",
+      "source_file": "schemas.py",
+      "source_location": "L538",
+      "_origin": "ast",
+      "id": "schemas_eventocreate",
+      "community": 8,
+      "norm_label": "eventocreate"
+    },
+    {
+      "label": "EventoUpdate",
+      "file_type": "code",
+      "source_file": "schemas.py",
+      "source_location": "L542",
+      "_origin": "ast",
+      "id": "schemas_eventoupdate",
+      "community": 34,
+      "norm_label": "eventoupdate"
+    },
+    {
+      "label": ".estado_valido()",
+      "file_type": "code",
+      "source_file": "schemas.py",
+      "source_location": "L552",
+      "_origin": "ast",
+      "id": "schemas_eventoupdate_estado_valido",
+      "community": 34,
+      "norm_label": ".estado_valido()"
+    },
+    {
+      "label": "EventoResponse",
+      "file_type": "code",
+      "source_file": "schemas.py",
+      "source_location": "L558",
+      "_origin": "ast",
+      "id": "schemas_eventoresponse",
+      "community": 8,
+      "norm_label": "eventoresponse"
+    },
+    {
+      "label": "AsistenciaCreate",
+      "file_type": "code",
+      "source_file": "schemas.py",
+      "source_location": "L567",
+      "_origin": "ast",
+      "id": "schemas_asistenciacreate",
+      "community": 27,
+      "norm_label": "asistenciacreate"
+    },
+    {
+      "label": ".metodo_valido()",
+      "file_type": "code",
+      "source_file": "schemas.py",
+      "source_location": "L575",
+      "_origin": "ast",
+      "id": "schemas_asistenciacreate_metodo_valido",
+      "community": 27,
+      "norm_label": ".metodo_valido()"
+    },
+    {
+      "label": "AsistenciaResponse",
+      "file_type": "code",
+      "source_file": "schemas.py",
+      "source_location": "L581",
+      "_origin": "ast",
+      "id": "schemas_asistenciaresponse",
+      "community": 1,
+      "norm_label": "asistenciaresponse"
+    },
+    {
+      "label": "ReporteEventoResponse",
+      "file_type": "code",
+      "source_file": "schemas.py",
+      "source_location": "L593",
+      "_origin": "ast",
+      "id": "schemas_reporteeventoresponse",
+      "community": 46,
+      "norm_label": "reporteeventoresponse"
+    },
+    {
+      "label": "NotificacionResponse",
+      "file_type": "code",
+      "source_file": "schemas.py",
+      "source_location": "L617",
+      "_origin": "ast",
+      "id": "schemas_notificacionresponse",
+      "community": 0,
+      "norm_label": "notificacionresponse"
+    },
+    {
+      "label": "MarcarLeidaPayload",
+      "file_type": "code",
+      "source_file": "schemas.py",
+      "source_location": "L630",
+      "_origin": "ast",
+      "id": "schemas_marcarleidapayload",
+      "community": 1,
+      "norm_label": "marcarleidapayload"
+    },
+    {
+      "label": "LoginPayload",
+      "file_type": "code",
+      "source_file": "schemas.py",
+      "source_location": "L638",
+      "_origin": "ast",
+      "id": "schemas_loginpayload",
+      "community": 1,
+      "norm_label": "loginpayload"
+    },
+    {
+      "label": "TokenResponse",
+      "file_type": "code",
+      "source_file": "schemas.py",
+      "source_location": "L643",
+      "_origin": "ast",
+      "id": "schemas_tokenresponse",
+      "community": 0,
+      "norm_label": "tokenresponse"
+    },
+    {
+      "label": "PaginatedResponse",
+      "file_type": "code",
+      "source_file": "schemas.py",
+      "source_location": "L654",
+      "_origin": "ast",
+      "id": "schemas_paginatedresponse",
+      "community": 39,
+      "norm_label": "paginatedresponse"
+    },
+    {
+      "label": "schemas.py \u2014 Pydantic v2 Schemas Club Atl\u00e9tico \u2014 Sistema de Gesti\u00f3n  Convencione",
+      "file_type": "rationale",
+      "source_file": "schemas.py",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "schemas_rationale_1",
+      "community": 0,
+      "norm_label": "schemas.py \u2014 pydantic v2 schemas club atletico \u2014 sistema de gestion  convencione"
+    },
+    {
+      "label": "Todos los campos son opcionales \u2014 PATCH parcial.",
+      "file_type": "rationale",
+      "source_file": "schemas.py",
+      "source_location": "L65",
+      "_origin": "ast",
+      "id": "schemas_rationale_65",
+      "community": 33,
+      "norm_label": "todos los campos son opcionales \u2014 patch parcial."
+    },
+    {
+      "label": "Payload para dar de alta un nuevo usuario.     El backend hashea `password` ante",
+      "file_type": "rationale",
+      "source_file": "schemas.py",
+      "source_location": "L128",
+      "_origin": "ast",
+      "id": "schemas_rationale_128",
+      "community": 2,
+      "norm_label": "payload para dar de alta un nuevo usuario.     el backend hashea `password` ante"
+    },
+    {
+      "label": "Payload del script de migraci\u00f3n desde Excel.     La contrase\u00f1a se genera autom\u00e1t",
+      "file_type": "rationale",
+      "source_file": "schemas.py",
+      "source_location": "L143",
+      "_origin": "ast",
+      "id": "schemas_rationale_143",
+      "community": 2,
+      "norm_label": "payload del script de migracion desde excel.     la contrasena se genera automat"
+    },
+    {
+      "label": "Todos los campos opcionales \u2014 PATCH parcial.",
+      "file_type": "rationale",
+      "source_file": "schemas.py",
+      "source_location": "L153",
+      "_origin": "ast",
+      "id": "schemas_rationale_153",
+      "community": 40,
+      "norm_label": "todos los campos opcionales \u2014 patch parcial."
+    },
+    {
+      "label": "Payload para el forzado de cambio de contrase\u00f1a en primer ingreso.",
+      "file_type": "rationale",
+      "source_file": "schemas.py",
+      "source_location": "L166",
+      "_origin": "ast",
+      "id": "schemas_rationale_166",
+      "community": 28,
+      "norm_label": "payload para el forzado de cambio de contrasena en primer ingreso."
+    },
+    {
+      "label": "Payload para dar de baja a un usuario (baja l\u00f3gica, nunca DELETE).",
+      "file_type": "rationale",
+      "source_file": "schemas.py",
+      "source_location": "L181",
+      "_origin": "ast",
+      "id": "schemas_rationale_181",
+      "community": 41,
+      "norm_label": "payload para dar de baja a un usuario (baja logica, nunca delete)."
+    },
+    {
+      "label": "Versi\u00f3n ligera de Rol para embeber en UsuarioResponse.",
+      "file_type": "rationale",
+      "source_file": "schemas.py",
+      "source_location": "L189",
+      "_origin": "ast",
+      "id": "schemas_rationale_189",
+      "community": 42,
+      "norm_label": "version ligera de rol para embeber en usuarioresponse."
+    },
+    {
+      "label": "Asignaci\u00f3n de rol con metadata de expiraci\u00f3n.",
+      "file_type": "rationale",
+      "source_file": "schemas.py",
+      "source_location": "L198",
+      "_origin": "ast",
+      "id": "schemas_rationale_198",
+      "community": 43,
+      "norm_label": "asignacion de rol con metadata de expiracion."
+    },
+    {
+      "label": "Respuesta est\u00e1ndar. No expone password_hash.     qr_token y estado financiero so",
+      "file_type": "rationale",
+      "source_file": "schemas.py",
+      "source_location": "L208",
+      "_origin": "ast",
+      "id": "schemas_rationale_208",
+      "community": 2,
+      "norm_label": "respuesta estandar. no expone password_hash.     qr_token y estado financiero so"
+    },
+    {
+      "label": "Versi\u00f3n condensada para listados (sin roles completos ni QR).",
+      "file_type": "rationale",
+      "source_file": "schemas.py",
+      "source_location": "L229",
+      "_origin": "ast",
+      "id": "schemas_rationale_229",
+      "community": 44,
+      "norm_label": "version condensada para listados (sin roles completos ni qr)."
+    },
+    {
+      "label": "Respuesta del lector de puerta al escanear un QR.     M\u00ednima informaci\u00f3n necesar",
+      "file_type": "rationale",
+      "source_file": "schemas.py",
+      "source_location": "L243",
+      "_origin": "ast",
+      "id": "schemas_rationale_243",
+      "community": 45,
+      "norm_label": "respuesta del lector de puerta al escanear un qr.     minima informacion necesar"
+    },
+    {
+      "label": "Payload para asignar un rol a un usuario.",
+      "file_type": "rationale",
+      "source_file": "schemas.py",
+      "source_location": "L260",
+      "_origin": "ast",
+      "id": "schemas_rationale_260",
+      "community": 30,
+      "norm_label": "payload para asignar un rol a un usuario."
+    },
+    {
+      "label": "Solo lectura \u2014 el audit_log nunca se crea desde el frontend.",
+      "file_type": "rationale",
+      "source_file": "schemas.py",
+      "source_location": "L279",
+      "_origin": "ast",
+      "id": "schemas_rationale_279",
+      "community": 32,
+      "norm_label": "solo lectura \u2014 el audit_log nunca se crea desde el frontend."
+    },
+    {
+      "label": "Filtros para el endpoint GET /audit-log.",
+      "file_type": "rationale",
+      "source_file": "schemas.py",
+      "source_location": "L293",
+      "_origin": "ast",
+      "id": "schemas_rationale_293",
+      "community": 31,
+      "norm_label": "filtros para el endpoint get /audit-log."
+    },
+    {
+      "label": "Un \u00edtem dentro del carrito. El precio se resuelve en el backend.",
+      "file_type": "rationale",
+      "source_file": "schemas.py",
+      "source_location": "L395",
+      "_origin": "ast",
+      "id": "schemas_rationale_395",
+      "community": 7,
+      "norm_label": "un item dentro del carrito. el precio se resuelve en el backend."
+    },
+    {
+      "label": "El socio env\u00eda los \u00edtems; el backend calcula monto_total y bloquea stock/reserva",
+      "file_type": "rationale",
+      "source_file": "schemas.py",
+      "source_location": "L418",
+      "_origin": "ast",
+      "id": "schemas_rationale_418",
+      "community": 7,
+      "norm_label": "el socio envia los items; el backend calcula monto_total y bloquea stock/reserva"
+    },
+    {
+      "label": "El socio sube la URL del comprobante de transferencia.",
+      "file_type": "rationale",
+      "source_file": "schemas.py",
+      "source_location": "L433",
+      "_origin": "ast",
+      "id": "schemas_rationale_433",
+      "community": 38,
+      "norm_label": "el socio sube la url del comprobante de transferencia."
+    },
+    {
+      "label": "Payload del Personal Administrativo para aprobar una orden.",
+      "file_type": "rationale",
+      "source_file": "schemas.py",
+      "source_location": "L438",
+      "_origin": "ast",
+      "id": "schemas_rationale_438",
+      "community": 35,
+      "norm_label": "payload del personal administrativo para aprobar una orden."
+    },
+    {
+      "label": "Payload del Personal Administrativo para rechazar una orden.",
+      "file_type": "rationale",
+      "source_file": "schemas.py",
+      "source_location": "L443",
+      "_origin": "ast",
+      "id": "schemas_rationale_443",
+      "community": 37,
+      "norm_label": "payload del personal administrativo para rechazar una orden."
+    },
+    {
+      "label": "Versi\u00f3n condensada para la bandeja de entrada del admin.",
+      "file_type": "rationale",
+      "source_file": "schemas.py",
+      "source_location": "L468",
+      "_origin": "ast",
+      "id": "schemas_rationale_468",
+      "community": 36,
+      "norm_label": "version condensada para la bandeja de entrada del admin."
+    },
+    {
+      "label": "Lo env\u00eda el operador de puerta al escanear (el backend resuelve el estado financ",
+      "file_type": "rationale",
+      "source_file": "schemas.py",
+      "source_location": "L568",
+      "_origin": "ast",
+      "id": "schemas_rationale_568",
+      "community": 27,
+      "norm_label": "lo envia el operador de puerta al escanear (el backend resuelve el estado financ"
+    },
+    {
+      "label": "Resumen de cierre del evento (resultado de la vista v_reporte_evento).",
+      "file_type": "rationale",
+      "source_file": "schemas.py",
+      "source_location": "L594",
+      "_origin": "ast",
+      "id": "schemas_rationale_594",
+      "community": 46,
+      "norm_label": "resumen de cierre del evento (resultado de la vista v_reporte_evento)."
+    },
+    {
+      "label": "Wrapper gen\u00e9rico de paginaci\u00f3n. \u00dasalo con Generic[T] en los endpoints.",
+      "file_type": "rationale",
+      "source_file": "schemas.py",
+      "source_location": "L655",
+      "_origin": "ast",
+      "id": "schemas_rationale_655",
+      "community": 39,
+      "norm_label": "wrapper generico de paginacion. usalo con generic[t] en los endpoints."
+    }
+  ],
+  "links": [
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "alembic/env.py",
+      "source_location": "L28",
+      "weight": 1.0,
+      "source": "alembic_env",
+      "target": "alembic_env_include_object",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "alembic/env.py",
+      "source_location": "L33",
+      "weight": 1.0,
+      "source": "alembic_env",
+      "target": "alembic_env_run_migrations_offline",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "alembic/env.py",
+      "source_location": "L45",
+      "weight": 1.0,
+      "source": "alembic_env",
+      "target": "alembic_env_run_migrations_online",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "alembic/env.py",
+      "source_location": "L23",
+      "weight": 1.0,
+      "source": "alembic_env",
+      "target": "database",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "alembic/env.py",
+      "source_location": "L22",
+      "weight": 1.0,
+      "source": "alembic_env",
+      "target": "models",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "alembic/versions/188f9a5748c8_0002_seed_data.py",
+      "source_location": "L44",
+      "weight": 1.0,
+      "source": "alembic_versions_188f9a5748c8_0002_seed_data",
+      "target": "alembic_versions_188f9a5748c8_0002_seed_data_downgrade",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "alembic/versions/188f9a5748c8_0002_seed_data.py",
+      "source_location": "L24",
+      "weight": 1.0,
+      "source": "alembic_versions_188f9a5748c8_0002_seed_data",
+      "target": "alembic_versions_188f9a5748c8_0002_seed_data_upgrade",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "alembic/versions/208ea0e312f5_0006_comercios_asociados.py",
+      "source_location": "L48",
+      "weight": 1.0,
+      "source": "alembic_versions_208ea0e312f5_0006_comercios_asociados",
+      "target": "alembic_versions_208ea0e312f5_0006_comercios_asociados_downgrade",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "alembic/versions/208ea0e312f5_0006_comercios_asociados.py",
+      "source_location": "L21",
+      "weight": 1.0,
+      "source": "alembic_versions_208ea0e312f5_0006_comercios_asociados",
+      "target": "alembic_versions_208ea0e312f5_0006_comercios_asociados_upgrade",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "alembic/versions/76b421c257e8_0005_add_views.py",
+      "source_location": "L92",
+      "weight": 1.0,
+      "source": "alembic_versions_76b421c257e8_0005_add_views",
+      "target": "alembic_versions_76b421c257e8_0005_add_views_downgrade",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "alembic/versions/76b421c257e8_0005_add_views.py",
+      "source_location": "L26",
+      "weight": 1.0,
+      "source": "alembic_versions_76b421c257e8_0005_add_views",
+      "target": "alembic_versions_76b421c257e8_0005_add_views_upgrade",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "alembic/versions/a0c06916cf98_0004_add_functions_triggers.py",
+      "source_location": "L249",
+      "weight": 1.0,
+      "source": "alembic_versions_a0c06916cf98_0004_add_functions_triggers",
+      "target": "alembic_versions_a0c06916cf98_0004_add_functions_triggers_downgrade",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "alembic/versions/a0c06916cf98_0004_add_functions_triggers.py",
+      "source_location": "L23",
+      "weight": 1.0,
+      "source": "alembic_versions_a0c06916cf98_0004_add_functions_triggers",
+      "target": "alembic_versions_a0c06916cf98_0004_add_functions_triggers_upgrade",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "alembic/versions/a0c06916cf98_0004_add_functions_triggers.py",
+      "source_location": "L24",
+      "weight": 1.0,
+      "source": "alembic_versions_a0c06916cf98_0004_add_functions_triggers_rationale_24",
+      "target": "alembic_versions_a0c06916cf98_0004_add_functions_triggers_upgrade",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "alembic/versions/a0c06916cf98_0004_add_functions_triggers.py",
+      "source_location": "L250",
+      "weight": 1.0,
+      "source": "alembic_versions_a0c06916cf98_0004_add_functions_triggers_rationale_250",
+      "target": "alembic_versions_a0c06916cf98_0004_add_functions_triggers_downgrade",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "alembic/versions/c70045881479_0003_add_extensions.py",
+      "source_location": "L24",
+      "weight": 1.0,
+      "source": "alembic_versions_c70045881479_0003_add_extensions",
+      "target": "alembic_versions_c70045881479_0003_add_extensions_downgrade",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "alembic/versions/c70045881479_0003_add_extensions.py",
+      "source_location": "L21",
+      "weight": 1.0,
+      "source": "alembic_versions_c70045881479_0003_add_extensions",
+      "target": "alembic_versions_c70045881479_0003_add_extensions_upgrade",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "alembic/versions/c90509324888_0001_initial_tables.py",
+      "source_location": "L249",
+      "weight": 1.0,
+      "source": "alembic_versions_c90509324888_0001_initial_tables",
+      "target": "alembic_versions_c90509324888_0001_initial_tables_downgrade",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "alembic/versions/c90509324888_0001_initial_tables.py",
+      "source_location": "L21",
+      "weight": 1.0,
+      "source": "alembic_versions_c90509324888_0001_initial_tables",
+      "target": "alembic_versions_c90509324888_0001_initial_tables_upgrade",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "database.py",
+      "source_location": "L19",
+      "weight": 1.0,
+      "source": "database",
+      "target": "database_get_db",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L6",
+      "weight": 1.0,
+      "source": "main",
+      "target": "main_ver_estado",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "models.py",
+      "source_location": "L778",
+      "weight": 1.0,
+      "source": "models",
+      "target": "models_asistencia",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "models.py",
+      "source_location": "L364",
+      "weight": 1.0,
+      "source": "models",
+      "target": "models_auditlog",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "models.py",
+      "source_location": "L56",
+      "weight": 1.0,
+      "source": "models",
+      "target": "models_base",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "models.py",
+      "source_location": "L658",
+      "weight": 1.0,
+      "source": "models",
+      "target": "models_categoriadeportiva",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "models.py",
+      "source_location": "L903",
+      "weight": 1.0,
+      "source": "models",
+      "target": "models_comercioasociado",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "models.py",
+      "source_location": "L65",
+      "weight": 1.0,
+      "source": "models",
+      "target": "models_configuracionglobal",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "models.py",
+      "source_location": "L606",
+      "weight": 1.0,
+      "source": "models",
+      "target": "models_detalleorden",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "models.py",
+      "source_location": "L715",
+      "weight": 1.0,
+      "source": "models",
+      "target": "models_evento",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "models.py",
+      "source_location": "L857",
+      "weight": 1.0,
+      "source": "models",
+      "target": "models_notificacion",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "models.py",
+      "source_location": "L528",
+      "weight": 1.0,
+      "source": "models",
+      "target": "models_orden",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "models.py",
+      "source_location": "L409",
+      "weight": 1.0,
+      "source": "models",
+      "target": "models_productoservicio",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "models.py",
+      "source_location": "L463",
+      "weight": 1.0,
+      "source": "models",
+      "target": "models_reservainstalacion",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "models.py",
+      "source_location": "L117",
+      "weight": 1.0,
+      "source": "models",
+      "target": "models_rol",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "models.py",
+      "source_location": "L141",
+      "weight": 1.0,
+      "source": "models",
+      "target": "models_usuario",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "models.py",
+      "source_location": "L681",
+      "weight": 1.0,
+      "source": "models",
+      "target": "models_usuariocategoria",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "models.py",
+      "source_location": "L308",
+      "weight": 1.0,
+      "source": "models",
+      "target": "models_usuariorol",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "models.py",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "models_rationale_1",
+      "target": "models",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "models.py",
+      "source_location": "L778",
+      "weight": 1.0,
+      "source": "models_asistencia",
+      "target": "models_base",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "models.py",
+      "source_location": "L364",
+      "weight": 1.0,
+      "source": "models_auditlog",
+      "target": "models_base",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "models.py",
+      "source_location": "L56",
+      "weight": 1.0,
+      "source": "models_base",
+      "target": "declarativebase",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "models.py",
+      "source_location": "L658",
+      "weight": 1.0,
+      "source": "models_categoriadeportiva",
+      "target": "models_base",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "models.py",
+      "source_location": "L903",
+      "weight": 1.0,
+      "source": "models_comercioasociado",
+      "target": "models_base",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "models.py",
+      "source_location": "L65",
+      "weight": 1.0,
+      "source": "models_configuracionglobal",
+      "target": "models_base",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "models.py",
+      "source_location": "L606",
+      "weight": 1.0,
+      "source": "models_detalleorden",
+      "target": "models_base",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "models.py",
+      "source_location": "L715",
+      "weight": 1.0,
+      "source": "models_evento",
+      "target": "models_base",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "models.py",
+      "source_location": "L857",
+      "weight": 1.0,
+      "source": "models_notificacion",
+      "target": "models_base",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "models.py",
+      "source_location": "L528",
+      "weight": 1.0,
+      "source": "models_orden",
+      "target": "models_base",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "models.py",
+      "source_location": "L409",
+      "weight": 1.0,
+      "source": "models_productoservicio",
+      "target": "models_base",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "models.py",
+      "source_location": "L57",
+      "weight": 1.0,
+      "source": "models_rationale_57",
+      "target": "models_base",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "models.py",
+      "source_location": "L463",
+      "weight": 1.0,
+      "source": "models_reservainstalacion",
+      "target": "models_base",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "models.py",
+      "source_location": "L117",
+      "weight": 1.0,
+      "source": "models_rol",
+      "target": "models_base",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "models.py",
+      "source_location": "L141",
+      "weight": 1.0,
+      "source": "models_usuario",
+      "target": "models_base",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "models.py",
+      "source_location": "L681",
+      "weight": 1.0,
+      "source": "models_usuariocategoria",
+      "target": "models_base",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "models.py",
+      "source_location": "L308",
+      "weight": 1.0,
+      "source": "models_usuariorol",
+      "target": "models_base",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "models.py",
+      "source_location": "L109",
+      "weight": 1.0,
+      "source": "models_configuracionglobal",
+      "target": "models_configuracionglobal_repr",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "models.py",
+      "source_location": "L66",
+      "weight": 1.0,
+      "source": "models_rationale_66",
+      "target": "models_configuracionglobal",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "models.py",
+      "source_location": "L118",
+      "weight": 1.0,
+      "source": "models_rationale_118",
+      "target": "models_rol",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "models.py",
+      "source_location": "L137",
+      "weight": 1.0,
+      "source": "models_rol",
+      "target": "models_rol_repr",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "models.py",
+      "source_location": "L142",
+      "weight": 1.0,
+      "source": "models_rationale_142",
+      "target": "models_usuario",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "models.py",
+      "source_location": "L304",
+      "weight": 1.0,
+      "source": "models_usuario",
+      "target": "models_usuario_repr",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "models.py",
+      "source_location": "L309",
+      "weight": 1.0,
+      "source": "models_rationale_309",
+      "target": "models_usuariorol",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "models.py",
+      "source_location": "L356",
+      "weight": 1.0,
+      "source": "models_usuariorol",
+      "target": "models_usuariorol_repr",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "models.py",
+      "source_location": "L401",
+      "weight": 1.0,
+      "source": "models_auditlog",
+      "target": "models_auditlog_repr",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "models.py",
+      "source_location": "L365",
+      "weight": 1.0,
+      "source": "models_rationale_365",
+      "target": "models_auditlog",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "models.py",
+      "source_location": "L459",
+      "weight": 1.0,
+      "source": "models_productoservicio",
+      "target": "models_productoservicio_repr",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "models.py",
+      "source_location": "L410",
+      "weight": 1.0,
+      "source": "models_rationale_410",
+      "target": "models_productoservicio",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "models.py",
+      "source_location": "L464",
+      "weight": 1.0,
+      "source": "models_rationale_464",
+      "target": "models_reservainstalacion",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "models.py",
+      "source_location": "L524",
+      "weight": 1.0,
+      "source": "models_reservainstalacion",
+      "target": "models_reservainstalacion_repr",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "models.py",
+      "source_location": "L602",
+      "weight": 1.0,
+      "source": "models_orden",
+      "target": "models_orden_repr",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "models.py",
+      "source_location": "L529",
+      "weight": 1.0,
+      "source": "models_rationale_529",
+      "target": "models_orden",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "models.py",
+      "source_location": "L650",
+      "weight": 1.0,
+      "source": "models_detalleorden",
+      "target": "models_detalleorden_repr",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "models.py",
+      "source_location": "L607",
+      "weight": 1.0,
+      "source": "models_rationale_607",
+      "target": "models_detalleorden",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "models.py",
+      "source_location": "L677",
+      "weight": 1.0,
+      "source": "models_categoriadeportiva",
+      "target": "models_categoriadeportiva_repr",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "models.py",
+      "source_location": "L659",
+      "weight": 1.0,
+      "source": "models_rationale_659",
+      "target": "models_categoriadeportiva",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "models.py",
+      "source_location": "L682",
+      "weight": 1.0,
+      "source": "models_rationale_682",
+      "target": "models_usuariocategoria",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "models.py",
+      "source_location": "L711",
+      "weight": 1.0,
+      "source": "models_usuariocategoria",
+      "target": "models_usuariocategoria_repr",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "models.py",
+      "source_location": "L774",
+      "weight": 1.0,
+      "source": "models_evento",
+      "target": "models_evento_repr",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "models.py",
+      "source_location": "L716",
+      "weight": 1.0,
+      "source": "models_rationale_716",
+      "target": "models_evento",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "models.py",
+      "source_location": "L836",
+      "weight": 1.0,
+      "source": "models_asistencia",
+      "target": "models_asistencia_repr",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "models.py",
+      "source_location": "L779",
+      "weight": 1.0,
+      "source": "models_rationale_779",
+      "target": "models_asistencia",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "models.py",
+      "source_location": "L899",
+      "weight": 1.0,
+      "source": "models_notificacion",
+      "target": "models_notificacion_repr",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "models.py",
+      "source_location": "L858",
+      "weight": 1.0,
+      "source": "models_rationale_858",
+      "target": "models_notificacion",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L259",
+      "weight": 1.0,
+      "source": "schemas",
+      "target": "schemas_asignarrolpayload",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L567",
+      "weight": 1.0,
+      "source": "schemas",
+      "target": "schemas_asistenciacreate",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L581",
+      "weight": 1.0,
+      "source": "schemas",
+      "target": "schemas_asistenciaresponse",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L292",
+      "weight": 1.0,
+      "source": "schemas",
+      "target": "schemas_auditlogfiltros",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L278",
+      "weight": 1.0,
+      "source": "schemas",
+      "target": "schemas_auditlogresponse",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L488",
+      "weight": 1.0,
+      "source": "schemas",
+      "target": "schemas_categoriadeportivabase",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L494",
+      "weight": 1.0,
+      "source": "schemas",
+      "target": "schemas_categoriadeportivacreate",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L498",
+      "weight": 1.0,
+      "source": "schemas",
+      "target": "schemas_categoriadeportivaresponse",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L52",
+      "weight": 1.0,
+      "source": "schemas",
+      "target": "schemas_configuracionglobalbase",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L71",
+      "weight": 1.0,
+      "source": "schemas",
+      "target": "schemas_configuracionglobalresponse",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L64",
+      "weight": 1.0,
+      "source": "schemas",
+      "target": "schemas_configuracionglobalupdate",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L394",
+      "weight": 1.0,
+      "source": "schemas",
+      "target": "schemas_detalleordencreate",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L405",
+      "weight": 1.0,
+      "source": "schemas",
+      "target": "schemas_detalleordenresponse",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L521",
+      "weight": 1.0,
+      "source": "schemas",
+      "target": "schemas_eventobase",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L538",
+      "weight": 1.0,
+      "source": "schemas",
+      "target": "schemas_eventocreate",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L558",
+      "weight": 1.0,
+      "source": "schemas",
+      "target": "schemas_eventoresponse",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L542",
+      "weight": 1.0,
+      "source": "schemas",
+      "target": "schemas_eventoupdate",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L638",
+      "weight": 1.0,
+      "source": "schemas",
+      "target": "schemas_loginpayload",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L630",
+      "weight": 1.0,
+      "source": "schemas",
+      "target": "schemas_marcarleidapayload",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L617",
+      "weight": 1.0,
+      "source": "schemas",
+      "target": "schemas_notificacionresponse",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L437",
+      "weight": 1.0,
+      "source": "schemas",
+      "target": "schemas_ordenaprobar",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L417",
+      "weight": 1.0,
+      "source": "schemas",
+      "target": "schemas_ordencreate",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L467",
+      "weight": 1.0,
+      "source": "schemas",
+      "target": "schemas_ordenlistresponse",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L442",
+      "weight": 1.0,
+      "source": "schemas",
+      "target": "schemas_ordenrechazar",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L450",
+      "weight": 1.0,
+      "source": "schemas",
+      "target": "schemas_ordenresponse",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L432",
+      "weight": 1.0,
+      "source": "schemas",
+      "target": "schemas_ordensubircomprobante",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L654",
+      "weight": 1.0,
+      "source": "schemas",
+      "target": "schemas_paginatedresponse",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L310",
+      "weight": 1.0,
+      "source": "schemas",
+      "target": "schemas_productoserviciobase",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L327",
+      "weight": 1.0,
+      "source": "schemas",
+      "target": "schemas_productoserviciocreate",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L340",
+      "weight": 1.0,
+      "source": "schemas",
+      "target": "schemas_productoservicioresponse",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L331",
+      "weight": 1.0,
+      "source": "schemas",
+      "target": "schemas_productoservicioupdate",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L269",
+      "weight": 1.0,
+      "source": "schemas",
+      "target": "schemas_removerrolpayload",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L593",
+      "weight": 1.0,
+      "source": "schemas",
+      "target": "schemas_reporteeventoresponse",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L355",
+      "weight": 1.0,
+      "source": "schemas",
+      "target": "schemas_reservainstalacioncreate",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L368",
+      "weight": 1.0,
+      "source": "schemas",
+      "target": "schemas_reservainstalacionresponse",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L83",
+      "weight": 1.0,
+      "source": "schemas",
+      "target": "schemas_rolbase",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L90",
+      "weight": 1.0,
+      "source": "schemas",
+      "target": "schemas_rolcreate",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L101",
+      "weight": 1.0,
+      "source": "schemas",
+      "target": "schemas_rolresponse",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L188",
+      "weight": 1.0,
+      "source": "schemas",
+      "target": "schemas_rolresponsesimple",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L94",
+      "weight": 1.0,
+      "source": "schemas",
+      "target": "schemas_rolupdate",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L643",
+      "weight": 1.0,
+      "source": "schemas",
+      "target": "schemas_tokenresponse",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L180",
+      "weight": 1.0,
+      "source": "schemas",
+      "target": "schemas_usuariobaja",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L111",
+      "weight": 1.0,
+      "source": "schemas",
+      "target": "schemas_usuariobase",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L165",
+      "weight": 1.0,
+      "source": "schemas",
+      "target": "schemas_usuariocambiarpassword",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L504",
+      "weight": 1.0,
+      "source": "schemas",
+      "target": "schemas_usuariocategoriacreate",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L511",
+      "weight": 1.0,
+      "source": "schemas",
+      "target": "schemas_usuariocategoriaresponse",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L127",
+      "weight": 1.0,
+      "source": "schemas",
+      "target": "schemas_usuariocreate",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L142",
+      "weight": 1.0,
+      "source": "schemas",
+      "target": "schemas_usuariocreatemigracion",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L228",
+      "weight": 1.0,
+      "source": "schemas",
+      "target": "schemas_usuariolistresponse",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L242",
+      "weight": 1.0,
+      "source": "schemas",
+      "target": "schemas_usuarioqrvalidacionresponse",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L207",
+      "weight": 1.0,
+      "source": "schemas",
+      "target": "schemas_usuarioresponse",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L197",
+      "weight": 1.0,
+      "source": "schemas",
+      "target": "schemas_usuariorolresponse",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L152",
+      "weight": 1.0,
+      "source": "schemas",
+      "target": "schemas_usuarioupdate",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "schemas_rationale_1",
+      "target": "schemas",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L52",
+      "weight": 1.0,
+      "source": "schemas_configuracionglobalbase",
+      "target": "basemodel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L71",
+      "weight": 1.0,
+      "source": "schemas_configuracionglobalresponse",
+      "target": "schemas_configuracionglobalbase",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L259",
+      "weight": 1.0,
+      "source": "schemas_asignarrolpayload",
+      "target": "basemodel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L567",
+      "weight": 1.0,
+      "source": "schemas_asistenciacreate",
+      "target": "basemodel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L581",
+      "weight": 1.0,
+      "source": "schemas_asistenciaresponse",
+      "target": "basemodel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L292",
+      "weight": 1.0,
+      "source": "schemas_auditlogfiltros",
+      "target": "basemodel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L278",
+      "weight": 1.0,
+      "source": "schemas_auditlogresponse",
+      "target": "basemodel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L488",
+      "weight": 1.0,
+      "source": "schemas_categoriadeportivabase",
+      "target": "basemodel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L64",
+      "weight": 1.0,
+      "source": "schemas_configuracionglobalupdate",
+      "target": "basemodel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L394",
+      "weight": 1.0,
+      "source": "schemas_detalleordencreate",
+      "target": "basemodel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L405",
+      "weight": 1.0,
+      "source": "schemas_detalleordenresponse",
+      "target": "basemodel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L521",
+      "weight": 1.0,
+      "source": "schemas_eventobase",
+      "target": "basemodel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L542",
+      "weight": 1.0,
+      "source": "schemas_eventoupdate",
+      "target": "basemodel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L638",
+      "weight": 1.0,
+      "source": "schemas_loginpayload",
+      "target": "basemodel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L630",
+      "weight": 1.0,
+      "source": "schemas_marcarleidapayload",
+      "target": "basemodel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L617",
+      "weight": 1.0,
+      "source": "schemas_notificacionresponse",
+      "target": "basemodel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L437",
+      "weight": 1.0,
+      "source": "schemas_ordenaprobar",
+      "target": "basemodel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L417",
+      "weight": 1.0,
+      "source": "schemas_ordencreate",
+      "target": "basemodel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L467",
+      "weight": 1.0,
+      "source": "schemas_ordenlistresponse",
+      "target": "basemodel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L442",
+      "weight": 1.0,
+      "source": "schemas_ordenrechazar",
+      "target": "basemodel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L450",
+      "weight": 1.0,
+      "source": "schemas_ordenresponse",
+      "target": "basemodel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L432",
+      "weight": 1.0,
+      "source": "schemas_ordensubircomprobante",
+      "target": "basemodel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L654",
+      "weight": 1.0,
+      "source": "schemas_paginatedresponse",
+      "target": "basemodel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L310",
+      "weight": 1.0,
+      "source": "schemas_productoserviciobase",
+      "target": "basemodel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L331",
+      "weight": 1.0,
+      "source": "schemas_productoservicioupdate",
+      "target": "basemodel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L269",
+      "weight": 1.0,
+      "source": "schemas_removerrolpayload",
+      "target": "basemodel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L593",
+      "weight": 1.0,
+      "source": "schemas_reporteeventoresponse",
+      "target": "basemodel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L355",
+      "weight": 1.0,
+      "source": "schemas_reservainstalacioncreate",
+      "target": "basemodel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L368",
+      "weight": 1.0,
+      "source": "schemas_reservainstalacionresponse",
+      "target": "basemodel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L83",
+      "weight": 1.0,
+      "source": "schemas_rolbase",
+      "target": "basemodel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L188",
+      "weight": 1.0,
+      "source": "schemas_rolresponsesimple",
+      "target": "basemodel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L94",
+      "weight": 1.0,
+      "source": "schemas_rolupdate",
+      "target": "basemodel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L643",
+      "weight": 1.0,
+      "source": "schemas_tokenresponse",
+      "target": "basemodel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L180",
+      "weight": 1.0,
+      "source": "schemas_usuariobaja",
+      "target": "basemodel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L111",
+      "weight": 1.0,
+      "source": "schemas_usuariobase",
+      "target": "basemodel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L165",
+      "weight": 1.0,
+      "source": "schemas_usuariocambiarpassword",
+      "target": "basemodel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L504",
+      "weight": 1.0,
+      "source": "schemas_usuariocategoriacreate",
+      "target": "basemodel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L511",
+      "weight": 1.0,
+      "source": "schemas_usuariocategoriaresponse",
+      "target": "basemodel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L228",
+      "weight": 1.0,
+      "source": "schemas_usuariolistresponse",
+      "target": "basemodel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L242",
+      "weight": 1.0,
+      "source": "schemas_usuarioqrvalidacionresponse",
+      "target": "basemodel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L197",
+      "weight": 1.0,
+      "source": "schemas_usuariorolresponse",
+      "target": "basemodel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L152",
+      "weight": 1.0,
+      "source": "schemas_usuarioupdate",
+      "target": "basemodel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L65",
+      "weight": 1.0,
+      "source": "schemas_rationale_65",
+      "target": "schemas_configuracionglobalupdate",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L90",
+      "weight": 1.0,
+      "source": "schemas_rolcreate",
+      "target": "schemas_rolbase",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L101",
+      "weight": 1.0,
+      "source": "schemas_rolresponse",
+      "target": "schemas_rolbase",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L127",
+      "weight": 1.0,
+      "source": "schemas_usuariocreate",
+      "target": "schemas_usuariobase",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L142",
+      "weight": 1.0,
+      "source": "schemas_usuariocreatemigracion",
+      "target": "schemas_usuariobase",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L207",
+      "weight": 1.0,
+      "source": "schemas_usuarioresponse",
+      "target": "schemas_usuariobase",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L128",
+      "weight": 1.0,
+      "source": "schemas_rationale_128",
+      "target": "schemas_usuariocreate",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L136",
+      "weight": 1.0,
+      "source": "schemas_usuariocreate",
+      "target": "schemas_usuariocreate_password_no_trivial",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L143",
+      "weight": 1.0,
+      "source": "schemas_rationale_143",
+      "target": "schemas_usuariocreatemigracion",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L153",
+      "weight": 1.0,
+      "source": "schemas_rationale_153",
+      "target": "schemas_usuarioupdate",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L166",
+      "weight": 1.0,
+      "source": "schemas_rationale_166",
+      "target": "schemas_usuariocambiarpassword",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L172",
+      "weight": 1.0,
+      "source": "schemas_usuariocambiarpassword",
+      "target": "schemas_usuariocambiarpassword_passwords_coinciden",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L181",
+      "weight": 1.0,
+      "source": "schemas_rationale_181",
+      "target": "schemas_usuariobaja",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L189",
+      "weight": 1.0,
+      "source": "schemas_rationale_189",
+      "target": "schemas_rolresponsesimple",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L198",
+      "weight": 1.0,
+      "source": "schemas_rationale_198",
+      "target": "schemas_usuariorolresponse",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L208",
+      "weight": 1.0,
+      "source": "schemas_rationale_208",
+      "target": "schemas_usuarioresponse",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L229",
+      "weight": 1.0,
+      "source": "schemas_rationale_229",
+      "target": "schemas_usuariolistresponse",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L243",
+      "weight": 1.0,
+      "source": "schemas_rationale_243",
+      "target": "schemas_usuarioqrvalidacionresponse",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L260",
+      "weight": 1.0,
+      "source": "schemas_rationale_260",
+      "target": "schemas_asignarrolpayload",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L279",
+      "weight": 1.0,
+      "source": "schemas_rationale_279",
+      "target": "schemas_auditlogresponse",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L293",
+      "weight": 1.0,
+      "source": "schemas_rationale_293",
+      "target": "schemas_auditlogfiltros",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L321",
+      "weight": 1.0,
+      "source": "schemas_productoserviciobase",
+      "target": "schemas_productoserviciobase_categoria_valida",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L327",
+      "weight": 1.0,
+      "source": "schemas_productoserviciocreate",
+      "target": "schemas_productoserviciobase",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L340",
+      "weight": 1.0,
+      "source": "schemas_productoservicioresponse",
+      "target": "schemas_productoserviciobase",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L362",
+      "weight": 1.0,
+      "source": "schemas_reservainstalacioncreate",
+      "target": "schemas_reservainstalacioncreate_fechas_coherentes",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "generic_arg",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L426",
+      "weight": 1.0,
+      "source": "schemas_ordencreate_items_no_vacio",
+      "target": "schemas_detalleordencreate",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L395",
+      "weight": 1.0,
+      "source": "schemas_rationale_395",
+      "target": "schemas_detalleordencreate",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L426",
+      "weight": 1.0,
+      "source": "schemas_ordencreate",
+      "target": "schemas_ordencreate_items_no_vacio",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L418",
+      "weight": 1.0,
+      "source": "schemas_rationale_418",
+      "target": "schemas_ordencreate",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L433",
+      "weight": 1.0,
+      "source": "schemas_rationale_433",
+      "target": "schemas_ordensubircomprobante",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L438",
+      "weight": 1.0,
+      "source": "schemas_rationale_438",
+      "target": "schemas_ordenaprobar",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L443",
+      "weight": 1.0,
+      "source": "schemas_rationale_443",
+      "target": "schemas_ordenrechazar",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L468",
+      "weight": 1.0,
+      "source": "schemas_rationale_468",
+      "target": "schemas_ordenlistresponse",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L494",
+      "weight": 1.0,
+      "source": "schemas_categoriadeportivacreate",
+      "target": "schemas_categoriadeportivabase",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L498",
+      "weight": 1.0,
+      "source": "schemas_categoriadeportivaresponse",
+      "target": "schemas_categoriadeportivabase",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L532",
+      "weight": 1.0,
+      "source": "schemas_eventobase",
+      "target": "schemas_eventobase_tipo_valido",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L538",
+      "weight": 1.0,
+      "source": "schemas_eventocreate",
+      "target": "schemas_eventobase",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L558",
+      "weight": 1.0,
+      "source": "schemas_eventoresponse",
+      "target": "schemas_eventobase",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L552",
+      "weight": 1.0,
+      "source": "schemas_eventoupdate",
+      "target": "schemas_eventoupdate_estado_valido",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L575",
+      "weight": 1.0,
+      "source": "schemas_asistenciacreate",
+      "target": "schemas_asistenciacreate_metodo_valido",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L568",
+      "weight": 1.0,
+      "source": "schemas_rationale_568",
+      "target": "schemas_asistenciacreate",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L594",
+      "weight": 1.0,
+      "source": "schemas_rationale_594",
+      "target": "schemas_reporteeventoresponse",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "schemas.py",
+      "source_location": "L655",
+      "weight": 1.0,
+      "source": "schemas_rationale_655",
+      "target": "schemas_paginatedresponse",
+      "confidence_score": 1.0
+    }
+  ],
+  "hyperedges": [],
+  "built_at_commit": "2c2afe7ba22464dfd54db40ebe5a713cf7aeccb9"
+}

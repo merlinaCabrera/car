@@ -898,3 +898,16 @@ class Notificacion(Base):
 
     def __repr__(self) -> str:
         return f"<Notificacion [{self.tipo}] user={self.id_usuario} leida={self.leida}>"
+    
+
+class ComercioAsociado(Base):
+        __tablename__ = 'comercios_asociados'
+
+        id_comercio: Mapped[int] = mapped_column(primary_key=True, index=True)
+        nombre_fantasia: Mapped[str] = mapped_column(String(150), nullable=False)
+        rubro: Mapped[str | None] = mapped_column(String(100))
+        beneficio_ofrecido: Mapped[str] = mapped_column(String(200), nullable=False)
+        es_activo: Mapped[bool] = mapped_column(default=True)
+
+        id_usuario_acceso: Mapped[int | None] = mapped_column(ForeignKey('usuarios.id_usuario'))
+        usuario_acceso: Mapped["Usuario"] = relationship()

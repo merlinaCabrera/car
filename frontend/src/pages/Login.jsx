@@ -23,30 +23,13 @@ export default function Login() {
         setLoading(true);
 
         try {
-            const response = await fetch('http://127.0.0.1:8000/auth/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(formData),
-            });
+            // La función login ahora devuelve true en caso de éxito
+            // y se encarga de guardar el token y disparar la carga del perfil.
+            await login(formData.dni, formData.password);
 
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.detail || 'Credenciales incorrectas.');
-            }
-
-            const data = await response.json();
-            
-            // Llamamos a la función login del contexto para actualizar el estado global
-            login(data);
-
-            // Redirigimos al usuario según su rol
-            const isAdmin = data.roles.some(rol => rol.includes('admin'));
-            if (isAdmin) {
-                navigate('/admin', { replace: true });
-            } else {
-                navigate('/socio', { replace: true });
-            }
-
+            // Redirección única: siempre al panel principal del socio.
+            // El MainLayout se encargará de mostrar los accesos a otros paneles (ej: Admin).
+            navigate('/socio', { replace: true });
         } catch (err) {
             setError(err.message);
         } finally {

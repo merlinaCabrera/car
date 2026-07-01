@@ -1,7 +1,7 @@
 {
   "backend/main.py": {
-    "mtime": 1782779424.8238134,
-    "ast_hash": "055ce6b51b50967627992098e08447c4",
+    "mtime": 1782866462.7527323,
+    "ast_hash": "7d317117e9982977a38cbbae84002c91",
     "semantic_hash": ""
   },
   "frontend/eslint.config.js": {
@@ -10,8 +10,8 @@
     "semantic_hash": "bfe13b9e25d0af7959d0396aa103d88c"
   },
   "frontend/package.json": {
-    "mtime": 1782780480.1175036,
-    "ast_hash": "ed88e87f66ba774009ecb16a8dfc1c3e",
+    "mtime": 1782866032.6999,
+    "ast_hash": "f4d64c5458c6d1044f74726f5583d272",
     "semantic_hash": ""
   },
   "frontend/postcss.config.js": {
@@ -50,9 +50,9 @@
     "semantic_hash": "0f1fa105db3df571faea36d7e0d200de"
   },
   "frontend/src/context/AuthContext.jsx": {
-    "mtime": 1781563821.2238445,
-    "ast_hash": "0d212b99958d78282490dae54b14d02b",
-    "semantic_hash": "0d212b99958d78282490dae54b14d02b"
+    "mtime": 1782876351.0796807,
+    "ast_hash": "3792573f8b778d4e1a8e1c277ea86e3d",
+    "semantic_hash": ""
   },
   "frontend/src/context/CartContext.jsx": {
     "mtime": 1781464566.636997,
@@ -60,9 +60,9 @@
     "semantic_hash": "a21f4276af1f60990712a82eeaf33e80"
   },
   "frontend/src/layouts/MainLayout.jsx": {
-    "mtime": 1781564560.251804,
-    "ast_hash": "f0e64b894bf8ecdc3518e15dfb2873e0",
-    "semantic_hash": "f0e64b894bf8ecdc3518e15dfb2873e0"
+    "mtime": 1782876783.8779526,
+    "ast_hash": "7ef62425b7a7a0853d563199792fa8b3",
+    "semantic_hash": ""
   },
   "frontend/src/main.jsx": {
     "mtime": 1780687077.5858176,
@@ -85,9 +85,9 @@
     "semantic_hash": "5404a7a5492294a4f5a66fe309818059"
   },
   "frontend/src/pages/AdminSolicitudes.jsx": {
-    "mtime": 1781565194.7834096,
-    "ast_hash": "c30ee78e3b37bb49a1995054dbbcaa1f",
-    "semantic_hash": "c30ee78e3b37bb49a1995054dbbcaa1f"
+    "mtime": 1782876949.9640753,
+    "ast_hash": "125ee65dd75041c2fa5d22e326a68f13",
+    "semantic_hash": ""
   },
   "frontend/src/pages/JugadorCalendario.jsx": {
     "mtime": 1781563937.4966145,
@@ -95,13 +95,13 @@
     "semantic_hash": "8c653c33f74b1c217c8963ee603e755d"
   },
   "frontend/src/pages/Landing.jsx": {
-    "mtime": 1781051785.2541716,
+    "mtime": 1782875949.1677854,
     "ast_hash": "3d36a26da3dc5254492393fe4d72203a",
     "semantic_hash": "3d36a26da3dc5254492393fe4d72203a"
   },
   "frontend/src/pages/Login.jsx": {
-    "mtime": 1782779430.9729893,
-    "ast_hash": "301c6762cece8766214d492f4c5d7a43",
+    "mtime": 1782876349.5393298,
+    "ast_hash": "f279337ae4a8831452c92f0de11c14de",
     "semantic_hash": ""
   },
   "frontend/src/pages/RecuperarPassword.jsx": {
@@ -125,19 +125,19 @@
     "semantic_hash": "fb44ce16b53c3b832016e02c54917284"
   },
   "frontend/src/pages/SocioCuotas.jsx": {
-    "mtime": 1781466297.225117,
-    "ast_hash": "f6d5c311122ddcd3df2b8054de4e56a0",
-    "semantic_hash": "f6d5c311122ddcd3df2b8054de4e56a0"
+    "mtime": 1782876954.8401198,
+    "ast_hash": "8ba3d6981c1d9867eb382f33056d49c2",
+    "semantic_hash": ""
   },
   "frontend/src/pages/SocioInicio.jsx": {
-    "mtime": 1781566105.314444,
-    "ast_hash": "11f54ba972257eaebdd5a393b109d6c1",
-    "semantic_hash": "11f54ba972257eaebdd5a393b109d6c1"
+    "mtime": 1782866042.1895847,
+    "ast_hash": "2717f36075c1e54fdaa9ac767d04ea6a",
+    "semantic_hash": ""
   },
   "frontend/src/pages/SocioPerfil.jsx": {
-    "mtime": 1781119204.0005713,
-    "ast_hash": "a1ba2e0375b25d66f82f3929a599e422",
-    "semantic_hash": "a1ba2e0375b25d66f82f3929a599e422"
+    "mtime": 1782876952.3370972,
+    "ast_hash": "128994361dfd5c127aefe3bc21ce8ca0",
+    "semantic_hash": ""
   },
   "frontend/src/pages/SocioShopping.jsx": {
     "mtime": 1781464819.0869224,
@@ -235,18 +235,53 @@
     "semantic_hash": ""
   },
   "backend/routers/auth.py": {
-    "mtime": 1782779419.3056555,
-    "ast_hash": "e0eedaa70a817a477a94e3cf4d5aa76f",
+    "mtime": 1782875536.8372273,
+    "ast_hash": "6811963439db83a264a949c371d2020e",
     "semantic_hash": ""
   },
   "backend/routers/usuarios.py": {
-    "mtime": 1782779422.4527457,
-    "ast_hash": "f81ebab249008c70e1bc0fcae5c6a112",
+    "mtime": 1782865723.1419623,
+    "ast_hash": "546112cb88f9b9a3eced5addd0d229bb",
     "semantic_hash": ""
   },
   "backend/security.py": {
     "mtime": 1782779416.6115785,
     "ast_hash": "39965ab34be1b6fabe95cb4c67042c55",
+    "semantic_hash": ""
+  },
+  "backend/dependencies.py": {
+    "mtime": 1782865691.4525251,
+    "ast_hash": "8871240cbb935dbd6ae9c95d04a1155d",
+    "semantic_hash": ""
+  },
+  "backend/routers/admin_usuarios.py": {
+    "mtime": 1782869791.1666317,
+    "ast_hash": "c42cd6f28bb9b8c83fb7568fc3edf356",
+    "semantic_hash": ""
+  },
+  "frontend/src/assets/camoti-azul.PNG": {
+    "mtime": 1782866751.24913,
+    "ast_hash": "6a96407564b2729fd8a5d28180600ed9",
+    "semantic_hash": ""
+  },
+  "frontend/src/assets/camoti-azulfrancia.PNG": {
+    "mtime": 1782866750.7971396,
+    "ast_hash": "b1d1104b94730cd78a1f98b1bad48edc",
+    "semantic_hash": ""
+  },
+  "frontend/src/assets/escudo-car.PNG": {
+    "mtime": 1782866751.3221285,
+    "ast_hash": "bfd5b146323d6fd1bc03256504536139",
+    "semantic_hash": ""
+  },
+  "frontend/src/assets/hero-bg.PNG": {
+    "mtime": 1782866750.9581363,
+    "ast_hash": "da0acf7d5f79207c728ba9380b696a0e",
+    "semantic_hash": ""
+  },
+  "frontend/src/assets/jugadores.PNG": {
+    "mtime": 1782866751.063134,
+    "ast_hash": "72391ee1864c939071b205534bf371cb",
     "semantic_hash": ""
   }
 }

@@ -15,8 +15,11 @@ import SocioPerfil from './pages/SocioPerfil';
 import AdminInicio from './pages/AdminInicio';
 import AdminSolicitudes from './pages/AdminSolicitudes';
 import AdminPagos from './pages/AdminPagos';
+import AdminSocios from './pages/AdminSocios';
 import AdminQRScanner from './pages/AdminQRScanner';
 import JugadorCalendario from './pages/JugadorCalendario';
+import SocioQR from './pages/SocioQR';
+import AdminScanner from './pages/AdminScanner';
 
 function App() {
   return (
@@ -41,8 +44,11 @@ function App() {
               <Route path="/mi-equipo" element={<JugadorCalendario />} />
               <Route path="/admin" element={<AdminInicio />} />
               <Route path="/admin/solicitudes" element={<AdminSolicitudes />} />
+              <Route path="/admin/socios" element={<AdminSocios />} />
               <Route path="/admin/pagos" element={<AdminPagos />} />
               <Route path="/admin/escaner" element={<AdminQRScanner />} />
+              <Route path="/socio-qr" element={<SocioQR />} />
+              <Route path="/admin-scanner" element={<AdminScanner />} />
             </Route>
           </Routes>
         </BrowserRouter>

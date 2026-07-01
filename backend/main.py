@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 # Importamos nuestros routers
-from routers import usuarios, auth, admin_usuarios
+from routers import usuarios, auth, admin_usuarios, qr_auth
 
 app = FastAPI(
     title="Club Atlético API",
@@ -28,6 +28,7 @@ app.add_middleware(
 app.include_router(usuarios.router)
 app.include_router(auth.router)
 app.include_router(admin_usuarios.router) 
+app.include_router(qr_auth.router)
 
 # Ruta raíz de prueba
 @app.get("/")

@@ -40,13 +40,20 @@ def login_for_access_token(payload: schemas.LoginPayload, db: Session = Depends(
         if rol_asignado.rol.es_activo and (rol_asignado.valido_hasta is None or rol_asignado.valido_hasta > datetime.now(timezone.utc))
     ]
 
-    # 5. Crear el token JWT
+    # 5. Validar que el usuario tenga al menos un rol activo (aprobado)
+    if not active_roles:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Tu cuenta está pendiente de aprobación por el administrador.",
+        )
+
+    # 6. Crear el token JWT
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": user.dni, "id": user.id_usuario, "roles": active_roles}, expires_delta=access_token_expires
     )
 
-    # 6. Devolver la respuesta según el schema TokenResponse
+    # 7. Devolver la respuesta según el schema TokenResponse
     return schemas.TokenResponse(
         access_token=access_token,
         token_type="bearer",

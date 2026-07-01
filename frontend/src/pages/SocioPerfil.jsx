@@ -7,14 +7,15 @@ export default function SocioPerfil() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-900 p-4 pb-20 text-slate-100 space-y-8">
+    <div className="p-6 max-w-4xl mx-auto space-y-6">
       
       <div>
-        <h2 className="text-2xl font-bold text-white tracking-wide">Mi Perfil</h2>
+        <h1 className="text-2xl font-bold text-gray-900">Mi Perfil</h1>
+        <p className="text-gray-500 text-sm mt-1">Actualizá tus datos de contacto y visualizá tu credencial.</p>
       </div>
 
       {/* Credencial Digital Simulada (Azul Francia) */}
-      <div className="w-full max-w-sm mx-auto bg-gradient-to-br from-blue-600 to-blue-800 rounded-2xl shadow-2xl p-6 relative overflow-hidden text-white border-2 border-blue-400/30">
+      <div className="w-full max-w-md mx-auto bg-gradient-to-br from-blue-600 to-blue-800 rounded-2xl shadow-2xl p-6 relative overflow-hidden text-white border-2 border-blue-400/30">
         {/* Background Decorations */}
         <div className="absolute -top-10 -right-10 w-32 h-32 bg-white opacity-10 rounded-full blur-xl"></div>
         <div className="absolute -bottom-5 -left-10 w-24 h-24 bg-black opacity-20 rounded-full blur-lg"></div>
@@ -44,23 +45,23 @@ export default function SocioPerfil() {
       </div>
 
       {/* Formulario Pre-poblado */}
-      <div className="bg-slate-800 rounded-3xl shadow-xl p-6 border border-slate-700/50">
-        <h3 className="text-lg font-bold text-white mb-5 border-b border-slate-700 pb-2">Datos de Contacto</h3>
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+        <h3 className="text-lg font-bold text-gray-900 mb-5 border-b border-gray-200 pb-3">Datos de Contacto</h3>
         
         <form onSubmit={handleGuardarCambios} className="space-y-4">
           <div>
-            <label className="block text-sm font-semibold text-slate-300 mb-1">Email</label>
-            <input type="email" defaultValue="sergio.acosta@ejemplo.com" className="w-full p-3 bg-slate-900 border border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 text-white transition-colors" />
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Email</label>
+            <input type="email" defaultValue="sergio.acosta@ejemplo.com" className="w-full p-3 rounded-lg border bg-gray-50 border-gray-200 focus:border-blue-500 focus:ring-blue-500 transition-colors" />
           </div>
           <div>
-            <label className="block text-sm font-semibold text-slate-300 mb-1">Teléfono</label>
-            <input type="tel" defaultValue="11 1234 5678" className="w-full p-3 bg-slate-900 border border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 text-white transition-colors" />
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Teléfono</label>
+            <input type="tel" defaultValue="11 1234 5678" className="w-full p-3 rounded-lg border bg-gray-50 border-gray-200 focus:border-blue-500 focus:ring-blue-500 transition-colors" />
           </div>
           <div>
-            <label className="block text-sm font-semibold text-slate-300 mb-1">Dirección</label>
-            <input type="text" defaultValue="Calle Falsa 123, CABA" className="w-full p-3 bg-slate-900 border border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 text-white transition-colors" />
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Dirección</label>
+            <input type="text" defaultValue="Calle Falsa 123, CABA" className="w-full p-3 rounded-lg border bg-gray-50 border-gray-200 focus:border-blue-500 focus:ring-blue-500 transition-colors" />
           </div>
-          <button type="submit" className="w-full bg-slate-700 text-white font-bold py-3 rounded-xl hover:bg-slate-600 active:scale-95 transition-all mt-4 border border-slate-600">
+          <button type="submit" className="w-full bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 active:scale-95 transition-all mt-4 shadow-sm">
             Guardar Cambios
           </button>
         </form>

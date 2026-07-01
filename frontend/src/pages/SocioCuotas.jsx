@@ -24,20 +24,20 @@ export default function SocioCuotas() {
   };
 
   return (
-    <div className="space-y-8 bg-slate-50 min-h-screen pb-10 relative">
+    <div className="p-6 max-w-4xl mx-auto space-y-6">
       
       <div className="mb-6">
-        <h2 className="text-2xl font-bold text-slate-800">Gestión de Cuotas</h2>
-        <p className="text-slate-500 text-sm mt-1">Mantené tu cuenta al día para acceder al club.</p>
+        <h1 className="text-2xl font-bold text-gray-900">Gestión de Cuotas</h1>
+        <p className="text-gray-500 text-sm mt-1">Mantené tu cuenta al día para acceder al club.</p>
       </div>
 
       {/* 1. Deudas Pendientes */}
       {isMoroso && (
         <section>
-          <h3 className="text-lg font-semibold text-slate-700 mb-3 border-b pb-2">Deudas Pendientes</h3>
+          <h3 className="text-lg font-bold text-gray-900 mb-3 border-b border-gray-200 pb-3">Deudas Pendientes</h3>
           <div className="space-y-3">
             {['Marzo 2026', 'Abril 2026'].map((mes) => (
-              <div key={mes} className="flex justify-between items-center bg-white p-4 rounded-2xl shadow-sm border border-red-100">
+              <div key={mes} className="flex justify-between items-center bg-white p-4 rounded-2xl shadow-sm border border-red-200">
                 <div>
                   <p className="font-bold text-slate-800 capitalize">{mes}</p>
                   <p className="text-sm text-red-500 font-medium">Vencida</p>
@@ -49,7 +49,7 @@ export default function SocioCuotas() {
                     precio: 6000 // Simulamos un precio con recargo
                   })}
                   disabled={loadingId !== null}
-                  className={`flex items-center justify-center bg-red-600 text-white font-semibold py-2 px-5 rounded-full shadow transition-all text-sm w-32 ${loadingId === `deuda-${mes}` ? 'opacity-75 cursor-wait' : 'hover:bg-red-700 active:scale-95'} ${loadingId !== null && loadingId !== `deuda-${mes}` ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  className={`flex items-center justify-center bg-red-600 text-white font-semibold py-2 px-5 rounded-xl shadow transition-all text-sm w-32 ${loadingId === `deuda-${mes}` ? 'opacity-75 cursor-wait' : 'hover:bg-red-700 active:scale-95'} ${loadingId !== null && loadingId !== `deuda-${mes}` ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   {loadingId === `deuda-${mes}` ? (
                     <>
@@ -71,8 +71,8 @@ export default function SocioCuotas() {
 
       {/* 2. Próximo a vencer */}
       <section>
-        <h3 className="text-lg font-semibold text-slate-700 mb-3 border-b pb-2">Próximo a Vencer</h3>
-        <div className="flex justify-between items-center bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
+        <h3 className="text-lg font-bold text-gray-900 mb-3 border-b border-gray-200 pb-3">Próximo a Vencer</h3>
+        <div className="flex justify-between items-center bg-white p-4 rounded-2xl shadow-sm border border-gray-200">
           <div>
             <p className="font-bold text-slate-800">Mayo 2026</p>
             <p className="text-sm text-slate-500">Vence el 10/05</p>
@@ -84,7 +84,7 @@ export default function SocioCuotas() {
               precio: 5000 // Precio base
             })}
             disabled={loadingId !== null}
-            className={`flex items-center justify-center bg-slate-700 text-white font-semibold py-2 px-5 rounded-full shadow transition-all text-sm w-32 ${loadingId === 'prox' ? 'opacity-75 cursor-wait' : 'hover:bg-slate-800 active:scale-95'} ${loadingId !== null && loadingId !== 'prox' ? 'opacity-50 cursor-not-allowed' : ''}`}
+            className={`flex items-center justify-center bg-slate-700 text-white font-semibold py-2 px-5 rounded-xl shadow transition-all text-sm w-32 ${loadingId === 'prox' ? 'opacity-75 cursor-wait' : 'hover:bg-slate-800 active:scale-95'} ${loadingId !== null && loadingId !== 'prox' ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
             {loadingId === 'prox' ? (
               <>
@@ -104,10 +104,10 @@ export default function SocioCuotas() {
       {/* 3. Adelantar pagos (Oculto si el socio es Moroso) */}
       {!isMoroso && (
         <section>
-          <h3 className="text-lg font-semibold text-slate-700 mb-3 border-b pb-2">Adelantar Pagos</h3>
+          <h3 className="text-lg font-bold text-gray-900 mb-3 border-b border-gray-200 pb-3">Adelantar Pagos</h3>
           <div className="grid grid-cols-3 gap-3">
             {[ { label: 'x1 Mes', value: '1' }, { label: 'x2 Meses', value: '2' }, { label: 'x6 Meses', value: '6' } ].map((plan) => (
-              <div key={plan.value} className="bg-white p-4 rounded-2xl shadow-sm border border-blue-100 flex flex-col items-center justify-center text-center space-y-3">
+              <div key={plan.value} className="bg-white p-4 rounded-2xl shadow-sm border border-blue-200 flex flex-col items-center justify-center text-center space-y-3">
                 <span className="font-bold text-blue-900">{plan.label}</span>
                 <button 
                   onClick={() => handlePagar({
@@ -138,12 +138,12 @@ export default function SocioCuotas() {
 
       {/* 4. Historial de Pagos */}
       <section>
-        <h3 className="text-lg font-semibold text-slate-700 mb-3 border-b pb-2">Historial de Pagos</h3>
+        <h3 className="text-lg font-bold text-gray-900 mb-3 border-b border-gray-200 pb-3">Historial de Pagos</h3>
         <div className="space-y-3">
           {['Febrero 2026', 'Enero 2026'].map((mes) => (
-            <div key={mes} className="flex justify-between items-center bg-white p-4 rounded-2xl shadow-sm border border-slate-100 opacity-80">
+            <div key={mes} className="flex justify-between items-center bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
               <p className="font-semibold text-slate-700">{mes}</p>
-              <button className="border-2 border-slate-300 text-slate-600 font-semibold py-1.5 px-4 rounded-full hover:bg-slate-50 transition-colors text-xs">
+              <button className="border-2 border-gray-200 text-gray-600 font-semibold py-1.5 px-4 rounded-xl hover:bg-gray-50 transition-colors text-xs">
                 Comprobante
               </button>
             </div>

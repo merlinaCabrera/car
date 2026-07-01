@@ -1,8 +1,9 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-# Importamos nuestros routers
-from routers import usuarios, auth, admin_usuarios, qr_auth
+from routers import usuarios, auth, admin_usuarios
+from routers import qr_auth
+
 
 app = FastAPI(
     title="Club Atlético API",

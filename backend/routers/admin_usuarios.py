@@ -20,6 +20,7 @@ import models
 import schemas
 from database import get_db
 from dependencies import get_current_user, require_roles
+from security import get_password_hash
 
 router = APIRouter(
     prefix="/admin/usuarios",
@@ -204,10 +205,209 @@ def aprobar_usuario(
     }
 
 
+@router.post(
+    "/",
+    response_model=schemas.UsuarioResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Crear un nuevo socio manualmente (Admin)",
+)
+def crear_socio_manual(
+    usuario_in: schemas.UsuarioCreate,
+    db: Session = Depends(get_db),
+    current_admin: models.Usuario = Depends(require_roles(*_ADMIN)),
+):
+    """
+    Crea un nuevo usuario y le asigna el rol 'socio' directamente.
+    - Requiere rol de administrador.
+    - Valida DNI y email duplicados.
+    - Asigna el rol 'socio' de forma permanente.
+    - La contraseña la provee el admin en el payload. Se recomienda que sea temporal.
+    """
+    # 1. Validar DNI/Email duplicados
+    if db.query(models.Usuario).filter(models.Usuario.dni == usuario_in.dni).first():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="El DNI ya está registrado.",
+        )
+    if usuario_in.email and db.query(models.Usuario).filter(models.Usuario.email == usuario_in.email).first():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="El email ya está registrado.",
+        )
+
+    # 2. Hashear contraseña y crear usuario
+    hashed_password = get_password_hash(usuario_in.password)
+    user_data = usuario_in.model_dump(exclude={"password"})
+    nuevo_usuario = models.Usuario(
+        **user_data,
+        password_hash=hashed_password,
+        requiere_cambio_password=True  # Forzar cambio en primer login
+    )
+    db.add(nuevo_usuario)
+    db.flush()  # Flush para obtener el id_usuario para el rol y el log
+
+    # 3. Asignar rol 'socio'
+    rol_socio = db.query(models.Rol).filter(models.Rol.nombre == "socio").first()
+    if not rol_socio:
+        # Esto no debería pasar si los seeds de la DB están correctos
+        raise HTTPException(
+            status_code=500,
+            detail="Rol 'socio' no encontrado en la base de datos."
+        )
+
+    nuevo_rol = models.UsuarioRol(
+        id_usuario=nuevo_usuario.id_usuario,
+        id_rol=rol_socio.id_rol,
+        asignado_por=current_admin.id_usuario,
+    )
+    db.add(nuevo_rol)
+
+    # 4. Audit log
+    db.add(
+        models.AuditLog(
+            usuario_actor=current_admin.id_usuario,
+            accion="CREAR_SOCIO_MANUAL",
+            tabla_afectada="usuarios",
+            registro_id=nuevo_usuario.id_usuario,
+            detalle={
+                "socio_creado_dni": nuevo_usuario.dni,
+                "creado_por_dni": current_admin.dni,
+            },
+        )
+    )
+
+    db.commit()
+    db.refresh(nuevo_usuario)
+    return nuevo_usuario
+
+
+@router.patch(
+    "/{id_usuario}",
+    response_model=schemas.UsuarioResponse,
+    summary="Editar datos de un socio (Admin)",
+)
+def editar_socio(
+    id_usuario: int,
+    datos: schemas.UsuarioUpdate,
+    db: Session = Depends(get_db),
+    current_admin: models.Usuario = Depends(require_roles(*_ADMIN)),
+):
+    """
+    Actualiza los datos de un usuario.
+    - Requiere rol de administrador.
+    - Permite actualización parcial de los campos definidos en `UsuarioUpdate`.
+    """
+    usuario = db.query(models.Usuario).filter(models.Usuario.id_usuario == id_usuario).first()
+    if not usuario:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado.")
+
+    update_data = datos.model_dump(exclude_unset=True)
+    for campo, valor in update_data.items():
+        setattr(usuario, campo, valor)
+
+    db.add(
+        models.AuditLog(
+            usuario_actor=current_admin.id_usuario,
+            accion="EDITAR_SOCIO",
+            tabla_afectada="usuarios",
+            registro_id=id_usuario,
+            detalle={
+                "socio_editado_dni": usuario.dni,
+                "cambios": update_data,
+                "editado_por_dni": current_admin.dni,
+            },
+        )
+    )
+
+    db.commit()
+    db.refresh(usuario)
+    return usuario
+
+
+@router.delete(
+    "/{id_usuario}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Dar de baja a un socio (Baja Lógica)",
+)
+def dar_baja_socio(
+    id_usuario: int,
+    db: Session = Depends(get_db),
+    current_admin: models.Usuario = Depends(require_roles(*_ADMIN)),
+):
+    """
+    Realiza una baja lógica de un usuario, estableciendo su `fecha_baja`.
+    - Requiere rol de administrador.
+    - El usuario no se elimina físicamente para mantener el historial.
+    """
+    usuario = db.query(models.Usuario).filter(models.Usuario.id_usuario == id_usuario).first()
+    if not usuario:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado.")
+
+    if usuario.fecha_baja is not None:
+        raise HTTPException(status_code=400, detail="El usuario ya se encuentra dado de baja.")
+
+    usuario.fecha_baja = date.today()
+
+    db.add(
+        models.AuditLog(
+            usuario_actor=current_admin.id_usuario,
+            accion="BAJA_SOCIO",
+            tabla_afectada="usuarios",
+            registro_id=id_usuario,
+            detalle={
+                "socio_baja_dni": usuario.dni,
+                "fecha_baja": usuario.fecha_baja.isoformat(),
+                "dado_de_baja_por_dni": current_admin.dni,
+            },
+        )
+    )
+
+    db.commit()
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.patch(
+    "/{id_usuario}/reactivar",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Reactivar un socio dado de baja",
+)
+def reactivar_socio(
+    id_usuario: int,
+    db: Session = Depends(get_db),
+    current_admin: models.Usuario = Depends(require_roles(*_ADMIN)),
+):
+    """
+    Reactiva un socio que fue dado de baja, estableciendo su `fecha_baja` a NULL.
+    """
+    usuario = db.query(models.Usuario).filter(models.Usuario.id_usuario == id_usuario).first()
+    if not usuario:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado.")
+
+    if usuario.fecha_baja is None:
+        raise HTTPException(status_code=400, detail="El usuario ya se encuentra activo.")
+
+    usuario.fecha_baja = None
+
+    db.add(
+        models.AuditLog(
+            usuario_actor=current_admin.id_usuario,
+            accion="REACTIVAR_SOCIO",
+            tabla_afectada="usuarios",
+            registro_id=id_usuario,
+            detalle={
+                "socio_reactivado_dni": usuario.dni,
+                "reactivado_por_dni": current_admin.dni,
+            },
+        )
+    )
+    db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
 @router.get(
     "/",
     response_model=list[schemas.UsuarioListResponse],
-    summary="Listado general de todos los usuarios activos",
+    summary="Listado general de todos los usuarios",
 )
 def listar_todos_los_usuarios(
     skip: int = 0,
@@ -216,12 +416,11 @@ def listar_todos_los_usuarios(
     _: models.Usuario = Depends(require_roles(*_ADMIN)),
 ):
     """
-    Listado paginado de usuarios activos (con y sin roles).
+    Listado paginado de todos los usuarios (activos e inactivos).
     Ordenado alfabéticamente por apellido.
     """
     return (
         db.query(models.Usuario)
-        .filter(models.Usuario.fecha_baja.is_(None))
         .order_by(models.Usuario.apellido, models.Usuario.nombre)
         .offset(skip)
         .limit(limit)

@@ -657,3 +657,26 @@ class PaginatedResponse(BaseModel):
     page: int
     page_size: int
     items: list
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# QR AUTH
+# ─────────────────────────────────────────────────────────────────────────────
+
+class QRTokenResponse(BaseModel):
+    qr_token: uuid.UUID
+
+
+class QRValidationPayload(BaseModel):
+    token: str
+
+
+class DNIValidationPayload(BaseModel):
+    dni: DNI
+
+class ValidationResponse(BaseModel):
+    nombre: str
+    apellido: str
+    dni: str
+    estado_financiero: str  # 'Al día' | 'Moroso'
+    es_socio_activo: bool

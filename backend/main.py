@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from routers import usuarios, auth, admin_usuarios
 from routers import qr_auth
+from routers import admin_comercios
 
 
 app = FastAPI(
@@ -30,6 +31,7 @@ app.include_router(usuarios.router)
 app.include_router(auth.router)
 app.include_router(admin_usuarios.router) 
 app.include_router(qr_auth.router)
+app.include_router(admin_comercios.router)
 
 # Ruta raíz de prueba
 @app.get("/")

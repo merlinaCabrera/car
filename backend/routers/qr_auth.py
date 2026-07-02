@@ -46,7 +46,7 @@ router = APIRouter(
 
 # ─── Roles autorizados para escanear ─────────────────────────────────────────
 
-_ROLES_SCANNER = ("admin_general", "personal_administrativo", "admin_temporal")
+_ROLES_SCANNER = ("admin_general", "personal_administrativo", "admin_temporal", "invitado")
 
 # ─── Payloads locales (extienden los de schemas.py sin modificarlos) ──────────
 

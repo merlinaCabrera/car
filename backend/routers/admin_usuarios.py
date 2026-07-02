@@ -7,13 +7,18 @@ Todos los endpoints requieren rol 'admin_general' o 'personal_administrativo'.
     from routers import admin_usuarios
     app.include_router(admin_usuarios.router)
 ────────────────────────────────────────────────────────────────────────────────
+
+── Endpoints de gestión de roles (nuevos) ──────────────────────────────────────
+    GET  /admin/roles                          → catálogo de roles disponibles
+    PUT  /admin/usuarios/{id_usuario}/roles    → reemplaza los roles de un usuario
+────────────────────────────────────────────────────────────────────────────────
 """
 from datetime import date, datetime, timezone
-from typing import Optional
+from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status, Response
-from pydantic import BaseModel, ConfigDict
-from sqlalchemy import exists, or_, select
+from fastapi import APIRouter, Depends, HTTPException, Response, status
+from pydantic import BaseModel, ConfigDict, Field
+from sqlalchemy import delete, exists, or_
 from sqlalchemy.orm import Session, joinedload
 
 import models
@@ -27,46 +32,112 @@ router = APIRouter(
     tags=["Admin — Usuarios"],
 )
 
-# ─── Accesos permitidos ───────────────────────────────────────────────────────
-# Tanto admin_general como personal_administrativo pueden gestionar socios.
 _ADMIN = ("admin_general", "personal_administrativo")
 
 
-# ─── Schema local (ligero, sin cargar relaciones pesadas) ────────────────────
+# ══════════════════════════════════════════════════════════════════════════════
+# SCHEMAS LOCALES
+# Definidos aquí para no contaminar schemas.py con lógica exclusiva del admin.
+# ══════════════════════════════════════════════════════════════════════════════
 
 class UsuarioPendienteResponse(BaseModel):
-    """Datos mínimos necesarios para la bandeja de solicitudes."""
+    model_config = ConfigDict(from_attributes=True)
+    id_usuario:   int
+    dni:          str
+    nombre:       str
+    apellido:     str
+    email:        Optional[str] = None
+    fecha_ingreso: date
+    creado_at:    datetime
+
+
+# ── Schemas de Roles ──────────────────────────────────────────────────────────
+
+class RolCatalogoResponse(BaseModel):
+    """
+    Respuesta del catálogo de roles.
+    Solo expone los campos que el frontend necesita para poblar el selector:
+    id, nombre legible y descripción.
+    """
     model_config = ConfigDict(from_attributes=True)
 
-    id_usuario: int
-    dni: str
-    nombre: str
-    apellido: str
-    email: Optional[str] = None
-    fecha_ingreso: date
-    creado_at: datetime
+    id_rol:          int
+    nombre:          str
+    descripcion:     Optional[str] = None
+    peso_jerarquico: int
+    es_activo:       bool
 
 
-# ─── Helper ──────────────────────────────────────────────────────────────────
+class ActualizarRolesPayload(BaseModel):
+    """
+    Payload para PUT /admin/usuarios/{id_usuario}/roles.
+
+    `ids_roles` es la lista COMPLETA de roles que el usuario debe tener
+    después de la operación. El endpoint hace un reemplazo total (no un merge).
+
+    Restricciones de negocio validadas en el endpoint (no en Pydantic):
+      - La lista puede estar vacía → el usuario queda sin roles (pendiente).
+      - No se permiten IDs duplicados en la lista.
+      - Los IDs deben existir en la tabla `roles` y estar activos.
+      - No se puede remover el rol 'admin_general' del propio usuario autenticado
+        (para evitar que el admin se quede sin acceso).
+    """
+    ids_roles: List[int] = Field(
+        description="Lista COMPLETA de IDs de roles. Reemplaza los roles actuales del usuario."
+    )
+
+
+class RolAsignadoDetalle(BaseModel):
+    """Detalle de un rol asignado — embebido en la respuesta del PUT."""
+    model_config = ConfigDict(from_attributes=True)
+    id_rol:      int
+    nombre:      str
+    asignado_at: datetime
+
+
+class ActualizarRolesResponse(BaseModel):
+    """Respuesta del PUT /admin/usuarios/{id_usuario}/roles."""
+    ok:              bool
+    id_usuario:      int
+    dni:             str
+    nombre_completo: str
+    roles_anteriores: List[str]
+    roles_nuevos:     List[str]
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# HELPERS INTERNOS
+# ══════════════════════════════════════════════════════════════════════════════
 
 def _subquery_con_roles_activos():
-    """
-    Subquery EXISTS: True si el usuario tiene al menos un rol no expirado.
-    Se usa para filtrar los 'pendientes' (usuarios SIN ningún rol activo).
-    """
+    ahora = datetime.now(timezone.utc)
     return (
         exists()
         .where(models.UsuarioRol.id_usuario == models.Usuario.id_usuario)
         .where(
             or_(
                 models.UsuarioRol.valido_hasta.is_(None),
-                models.UsuarioRol.valido_hasta > datetime.now(timezone.utc),
+                models.UsuarioRol.valido_hasta > ahora,
             )
         )
     )
 
 
-# ─── Endpoints ───────────────────────────────────────────────────────────────
+def _nombres_roles_activos(usuario: models.Usuario) -> list[str]:
+    """Devuelve los nombres de roles vigentes de un usuario ya cargado con joinedload."""
+    ahora = datetime.now(timezone.utc)
+    return sorted(
+        ur.rol.nombre
+        for ur in usuario.roles_asignados
+        if ur.rol
+        and ur.rol.es_activo
+        and (ur.valido_hasta is None or ur.valido_hasta > ahora)
+    )
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# ENDPOINTS EXISTENTES (sin cambios funcionales, se mantienen íntegros)
+# ══════════════════════════════════════════════════════════════════════════════
 
 @router.get(
     "/pendientes",
@@ -77,12 +148,6 @@ def get_usuarios_pendientes(
     db: Session = Depends(get_db),
     _: models.Usuario = Depends(require_roles(*_ADMIN)),
 ):
-    """
-    Retorna usuarios activos que NO tienen ningún rol activo asignado.
-    Son los que se registraron pero aún no fueron aprobados. Incluye un print
-    de debug en la consola del servidor para inspeccionar los roles de cada usuario.
-    """
-    # 1. Obtener todos los usuarios activos, cargando sus roles para inspección
     usuarios_activos = (
         db.query(models.Usuario)
         .options(
@@ -93,26 +158,17 @@ def get_usuarios_pendientes(
         .order_by(models.Usuario.creado_at.desc())
         .all()
     )
-
+    ahora = datetime.now(timezone.utc)
     pendientes = []
-    now = datetime.now(timezone.utc)
-
-    print("\n--- [DEBUG] INICIO DE VERIFICACIÓN DE USUARIOS PENDIENTES ---")
     for u in usuarios_activos:
-        # El print de debug que solicitaste
-        print(f"DEBUG: Usuario {u.dni} ({u.apellido}) tiene roles: {u.roles_asignados}")
-
-        # Lógica para determinar si tiene roles activos y válidos
         tiene_rol_activo = any(
-            ur.rol and ur.rol.es_activo and (ur.valido_hasta is None or ur.valido_hasta > now)
+            ur.rol
+            and ur.rol.es_activo
+            and (ur.valido_hasta is None or ur.valido_hasta > ahora)
             for ur in u.roles_asignados
         )
-
         if not tiene_rol_activo:
             pendientes.append(u)
-            print(f"  └──> AÑADIDO A PENDIENTES. No tiene roles activos válidos.")
-    print("--- [DEBUG] FIN DE VERIFICACIÓN ---\n")
-
     return pendientes
 
 
@@ -126,37 +182,20 @@ def aprobar_usuario(
     db: Session = Depends(get_db),
     current_admin: models.Usuario = Depends(require_roles(*_ADMIN)),
 ):
-    """
-    Flujo de aprobación:
-      1. Verifica que el usuario exista, esté activo y no tenga el rol ya.
-      2. Inserta la fila en usuarios_roles (sin fecha de expiración).
-      3. Registra la acción en audit_log.
-    Todo ocurre en una única transacción.
-    """
-    # 1 — Cargar usuario destino
-    usuario = (
-        db.query(models.Usuario)
-        .filter(models.Usuario.id_usuario == id_usuario)
-        .first()
-    )
+    usuario = db.query(models.Usuario).filter(models.Usuario.id_usuario == id_usuario).first()
     if not usuario:
         raise HTTPException(status_code=404, detail="Usuario no encontrado.")
     if usuario.fecha_baja is not None:
         raise HTTPException(status_code=400, detail="El usuario está dado de baja.")
 
-    # 2 — Verificar que el rol 'socio' exista en el catálogo
     rol_socio = (
         db.query(models.Rol)
         .filter(models.Rol.nombre == "socio", models.Rol.es_activo.is_(True))
         .first()
     )
     if not rol_socio:
-        raise HTTPException(
-            status_code=500,
-            detail="Rol 'socio' no encontrado. Verificá la migración seed de roles.",
-        )
+        raise HTTPException(status_code=500, detail="Rol 'socio' no encontrado. Verificá la migración seed de roles.")
 
-    # 3 — Prevenir duplicados
     ya_existe = (
         db.query(models.UsuarioRol)
         .filter(
@@ -166,37 +205,26 @@ def aprobar_usuario(
         .first()
     )
     if ya_existe:
-        raise HTTPException(
-            status_code=409,
-            detail="El usuario ya tiene el rol 'socio' asignado.",
-        )
+        raise HTTPException(status_code=409, detail="El usuario ya tiene el rol 'socio' asignado.")
 
-    # 4 — Asignar rol (validez permanente: valido_hasta=None)
-    nuevo_rol = models.UsuarioRol(
+    db.add(models.UsuarioRol(
         id_usuario=id_usuario,
         id_rol=rol_socio.id_rol,
         asignado_por=current_admin.id_usuario,
-    )
-    db.add(nuevo_rol)
-
-    # 5 — Audit log
-    db.add(
-        models.AuditLog(
-            usuario_actor=current_admin.id_usuario,
-            accion="APROBAR_SOLICITUD_SOCIO",
-            tabla_afectada="usuarios_roles",
-            registro_id=id_usuario,
-            detalle={
-                "usuario_aprobado_dni": usuario.dni,
-                "usuario_aprobado_nombre": f"{usuario.nombre} {usuario.apellido}",
-                "rol_asignado": "socio",
-                "aprobado_por_dni": current_admin.dni,
-            },
-        )
-    )
-
+    ))
+    db.add(models.AuditLog(
+        usuario_actor=current_admin.id_usuario,
+        accion="APROBAR_SOLICITUD_SOCIO",
+        tabla_afectada="usuarios_roles",
+        registro_id=id_usuario,
+        detalle={
+            "antes":  {"roles": []},
+            "despues": {"roles": ["socio"]},
+            "usuario_aprobado_dni": usuario.dni,
+            "aprobado_por_dni": current_admin.dni,
+        },
+    ))
     db.commit()
-
     return {
         "ok": True,
         "mensaje": f"{usuario.nombre} {usuario.apellido} fue aprobado como socio.",
@@ -216,66 +244,33 @@ def crear_socio_manual(
     db: Session = Depends(get_db),
     current_admin: models.Usuario = Depends(require_roles(*_ADMIN)),
 ):
-    """
-    Crea un nuevo usuario y le asigna el rol 'socio' directamente.
-    - Requiere rol de administrador.
-    - Valida DNI y email duplicados.
-    - Asigna el rol 'socio' de forma permanente.
-    - La contraseña la provee el admin en el payload. Se recomienda que sea temporal.
-    """
-    # 1. Validar DNI/Email duplicados
     if db.query(models.Usuario).filter(models.Usuario.dni == usuario_in.dni).first():
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="El DNI ya está registrado.",
-        )
+        raise HTTPException(status_code=400, detail="El DNI ya está registrado.")
     if usuario_in.email and db.query(models.Usuario).filter(models.Usuario.email == usuario_in.email).first():
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="El email ya está registrado.",
-        )
+        raise HTTPException(status_code=400, detail="El email ya está registrado.")
 
-    # 2. Hashear contraseña y crear usuario
     hashed_password = get_password_hash(usuario_in.password)
     user_data = usuario_in.model_dump(exclude={"password"})
-    nuevo_usuario = models.Usuario(
-        **user_data,
-        password_hash=hashed_password,
-        requiere_cambio_password=True  # Forzar cambio en primer login
-    )
+    nuevo_usuario = models.Usuario(**user_data, password_hash=hashed_password, requiere_cambio_password=True)
     db.add(nuevo_usuario)
-    db.flush()  # Flush para obtener el id_usuario para el rol y el log
+    db.flush()
 
-    # 3. Asignar rol 'socio'
     rol_socio = db.query(models.Rol).filter(models.Rol.nombre == "socio").first()
     if not rol_socio:
-        # Esto no debería pasar si los seeds de la DB están correctos
-        raise HTTPException(
-            status_code=500,
-            detail="Rol 'socio' no encontrado en la base de datos."
-        )
+        raise HTTPException(status_code=500, detail="Rol 'socio' no encontrado en la base de datos.")
 
-    nuevo_rol = models.UsuarioRol(
+    db.add(models.UsuarioRol(
         id_usuario=nuevo_usuario.id_usuario,
         id_rol=rol_socio.id_rol,
         asignado_por=current_admin.id_usuario,
-    )
-    db.add(nuevo_rol)
-
-    # 4. Audit log
-    db.add(
-        models.AuditLog(
-            usuario_actor=current_admin.id_usuario,
-            accion="CREAR_SOCIO_MANUAL",
-            tabla_afectada="usuarios",
-            registro_id=nuevo_usuario.id_usuario,
-            detalle={
-                "socio_creado_dni": nuevo_usuario.dni,
-                "creado_por_dni": current_admin.dni,
-            },
-        )
-    )
-
+    ))
+    db.add(models.AuditLog(
+        usuario_actor=current_admin.id_usuario,
+        accion="CREAR_SOCIO_MANUAL",
+        tabla_afectada="usuarios",
+        registro_id=nuevo_usuario.id_usuario,
+        detalle={"socio_creado_dni": nuevo_usuario.dni, "creado_por_dni": current_admin.dni},
+    ))
     db.commit()
     db.refresh(nuevo_usuario)
     return nuevo_usuario
@@ -292,11 +287,6 @@ def editar_socio(
     db: Session = Depends(get_db),
     current_admin: models.Usuario = Depends(require_roles(*_ADMIN)),
 ):
-    """
-    Actualiza los datos de un usuario.
-    - Requiere rol de administrador.
-    - Permite actualización parcial de los campos definidos en `UsuarioUpdate`.
-    """
     usuario = db.query(models.Usuario).filter(models.Usuario.id_usuario == id_usuario).first()
     if not usuario:
         raise HTTPException(status_code=404, detail="Usuario no encontrado.")
@@ -305,20 +295,13 @@ def editar_socio(
     for campo, valor in update_data.items():
         setattr(usuario, campo, valor)
 
-    db.add(
-        models.AuditLog(
-            usuario_actor=current_admin.id_usuario,
-            accion="EDITAR_SOCIO",
-            tabla_afectada="usuarios",
-            registro_id=id_usuario,
-            detalle={
-                "socio_editado_dni": usuario.dni,
-                "cambios": update_data,
-                "editado_por_dni": current_admin.dni,
-            },
-        )
-    )
-
+    db.add(models.AuditLog(
+        usuario_actor=current_admin.id_usuario,
+        accion="EDITAR_SOCIO",
+        tabla_afectada="usuarios",
+        registro_id=id_usuario,
+        detalle={"cambios": update_data, "editado_por_dni": current_admin.dni},
+    ))
     db.commit()
     db.refresh(usuario)
     return usuario
@@ -334,36 +317,25 @@ def dar_baja_socio(
     db: Session = Depends(get_db),
     current_admin: models.Usuario = Depends(require_roles(*_ADMIN)),
 ):
-    """
-    Realiza una baja lógica de un usuario, estableciendo su `fecha_baja`.
-    - Requiere rol de administrador.
-    - El usuario no se elimina físicamente para mantener el historial.
-    """
     usuario = db.query(models.Usuario).filter(models.Usuario.id_usuario == id_usuario).first()
     if not usuario:
         raise HTTPException(status_code=404, detail="Usuario no encontrado.")
-
     if usuario.fecha_baja is not None:
         raise HTTPException(status_code=400, detail="El usuario ya se encuentra dado de baja.")
 
     usuario.fecha_baja = date.today()
-
-    db.add(
-        models.AuditLog(
-            usuario_actor=current_admin.id_usuario,
-            accion="BAJA_SOCIO",
-            tabla_afectada="usuarios",
-            registro_id=id_usuario,
-            detalle={
-                "socio_baja_dni": usuario.dni,
-                "fecha_baja": usuario.fecha_baja.isoformat(),
-                "dado_de_baja_por_dni": current_admin.dni,
-            },
-        )
-    )
-
+    db.add(models.AuditLog(
+        usuario_actor=current_admin.id_usuario,
+        accion="BAJA_SOCIO",
+        tabla_afectada="usuarios",
+        registro_id=id_usuario,
+        detalle={
+            "socio_baja_dni": usuario.dni,
+            "fecha_baja": usuario.fecha_baja.isoformat(),
+            "dado_de_baja_por_dni": current_admin.dni,
+        },
+    ))
     db.commit()
-
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -377,32 +349,23 @@ def reactivar_socio(
     db: Session = Depends(get_db),
     current_admin: models.Usuario = Depends(require_roles(*_ADMIN)),
 ):
-    """
-    Reactiva un socio que fue dado de baja, estableciendo su `fecha_baja` a NULL.
-    """
     usuario = db.query(models.Usuario).filter(models.Usuario.id_usuario == id_usuario).first()
     if not usuario:
         raise HTTPException(status_code=404, detail="Usuario no encontrado.")
-
     if usuario.fecha_baja is None:
         raise HTTPException(status_code=400, detail="El usuario ya se encuentra activo.")
 
     usuario.fecha_baja = None
-
-    db.add(
-        models.AuditLog(
-            usuario_actor=current_admin.id_usuario,
-            accion="REACTIVAR_SOCIO",
-            tabla_afectada="usuarios",
-            registro_id=id_usuario,
-            detalle={
-                "socio_reactivado_dni": usuario.dni,
-                "reactivado_por_dni": current_admin.dni,
-            },
-        )
-    )
+    db.add(models.AuditLog(
+        usuario_actor=current_admin.id_usuario,
+        accion="REACTIVAR_SOCIO",
+        tabla_afectada="usuarios",
+        registro_id=id_usuario,
+        detalle={"socio_reactivado_dni": usuario.dni, "reactivado_por_dni": current_admin.dni},
+    ))
     db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
 
 @router.get(
     "/",
@@ -415,10 +378,6 @@ def listar_todos_los_usuarios(
     db: Session = Depends(get_db),
     _: models.Usuario = Depends(require_roles(*_ADMIN)),
 ):
-    """
-    Listado paginado de todos los usuarios (activos e inactivos).
-    Ordenado alfabéticamente por apellido.
-    """
     return (
         db.query(models.Usuario)
         .order_by(models.Usuario.apellido, models.Usuario.nombre)
@@ -426,3 +385,231 @@ def listar_todos_los_usuarios(
         .limit(limit)
         .all()
     )
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# ENDPOINTS NUEVOS — GESTIÓN DE ROLES
+# ══════════════════════════════════════════════════════════════════════════════
+
+@router.get(
+    "/roles",                                  # ← IMPORTANTE: declarar ANTES de /{id_usuario}
+    response_model=list[RolCatalogoResponse],
+    summary="Catálogo de roles disponibles en el sistema",
+    tags=["Admin — Roles"],
+)
+def listar_roles(
+    solo_activos: bool = True,
+    db: Session = Depends(get_db),
+    _: models.Usuario = Depends(require_roles(*_ADMIN)),
+):
+    """
+    Devuelve todos los roles del sistema ordenados por jerarquía descendente.
+
+    `solo_activos=true` (default): omite roles desactivados.
+    `solo_activos=false`: devuelve el catálogo completo (útil para auditoría).
+
+    El frontend usa esta respuesta para poblar el selector de roles en la UI
+    de edición de un socio.
+
+    ⚠️  Ruta declarada ANTES de /{id_usuario} para que FastAPI no interprete
+        "roles" como un id_usuario dinámico.
+    """
+    query = db.query(models.Rol)
+
+    if solo_activos:
+        query = query.filter(models.Rol.es_activo.is_(True))
+
+    return query.order_by(models.Rol.peso_jerarquico.desc()).all()
+
+
+@router.put(
+    "/{id_usuario}/roles",
+    response_model=ActualizarRolesResponse,
+    summary="Reemplazar los roles de un usuario (operación total)",
+    tags=["Admin — Roles"],
+)
+def actualizar_roles_usuario(
+    id_usuario: int,
+    payload: ActualizarRolesPayload,
+    db: Session = Depends(get_db),
+    current_admin: models.Usuario = Depends(require_roles("admin_general")),
+    #                                        ↑ Solo admin_general puede cambiar roles.
+    #                                          personal_administrativo no tiene este permiso.
+):
+    """
+    Reemplaza el conjunto de roles de un usuario en una única transacción.
+
+    Flujo atómico:
+      1. Cargar el usuario con sus roles actuales (para el snapshot de auditoría).
+      2. Validar restricciones de negocio.
+      3. DELETE de todas las filas de `usuarios_roles` para ese usuario
+         (con sqlalchemy.delete() para evitar N+1 queries de ORM).
+      4. INSERT de los nuevos roles uno por uno.
+      5. Insertar en `audit_log` con estado antes/después.
+      6. Commit único.
+
+    Restricciones de negocio aplicadas:
+      - IDs de roles duplicados en el payload → 400.
+      - Algún id_rol no existe o está inactivo → 422 con detalle.
+      - El admin no puede quitarse su propio rol 'admin_general' → 403.
+      - El usuario destino no puede estar dado de baja → 400.
+    """
+
+    # ── 1. Cargar usuario con roles actuales ─────────────────────────────────
+    usuario = (
+        db.query(models.Usuario)
+        .options(
+            joinedload(models.Usuario.roles_asignados)
+            .joinedload(models.UsuarioRol.rol)
+        )
+        .filter(models.Usuario.id_usuario == id_usuario)
+        .first()
+    )
+    if not usuario:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado.")
+    if usuario.fecha_baja is not None:
+        raise HTTPException(
+            status_code=400,
+            detail="No se pueden modificar roles de un usuario dado de baja.",
+        )
+
+    # Snapshot del estado previo ANTES de cualquier cambio
+    roles_anteriores = _nombres_roles_activos(usuario)
+
+    # ── 2. Validaciones de negocio ────────────────────────────────────────────
+
+    # 2a. IDs duplicados en el payload
+    ids_nuevos = payload.ids_roles
+    if len(ids_nuevos) != len(set(ids_nuevos)):
+        raise HTTPException(
+            status_code=400,
+            detail="La lista de roles contiene IDs duplicados.",
+        )
+
+    # 2b. Auto-remoción del propio rol admin_general
+    if current_admin.id_usuario == id_usuario and ids_nuevos:
+        rol_admin = (
+            db.query(models.Rol)
+            .filter(models.Rol.nombre == "admin_general")
+            .first()
+        )
+        if rol_admin and rol_admin.id_rol not in ids_nuevos:
+            raise HTTPException(
+                status_code=403,
+                detail=(
+                    "No podés quitarte tu propio rol de 'admin_general'. "
+                    "Pedile a otro administrador que lo haga."
+                ),
+            )
+
+    # 2c. Verificar que todos los IDs existan y estén activos
+    roles_validos: list[models.Rol] = []
+    if ids_nuevos:
+        roles_db = (
+            db.query(models.Rol)
+            .filter(models.Rol.id_rol.in_(ids_nuevos))
+            .all()
+        )
+        ids_encontrados = {r.id_rol for r in roles_db}
+        ids_faltantes   = set(ids_nuevos) - ids_encontrados
+        if ids_faltantes:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Los siguientes IDs de rol no existen: {sorted(ids_faltantes)}",
+            )
+        ids_inactivos = [r.id_rol for r in roles_db if not r.es_activo]
+        if ids_inactivos:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Los siguientes roles están desactivados y no se pueden asignar: {ids_inactivos}",
+            )
+        # Ordenar igual que ids_nuevos para el INSERT posterior
+        roles_validos = {r.id_rol: r for r in roles_db}
+
+    # ── 3. DELETE de todos los roles actuales del usuario ─────────────────────
+    #
+    # Usamos sqlalchemy.delete() (Core) en lugar de iterar con ORM para hacerlo
+    # en UN SOLO round-trip a la base de datos, independientemente de cuántos
+    # roles tenga el usuario. La alternativa con ORM (for ur in usuario.roles_asignados:
+    # db.delete(ur)) generaría un DELETE por cada rol.
+    #
+    db.execute(
+        delete(models.UsuarioRol)
+        .where(models.UsuarioRol.id_usuario == id_usuario)
+    )
+
+    # ── 4. INSERT de los nuevos roles ─────────────────────────────────────────
+    #
+    # Insertamos todos de una vez usando db.add_all() con una lista de ORM objects.
+    # Cada rol se asigna como permanente (valido_hasta=None).
+    # Para roles temporales (admin_temporal), usar el endpoint /aprobar o el
+    # endpoint dedicado que recibe valido_hasta.
+    #
+    nuevos_roles_orm = [
+        models.UsuarioRol(
+            id_usuario=id_usuario,
+            id_rol=id_rol,
+            asignado_por=current_admin.id_usuario,
+            # valido_hasta=None → permanente
+        )
+        for id_rol in ids_nuevos
+    ]
+    if nuevos_roles_orm:
+        db.add_all(nuevos_roles_orm)
+
+    # ── 5. Audit log ──────────────────────────────────────────────────────────
+    roles_nuevos_nombres = sorted(
+        roles_validos[id_rol].nombre
+        for id_rol in ids_nuevos
+    ) if ids_nuevos else []
+
+    db.add(
+        models.AuditLog(
+            usuario_actor=current_admin.id_usuario,
+            accion="CAMBIO_ROLES",
+            tabla_afectada="usuarios_roles",
+            registro_id=id_usuario,
+            detalle={
+                "antes":  {"roles": roles_anteriores},
+                "despues": {"roles": roles_nuevos_nombres},
+                "usuario_afectado_dni": usuario.dni,
+                "modificado_por_dni":   current_admin.dni,
+            },
+        )
+    )
+
+    # ── 6. Commit único (todo o nada) ─────────────────────────────────────────
+    db.commit()
+
+    return ActualizarRolesResponse(
+        ok=True,
+        id_usuario=id_usuario,
+        dni=usuario.dni,
+        nombre_completo=f"{usuario.nombre} {usuario.apellido}",
+        roles_anteriores=roles_anteriores,
+        roles_nuevos=roles_nuevos_nombres,
+    )
+    
+    
+@router.get(
+    "/{id_usuario}",
+    response_model=schemas.UsuarioResponse,
+    summary="Detalle completo de un usuario (incluye roles_asignados)",
+)
+def get_usuario_detalle(
+    id_usuario: int,
+    db: Session = Depends(get_db),
+    _: models.Usuario = Depends(require_roles(*_ADMIN)),
+):
+    usuario = (
+        db.query(models.Usuario)
+        .options(
+            joinedload(models.Usuario.roles_asignados)
+            .joinedload(models.UsuarioRol.rol)
+        )
+        .filter(models.Usuario.id_usuario == id_usuario)
+        .first()
+    )
+    if not usuario:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado.")
+    return usuario

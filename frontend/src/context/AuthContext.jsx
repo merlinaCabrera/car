@@ -58,11 +58,25 @@ export function AuthProvider({ children }) {
         const data = await res.json();
         localStorage.setItem('authToken', data.access_token);
         setToken(data.access_token);
-        
-        // Ya no devolvemos un rol. El componente de Login simplemente redirigirá
-        // a una ruta base, y el MainLayout se encargará de mostrar las opciones
-        // correctas basándose en el objeto 'user' que se poblará en el `useEffect`.
-        return true; // Devolvemos 'true' para indicar éxito.
+
+        // Buscamos el perfil ACÁ MISMO (en vez de depender del useEffect que
+        // reacciona al cambio de `token`) porque el componente que llama a
+        // login() (ej: Login.jsx) necesita decidir el redirect según los
+        // roles reales apenas el login termina, y `user` del contexto todavía
+        // no se actualizó en ese punto (el useEffect corre en el próximo render).
+        const perfilRes = await fetch(`${API}/usuarios/me`, {
+            headers: { Authorization: `Bearer ${data.access_token}` },
+        });
+        if (!perfilRes.ok) {
+            throw new Error('Login correcto, pero no se pudo cargar tu perfil. Intentá de nuevo.');
+        }
+        const userData = await perfilRes.json();
+        setUser(userData);
+
+        // Devolvemos el perfil completo (con roles_asignados) para que el
+        // componente que llama pueda redirigir según el rol sin esperar un
+        // re-render.
+        return userData;
     } catch (error) {
         console.error("Fallo el login:", error);
         throw error;

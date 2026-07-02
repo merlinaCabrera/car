@@ -36,6 +36,9 @@ import {
   Undo2,
   ShieldCheck,
   Loader2,
+  Search,
+  CheckCircle,
+  UserPlus,
 } from 'lucide-react'
 
 const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
@@ -418,12 +421,15 @@ export default function AdminSocios() {
   const { token } = useAuth()
 
   const [socios,       setSocios]       = useState([])
+  const [pendientes,   setPendientes]   = useState([])
   const [loading,      setLoading]      = useState(true)
   const [error,        setError]        = useState(null)
   const [isModalOpen,  setIsModalOpen]  = useState(false)
   const [editingSocio, setEditingSocio] = useState(null)
+  const [searchTerm,   setSearchTerm]   = useState('')
+  const [approvingId,  setApprovingId]  = useState(null)
 
-  // ── Catálogo de roles — fetch único al montar ──────────────────────────────
+  // ── Catálogo de roles — fetch único al montar ─────────────────────────────
   const [catalogoRoles, setCatalogoRoles] = useState([])
 
   useEffect(() => {
@@ -436,25 +442,32 @@ export default function AdminSocios() {
       .catch(() => setCatalogoRoles([]))
   }, [token])
 
-  // ── Fetch de socios ────────────────────────────────────────────────────────
-  const fetchSocios = useCallback(async () => {
+  // ── Fetch de datos (socios y pendientes) ──────────────────────────────────
+  const fetchData = useCallback(async () => {
     if (!token) return
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch(`${API}/admin/usuarios/`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      if (!res.ok) throw new Error(`Error ${res.status}: No se pudo cargar la lista de socios.`)
-      setSocios(await res.json())
+      const [sociosRes, pendientesRes] = await Promise.all([
+        fetch(`${API}/admin/usuarios/`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${API}/admin/usuarios/pendientes`, { headers: { Authorization: `Bearer ${token}` } }),
+      ])
+
+      if (!sociosRes.ok) throw new Error(`Error ${sociosRes.status}: No se pudo cargar la lista de socios.`)
+      if (!pendientesRes.ok) throw new Error(`Error ${pendientesRes.status}: No se pudo cargar la lista de pendientes.`)
+
+      setSocios(await sociosRes.json())
+      setPendientes(await pendientesRes.json())
     } catch (err) {
       setError(err.message)
+      setSocios([])
+      setPendientes([])
     } finally {
       setLoading(false)
     }
   }, [token])
 
-  useEffect(() => { fetchSocios() }, [fetchSocios])
+  useEffect(() => { fetchData() }, [fetchData])
 
   // ── Guardar socio: PATCH/POST de datos + PUT de roles (en edición) ─────────
   //
@@ -510,7 +523,7 @@ export default function AdminSocios() {
     }
 
     // Refrescar la tabla con los datos actualizados
-    fetchSocios()
+    fetchData()
   }
 
   // ── Handlers de tabla ──────────────────────────────────────────────────────
@@ -528,7 +541,7 @@ export default function AdminSocios() {
         const err = await res.json().catch(() => ({}))
         throw new Error(err.detail ?? 'Error al dar de baja al socio.')
       }
-      fetchSocios()
+      fetchData()
     } catch (err) {
       window.alert(`Error: ${err.message}`)
     }
@@ -546,15 +559,45 @@ export default function AdminSocios() {
         const err = await res.json().catch(() => ({}))
         throw new Error(err.detail ?? 'Error al reactivar al socio.')
       }
-      fetchSocios()
+      fetchData()
     } catch (err) {
       window.alert(`Error: ${err.message}`)
+    }
+  }
+
+  const handleApproveSocio = async (id_usuario) => {
+    if (!window.confirm('¿Aprobar a este usuario y asignarle el rol de "socio"?')) return
+
+    setApprovingId(id_usuario)
+    try {
+      const res = await fetch(`${API}/admin/usuarios/${id_usuario}/aprobar`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.detail ?? 'Error al aprobar al socio.')
+      }
+      await fetchData()
+    } catch (err) {
+      window.alert(`Error: ${err.message}`)
+    } finally {
+      setApprovingId(null)
     }
   }
 
   const openModalForCreate = () => { setEditingSocio(null); setIsModalOpen(true) }
   const openModalForEdit   = (socio) => { setEditingSocio(socio); setIsModalOpen(true) }
   const closeModal         = () => setIsModalOpen(false)
+
+  const filteredSocios = socios.filter(socio => {
+    const term = searchTerm.toLowerCase()
+    return (
+      socio.nombre.toLowerCase().includes(term) ||
+      socio.apellido.toLowerCase().includes(term) ||
+      socio.dni.includes(term)
+    )
+  })
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
@@ -572,14 +615,14 @@ export default function AdminSocios() {
       )}
 
       {/* Header */}
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
             <Users size={24} className="text-gray-500" />
             Gestión de Socios
           </h1>
           <p className="text-sm text-gray-500 mt-1">
-            Crear, editar y dar de baja a los socios del club.
+            Crear, editar, aprobar y dar de baja a los socios del club.
           </p>
         </div>
         <div className="flex items-center gap-3 flex-shrink-0 mt-1">
@@ -591,7 +634,7 @@ export default function AdminSocios() {
             Nuevo Socio
           </button>
           <button
-            onClick={fetchSocios} disabled={loading}
+            onClick={fetchData} disabled={loading}
             className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 disabled:opacity-40 transition-colors"
             title="Actualizar lista"
           >
@@ -600,18 +643,74 @@ export default function AdminSocios() {
         </div>
       </div>
 
+      {/* Buscador */}
+      <div className="relative">
+        <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+        <input
+          type="text"
+          placeholder="Buscar por nombre, apellido o DNI..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+        />
+      </div>
+
       {/* Error de carga */}
       {error && (
         <div className="flex items-center gap-3 p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm">
           <AlertCircle size={18} className="flex-shrink-0" />
           <span className="flex-1">{error}</span>
-          <button onClick={fetchSocios} className="underline underline-offset-2 font-medium hover:text-red-900">
+          <button onClick={fetchData} className="underline underline-offset-2 font-medium hover:text-red-900">
             Reintentar
           </button>
         </div>
       )}
 
-      {/* Tabla */}
+      {/* Sección de Pendientes */}
+      {!loading && pendientes.length > 0 && (
+        <div className="space-y-4 p-5 rounded-2xl bg-amber-50 border-2 border-amber-200">
+          <div className="flex items-center gap-3">
+            <UserPlus size={20} className="text-amber-700" />
+            <h2 className="text-lg font-bold text-amber-900">
+              Solicitudes Pendientes de Aprobación ({pendientes.length})
+            </h2>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="min-w-full">
+              <thead className="border-b border-amber-200">
+                <tr>
+                  {['Socio', 'DNI', 'Fecha de Registro', 'Acciones'].map(h => (
+                    <th key={h} className="px-4 py-2.5 text-left text-xs font-semibold text-amber-800/80 uppercase tracking-wider whitespace-nowrap">
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {pendientes.map(p => (
+                  <tr key={p.id_usuario} className="border-b border-amber-100 last:border-b-0">
+                    <td className="px-4 py-3"><div className="font-medium text-gray-800">{p.apellido}, {p.nombre}</div></td>
+                    <td className="px-4 py-3 font-mono text-sm text-gray-600">{p.dni}</td>
+                    <td className="px-4 py-3 text-sm text-gray-500">{new Date(p.creado_at).toLocaleDateString()}</td>
+                    <td className="px-4 py-3 text-right">
+                      <button
+                        onClick={() => handleApproveSocio(p.id_usuario)}
+                        disabled={approvingId === p.id_usuario}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-600 text-white text-xs font-semibold hover:bg-green-700 disabled:bg-green-400 transition-colors"
+                      >
+                        {approvingId === p.id_usuario ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle size={14} />}
+                        <span>{approvingId === p.id_usuario ? 'Aprobando…' : 'Aprobar Socio'}</span>
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Tabla de Socios */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-100">
           <thead className="bg-gray-50">
@@ -632,7 +731,7 @@ export default function AdminSocios() {
               </tr>
             ))}
 
-            {!loading && socios.map(socio => (
+            {!loading && filteredSocios.map(socio => (
               <tr key={socio.id_usuario} className="hover:bg-gray-50/70 transition-colors">
                 <td className="px-6 py-4">
                   <div className="font-medium text-gray-900">{socio.apellido}, {socio.nombre}</div>
@@ -679,10 +778,12 @@ export default function AdminSocios() {
               </tr>
             ))}
 
-            {!loading && socios.length === 0 && (
+            {!loading && filteredSocios.length === 0 && (
               <tr>
                 <td colSpan="5" className="text-center py-12 text-gray-500">
-                  No se encontraron socios.
+                  {searchTerm
+                    ? 'No se encontraron socios que coincidan con la búsqueda.'
+                    : 'No hay socios para mostrar.'}
                 </td>
               </tr>
             )}

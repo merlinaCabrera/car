@@ -1,90 +1,215 @@
-import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
+// frontend/src/pages/AdminInicio.jsx
+/**
+ * Panel de Control del administrador — ruta `/admin`.
+ *
+ * Reescrito con la misma paleta clara / tarjetas blancas que AdminSocios.jsx
+ * (en vez del tema oscuro que tenía antes) para mantener consistencia visual
+ * en toda la sección de administración.
+ *
+ * Tarjeta "Solicitudes de Socios":
+ *   - Fetch real a GET /admin/usuarios/pendientes al montar.
+ *   - Loading skeleton mientras carga, banner de error con reintento si falla.
+ *   - Acepta tanto un array de solicitudes como un objeto { total: N } como
+ *     respuesta, para no atarse a un shape específico del backend.
+ *
+ * Tarjetas "Pagos por Verificar" y "Órdenes de Tienda":
+ *   - Todavía no tienen endpoint de conteo → placeholder con "0" y aviso de
+ *     "Próximamente", con link directo a la sección correspondiente.
+ */
 
-export default function AdminInicio() {
-  const { user } = useAuth();
-  const navigate = useNavigate();
+import { useState, useEffect, useCallback } from 'react'
+import { useAuth } from '../context/AuthContext'
+import { useNavigate } from 'react-router-dom'
+import {
+  LayoutDashboard,
+  ScanLine,
+  UserPlus,
+  CreditCard,
+  ShoppingBag,
+  AlertCircle,
+  RefreshCw,
+  ArrowRight,
+  Clock,
+} from 'lucide-react'
+
+const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
+
+// ─── Sub-componente: tarjeta de tarea pendiente ──────────────────────────────
+
+function TareaCard({
+  icon: Icon,
+  iconColor,
+  titulo,
+  descripcion,
+  valor,
+  loading,
+  error,
+  onRetry,
+  ctaLabel,
+  ctaPath,
+  proximamente = false,
+}) {
+  const navigate = useNavigate()
 
   return (
-    <div className="space-y-8 mt-10 px-4 sm:px-0">
-      {/* Cabecera */}
-      <div className="mb-6">
-        <h2 className="text-3xl font-bold text-slate-800">Hola, {user?.nombre || 'Admin'} 👋</h2>
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col gap-4">
+      <div className="flex items-start justify-between">
+        <div className={`p-2.5 rounded-xl ${iconColor}`}>
+          <Icon size={20} />
+        </div>
+        {proximamente && (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-100 text-amber-700">
+            <Clock size={11} /> Próximamente
+          </span>
+        )}
       </div>
 
-      {/* Sección 1: Acciones Rápidas (CTA Lector QR) */}
-      <button 
+      <div>
+        <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">{titulo}</h3>
+
+        {/* Estado: cargando */}
+        {loading && (
+          <div className="h-9 w-16 bg-gray-200 rounded-md animate-pulse mt-2" />
+        )}
+
+        {/* Estado: error */}
+        {!loading && error && (
+          <div className="mt-2 flex items-center gap-2 text-red-600 text-xs">
+            <AlertCircle size={14} className="flex-shrink-0" />
+            <span className="flex-1">{error}</span>
+            {onRetry && (
+              <button
+                onClick={onRetry}
+                className="p-1 rounded-md hover:bg-red-50 text-red-600"
+                title="Reintentar"
+              >
+                <RefreshCw size={13} />
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Estado: valor cargado */}
+        {!loading && !error && (
+          <p className="text-3xl font-bold text-gray-900 mt-1">{valor}</p>
+        )}
+
+        <p className="text-sm text-gray-400 mt-1">{descripcion}</p>
+      </div>
+
+      {ctaPath && (!loading) && (
+        <button
+          onClick={() => navigate(ctaPath)}
+          className="mt-auto inline-flex items-center justify-center gap-1.5 text-sm font-semibold text-blue-600 hover:text-blue-700 transition-colors"
+        >
+          {ctaLabel}
+          <ArrowRight size={14} />
+        </button>
+      )}
+    </div>
+  )
+}
+
+// ─── Componente principal ─────────────────────────────────────────────────────
+
+export default function AdminInicio() {
+  const { user, token } = useAuth()
+  const navigate = useNavigate()
+
+  const [solicitudesCount, setSolicitudesCount] = useState(0)
+  const [loadingSolicitudes, setLoadingSolicitudes] = useState(true)
+  const [errorSolicitudes, setErrorSolicitudes] = useState(null)
+
+  const fetchSolicitudesPendientes = useCallback(async () => {
+    if (!token) return
+    setLoadingSolicitudes(true)
+    setErrorSolicitudes(null)
+    try {
+      const res = await fetch(`${API}/admin/usuarios/pendientes`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!res.ok) throw new Error(`Error ${res.status}: No se pudieron cargar las solicitudes pendientes.`)
+      const data = await res.json()
+      // Soporta tanto un array de solicitudes como { total: N }
+      const count = Array.isArray(data) ? data.length : (data?.total ?? 0)
+      setSolicitudesCount(count)
+    } catch (err) {
+      setErrorSolicitudes(err.message)
+    } finally {
+      setLoadingSolicitudes(false)
+    }
+  }, [token])
+
+  useEffect(() => { fetchSolicitudesPendientes() }, [fetchSolicitudesPendientes])
+
+  return (
+    <div className="p-6 max-w-6xl mx-auto space-y-6">
+
+      {/* Header */}
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
+          <LayoutDashboard size={24} className="text-gray-500" />
+          Panel de Control
+        </h1>
+        <p className="text-sm text-gray-500 mt-1">
+          Hola, {user?.nombre || 'Admin'} — esto es lo que necesita tu atención hoy.
+        </p>
+      </div>
+
+      {/* CTA principal: Lector de QR */}
+      <button
         onClick={() => navigate('/admin/escaner')}
-        className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-6 px-4 rounded-2xl shadow-xl transition-transform transform active:scale-95 text-lg md:text-2xl flex items-center justify-center gap-3"
+        className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-6 px-4 rounded-2xl shadow-md transition-all active:scale-[0.99] text-base md:text-lg flex items-center justify-center gap-3"
       >
-        <span className="text-2xl md:text-3xl">📷</span> LECTOR DE QR - Control de Acceso
+        <ScanLine size={22} />
+        Lector de QR — Control de Acceso
       </button>
 
-      {/* Sección 2: Grilla de Métricas */}
-      <div className="grid grid-cols-3 gap-3 md:gap-6">
-        <div className="bg-slate-800 rounded-2xl p-4 md:p-6 shadow-md border border-slate-700 flex flex-col items-center justify-center transition-colors">
-          <span className="text-slate-400 text-[10px] md:text-sm font-semibold uppercase tracking-wide text-center">Solicitudes</span>
-          <span className="text-2xl md:text-4xl font-bold text-amber-400 mt-1">4</span>
-        </div>
-        <div className="bg-slate-800 rounded-2xl p-4 md:p-6 shadow-md border border-slate-700 flex flex-col items-center justify-center transition-colors">
-          <span className="text-slate-400 text-[10px] md:text-sm font-semibold uppercase tracking-wide text-center">Pagos</span>
-          <span className="text-2xl md:text-4xl font-bold text-orange-400 mt-1">12</span>
-        </div>
-        <div className="bg-slate-800 rounded-2xl p-4 md:p-6 shadow-md border border-slate-700 flex flex-col items-center justify-center transition-colors">
-          <span className="text-slate-400 text-[10px] md:text-sm font-semibold uppercase tracking-wide text-center">Socios</span>
-          <span className="text-2xl md:text-4xl font-bold text-blue-400 mt-1">342</span>
-        </div>
-      </div>
-
-      {/* Sección 3: Gestión de Usuarios */}
-      <div className="bg-slate-800 rounded-3xl p-5 md:p-8 shadow-xl border border-slate-700">
-        <h3 className="text-xl font-bold text-white mb-4">Gestión de Roles</h3>
-        
-        <input 
-          type="search" 
-          placeholder="Buscar por DNI o Apellido..." 
-          className="w-full bg-slate-900 text-white border border-slate-700 rounded-xl px-4 py-3 mb-6 focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-slate-500 transition-shadow"
+      {/* Grilla de tareas pendientes */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <TareaCard
+          icon={UserPlus}
+          iconColor="bg-amber-100 text-amber-700"
+          titulo="Solicitudes de Socios"
+          descripcion={
+            !loadingSolicitudes && !errorSolicitudes && solicitudesCount === 0
+              ? 'No hay solicitudes pendientes.'
+              : 'Altas nuevas esperando revisión.'
+          }
+          valor={solicitudesCount}
+          loading={loadingSolicitudes}
+          error={errorSolicitudes}
+          onRetry={fetchSolicitudesPendientes}
+          ctaLabel={solicitudesCount > 0 ? 'Revisar solicitudes' : 'Ver socios'}
+          ctaPath="/admin/socios"
         />
 
-        <div className="space-y-4">
-          {/* Usuario 1 */}
-          <div className="bg-slate-700/50 p-4 rounded-2xl border border-slate-600/50 flex flex-col md:flex-row md:items-center justify-between gap-4 transition-colors hover:bg-slate-700">
-            <div>
-              <p className="font-bold text-slate-100 text-lg">Sergio Acosta</p>
-              <p className="text-sm text-slate-400 font-medium">DNI: 44.196.940</p>
-            </div>
-            <div className="flex items-center gap-3">
-              <select defaultValue="socio" className="bg-slate-900 text-slate-200 border border-slate-600 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full md:w-auto outline-none">
-                <option value="socio">Socio</option>
-                <option value="jugador">Jugador</option>
-                <option value="admin">Admin Temporal</option>
-              </select>
-              <button className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-4 rounded-xl transition-colors text-sm whitespace-nowrap">
-                Guardar
-              </button>
-            </div>
-          </div>
+        <TareaCard
+          icon={CreditCard}
+          iconColor="bg-orange-100 text-orange-700"
+          titulo="Pagos por Verificar"
+          descripcion="Todavía no hay un contador automático para esta sección."
+          valor={0}
+          loading={false}
+          error={null}
+          ctaLabel="Ir a Pagos"
+          ctaPath="/admin/pagos"
+          proximamente
+        />
 
-          {/* Usuario 2 */}
-          <div className="bg-slate-700/50 p-4 rounded-2xl border border-slate-600/50 flex flex-col md:flex-row md:items-center justify-between gap-4 transition-colors hover:bg-slate-700">
-            <div>
-              <p className="font-bold text-slate-100 text-lg">Thiago Cabrera</p>
-              <p className="text-sm text-slate-400 font-medium">DNI: 47.545.053</p>
-            </div>
-            <div className="flex items-center gap-3">
-              <select defaultValue="jugador" className="bg-slate-900 text-slate-200 border border-slate-600 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full md:w-auto outline-none">
-                <option value="socio">Socio</option>
-                <option value="jugador">Jugador</option>
-                <option value="admin">Admin Temporal</option>
-              </select>
-              <button className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-4 rounded-xl transition-colors text-sm whitespace-nowrap">
-                Guardar
-              </button>
-            </div>
-          </div>
-        </div>
+        <TareaCard
+          icon={ShoppingBag}
+          iconColor="bg-blue-100 text-blue-700"
+          titulo="Órdenes de Tienda"
+          descripcion="Todavía no hay un contador automático ni una sección dedicada."
+          valor={0}
+          loading={false}
+          error={null}
+          ctaLabel={null}
+          ctaPath={null}
+          proximamente
+        />
       </div>
-
     </div>
-  );
+  )
 }

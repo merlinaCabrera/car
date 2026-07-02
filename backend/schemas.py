@@ -478,6 +478,52 @@ class OrdenListResponse(BaseModel):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# ADMIN · GESTIÓN DE PAGOS / CUOTAS SOCIALES
+# ─────────────────────────────────────────────────────────────────────────────
+
+class EstadisticasPagosResponse(BaseModel):
+    """Resumen financiero para el dashboard de administración."""
+    total_socios_al_dia: int
+    total_socios_morosos: int
+    precio_cuota_actual: Decimal
+    deuda_total_estimada: Decimal = Field(
+        description="Suma de deuda_historica_meses de todos los morosos, "
+                     "multiplicada por el precio_actual vigente del producto 'cuota_social'.",
+    )
+
+
+class MorosoResponse(BaseModel):
+    """Un socio con deuda, listo para mostrar en la bandeja de morosos."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id_usuario: int
+    dni: str
+    nombre: str
+    apellido: str
+    email: Optional[str] = None
+    telefono: Optional[str] = None
+    deuda_historica_meses: int
+    deuda_estimada: Decimal = Field(
+        description="deuda_historica_meses × precio_actual de la cuota social."
+    )
+
+
+class RegistrarPagoManualPayload(BaseModel):
+    """Payload para que el admin registre un cobro por ventanilla (efectivo/transferencia)."""
+    id_usuario: int
+    meses_a_pagar: int = Field(gt=0, description="Cantidad de meses que se están saldando.")
+
+
+class RegistrarPagoManualResponse(BaseModel):
+    """Confirmación del pago manual registrado."""
+    id_orden: int
+    id_usuario: int
+    meses_pagados: int
+    monto_total: Decimal
+    deuda_restante_meses: int
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # MÓDULO 4 · DEPORTIVO & EVENTOS
 # ─────────────────────────────────────────────────────────────────────────────
 

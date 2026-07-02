@@ -129,6 +129,14 @@ def listar_ordenes_pendientes(
     return ordenes
 
 
+@router.get("/pendientes/count", response_model=int, summary="Cantidad de órdenes pendientes")
+def contar_ordenes_pendientes(
+    db: Session = Depends(get_db),
+    admin: models.Usuario = Depends(require_roles(*_ROLES_ADMIN)),
+) -> int:
+    return db.query(models.Orden).filter(models.Orden.estado == "pendiente_verificacion").count()
+
+
 # ─── ENDPOINT: Aprobar orden ───────────────────────────────────────────────────
 
 @router.post(

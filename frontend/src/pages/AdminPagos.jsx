@@ -252,7 +252,7 @@ function VerificacionModal({ orden, onClose, onActionSuccess, token }) {
 
 function CobroModal({ moroso, precioCuota, onClose, onSave }) {
   const deudaMaxima = moroso.deuda_historica_meses
-  const [meses, setMeses] = useState(deudaMaxima)
+  const [meses, setMeses] = useState(deudaMaxima > 0 ? deudaMaxima : 1)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [apiError, setApiError] = useState(null)
   const [formError, setFormError] = useState(null)
@@ -268,10 +268,7 @@ function CobroModal({ moroso, precioCuota, onClose, onSave }) {
       setFormError('Ingresá una cantidad de meses válida (entero mayor a 0).')
       return false
     }
-    if (n > deudaMaxima) {
-      setFormError(`No puede superar los ${deudaMaxima} mes(es) adeudados.`)
-      return false
-    }
+    // Se elimina la validación de deuda máxima para permitir adelantar pagos.
     setFormError(null)
     return true
   }
@@ -321,12 +318,19 @@ function CobroModal({ moroso, precioCuota, onClose, onSave }) {
             </div>
           )}
 
-          <div className="flex items-center justify-between px-4 py-3 rounded-xl bg-amber-50 border border-amber-200">
-            <span className="text-sm font-medium text-amber-800">Deuda actual</span>
-            <span className="text-sm font-bold text-amber-800">
-              {moroso.deuda_historica_meses} mes(es) — {formatoMoneda.format(moroso.deuda_estimada)}
-            </span>
-          </div>
+          {moroso.deuda_historica_meses > 0 ? (
+            <div className="flex items-center justify-between px-4 py-3 rounded-xl bg-amber-50 border border-amber-200">
+              <span className="text-sm font-medium text-amber-800">Deuda actual</span>
+              <span className="text-sm font-bold text-amber-800">
+                {moroso.deuda_historica_meses} mes(es) — {formatoMoneda.format(moroso.deuda_estimada)}
+              </span>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between px-4 py-3 rounded-xl bg-green-50 border border-green-200">
+              <span className="text-sm font-medium text-green-800">Socio al día (Adelantar pago)</span>
+              <span className="text-sm font-bold text-green-800">{formatoMoneda.format(0)}</span>
+            </div>
+          )}
 
           <div>
             <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
@@ -695,7 +699,7 @@ export default function AdminPagos() {
           <table className="min-w-full divide-y divide-gray-100">
             <thead className="bg-gray-50">
               <tr>
-                {['Socio', 'DNI', 'Meses Adeudados', 'Monto Deuda', 'Acciones'].map(h => (
+                {['Socio', 'DNI', 'Estado de Cuenta', 'Monto Deuda', 'Acciones'].map(h => (
                   <th key={h} className="px-6 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">
                     {h}
                   </th>
@@ -719,9 +723,15 @@ export default function AdminPagos() {
                   </td>
                   <td className="px-6 py-4 font-mono text-sm text-gray-600">{m.dni}</td>
                   <td className="px-6 py-4">
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
-                      {m.deuda_historica_meses} mes{m.deuda_historica_meses !== 1 ? 'es' : ''}
-                    </span>
+                    {m.deuda_historica_meses > 0 ? (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                        {m.deuda_historica_meses} mes{m.deuda_historica_meses !== 1 ? 'es' : ''}
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                        Al día
+                      </span>
+                    )}
                   </td>
                   <td className="px-6 py-4 text-sm font-semibold text-gray-900">
                     {formatoMoneda.format(m.deuda_estimada)}

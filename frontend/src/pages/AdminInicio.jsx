@@ -74,33 +74,28 @@ function TareaCard({
 
         {/* Estado: error */}
         {!loading && error && (
-          <div className="mt-2 flex items-center gap-2 text-red-600 text-xs">
-            <AlertCircle size={14} className="flex-shrink-0" />
-            <span className="flex-1">{error}</span>
-            {onRetry && (
-              <button
-                onClick={onRetry}
-                className="p-1 rounded-md hover:bg-red-50 text-red-600"
-                title="Reintentar"
-              >
-                <RefreshCw size={13} />
-              </button>
-            )}
+          <div className="mt-2 flex items-center justify-between gap-2 text-red-600">
+            <div className="flex items-center gap-1.5 text-xs">
+              <AlertCircle size={14} className="flex-shrink-0" />
+              <span>Error al cargar</span>
+            </div>
+            <p className="text-3xl font-bold text-gray-900 mt-1">0</p>
           </div>
         )}
 
         {/* Estado: valor cargado */}
         {!loading && !error && (
-          <p className="text-3xl font-bold text-gray-900 mt-1">{valor}</p>
+          <p className={`text-3xl font-bold mt-1 ${valor > 0 ? 'text-blue-600' : 'text-gray-900'}`}>{valor}</p>
         )}
 
         <p className="text-sm text-gray-400 mt-1">{descripcion}</p>
       </div>
 
-      {ctaPath && (!loading) && (
+      {ctaPath && (
         <button
           onClick={() => navigate(ctaPath)}
-          className="mt-auto inline-flex items-center justify-center gap-1.5 text-sm font-semibold text-blue-600 hover:text-blue-700 transition-colors"
+          className="mt-auto inline-flex items-center justify-center gap-1.5 text-sm font-semibold text-blue-600 hover:text-blue-700 transition-colors disabled:opacity-50"
+          disabled={loading}
         >
           {ctaLabel}
           <ArrowRight size={14} />
@@ -119,6 +114,10 @@ export default function AdminInicio() {
   const [solicitudesCount, setSolicitudesCount] = useState(0)
   const [loadingSolicitudes, setLoadingSolicitudes] = useState(true)
   const [errorSolicitudes, setErrorSolicitudes] = useState(null)
+
+  const [pagosCount, setPagosCount] = useState(0)
+  const [loadingPagos, setLoadingPagos] = useState(true)
+  const [errorPagos, setErrorPagos] = useState(null)
 
   const fetchSolicitudesPendientes = useCallback(async () => {
     if (!token) return
@@ -140,7 +139,28 @@ export default function AdminInicio() {
     }
   }, [token])
 
-  useEffect(() => { fetchSolicitudesPendientes() }, [fetchSolicitudesPendientes])
+  const fetchPagosPendientes = useCallback(async () => {
+    if (!token) return
+    setLoadingPagos(true)
+    setErrorPagos(null)
+    try {
+      const res = await fetch(`${API}/admin/ordenes/pendientes/count`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!res.ok) throw new Error(`Error ${res.status}: No se pudo obtener el contador de pagos.`)
+      const count = await res.json()
+      setPagosCount(count)
+    } catch (err) {
+      setErrorPagos(err.message)
+    } finally {
+      setLoadingPagos(false)
+    }
+  }, [token])
+
+  useEffect(() => {
+    fetchSolicitudesPendientes()
+    fetchPagosPendientes()
+  }, [fetchSolicitudesPendientes, fetchPagosPendientes])
 
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-6">
@@ -188,13 +208,17 @@ export default function AdminInicio() {
           icon={CreditCard}
           iconColor="bg-orange-100 text-orange-700"
           titulo="Pagos por Verificar"
-          descripcion="Todavía no hay un contador automático para esta sección."
-          valor={0}
-          loading={false}
-          error={null}
+          descripcion={
+            !loadingPagos && !errorPagos && pagosCount === 0
+              ? 'No hay pagos pendientes.'
+              : 'Transferencias esperando aprobación.'
+          }
+          valor={pagosCount}
+          loading={loadingPagos}
+          error={errorPagos}
+          onRetry={fetchPagosPendientes}
           ctaLabel="Ir a Pagos"
           ctaPath="/admin/pagos"
-          proximamente
         />
 
         <TareaCard

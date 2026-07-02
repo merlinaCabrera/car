@@ -157,7 +157,7 @@ def obtener_estadisticas(
 @router.get(
     "/morosos",
     response_model=List[schemas.MorosoResponse],
-    summary="Listado de socios con deuda_historica_meses > 0",
+    summary="Listado de todos los socios activos para cobro manual",
 )
 def listar_morosos(
     db: Session = Depends(get_db),
@@ -165,13 +165,12 @@ def listar_morosos(
 ) -> List[schemas.MorosoResponse]:
     producto_cuota = _obtener_producto_cuota_social(db)
 
-    morosos = (
+    # Se listan todos los socios activos, no solo los morosos, para permitir
+    # el pago por adelantado desde la ventanilla.
+    socios = (
         db.query(models.Usuario)
-        .filter(
-            models.Usuario.fecha_baja.is_(None),
-            models.Usuario.deuda_historica_meses > 0,
-        )
-        .order_by(models.Usuario.deuda_historica_meses.desc())
+        .filter(models.Usuario.fecha_baja.is_(None))
+        .order_by(models.Usuario.deuda_historica_meses.desc(), models.Usuario.apellido, models.Usuario.nombre)
         .all()
     )
 
@@ -186,7 +185,7 @@ def listar_morosos(
             deuda_historica_meses=u.deuda_historica_meses,
             deuda_estimada=Decimal(u.deuda_historica_meses) * producto_cuota.precio_actual,
         )
-        for u in morosos
+        for u in socios
     ]
 
 

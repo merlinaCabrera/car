@@ -1,18 +1,4 @@
 // frontend/src/pages/SocioCuotas.jsx
-/**
- * Gestión de Cuotas — ruta `/cuotas`.
- *
- * Sigue el mismo patrón que AdminPagos.jsx:
- *   - Tarjetas de estado con loading skeleton y banner de error.
- *   - Acciones con fail-fast (isSubmitting por tarjeta).
- *   - Modal sobrepuesto para confirmar la orden generada.
- *
- * Backend consumido:
- *   GET  /socio/cuotas/estado
- *   GET  /socio/cuotas/historial
- *   POST /socio/cuotas/generar-orden
- */
-
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../context/AuthContext'
 import {
@@ -23,12 +9,13 @@ import {
   Loader2,
   X,
   CalendarClock,
+  UploadCloud,
+  CheckCircle,
+  Info,
+  ExternalLink,
 } from 'lucide-react'
 
 const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
-
-// TODO: reemplazar por el link real del Formulario Google de comprobantes.
-const GOOGLE_FORM_URL = 'https://forms.google.com/tu-formulario'
 
 const formatoMoneda = new Intl.NumberFormat('es-AR', {
   style: 'currency',
@@ -47,7 +34,6 @@ const MESES = [
   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
 ]
 
-// Convierte "YYYY-MM" (mes_cubierto_hasta) al nombre del mes SIGUIENTE, ej. "Mayo 2026"
 function proximoMesLabel(mesCubiertoHasta) {
   if (!mesCubiertoHasta) return null
   const [y, m] = mesCubiertoHasta.split('-').map(Number)
@@ -57,207 +43,163 @@ function proximoMesLabel(mesCubiertoHasta) {
   return `${MESES[d.getMonth()]} ${d.getFullYear()}`
 }
 
-// ─── Sub-componente: tarjeta de estado (deuda / al día) ──────────────────────
+// ─── Modal para subir comprobante ─────────────────────────────────────────────
+function OrdenGeneradaModal({ orden, onClose, token }) {
+  const [file, setFile] = useState(null)
+  const [isUploading, setIsUploading] = useState(false)
+  const [apiError, setApiError] = useState(null)
+  const [success, setSuccess] = useState(false)
 
-function EstadoCard({ estado, loading, error, onRetry, isSubmitting, onPagar }) {
-  if (loading) {
-    return (
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 animate-pulse">
-        <div className="h-5 w-40 bg-gray-200 rounded-md" />
-        <div className="h-8 w-56 bg-gray-200 rounded-md mt-3" />
-      </div>
-    )
+  const handleFileChange = (e) => {
+    const selectedFile = e.target.files[0]
+    if (selectedFile) {
+      setFile(selectedFile)
+      setApiError(null)
+    }
   }
 
-  if (error) {
-    return (
-      <div className="flex items-center gap-3 p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm">
-        <AlertTriangle size={18} className="flex-shrink-0" />
-        <span className="flex-1">{error}</span>
-        <button onClick={onRetry} className="underline underline-offset-2 font-medium hover:text-red-900">
-          Reintentar
-        </button>
-      </div>
-    )
+  const handleUpload = async () => {
+    if (!file) {
+      setApiError('Por favor, seleccioná un archivo.')
+      return
+    }
+    setIsUploading(true)
+    setApiError(null)
+    setSuccess(false)
+    const formData = new FormData()
+    formData.append('file', file)
+
+    try {
+      const res = await fetch(`${API}/socio/cuotas/ordenes/${orden.id_orden}/comprobante`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.detail ?? 'Error al subir el comprobante.')
+      }
+      setSuccess(true)
+      setTimeout(() => onClose(), 2000)
+    } catch (err) {
+      setApiError(err.message)
+    } finally {
+      setIsUploading(false)
+    }
   }
 
-  const tieneDeuda = estado.deuda_historica_meses > 0
-  const esGrave = estado.deuda_historica_meses >= 2
-
-  if (!tieneDeuda) {
-    const proximo = proximoMesLabel(estado.mes_cubierto_hasta)
-    return (
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex items-center gap-4">
-        <div className="p-3 rounded-xl flex-shrink-0 bg-green-100 text-green-700">
-          <CheckCircle2 size={22} />
-        </div>
-        <div>
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Estado de Cuenta</p>
-          <p className="text-xl font-bold text-gray-900 mt-0.5">Estás al día</p>
-          {proximo && (
-            <p className="text-sm text-gray-500 mt-1 flex items-center gap-1.5">
-              <CalendarClock size={14} /> Próxima cuota: {proximo}
-            </p>
-          )}
-        </div>
-      </div>
-    )
-  }
-
-  // Tarjeta cuando HAY deuda (Ahora con botón de pago)
   return (
-    <div className={`rounded-2xl shadow-sm border p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
-      esGrave ? 'bg-red-50 border-red-200' : 'bg-amber-50 border-amber-200'
-    }`}>
-      <div className="flex items-center gap-4">
-        <div className={`p-3 rounded-xl flex-shrink-0 ${
-          esGrave ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'
-        }`}>
-          <AlertTriangle size={22} />
-        </div>
-        <div>
-          <p className={`text-xs font-semibold uppercase tracking-wide ${esGrave ? 'text-red-700' : 'text-amber-700'}`}>
-            Cuenta con deuda
-          </p>
-          <p className={`text-xl font-bold mt-0.5 ${esGrave ? 'text-red-900' : 'text-amber-900'}`}>
-            {estado.deuda_historica_meses} mes{estado.deuda_historica_meses !== 1 ? 'es' : ''} adeudado{estado.deuda_historica_meses !== 1 ? 's' : ''}
-          </p>
-          <p className={`text-sm mt-1 ${esGrave ? 'text-red-700' : 'text-amber-700'}`}>
-            Total: {formatoMoneda.format(estado.deuda_total_pesos)}
-          </p>
-        </div>
-      </div>
-      
-      {/* Nuevo botón para saldar la deuda exacta */}
-      <button
-        onClick={() => onPagar(estado.deuda_historica_meses)}
-        disabled={isSubmitting}
-        className={`w-full sm:w-auto flex justify-center items-center gap-2 px-5 py-3 rounded-xl font-bold text-white transition-colors disabled:opacity-50 ${
-          esGrave ? 'bg-red-600 hover:bg-red-700' : 'bg-amber-600 hover:bg-amber-700'
-        }`}
-      >
-        {isSubmitting && <Loader2 size={16} className="animate-spin" />}
-        {isSubmitting ? 'Generando...' : 'Saldar Deuda'}
-      </button>
-    </div>
-  )
-}
-
-// ─── Sub-componente: tarjeta de opción de pago ───────────────────────────────
-
-function OpcionPagoCard({ meses, label, precioCuota, isSubmitting, onPagar }) {
-  const monto = (precioCuota ?? 0) * meses
-  return (
-    <div className="bg-white rounded-2xl shadow-sm border border-blue-100 p-5 flex flex-col items-center text-center gap-3">
-      <p className="text-sm font-bold text-blue-900 uppercase tracking-wide">{label}</p>
-      <p className="text-lg font-bold text-gray-900">{formatoMoneda.format(monto)}</p>
-      <button
-        onClick={() => onPagar(meses)}
-        disabled={isSubmitting}
-        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm disabled:opacity-50 transition-colors"
-      >
-        {isSubmitting && <Loader2 size={14} className="animate-spin" />}
-        {isSubmitting ? 'Generando…' : 'Pagar'}
-      </button>
-    </div>
-  )
-}
-
-// ─── Modal de orden generada ──────────────────────────────────────────────────
-
-function OrdenGeneradaModal({ onClose }) {
-  return (
-    <div
-      className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex justify-center items-center p-4"
-      onClick={e => { if (e.target === e.currentTarget) onClose() }}
-    >
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
-        <div className="flex items-start justify-between mb-4">
-          <h2 className="text-xl font-bold text-gray-800">Orden Generada</h2>
-          <button onClick={onClose} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex justify-center items-center p-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md flex flex-col max-h-[92dvh]">
+        <div className="p-6 border-b flex-shrink-0 flex items-start justify-between">
+          <div>
+            <h2 className="text-xl font-bold text-gray-800">Transferencia Bancaria</h2>
+            <p className="text-sm text-gray-500 mt-1">Orden #{orden.id_orden}</p>
+          </div>
+          <button onClick={onClose} disabled={isUploading} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
             <X size={18} />
           </button>
         </div>
-        <p className="text-sm text-gray-600 leading-relaxed">
-          Transferí al alias <span className="font-bold text-gray-900">CLUB.ROBERTS</span> y subí
-          el comprobante al siguiente formulario:
-        </p>
-        <a
-          href={GOOGLE_FORM_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="block mt-3 text-center px-4 py-2.5 rounded-xl bg-blue-50 text-blue-700 font-semibold text-sm hover:bg-blue-100 transition-colors"
-        >
-          Subir comprobante
-        </a>
-        <button
-          onClick={onClose}
-          className="w-full mt-4 px-4 py-2.5 rounded-xl bg-slate-900 text-white font-bold hover:bg-slate-800 transition-colors"
-        >
-          Entendido
-        </button>
+
+        <div className="p-6 space-y-4 overflow-y-auto flex-1">
+          {apiError && (
+            <div className="flex items-start gap-2 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
+              <AlertTriangle size={15} className="flex-shrink-0 mt-0.5" />
+              <span>{apiError}</span>
+            </div>
+          )}
+          {success && (
+            <div className="flex items-center gap-2 p-3 rounded-lg bg-green-50 border border-green-200 text-green-700 text-sm font-medium">
+              <CheckCircle size={15} />
+              <span>¡Comprobante subido con éxito!</span>
+            </div>
+          )}
+
+          <div className="text-center p-4 rounded-xl bg-blue-50 border border-blue-200">
+            <p className="text-sm font-semibold text-blue-900">Total a Pagar</p>
+            <p className="text-3xl font-bold text-blue-900 mt-1">{formatoMoneda.format(orden.monto_total)}</p>
+          </div>
+
+          <p className="text-sm text-gray-600 text-center">
+            Transferí al alias <strong>CLUB.ROBERTS</strong> y subí el comprobante para que podamos verificar tu pago.
+          </p>
+
+          <div>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              Adjuntar comprobante
+            </label>
+            <div className="mt-1.5">
+              <label className={`relative flex justify-center w-full px-6 py-8 border-2 border-dashed rounded-xl cursor-pointer transition-colors ${file ? 'border-green-300 bg-green-50' : 'border-gray-300 bg-white hover:border-gray-400 hover:bg-gray-50'}`}>
+                <div className="text-center">
+                  <UploadCloud className={`mx-auto h-10 w-10 ${file ? 'text-green-500' : 'text-gray-400'}`} />
+                  <span className={`mt-2 block text-sm font-semibold ${file ? 'text-green-800' : 'text-gray-600'}`}>
+                    {file ? file.name : 'Seleccionar archivo'}
+                  </span>
+                  <span className="mt-1 block text-xs text-gray-500">PNG, JPG, PDF (Máx. 10MB)</span>
+                </div>
+                <input type="file" className="sr-only" accept="image/*,.pdf" onChange={handleFileChange} disabled={isUploading || success} />
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div className="p-4 bg-gray-50 rounded-b-2xl border-t flex justify-end gap-3 flex-shrink-0">
+          <button type="button" onClick={onClose} disabled={isUploading} className="px-4 py-2 rounded-lg text-gray-600 bg-gray-200 hover:bg-gray-300 font-semibold transition-colors">
+            Cerrar
+          </button>
+          <button type="button" onClick={handleUpload} disabled={!file || isUploading || success} className="px-4 py-2 rounded-lg text-white bg-blue-600 hover:bg-blue-700 font-semibold disabled:opacity-50 transition-colors flex items-center gap-2">
+            {isUploading && <Loader2 size={14} className="animate-spin" />}
+            {isUploading ? 'Subiendo…' : 'Subir Comprobante'}
+          </button>
+        </div>
       </div>
     </div>
   )
 }
 
 // ─── Componente principal ─────────────────────────────────────────────────────
-
 export default function SocioCuotas() {
   const { token } = useAuth()
 
-  // ── Estado de cuenta ────────────────────────────────────────────────────────
   const [estado, setEstado] = useState(null)
-  const [loadingEstado, setLoadingEstado] = useState(true)
-  const [errorEstado, setErrorEstado] = useState(null)
-
-  const fetchEstado = useCallback(async () => {
-    if (!token) return
-    setLoadingEstado(true)
-    setErrorEstado(null)
-    try {
-      const res = await fetch(`${API}/socio/cuotas/estado`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      if (!res.ok) throw new Error(`Error ${res.status}: No se pudo cargar el estado de cuenta.`)
-      setEstado(await res.json())
-    } catch (err) {
-      setErrorEstado(err.message)
-    } finally {
-      setLoadingEstado(false)
-    }
-  }, [token])
-
-  // ── Historial ────────────────────────────────────────────────────────────────
   const [historial, setHistorial] = useState([])
-  const [loadingHistorial, setLoadingHistorial] = useState(true)
-  const [errorHistorial, setErrorHistorial] = useState(null)
+  const [ordenPendiente, setOrdenPendiente] = useState(null)
+  
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  
+  const [submittingMeses, setSubmittingMeses] = useState(null)
+  const [isCanceling, setIsCanceling] = useState(false)
+  const [mostrarModal, setMostrarModal] = useState(false)
 
-  const fetchHistorial = useCallback(async () => {
+  const fetchData = useCallback(async () => {
     if (!token) return
-    setLoadingHistorial(true)
-    setErrorHistorial(null)
+    setLoading(true)
+    setError(null)
     try {
-      const res = await fetch(`${API}/socio/cuotas/historial`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      if (!res.ok) throw new Error(`Error ${res.status}: No se pudo cargar el historial.`)
-      setHistorial(await res.json())
+      const [estRes, histRes, pendRes] = await Promise.all([
+        fetch(`${API}/socio/cuotas/estado`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${API}/socio/cuotas/historial`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${API}/socio/cuotas/orden-pendiente`, { headers: { Authorization: `Bearer ${token}` } })
+      ])
+      
+      if (!estRes.ok || !histRes.ok || !pendRes.ok) {
+        throw new Error('No se pudo cargar la información de cuotas.')
+      }
+
+      setEstado(await estRes.json())
+      setHistorial(await histRes.json())
+      setOrdenPendiente(await pendRes.json())
     } catch (err) {
-      setErrorHistorial(err.message)
+      setError(err.message)
     } finally {
-      setLoadingHistorial(false)
+      setLoading(false)
     }
   }, [token])
 
   useEffect(() => {
-    fetchEstado()
-    fetchHistorial()
-  }, [fetchEstado, fetchHistorial])
-
-  // ── Generar orden de pago ───────────────────────────────────────────────────
-  const [submittingMeses, setSubmittingMeses] = useState(null) // 1 | 2 | 6 | null
-  const [mostrarModal, setMostrarModal] = useState(false)
+    fetchData()
+  }, [fetchData])
 
   const handlePagar = async (meses) => {
     setSubmittingMeses(meses)
@@ -270,34 +212,55 @@ export default function SocioCuotas() {
         },
         body: JSON.stringify({ meses_a_pagar: meses }),
       })
-
-      if (res.status === 201) {
-        setMostrarModal(true)
-      } else if (res.status === 400) {
-        // Ya hay una orden pendiente: igual mostramos el modal con las
-        // instrucciones para que el socio complete la transferencia.
-        setMostrarModal(true)
-      } else {
-        throw new Error(`Error ${res.status}: No se pudo generar la orden.`)
-      }
+      if (!res.ok) throw new Error('Error al generar la orden.')
+      
+      await fetchData() // Refresca para obtener la ordenPendiente
+      setMostrarModal(true) // Abre el modal directo para subir foto
     } catch (err) {
-      setErrorEstado(err.message)
+      alert(err.message)
     } finally {
       setSubmittingMeses(null)
     }
   }
 
-  const handleCerrarModal = () => {
-    setMostrarModal(false)
-    fetchEstado()
-    fetchHistorial()
+  const handleCancelarOrden = async () => {
+    if (!window.confirm('¿Seguro que querés cancelar esta orden de pago?')) return
+    setIsCanceling(true)
+    try {
+      const res = await fetch(`${API}/socio/cuotas/ordenes/${ordenPendiente.id_orden}/cancelar`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!res.ok) throw new Error('Error al cancelar la orden.')
+      await fetchData() // Refresca todo, desaparece la orden pendiente
+    } catch (err) {
+      alert(err.message)
+    } finally {
+      setIsCanceling(false)
+    }
   }
 
-  // ── Render ──────────────────────────────────────────────────────────────────
-  return (
-    <div className="p-6 max-w-3xl mx-auto space-y-8">
+  if (loading) {
+    return (
+      <div className="p-6 max-w-4xl mx-auto text-center">
+        <Loader2 className="animate-spin inline-block text-gray-400 mt-10" size={32} />
+      </div>
+    )
+  }
 
-      {mostrarModal && <OrdenGeneradaModal onClose={handleCerrarModal} />}
+  const tieneDeuda = estado?.deuda_historica_meses > 0
+  const esGrave = estado?.deuda_historica_meses >= 2
+
+  return (
+    <div className="p-6 max-w-4xl mx-auto space-y-8">
+      {/* Modal Upload */}
+      {mostrarModal && ordenPendiente && (
+        <OrdenGeneradaModal 
+          orden={ordenPendiente} 
+          token={token} 
+          onClose={() => { setMostrarModal(false); fetchData(); }} 
+        />
+      )}
 
       {/* Header */}
       <div>
@@ -305,96 +268,124 @@ export default function SocioCuotas() {
           <Wallet size={24} className="text-gray-500" />
           Gestión de Cuotas
         </h1>
-        <p className="text-sm text-gray-500 mt-1">
-          Mantené tu cuenta al día para acceder al club.
-        </p>
+        <p className="text-sm text-gray-500 mt-1">Mantené tu cuenta al día para acceder al club.</p>
       </div>
 
-      {/* Estado de cuenta */}
-      <EstadoCard
-        estado={estado}
-        loading={loadingEstado}
-        error={errorEstado}
-        onRetry={fetchEstado}
-        isSubmitting={submittingMeses === estado?.deuda_historica_meses}
-        onPagar={handlePagar}
-      />
+      {error && (
+        <div className="p-4 bg-red-50 text-red-700 rounded-xl">{error}</div>
+      )}
 
-      {/* Adelantar pagos */}
-      <div>
-        <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wide mb-3">
-          Adelantar Pagos
-        </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <OpcionPagoCard
-            meses={1}
-            label="x1 Mes"
-            precioCuota={estado?.precio_cuota_actual}
-            isSubmitting={submittingMeses === 1}
-            onPagar={handlePagar}
-          />
-          <OpcionPagoCard
-            meses={2}
-            label="x2 Meses"
-            precioCuota={estado?.precio_cuota_actual}
-            isSubmitting={submittingMeses === 2}
-            onPagar={handlePagar}
-          />
-          <OpcionPagoCard
-            meses={6}
-            label="x6 Meses"
-            precioCuota={estado?.precio_cuota_actual}
-            isSubmitting={submittingMeses === 6}
-            onPagar={handlePagar}
-          />
+      {/* Banner de Orden Pendiente */}
+      {ordenPendiente && (
+        <div className="bg-blue-50 border border-blue-200 rounded-2xl p-6 flex flex-col md:flex-row items-center justify-between gap-6 shadow-sm">
+          <div className="flex items-center gap-4 w-full">
+            <div className="p-3 rounded-xl bg-blue-100 text-blue-700 hidden sm:block">
+              <Info size={28} />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-blue-900">Tenés un pago en proceso</h3>
+              <p className="text-sm text-blue-800 mt-0.5">
+                Orden #{ordenPendiente.id_orden} — Total a transferir: <span className="font-bold">{formatoMoneda.format(ordenPendiente.monto_total)}</span>
+              </p>
+              <p className="text-sm font-medium mt-1.5">
+                Estado: {ordenPendiente.comprobante_url 
+                  ? <span className="text-emerald-600 flex items-center gap-1"><CheckCircle size={14}/> Comprobante en revisión</span> 
+                  : <span className="text-amber-600 flex items-center gap-1"><AlertTriangle size={14}/> Falta subir comprobante</span>}
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto shrink-0">
+            <button
+              onClick={() => setMostrarModal(true)}
+              className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold transition-colors text-sm text-center"
+            >
+              {ordenPendiente.comprobante_url ? 'Cambiar Comprobante' : 'Subir Comprobante'}
+            </button>
+            <button
+              onClick={handleCancelarOrden}
+              disabled={isCanceling}
+              className="px-4 py-2.5 bg-white border border-red-200 text-red-600 hover:bg-red-50 rounded-xl font-bold transition-colors text-sm text-center"
+            >
+              {isCanceling ? 'Cancelando...' : 'Cancelar Trámite'}
+            </button>
+          </div>
         </div>
+      )}
+
+      {/* Estado de Cuenta Actual */}
+      <div className={`rounded-2xl shadow-sm border p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${tieneDeuda ? (esGrave ? 'bg-red-50 border-red-200' : 'bg-amber-50 border-amber-200') : 'bg-white border-gray-100'}`}>
+        <div className="flex items-center gap-4">
+          <div className={`p-3 rounded-xl flex-shrink-0 ${tieneDeuda ? (esGrave ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700') : 'bg-green-100 text-green-700'}`}>
+            {tieneDeuda ? <AlertTriangle size={22} /> : <CheckCircle2 size={22} />}
+          </div>
+          <div>
+            <p className={`text-xs font-semibold uppercase tracking-wide ${tieneDeuda ? (esGrave ? 'text-red-700' : 'text-amber-700') : 'text-gray-500'}`}>
+              Estado de Cuenta
+            </p>
+            <p className={`text-xl font-bold mt-0.5 ${tieneDeuda ? (esGrave ? 'text-red-900' : 'text-amber-900') : 'text-gray-900'}`}>
+              {tieneDeuda ? `${estado.deuda_historica_meses} mes(es) adeudado(s)` : 'Estás al día'}
+            </p>
+            <p className={`text-sm mt-1 ${tieneDeuda ? (esGrave ? 'text-red-700' : 'text-amber-700') : 'text-gray-500 flex items-center gap-1.5'}`}>
+              {tieneDeuda ? `Total: ${formatoMoneda.format(estado.deuda_total_pesos)}` : <><CalendarClock size={14} /> Próxima cuota: {proximoMesLabel(estado.mes_cubierto_hasta)}</>}
+            </p>
+          </div>
+        </div>
+        {/* Ocultamos el botón "Saldar Deuda" si ya hay una orden en proceso */}
+        {tieneDeuda && !ordenPendiente && (
+          <button onClick={() => handlePagar(estado.deuda_historica_meses)} disabled={submittingMeses === estado.deuda_historica_meses} className={`w-full sm:w-auto px-5 py-3 rounded-xl font-bold text-white transition-colors ${esGrave ? 'bg-red-600 hover:bg-red-700' : 'bg-amber-600 hover:bg-amber-700'}`}>
+             {submittingMeses === estado.deuda_historica_meses ? <Loader2 size={16} className="animate-spin inline" /> : 'Saldar Deuda'}
+          </button>
+        )}
       </div>
+
+      {/* Adelantar pagos (Oculto si hay orden pendiente) */}
+      {!ordenPendiente && (
+        <div>
+          <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wide mb-3">Adelantar Pagos / Meses Sueltos</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {[1, 2, 6].map(meses => (
+              <div key={meses} className="bg-white rounded-2xl shadow-sm border border-blue-100 p-5 flex flex-col items-center text-center gap-3">
+                <p className="text-sm font-bold text-blue-900 uppercase tracking-wide">x{meses} Mes{meses > 1 ? 'es' : ''}</p>
+                <p className="text-lg font-bold text-gray-900">{formatoMoneda.format((estado?.precio_cuota_actual ?? 0) * meses)}</p>
+                <button onClick={() => handlePagar(meses)} disabled={submittingMeses === meses} className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm transition-colors">
+                  {submittingMeses === meses ? <Loader2 size={16} className="animate-spin inline mx-auto" /> : 'Pagar'}
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Historial de pagos */}
       <div>
-        <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wide mb-3">
-          Historial de Pagos
-        </h2>
-
-        {errorHistorial && !loadingHistorial && (
-          <div className="flex items-center gap-3 p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm mb-3">
-            <AlertTriangle size={18} className="flex-shrink-0" />
-            <span className="flex-1">{errorHistorial}</span>
-            <button onClick={fetchHistorial} className="underline underline-offset-2 font-medium hover:text-red-900">
-              Reintentar
-            </button>
-          </div>
-        )}
-
+        <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wide mb-3">Historial de Pagos</h2>
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 divide-y divide-gray-50">
-          {loadingHistorial && [...Array(3)].map((_, i) => (
-            <div key={i} className="p-5 animate-pulse">
-              <div className="h-4 w-40 bg-gray-200 rounded-md" />
-            </div>
-          ))}
-
-          {!loadingHistorial && historial.map(pago => (
+          {historial.map(pago => (
             <div key={pago.id_orden} className="p-5 flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 <div className="p-2 rounded-lg bg-gray-100 text-gray-500 flex-shrink-0">
                   <Receipt size={16} />
                 </div>
                 <div>
-                  <p className="font-medium text-gray-900">
-                    {formatoFecha.format(new Date(pago.fecha_pago))}
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    {pago.cantidad_meses} mes{pago.cantidad_meses !== 1 ? 'es' : ''} — {formatoMoneda.format(pago.monto_pagado)}
-                  </p>
+                  <p className="font-medium text-gray-900">{formatoFecha.format(new Date(pago.fecha_pago))}</p>
+                  <p className="text-xs text-gray-500">{pago.cantidad_meses} mes(es) — {formatoMoneda.format(pago.monto_pagado)}</p>
                 </div>
               </div>
+              {pago.comprobante_url && (
+                <a
+                  href={`${API}${pago.comprobante_url}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-blue-600 hover:bg-blue-50 transition-colors"
+                >
+                  <ExternalLink size={14} />
+                  <span>Ver comprobante</span>
+                </a>
+              )}
             </div>
           ))}
-
-          {!loadingHistorial && !errorHistorial && historial.length === 0 && (
-            <div className="text-center py-12 text-gray-500 text-sm">
-              Todavía no registrás pagos.
-            </div>
+          {historial.length === 0 && (
+            <div className="text-center py-12 text-gray-500 text-sm">Todavía no registrás pagos completados.</div>
           )}
         </div>
       </div>

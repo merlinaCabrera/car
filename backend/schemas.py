@@ -437,6 +437,15 @@ class OrdenSubirComprobante(BaseModel):
 class OrdenAprobar(BaseModel):
     """Payload del Personal Administrativo para aprobar una orden."""
     notas_admin: Optional[str] = None
+    meses_corregidos: Optional[int] = Field(
+        default=None,
+        gt=0,
+        description=(
+            "Si se especifica, sobreescribe la cantidad de meses del ítem de cuota_social "
+            "y recalcula el monto_total de la orden antes de aprobarla. "
+            "Útil cuando el comprobante muestra un importe diferente al solicitado."
+        ),
+    )
 
 
 class OrdenRechazar(BaseModel):
@@ -576,6 +585,35 @@ class RegistrarPagoManualResponse(BaseModel):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# SOCIO · ORDEN PENDIENTE & CANCELACIÓN
+# ─────────────────────────────────────────────────────────────────────────────
+
+class OrdenSocioPendienteResponse(BaseModel):
+    """
+    Orden de cuota social en estado 'pendiente_verificacion' del socio logueado.
+    Devuelta por GET /socio/cuotas/orden-pendiente.
+    Incluye los detalles con el producto para que el frontend pueda
+    mostrar el monto, los meses solicitados y el estado del comprobante.
+    """
+    model_config = ConfigDict(from_attributes=True)
+
+    id_orden: int
+    estado: str
+    monto_total: Decimal
+    comprobante_url: Optional[str] = None
+    fecha_creacion: datetime
+    expira_at: datetime
+    detalles: List[DetalleOrdenResponse] = []
+
+
+class OrdenCancelarResponse(BaseModel):
+    """Confirmación de que el socio canceló su propia orden pendiente."""
+    id_orden: int
+    estado: str
+    mensaje: str = "Tu orden fue cancelada exitosamente."
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # SOCIO · MIS CUOTAS
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -601,6 +639,7 @@ class HistorialPagoCuotaResponse(BaseModel):
     cantidad_meses: int
     monto_pagado: Decimal = Field(description="precio_unitario_historico × cantidad_meses.")
     mes_referencia: Optional[date] = None
+    comprobante_url: Optional[str] = None
 
 
 class GenerarOrdenCuotaPayload(BaseModel):

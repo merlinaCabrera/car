@@ -179,6 +179,7 @@ def obtener_historial_pagos(
             cantidad_meses=d.cantidad,
             monto_pagado=d.precio_unitario_historico * d.cantidad,
             mes_referencia=d.mes_referencia,
+            comprobante_url=d.orden.comprobante_url,
         )
         for d in detalles
     ]
@@ -263,6 +264,117 @@ def generar_orden_cuota(
         monto_total=nueva_orden.monto_total,
         meses_a_pagar=payload.meses_a_pagar,
         expira_at=nueva_orden.expira_at,
+    )
+
+
+# ─── ENDPOINT: Consultar orden pendiente ──────────────────────────────────────
+
+@router.get(
+    "/orden-pendiente",
+    response_model=Optional[schemas.OrdenSocioPendienteResponse],
+    summary="Devuelve la orden de cuota pendiente del socio, o null si no tiene ninguna",
+)
+def obtener_orden_pendiente(
+    db: Session = Depends(get_db),
+    socio: models.Usuario = Depends(require_roles(*_ROLES_SOCIO)),
+) -> Optional[schemas.OrdenSocioPendienteResponse]:
+    """
+    Devuelve la primera orden de cuota social en estado 'pendiente_verificacion'
+    que tenga el socio logueado, incluyendo sus detalles y el producto asociado.
+
+    Si no existe ninguna, devuelve null (HTTP 200 con body `null`).
+    Se prefiere null sobre 404 porque la ausencia de orden pendiente es un estado
+    válido y esperado, no un error — el frontend puede ramificar sin capturar
+    excepciones.
+    """
+    producto_cuota = _obtener_producto_cuota_social(db)
+
+    orden = (
+        db.query(models.Orden)
+        .join(models.DetalleOrden, models.DetalleOrden.id_orden == models.Orden.id_orden)
+        .options(
+            joinedload(models.Orden.detalles).joinedload(models.DetalleOrden.producto)
+        )
+        .filter(
+            models.Orden.id_usuario == socio.id_usuario,
+            models.Orden.estado == "pendiente_verificacion",
+            models.DetalleOrden.id_producto == producto_cuota.id_producto,
+        )
+        .order_by(models.Orden.fecha_creacion.desc())
+        .first()
+    )
+
+    return orden  # Pydantic serializa None → `null` en la respuesta JSON
+
+
+# ─── ENDPOINT: Cancelar orden pendiente ──────────────────────────────────────
+
+@router.post(
+    "/ordenes/{id_orden}/cancelar",
+    response_model=schemas.OrdenCancelarResponse,
+    summary="Cancelar una orden propia que aún está pendiente de verificación",
+)
+def cancelar_orden_pendiente(
+    id_orden: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    socio: models.Usuario = Depends(require_roles(*_ROLES_SOCIO)),
+) -> schemas.OrdenCancelarResponse:
+    """
+    Permite que el socio cancele su propia orden mientras esté en
+    'pendiente_verificacion'. Una vez aprobada o rechazada no puede cancelarse.
+
+    Seguridad: se verifica primero que la orden exista Y que pertenezca al
+    socio autenticado; si no cumple alguna condición se devuelve 404 para no
+    revelar la existencia de órdenes ajenas (IDOR mitigation).
+    """
+    orden = (
+        db.query(models.Orden)
+        .filter(
+            models.Orden.id_orden == id_orden,
+            models.Orden.id_usuario == socio.id_usuario,
+        )
+        .first()
+    )
+    if orden is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="La orden indicada no existe.",
+        )
+
+    if orden.estado != "pendiente_verificacion":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                f"No se puede cancelar: la orden #{id_orden} está en estado "
+                f"'{orden.estado}'. Solo se pueden cancelar órdenes en "
+                "'pendiente_verificacion'."
+            ),
+        )
+
+    orden.estado = "cancelada_socio"
+
+    _registrar_audit(
+        db=db,
+        actor_id=socio.id_usuario,
+        accion="CANCELAR_ORDEN_CUOTA",
+        tabla_afectada="ordenes",
+        registro_id=orden.id_orden,
+        detalle={
+            "estado_anterior": "pendiente_verificacion",
+            "estado_nuevo": "cancelada_socio",
+            "monto_total": str(orden.monto_total),
+            "tenia_comprobante": orden.comprobante_url is not None,
+        },
+        ip=_extraer_ip(request),
+    )
+
+    db.commit()
+    db.refresh(orden)
+
+    return schemas.OrdenCancelarResponse(
+        id_orden=orden.id_orden,
+        estado=orden.estado,
     )
 
 

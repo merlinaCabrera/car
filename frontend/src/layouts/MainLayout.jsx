@@ -7,80 +7,74 @@ import { ScanLine } from 'lucide-react';
 // Importación del asset real
 import escudoCar from '../assets/escudo-car.PNG';
 
-export default function MainLayout() {
-  // 1. Manejo del Estado del Menú
+export default function MainLayout({ userRole }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const { cart } = useCart();
 
-  // Función de ayuda para cerrar el menú al hacer clic
   const closeMenu = () => setIsMenuOpen(false);
 
   // --- Lógica de Navegación Multi-Rol ---
-  // 1. Extraemos todos los nombres de roles del usuario.
   const userRoles = user?.roles_asignados?.map(r => r.rol.nombre) || [];
-  
-  // 4. Verificamos si el usuario tiene permisos de administrador.
+
   const isAdmin = userRoles.includes('admin_general') || userRoles.includes('personal_administrativo');
-  // 5. Verificamos si tiene acceso a funciones de admin (incluye rol temporal e invitado para escaner)
   const adminAccessRoles = ['admin_general', 'personal_administrativo', 'admin_temporal', 'invitado'];
   const hasAdminAccess = userRoles.some(role => adminAccessRoles.includes(role));
-  // 6. Cuentas de comercio: tienen ÚNICAMENTE el rol 'invitado'. Su menú debe
-  //    quedar limpio: solo Escáner y Cerrar Sesión (sin links de socio ni carrito).
+  
   const isSoloInvitado = userRoles.length > 0 && userRoles.every(role => role === 'invitado');
+  
+  // Enlaces de navegación visibles solo para socios (no admin, no invitado puro)
+  const navLinks = [
+    { name: 'Gestión de Cuotas', path: '/cuotas' },
+  ];
   // -----------------------------------------
 
   const handleLogout = () => {
-    logout(); // Destruye la sesión en el contexto global
-    setIsMenuOpen(false); // Cierra el menú
-    navigate('/'); // Redirige a la Landing Page
+    logout();
+    setIsMenuOpen(false);
+    navigate('/');
   };
 
-  // Derivamos la cantidad total de artículos sumando sus 'qty'
   const itemCount = cart.reduce((acc, item) => acc + item.qty, 0);
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans flex flex-col">
       
-      {/* Header Principal Fijo (Sticky) */}
+      {/* Header Principal */}
       <header className="bg-slate-900 text-slate-100 sticky top-0 z-40 shadow-lg border-b border-slate-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Contenedor relativo para centrado absoluto del logo */}
           <div className="relative flex items-center justify-between py-3">
             
-            {/* Botón de Menú Hamburguesa (A la izquierda) */}
+            {/* Menú Hamburguesa */}
             <div>
               <button 
                 onClick={() => setIsMenuOpen(true)}
-                className="p-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                className="p-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 focus:outline-none transition-colors"
               >
-                <span className="sr-only">Abrir menú principal</span>
                 <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
                 </svg>
               </button>
             </div>
 
-            {/* Logo / Escudo (Centrado matemático absoluto) */}
+            {/* Logo */}
             <div className="absolute left-1/2 transform -translate-x-1/2">
               <Link to="/" className="block transition-transform hover:scale-105 active:scale-95">
-                <img src={escudoCar} alt="Escudo Club Atlético Roberts" className="h-16 sm:h-20 w-auto object-contain drop-shadow-xl" />
+                <img src={escudoCar} alt="Escudo Club" className="h-16 sm:h-20 w-auto object-contain drop-shadow-xl" />
               </Link>
             </div>
 
-            {/* Enlace del Carrito (A la derecha) */}
+            {/* Carrito */}
             {!isAdmin && !isSoloInvitado && (
               <div>
                 <Link 
                   to="/carrito" 
-                  className="flex p-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors relative"
+                  className="flex p-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 transition-colors relative"
                 >
-                  <span className="sr-only">Ver carrito</span>
                   <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
                   </svg>
-                  {/* Badge condicional con número de ítems */}
                   {itemCount > 0 && (
                     <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white ring-2 ring-slate-900">
                       {itemCount}
@@ -94,9 +88,7 @@ export default function MainLayout() {
         </div>
       </header>
 
-      {/* ================= MODAL DEL MENÚ (DRAWER) ================= */}
-      
-      {/* Backdrop oscuro para desenfocar el fondo cuando el menú está abierto */}
+      {/* Modal del Menú */}
       {isMenuOpen && (
         <div 
           className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm transition-opacity"
@@ -104,7 +96,6 @@ export default function MainLayout() {
         ></div>
       )}
 
-      {/* 4. Estilos Tailwind: Panel lateral deslizable (z-50, position fixed) */}
       <div 
         className={`fixed inset-y-0 left-0 z-50 w-72 bg-slate-900 shadow-2xl transform transition-transform duration-300 ease-in-out flex flex-col border-r border-slate-800 ${
           isMenuOpen ? 'translate-x-0' : '-translate-x-full'
@@ -119,11 +110,30 @@ export default function MainLayout() {
           </button>
         </div>
         
-        {/* 2. Enlaces de Navegación */}
         <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
-          {/* Botón destacado para acceder al panel de admin si el rol existe */}
+          
+          {/* Enlaces de Socio */}
+          {!isAdmin && !isSoloInvitado && navLinks.map(link => (
+            <Link
+              key={link.path}
+              to={link.path}
+              onClick={closeMenu}
+              className="block w-full text-left px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors"
+            >
+              {link.name}
+            </Link>
+          ))}
+
+          {/* Enlaces de Admin */}
           {isAdmin && (
-            <div className="px-2 pb-4 mb-4 border-b border-slate-800 space-y-2">
+            <div className="px-2 pb-4 mb-4 border-b border-slate-800">
+              <Link
+                to="/admin"
+                onClick={closeMenu}
+                className="block w-full text-center px-4 py-3 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-500 transition-all duration-200 shadow-lg"
+              >
+                Panel de Admin
+              </Link>
               <Link
                 to="/admin/socios"
                 onClick={closeMenu}
@@ -141,7 +151,7 @@ export default function MainLayout() {
             </div>
           )}
 
-          {/* Sección de funciones de Admin (ej: Escáner) */}
+          {/* Funciones de Admin (Escáner) */}
           {hasAdminAccess && (
             <div className="pt-4 mt-4 border-t border-slate-800">
               <h3 className="px-2 mb-2 text-xs font-semibold tracking-wider text-slate-500 uppercase">
@@ -157,10 +167,8 @@ export default function MainLayout() {
               </Link>
             </div>
           )}
-
         </nav>
 
-        {/* Sección de cierre de sesión opcional al fondo */}
         <div className="p-6 border-t border-slate-800 bg-slate-950">
           <button onClick={handleLogout} className="w-full flex items-center justify-center px-4 py-3 border border-red-500/30 text-red-400 rounded-xl hover:text-white hover:bg-red-600 transition-colors font-bold">
             Cerrar Sesión
@@ -168,7 +176,6 @@ export default function MainLayout() {
         </div>
       </div>
 
-      {/* Contenido Principal (Páginas hijas inyectadas aquí) */}
       <main className="flex-grow w-full max-w-7xl mx-auto">
         <Outlet />
       </main>

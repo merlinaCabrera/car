@@ -478,6 +478,58 @@ class OrdenListResponse(BaseModel):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# SOCIO · SUBIDA DE COMPROBANTE (upload directo, sin formularios externos)
+# ─────────────────────────────────────────────────────────────────────────────
+
+class ComprobanteUploadResponse(BaseModel):
+    """Confirmación de que el archivo se guardó y quedó asociado a la orden."""
+    id_orden: int
+    comprobante_url: str
+    mensaje: str = "Comprobante subido correctamente. Un administrador verificará tu pago."
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# ADMIN · PANEL DE VERIFICACIÓN DE ÓRDENES
+# ─────────────────────────────────────────────────────────────────────────────
+
+class UsuarioOrdenSimple(BaseModel):
+    """Versión ligera de Usuario para embeber en la vista admin de órdenes."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id_usuario: int
+    dni: str
+    nombre: str
+    apellido: str
+    email: Optional[str] = None
+    telefono: Optional[str] = None
+
+
+class OrdenAdminResponse(OrdenResponse):
+    """OrdenResponse enriquecida con los datos del socio, para el panel admin."""
+    usuario: Optional[UsuarioOrdenSimple] = None
+
+
+class OrdenAprobarResponse(BaseModel):
+    """Confirmación de aprobación, incluyendo el impacto en la deuda del socio."""
+    id_orden: int
+    estado: str
+    aprobada_por: int
+    aprobada_at: datetime
+    deuda_historica_meses_restante: Optional[int] = Field(
+        default=None,
+        description="Solo se completa si la orden tenía ítems de categoría 'cuota_social'.",
+    )
+
+
+class OrdenRechazarResponse(BaseModel):
+    """Confirmación de rechazo."""
+    id_orden: int
+    estado: str
+    motivo_rechazo: str
+
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # ADMIN · GESTIÓN DE PAGOS / CUOTAS SOCIALES
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -521,6 +573,48 @@ class RegistrarPagoManualResponse(BaseModel):
     meses_pagados: int
     monto_total: Decimal
     deuda_restante_meses: int
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# SOCIO · MIS CUOTAS
+# ─────────────────────────────────────────────────────────────────────────────
+
+class EstadoCuotaSocioResponse(BaseModel):
+    """Estado financiero del socio logueado, para su propia pantalla de cuotas."""
+    deuda_historica_meses: int
+    mes_cubierto_hasta: Optional[date] = Field(
+        default=None,
+        description="Si pagó por adelantado, queda inmune a aumentos hasta esta fecha.",
+    )
+    precio_cuota_actual: Decimal
+    deuda_total_pesos: Decimal = Field(
+        description="deuda_historica_meses × precio_cuota_actual."
+    )
+
+
+class HistorialPagoCuotaResponse(BaseModel):
+    """Un pago de cuota ya aprobado, para el historial del socio."""
+    id_orden: int
+    fecha_pago: Optional[datetime] = Field(
+        default=None, description="Orden.aprobada_at del pago."
+    )
+    cantidad_meses: int
+    monto_pagado: Decimal = Field(description="precio_unitario_historico × cantidad_meses.")
+    mes_referencia: Optional[date] = None
+
+
+class GenerarOrdenCuotaPayload(BaseModel):
+    """El socio pide generar una orden de pago por N meses de cuota."""
+    meses_a_pagar: int = Field(gt=0, description="Cantidad de meses que quiere abonar.")
+
+
+class GenerarOrdenCuotaResponse(BaseModel):
+    """Confirmación de la orden recién creada, pendiente de verificación."""
+    id_orden: int
+    estado: str
+    monto_total: Decimal
+    meses_a_pagar: int
+    expira_at: datetime
 
 
 # ─────────────────────────────────────────────────────────────────────────────

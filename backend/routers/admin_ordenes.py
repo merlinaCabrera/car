@@ -149,7 +149,37 @@ def aprobar_orden(
     socio = orden.usuario
     deuda_antes = socio.deuda_historica_meses
     meses_cuota_descontados = 0
+    meses_corregidos_aplicados: Optional[int] = None
 
+    # ── Corrección opcional de meses antes de aprobar ─────────────────────────
+    # Si el admin indica `meses_corregidos`, actualizamos el DetalleOrden de
+    # cuota_social y recalculamos el monto_total de la orden con el precio
+    # unitario que ya estaba congelado en el detalle (precio_unitario_historico).
+    # Esto cubre el caso habitual: el socio solicitó N meses pero el comprobante
+    # adjunto muestra un importe que corresponde a M meses distintos.
+    if payload.meses_corregidos is not None:
+        detalle_cuota = next(
+            (
+                d for d in orden.detalles
+                if d.producto is not None and d.producto.categoria == "cuota_social"
+            ),
+            None,
+        )
+        if detalle_cuota is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=(
+                    "Se especificó 'meses_corregidos' pero la orden no contiene "
+                    "ningún ítem de categoría 'cuota_social' que corregir."
+                ),
+            )
+        meses_corregidos_aplicados = payload.meses_corregidos
+        detalle_cuota.cantidad = meses_corregidos_aplicados
+        orden.monto_total = detalle_cuota.precio_unitario_historico * meses_corregidos_aplicados
+
+    # ── Descuento de deuda ────────────────────────────────────────────────────
+    # Recorremos los detalles (ya potencialmente actualizados arriba) para
+    # sumar los meses de cuota_social que esta aprobación va a saldar.
     for detalle in orden.detalles:
         if detalle.producto is not None and detalle.producto.categoria == "cuota_social":
             meses_cuota_descontados += detalle.cantidad
@@ -172,6 +202,7 @@ def aprobar_orden(
         detalle={
             "id_usuario": socio.id_usuario,
             "meses_cuota_descontados": meses_cuota_descontados,
+            "meses_corregidos_aplicados": meses_corregidos_aplicados,
             "deuda_historica_meses_antes": deuda_antes,
             "deuda_historica_meses_despues": socio.deuda_historica_meses,
             "monto_total": str(orden.monto_total),

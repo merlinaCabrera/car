@@ -432,7 +432,7 @@ export default function AdminPagos() {
                 <td colSpan="5" className="text-center py-12 text-gray-500">
                   {busqueda
                     ? 'No se encontraron socios morosos con ese criterio.'
-                    : 'No hay socios morosos. 🎉'}
+                    : 'No hay socios morosos.'}
                 </td>
               </tr>
             )}

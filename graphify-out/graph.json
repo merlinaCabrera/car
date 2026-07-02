@@ -26,7 +26,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "backend_alembic_env",
-      "community": 12,
+      "community": 2,
       "norm_label": "env.py"
     },
     {
@@ -36,7 +36,7 @@
       "source_location": "L28",
       "_origin": "ast",
       "id": "backend_alembic_env_include_object",
-      "community": 12,
+      "community": 2,
       "norm_label": "include_object()"
     },
     {
@@ -46,7 +46,7 @@
       "source_location": "L33",
       "_origin": "ast",
       "id": "backend_alembic_env_run_migrations_offline",
-      "community": 12,
+      "community": 2,
       "norm_label": "run_migrations_offline()"
     },
     {
@@ -56,7 +56,7 @@
       "source_location": "L45",
       "_origin": "ast",
       "id": "backend_alembic_env_run_migrations_online",
-      "community": 12,
+      "community": 2,
       "norm_label": "run_migrations_online()"
     },
     {
@@ -266,7 +266,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "backend_database",
-      "community": 12,
+      "community": 2,
       "norm_label": "database.py"
     },
     {
@@ -276,7 +276,7 @@
       "source_location": "L19",
       "_origin": "ast",
       "id": "backend_database_get_db",
-      "community": 12,
+      "community": 2,
       "norm_label": "get_db()"
     },
     {
@@ -286,7 +286,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "backend_dependencies",
-      "community": 12,
+      "community": 2,
       "norm_label": "dependencies.py"
     },
     {
@@ -296,7 +296,7 @@
       "source_location": "L28",
       "_origin": "ast",
       "id": "backend_dependencies_get_current_user",
-      "community": 12,
+      "community": 2,
       "norm_label": "get_current_user()"
     },
     {
@@ -306,7 +306,7 @@
       "source_location": "",
       "_origin": "ast",
       "id": "httpauthorizationcredentials",
-      "community": 12,
+      "community": 2,
       "norm_label": "httpauthorizationcredentials"
     },
     {
@@ -316,7 +316,7 @@
       "source_location": "",
       "_origin": "ast",
       "id": "backend_dependencies_py_session",
-      "community": 12,
+      "community": 2,
       "norm_label": "session"
     },
     {
@@ -326,7 +326,7 @@
       "source_location": "L75",
       "_origin": "ast",
       "id": "backend_dependencies_roles_activos",
-      "community": 12,
+      "community": 2,
       "norm_label": "_roles_activos()"
     },
     {
@@ -336,7 +336,7 @@
       "source_location": "L86",
       "_origin": "ast",
       "id": "backend_dependencies_require_roles",
-      "community": 12,
+      "community": 2,
       "norm_label": "require_roles()"
     },
     {
@@ -346,7 +346,7 @@
       "source_location": "L32",
       "_origin": "ast",
       "id": "backend_dependencies_rationale_32",
-      "community": 12,
+      "community": 2,
       "norm_label": "decodifica el jwt y retorna el usuario orm completo con roles cargados.     lanz"
     },
     {
@@ -356,7 +356,7 @@
       "source_location": "L76",
       "_origin": "ast",
       "id": "backend_dependencies_rationale_76",
-      "community": 12,
+      "community": 2,
       "norm_label": "devuelve el conjunto de nombres de roles vigentes (sin expirar)."
     },
     {
@@ -366,7 +366,7 @@
       "source_location": "L87",
       "_origin": "ast",
       "id": "backend_dependencies_rationale_87",
-      "community": 12,
+      "community": 2,
       "norm_label": "dependencia de autorizacion por rol.      uso en un endpoint:         @router.ge"
     },
     {
@@ -376,17 +376,17 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "backend_main",
-      "community": 12,
+      "community": 39,
       "norm_label": "main.py"
     },
     {
       "label": "read_root()",
       "file_type": "code",
       "source_file": "backend/main.py",
-      "source_location": "L34",
+      "source_location": "L38",
       "_origin": "ast",
       "id": "backend_main_read_root",
-      "community": 12,
+      "community": 39,
       "norm_label": "read_root()"
     },
     {
@@ -706,7 +706,7 @@
       "source_location": "L903",
       "_origin": "ast",
       "id": "backend_models_comercioasociado",
-      "community": 6,
+      "community": 23,
       "norm_label": "comercioasociado"
     },
     {
@@ -870,6 +870,136 @@
       "norm_label": "centro de mensajes internos. el campo referencia_id + referencia_tabla     permi"
     },
     {
+      "label": "admin_comercios.py",
+      "file_type": "code",
+      "source_file": "backend/routers/admin_comercios.py",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "backend_routers_admin_comercios",
+      "community": 23,
+      "norm_label": "admin_comercios.py"
+    },
+    {
+      "label": "_extraer_ip()",
+      "file_type": "code",
+      "source_file": "backend/routers/admin_comercios.py",
+      "source_location": "L45",
+      "_origin": "ast",
+      "id": "backend_routers_admin_comercios_extraer_ip",
+      "community": 23,
+      "norm_label": "_extraer_ip()"
+    },
+    {
+      "label": "Request",
+      "file_type": "code",
+      "source_file": "",
+      "source_location": "",
+      "_origin": "ast",
+      "id": "backend_routers_admin_comercios_py_request",
+      "community": 23,
+      "norm_label": "request"
+    },
+    {
+      "label": "_registrar_audit()",
+      "file_type": "code",
+      "source_file": "backend/routers/admin_comercios.py",
+      "source_location": "L52",
+      "_origin": "ast",
+      "id": "backend_routers_admin_comercios_registrar_audit",
+      "community": 23,
+      "norm_label": "_registrar_audit()"
+    },
+    {
+      "label": "Session",
+      "file_type": "code",
+      "source_file": "",
+      "source_location": "",
+      "_origin": "ast",
+      "id": "backend_routers_admin_comercios_py_session",
+      "community": 23,
+      "norm_label": "session"
+    },
+    {
+      "label": "_obtener_comercio_o_404()",
+      "file_type": "code",
+      "source_file": "backend/routers/admin_comercios.py",
+      "source_location": "L73",
+      "_origin": "ast",
+      "id": "backend_routers_admin_comercios_obtener_comercio_o_404",
+      "community": 23,
+      "norm_label": "_obtener_comercio_o_404()"
+    },
+    {
+      "label": "_validar_usuario_acceso()",
+      "file_type": "code",
+      "source_file": "backend/routers/admin_comercios.py",
+      "source_location": "L88",
+      "_origin": "ast",
+      "id": "backend_routers_admin_comercios_validar_usuario_acceso",
+      "community": 23,
+      "norm_label": "_validar_usuario_acceso()"
+    },
+    {
+      "label": "listar_comercios()",
+      "file_type": "code",
+      "source_file": "backend/routers/admin_comercios.py",
+      "source_location": "L111",
+      "_origin": "ast",
+      "id": "backend_routers_admin_comercios_listar_comercios",
+      "community": 23,
+      "norm_label": "listar_comercios()"
+    },
+    {
+      "label": "obtener_comercio()",
+      "file_type": "code",
+      "source_file": "backend/routers/admin_comercios.py",
+      "source_location": "L135",
+      "_origin": "ast",
+      "id": "backend_routers_admin_comercios_obtener_comercio",
+      "community": 23,
+      "norm_label": "obtener_comercio()"
+    },
+    {
+      "label": "crear_comercio()",
+      "file_type": "code",
+      "source_file": "backend/routers/admin_comercios.py",
+      "source_location": "L151",
+      "_origin": "ast",
+      "id": "backend_routers_admin_comercios_crear_comercio",
+      "community": 23,
+      "norm_label": "crear_comercio()"
+    },
+    {
+      "label": "editar_comercio()",
+      "file_type": "code",
+      "source_file": "backend/routers/admin_comercios.py",
+      "source_location": "L190",
+      "_origin": "ast",
+      "id": "backend_routers_admin_comercios_editar_comercio",
+      "community": 23,
+      "norm_label": "editar_comercio()"
+    },
+    {
+      "label": "eliminar_comercio()",
+      "file_type": "code",
+      "source_file": "backend/routers/admin_comercios.py",
+      "source_location": "L241",
+      "_origin": "ast",
+      "id": "backend_routers_admin_comercios_eliminar_comercio",
+      "community": 23,
+      "norm_label": "eliminar_comercio()"
+    },
+    {
+      "label": "Verifica que el usuario a vincular exista, si se provey\u00f3 uno.",
+      "file_type": "rationale",
+      "source_file": "backend/routers/admin_comercios.py",
+      "source_location": "L89",
+      "_origin": "ast",
+      "id": "backend_routers_admin_comercios_rationale_89",
+      "community": 23,
+      "norm_label": "verifica que el usuario a vincular exista, si se proveyo uno."
+    },
+    {
       "label": "admin_usuarios.py",
       "file_type": "code",
       "source_file": "backend/routers/admin_usuarios.py",
@@ -883,7 +1013,7 @@
       "label": "UsuarioPendienteResponse",
       "file_type": "code",
       "source_file": "backend/routers/admin_usuarios.py",
-      "source_location": "L36",
+      "source_location": "L43",
       "_origin": "ast",
       "id": "backend_routers_admin_usuarios_usuariopendienteresponse",
       "community": 12,
@@ -900,20 +1030,70 @@
       "norm_label": "basemodel"
     },
     {
+      "label": "RolCatalogoResponse",
+      "file_type": "code",
+      "source_file": "backend/routers/admin_usuarios.py",
+      "source_location": "L56",
+      "_origin": "ast",
+      "id": "backend_routers_admin_usuarios_rolcatalogoresponse",
+      "community": 12,
+      "norm_label": "rolcatalogoresponse"
+    },
+    {
+      "label": "ActualizarRolesPayload",
+      "file_type": "code",
+      "source_file": "backend/routers/admin_usuarios.py",
+      "source_location": "L71",
+      "_origin": "ast",
+      "id": "backend_routers_admin_usuarios_actualizarrolespayload",
+      "community": 12,
+      "norm_label": "actualizarrolespayload"
+    },
+    {
+      "label": "RolAsignadoDetalle",
+      "file_type": "code",
+      "source_file": "backend/routers/admin_usuarios.py",
+      "source_location": "L90",
+      "_origin": "ast",
+      "id": "backend_routers_admin_usuarios_rolasignadodetalle",
+      "community": 12,
+      "norm_label": "rolasignadodetalle"
+    },
+    {
+      "label": "ActualizarRolesResponse",
+      "file_type": "code",
+      "source_file": "backend/routers/admin_usuarios.py",
+      "source_location": "L98",
+      "_origin": "ast",
+      "id": "backend_routers_admin_usuarios_actualizarrolesresponse",
+      "community": 12,
+      "norm_label": "actualizarrolesresponse"
+    },
+    {
       "label": "_subquery_con_roles_activos()",
       "file_type": "code",
       "source_file": "backend/routers/admin_usuarios.py",
-      "source_location": "L51",
+      "source_location": "L112",
       "_origin": "ast",
       "id": "backend_routers_admin_usuarios_subquery_con_roles_activos",
       "community": 12,
       "norm_label": "_subquery_con_roles_activos()"
     },
     {
+      "label": "_nombres_roles_activos()",
+      "file_type": "code",
+      "source_file": "backend/routers/admin_usuarios.py",
+      "source_location": "L126",
+      "_origin": "ast",
+      "id": "backend_routers_admin_usuarios_nombres_roles_activos",
+      "community": 12,
+      "norm_label": "_nombres_roles_activos()"
+    },
+    {
       "label": "get_usuarios_pendientes()",
       "file_type": "code",
       "source_file": "backend/routers/admin_usuarios.py",
-      "source_location": "L75",
+      "source_location": "L147",
       "_origin": "ast",
       "id": "backend_routers_admin_usuarios_get_usuarios_pendientes",
       "community": 12,
@@ -933,71 +1113,161 @@
       "label": "aprobar_usuario()",
       "file_type": "code",
       "source_file": "backend/routers/admin_usuarios.py",
-      "source_location": "L123",
+      "source_location": "L180",
       "_origin": "ast",
       "id": "backend_routers_admin_usuarios_aprobar_usuario",
       "community": 12,
       "norm_label": "aprobar_usuario()"
     },
     {
+      "label": "crear_socio_manual()",
+      "file_type": "code",
+      "source_file": "backend/routers/admin_usuarios.py",
+      "source_location": "L242",
+      "_origin": "ast",
+      "id": "backend_routers_admin_usuarios_crear_socio_manual",
+      "community": 12,
+      "norm_label": "crear_socio_manual()"
+    },
+    {
+      "label": "editar_socio()",
+      "file_type": "code",
+      "source_file": "backend/routers/admin_usuarios.py",
+      "source_location": "L284",
+      "_origin": "ast",
+      "id": "backend_routers_admin_usuarios_editar_socio",
+      "community": 12,
+      "norm_label": "editar_socio()"
+    },
+    {
+      "label": "dar_baja_socio()",
+      "file_type": "code",
+      "source_file": "backend/routers/admin_usuarios.py",
+      "source_location": "L315",
+      "_origin": "ast",
+      "id": "backend_routers_admin_usuarios_dar_baja_socio",
+      "community": 12,
+      "norm_label": "dar_baja_socio()"
+    },
+    {
+      "label": "reactivar_socio()",
+      "file_type": "code",
+      "source_file": "backend/routers/admin_usuarios.py",
+      "source_location": "L347",
+      "_origin": "ast",
+      "id": "backend_routers_admin_usuarios_reactivar_socio",
+      "community": 12,
+      "norm_label": "reactivar_socio()"
+    },
+    {
       "label": "listar_todos_los_usuarios()",
       "file_type": "code",
       "source_file": "backend/routers/admin_usuarios.py",
-      "source_location": "L212",
+      "source_location": "L375",
       "_origin": "ast",
       "id": "backend_routers_admin_usuarios_listar_todos_los_usuarios",
       "community": 12,
       "norm_label": "listar_todos_los_usuarios()"
     },
     {
-      "label": "Datos m\u00ednimos necesarios para la bandeja de solicitudes.",
-      "file_type": "rationale",
+      "label": "listar_roles()",
+      "file_type": "code",
       "source_file": "backend/routers/admin_usuarios.py",
-      "source_location": "L37",
+      "source_location": "L400",
       "_origin": "ast",
-      "id": "backend_routers_admin_usuarios_rationale_37",
+      "id": "backend_routers_admin_usuarios_listar_roles",
       "community": 12,
-      "norm_label": "datos minimos necesarios para la bandeja de solicitudes."
+      "norm_label": "listar_roles()"
     },
     {
-      "label": "Subquery EXISTS: True si el usuario tiene al menos un rol no expirado.     Se us",
-      "file_type": "rationale",
+      "label": "actualizar_roles_usuario()",
+      "file_type": "code",
       "source_file": "backend/routers/admin_usuarios.py",
-      "source_location": "L52",
+      "source_location": "L431",
       "_origin": "ast",
-      "id": "backend_routers_admin_usuarios_rationale_52",
+      "id": "backend_routers_admin_usuarios_actualizar_roles_usuario",
       "community": 12,
-      "norm_label": "subquery exists: true si el usuario tiene al menos un rol no expirado.     se us"
+      "norm_label": "actualizar_roles_usuario()"
     },
     {
-      "label": "Retorna usuarios activos que NO tienen ning\u00fan rol activo asignado.     Son los q",
-      "file_type": "rationale",
+      "label": "get_usuario_detalle()",
+      "file_type": "code",
       "source_file": "backend/routers/admin_usuarios.py",
-      "source_location": "L79",
+      "source_location": "L599",
       "_origin": "ast",
-      "id": "backend_routers_admin_usuarios_rationale_79",
+      "id": "backend_routers_admin_usuarios_get_usuario_detalle",
       "community": 12,
-      "norm_label": "retorna usuarios activos que no tienen ningun rol activo asignado.     son los q"
+      "norm_label": "get_usuario_detalle()"
     },
     {
-      "label": "Flujo de aprobaci\u00f3n:       1. Verifica que el usuario exista, est\u00e9 activo y no t",
+      "label": "Respuesta del cat\u00e1logo de roles.     Solo expone los campos que el frontend nece",
       "file_type": "rationale",
       "source_file": "backend/routers/admin_usuarios.py",
-      "source_location": "L128",
+      "source_location": "L57",
       "_origin": "ast",
-      "id": "backend_routers_admin_usuarios_rationale_128",
+      "id": "backend_routers_admin_usuarios_rationale_57",
       "community": 12,
-      "norm_label": "flujo de aprobacion:       1. verifica que el usuario exista, este activo y no t"
+      "norm_label": "respuesta del catalogo de roles.     solo expone los campos que el frontend nece"
     },
     {
-      "label": "Listado paginado de usuarios activos (con y sin roles).     Ordenado alfab\u00e9ticam",
+      "label": "Payload para PUT /admin/usuarios/{id_usuario}/roles.      `ids_roles` es la list",
       "file_type": "rationale",
       "source_file": "backend/routers/admin_usuarios.py",
-      "source_location": "L218",
+      "source_location": "L72",
       "_origin": "ast",
-      "id": "backend_routers_admin_usuarios_rationale_218",
+      "id": "backend_routers_admin_usuarios_rationale_72",
       "community": 12,
-      "norm_label": "listado paginado de usuarios activos (con y sin roles).     ordenado alfabeticam"
+      "norm_label": "payload para put /admin/usuarios/{id_usuario}/roles.      `ids_roles` es la list"
+    },
+    {
+      "label": "Detalle de un rol asignado \u2014 embebido en la respuesta del PUT.",
+      "file_type": "rationale",
+      "source_file": "backend/routers/admin_usuarios.py",
+      "source_location": "L91",
+      "_origin": "ast",
+      "id": "backend_routers_admin_usuarios_rationale_91",
+      "community": 12,
+      "norm_label": "detalle de un rol asignado \u2014 embebido en la respuesta del put."
+    },
+    {
+      "label": "Respuesta del PUT /admin/usuarios/{id_usuario}/roles.",
+      "file_type": "rationale",
+      "source_file": "backend/routers/admin_usuarios.py",
+      "source_location": "L99",
+      "_origin": "ast",
+      "id": "backend_routers_admin_usuarios_rationale_99",
+      "community": 12,
+      "norm_label": "respuesta del put /admin/usuarios/{id_usuario}/roles."
+    },
+    {
+      "label": "Devuelve los nombres de roles vigentes de un usuario ya cargado con joinedload.",
+      "file_type": "rationale",
+      "source_file": "backend/routers/admin_usuarios.py",
+      "source_location": "L127",
+      "_origin": "ast",
+      "id": "backend_routers_admin_usuarios_rationale_127",
+      "community": 12,
+      "norm_label": "devuelve los nombres de roles vigentes de un usuario ya cargado con joinedload."
+    },
+    {
+      "label": "Devuelve todos los roles del sistema ordenados por jerarqu\u00eda descendente.      `",
+      "file_type": "rationale",
+      "source_file": "backend/routers/admin_usuarios.py",
+      "source_location": "L405",
+      "_origin": "ast",
+      "id": "backend_routers_admin_usuarios_rationale_405",
+      "community": 12,
+      "norm_label": "devuelve todos los roles del sistema ordenados por jerarquia descendente.      `"
+    },
+    {
+      "label": "Reemplaza el conjunto de roles de un usuario en una \u00fanica transacci\u00f3n.      Fluj",
+      "file_type": "rationale",
+      "source_file": "backend/routers/admin_usuarios.py",
+      "source_location": "L439",
+      "_origin": "ast",
+      "id": "backend_routers_admin_usuarios_rationale_439",
+      "community": 12,
+      "norm_label": "reemplaza el conjunto de roles de un usuario en una unica transaccion.      fluj"
     },
     {
       "label": "auth.py",
@@ -1006,7 +1276,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "backend_routers_auth",
-      "community": 12,
+      "community": 2,
       "norm_label": "auth.py"
     },
     {
@@ -1016,7 +1286,7 @@
       "source_location": "L17",
       "_origin": "ast",
       "id": "backend_routers_auth_login_for_access_token",
-      "community": 12,
+      "community": 2,
       "norm_label": "login_for_access_token()"
     },
     {
@@ -1026,8 +1296,248 @@
       "source_location": "",
       "_origin": "ast",
       "id": "backend_routers_auth_py_session",
-      "community": 12,
+      "community": 2,
       "norm_label": "session"
+    },
+    {
+      "label": "qr_auth.py",
+      "file_type": "code",
+      "source_file": "backend/routers/qr_auth.py",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "backend_routers_qr_auth",
+      "community": 39,
+      "norm_label": "qr_auth.py"
+    },
+    {
+      "label": "ValidarTokenPayload",
+      "file_type": "code",
+      "source_file": "backend/routers/qr_auth.py",
+      "source_location": "L53",
+      "_origin": "ast",
+      "id": "backend_routers_qr_auth_validartokenpayload",
+      "community": 39,
+      "norm_label": "validartokenpayload"
+    },
+    {
+      "label": "ValidarDNIPayload",
+      "file_type": "code",
+      "source_file": "backend/routers/qr_auth.py",
+      "source_location": "L66",
+      "_origin": "ast",
+      "id": "backend_routers_qr_auth_validardnipayload",
+      "community": 39,
+      "norm_label": "validardnipayload"
+    },
+    {
+      "label": "_registrar_asistencia()",
+      "file_type": "code",
+      "source_file": "backend/routers/qr_auth.py",
+      "source_location": "L74",
+      "_origin": "ast",
+      "id": "backend_routers_qr_auth_registrar_asistencia",
+      "community": 39,
+      "norm_label": "_registrar_asistencia()"
+    },
+    {
+      "label": "Session",
+      "file_type": "code",
+      "source_file": "",
+      "source_location": "",
+      "_origin": "ast",
+      "id": "backend_routers_qr_auth_py_session",
+      "community": 39,
+      "norm_label": "session"
+    },
+    {
+      "label": "_registrar_audit()",
+      "file_type": "code",
+      "source_file": "backend/routers/qr_auth.py",
+      "source_location": "L114",
+      "_origin": "ast",
+      "id": "backend_routers_qr_auth_registrar_audit",
+      "community": 39,
+      "norm_label": "_registrar_audit()"
+    },
+    {
+      "label": "_extraer_ip()",
+      "file_type": "code",
+      "source_file": "backend/routers/qr_auth.py",
+      "source_location": "L133",
+      "_origin": "ast",
+      "id": "backend_routers_qr_auth_extraer_ip",
+      "community": 39,
+      "norm_label": "_extraer_ip()"
+    },
+    {
+      "label": "Request",
+      "file_type": "code",
+      "source_file": "",
+      "source_location": "",
+      "_origin": "ast",
+      "id": "backend_routers_qr_auth_py_request",
+      "community": 39,
+      "norm_label": "request"
+    },
+    {
+      "label": "_calcular_antiguedad_meses()",
+      "file_type": "code",
+      "source_file": "backend/routers/qr_auth.py",
+      "source_location": "L141",
+      "_origin": "ast",
+      "id": "backend_routers_qr_auth_calcular_antiguedad_meses",
+      "community": 39,
+      "norm_label": "_calcular_antiguedad_meses()"
+    },
+    {
+      "label": "_roles_activos_list()",
+      "file_type": "code",
+      "source_file": "backend/routers/qr_auth.py",
+      "source_location": "L151",
+      "_origin": "ast",
+      "id": "backend_routers_qr_auth_roles_activos_list",
+      "community": 39,
+      "norm_label": "_roles_activos_list()"
+    },
+    {
+      "label": "_construir_respuesta_desde_orm()",
+      "file_type": "code",
+      "source_file": "backend/routers/qr_auth.py",
+      "source_location": "L164",
+      "_origin": "ast",
+      "id": "backend_routers_qr_auth_construir_respuesta_desde_orm",
+      "community": 39,
+      "norm_label": "_construir_respuesta_desde_orm()"
+    },
+    {
+      "label": "generar_qr_token()",
+      "file_type": "code",
+      "source_file": "backend/routers/qr_auth.py",
+      "source_location": "L204",
+      "_origin": "ast",
+      "id": "backend_routers_qr_auth_generar_qr_token",
+      "community": 39,
+      "norm_label": "generar_qr_token()"
+    },
+    {
+      "label": "validar_qr_token()",
+      "file_type": "code",
+      "source_file": "backend/routers/qr_auth.py",
+      "source_location": "L241",
+      "_origin": "ast",
+      "id": "backend_routers_qr_auth_validar_qr_token",
+      "community": 39,
+      "norm_label": "validar_qr_token()"
+    },
+    {
+      "label": "validar_dni()",
+      "file_type": "code",
+      "source_file": "backend/routers/qr_auth.py",
+      "source_location": "L344",
+      "_origin": "ast",
+      "id": "backend_routers_qr_auth_validar_dni",
+      "community": 39,
+      "norm_label": "validar_dni()"
+    },
+    {
+      "label": "Payload para el endpoint POST /qr/validar-token.     `token` es el UUID crudo ex",
+      "file_type": "rationale",
+      "source_file": "backend/routers/qr_auth.py",
+      "source_location": "L54",
+      "_origin": "ast",
+      "id": "backend_routers_qr_auth_rationale_54",
+      "community": 39,
+      "norm_label": "payload para el endpoint post /qr/validar-token.     `token` es el uuid crudo ex"
+    },
+    {
+      "label": "Payload para el fallback manual por DNI.",
+      "file_type": "rationale",
+      "source_file": "backend/routers/qr_auth.py",
+      "source_location": "L67",
+      "_origin": "ast",
+      "id": "backend_routers_qr_auth_rationale_67",
+      "community": 39,
+      "norm_label": "payload para el fallback manual por dni."
+    },
+    {
+      "label": "Inserta una fila en `asistencias`. Solo se llama si id_evento fue provisto     y",
+      "file_type": "rationale",
+      "source_file": "backend/routers/qr_auth.py",
+      "source_location": "L83",
+      "_origin": "ast",
+      "id": "backend_routers_qr_auth_rationale_83",
+      "community": 39,
+      "norm_label": "inserta una fila en `asistencias`. solo se llama si id_evento fue provisto     y"
+    },
+    {
+      "label": "Extrae la IP real considerando proxies (X-Forwarded-For).",
+      "file_type": "rationale",
+      "source_file": "backend/routers/qr_auth.py",
+      "source_location": "L134",
+      "_origin": "ast",
+      "id": "backend_routers_qr_auth_rationale_134",
+      "community": 39,
+      "norm_label": "extrae la ip real considerando proxies (x-forwarded-for)."
+    },
+    {
+      "label": "Calcula los meses de antig\u00fcedad desde fecha_ingreso hasta hoy.",
+      "file_type": "rationale",
+      "source_file": "backend/routers/qr_auth.py",
+      "source_location": "L142",
+      "_origin": "ast",
+      "id": "backend_routers_qr_auth_rationale_142",
+      "community": 39,
+      "norm_label": "calcula los meses de antiguedad desde fecha_ingreso hasta hoy."
+    },
+    {
+      "label": "Retorna los nombres de roles no expirados del usuario, ordenados por jerarqu\u00eda.",
+      "file_type": "rationale",
+      "source_file": "backend/routers/qr_auth.py",
+      "source_location": "L152",
+      "_origin": "ast",
+      "id": "backend_routers_qr_auth_rationale_152",
+      "community": 39,
+      "norm_label": "retorna los nombres de roles no expirados del usuario, ordenados por jerarquia."
+    },
+    {
+      "label": "Construye UsuarioQRValidacionResponse desde un objeto ORM.     Replica exactamen",
+      "file_type": "rationale",
+      "source_file": "backend/routers/qr_auth.py",
+      "source_location": "L165",
+      "_origin": "ast",
+      "id": "backend_routers_qr_auth_rationale_165",
+      "community": 39,
+      "norm_label": "construye usuarioqrvalidacionresponse desde un objeto orm.     replica exactamen"
+    },
+    {
+      "label": "Genera un nuevo UUID y lo persiste en `usuarios.qr_token`.     El trigger `trg_r",
+      "file_type": "rationale",
+      "source_file": "backend/routers/qr_auth.py",
+      "source_location": "L208",
+      "_origin": "ast",
+      "id": "backend_routers_qr_auth_rationale_208",
+      "community": 39,
+      "norm_label": "genera un nuevo uuid y lo persiste en `usuarios.qr_token`.     el trigger `trg_r"
+    },
+    {
+      "label": "Flujo completo:       1. Parsea el UUID del payload.       2. Llama a `fn_valida",
+      "file_type": "rationale",
+      "source_file": "backend/routers/qr_auth.py",
+      "source_location": "L247",
+      "_origin": "ast",
+      "id": "backend_routers_qr_auth_rationale_247",
+      "community": 39,
+      "norm_label": "flujo completo:       1. parsea el uuid del payload.       2. llama a `fn_valida"
+    },
+    {
+      "label": "Plan B de contingencia. Replica exactamente la l\u00f3gica de fn_validar_qr     pero",
+      "file_type": "rationale",
+      "source_file": "backend/routers/qr_auth.py",
+      "source_location": "L350",
+      "_origin": "ast",
+      "id": "backend_routers_qr_auth_rationale_350",
+      "community": 39,
+      "norm_label": "plan b de contingencia. replica exactamente la logica de fn_validar_qr     pero"
     },
     {
       "label": "usuarios.py",
@@ -1246,7 +1756,7 @@
       "source_location": "L152",
       "_origin": "ast",
       "id": "backend_schemas_usuarioupdate",
-      "community": 34,
+      "community": 3,
       "norm_label": "usuarioupdate"
     },
     {
@@ -1276,7 +1786,7 @@
       "source_location": "L180",
       "_origin": "ast",
       "id": "backend_schemas_usuariobaja",
-      "community": 35,
+      "community": 3,
       "norm_label": "usuariobaja"
     },
     {
@@ -1346,7 +1856,7 @@
       "source_location": "L269",
       "_origin": "ast",
       "id": "backend_schemas_removerrolpayload",
-      "community": 3,
+      "community": 4,
       "norm_label": "removerrolpayload"
     },
     {
@@ -1686,7 +2196,7 @@
       "source_location": "L593",
       "_origin": "ast",
       "id": "backend_schemas_reporteeventoresponse",
-      "community": 3,
+      "community": 35,
       "norm_label": "reporteeventoresponse"
     },
     {
@@ -1696,7 +2206,7 @@
       "source_location": "L617",
       "_origin": "ast",
       "id": "backend_schemas_notificacionresponse",
-      "community": 3,
+      "community": 4,
       "norm_label": "notificacionresponse"
     },
     {
@@ -1706,7 +2216,7 @@
       "source_location": "L630",
       "_origin": "ast",
       "id": "backend_schemas_marcarleidapayload",
-      "community": 3,
+      "community": 4,
       "norm_label": "marcarleidapayload"
     },
     {
@@ -1738,6 +2248,96 @@
       "id": "backend_schemas_paginatedresponse",
       "community": 33,
       "norm_label": "paginatedresponse"
+    },
+    {
+      "label": "UsuarioAccesoSimple",
+      "file_type": "code",
+      "source_file": "backend/schemas.py",
+      "source_location": "L666",
+      "_origin": "ast",
+      "id": "backend_schemas_usuarioaccesosimple",
+      "community": 41,
+      "norm_label": "usuarioaccesosimple"
+    },
+    {
+      "label": "ComercioAsociadoBase",
+      "file_type": "code",
+      "source_file": "backend/schemas.py",
+      "source_location": "L676",
+      "_origin": "ast",
+      "id": "backend_schemas_comercioasociadobase",
+      "community": 4,
+      "norm_label": "comercioasociadobase"
+    },
+    {
+      "label": "ComercioAsociadoCreate",
+      "file_type": "code",
+      "source_file": "backend/schemas.py",
+      "source_location": "L683",
+      "_origin": "ast",
+      "id": "backend_schemas_comercioasociadocreate",
+      "community": 4,
+      "norm_label": "comercioasociadocreate"
+    },
+    {
+      "label": "ComercioAsociadoUpdate",
+      "file_type": "code",
+      "source_file": "backend/schemas.py",
+      "source_location": "L693",
+      "_origin": "ast",
+      "id": "backend_schemas_comercioasociadoupdate",
+      "community": 34,
+      "norm_label": "comercioasociadoupdate"
+    },
+    {
+      "label": "ComercioAsociadoResponse",
+      "file_type": "code",
+      "source_file": "backend/schemas.py",
+      "source_location": "L702",
+      "_origin": "ast",
+      "id": "backend_schemas_comercioasociadoresponse",
+      "community": 4,
+      "norm_label": "comercioasociadoresponse"
+    },
+    {
+      "label": "QRTokenResponse",
+      "file_type": "code",
+      "source_file": "backend/schemas.py",
+      "source_location": "L714",
+      "_origin": "ast",
+      "id": "backend_schemas_qrtokenresponse",
+      "community": 3,
+      "norm_label": "qrtokenresponse"
+    },
+    {
+      "label": "QRValidationPayload",
+      "file_type": "code",
+      "source_file": "backend/schemas.py",
+      "source_location": "L718",
+      "_origin": "ast",
+      "id": "backend_schemas_qrvalidationpayload",
+      "community": 4,
+      "norm_label": "qrvalidationpayload"
+    },
+    {
+      "label": "DNIValidationPayload",
+      "file_type": "code",
+      "source_file": "backend/schemas.py",
+      "source_location": "L722",
+      "_origin": "ast",
+      "id": "backend_schemas_dnivalidationpayload",
+      "community": 3,
+      "norm_label": "dnivalidationpayload"
+    },
+    {
+      "label": "ValidationResponse",
+      "file_type": "code",
+      "source_file": "backend/schemas.py",
+      "source_location": "L725",
+      "_origin": "ast",
+      "id": "backend_schemas_validationresponse",
+      "community": 3,
+      "norm_label": "validationresponse"
     },
     {
       "label": "schemas.py \u2014 Pydantic v2 Schemas Club Atl\u00e9tico \u2014 Sistema de Gesti\u00f3n  Convencione",
@@ -1786,7 +2386,7 @@
       "source_location": "L153",
       "_origin": "ast",
       "id": "backend_schemas_rationale_153",
-      "community": 34,
+      "community": 3,
       "norm_label": "todos los campos opcionales \u2014 patch parcial."
     },
     {
@@ -1806,7 +2406,7 @@
       "source_location": "L181",
       "_origin": "ast",
       "id": "backend_schemas_rationale_181",
-      "community": 35,
+      "community": 3,
       "norm_label": "payload para dar de baja a un usuario (baja logica, nunca delete)."
     },
     {
@@ -1966,7 +2566,7 @@
       "source_location": "L594",
       "_origin": "ast",
       "id": "backend_schemas_rationale_594",
-      "community": 3,
+      "community": 35,
       "norm_label": "resumen de cierre del evento (resultado de la vista v_reporte_evento)."
     },
     {
@@ -1980,13 +2580,33 @@
       "norm_label": "wrapper generico de paginacion. usalo con generic[t] en los endpoints."
     },
     {
+      "label": "Versi\u00f3n ligera de Usuario para embeber en ComercioAsociadoResponse.",
+      "file_type": "rationale",
+      "source_file": "backend/schemas.py",
+      "source_location": "L667",
+      "_origin": "ast",
+      "id": "backend_schemas_rationale_667",
+      "community": 41,
+      "norm_label": "version ligera de usuario para embeber en comercioasociadoresponse."
+    },
+    {
+      "label": "Todos los campos son opcionales \u2014 PATCH parcial.",
+      "file_type": "rationale",
+      "source_file": "backend/schemas.py",
+      "source_location": "L694",
+      "_origin": "ast",
+      "id": "backend_schemas_rationale_694",
+      "community": 34,
+      "norm_label": "todos los campos son opcionales \u2014 patch parcial."
+    },
+    {
       "label": "security.py",
       "file_type": "code",
       "source_file": "backend/security.py",
       "source_location": "L1",
       "_origin": "ast",
       "id": "backend_security",
-      "community": 12,
+      "community": 2,
       "norm_label": "security.py"
     },
     {
@@ -1996,7 +2616,7 @@
       "source_location": "L17",
       "_origin": "ast",
       "id": "backend_security_verify_password",
-      "community": 12,
+      "community": 2,
       "norm_label": "verify_password()"
     },
     {
@@ -2016,7 +2636,7 @@
       "source_location": "L26",
       "_origin": "ast",
       "id": "backend_security_create_access_token",
-      "community": 12,
+      "community": 2,
       "norm_label": "create_access_token()"
     },
     {
@@ -2026,7 +2646,7 @@
       "source_location": "",
       "_origin": "ast",
       "id": "timedelta",
-      "community": 12,
+      "community": 2,
       "norm_label": "timedelta"
     },
     {
@@ -2216,7 +2836,7 @@
       "source_location": "L20",
       "_origin": "ast",
       "id": "frontend_package_devdependencies",
-      "community": 2,
+      "community": 1,
       "norm_label": "devdependencies"
     },
     {
@@ -2226,7 +2846,7 @@
       "source_location": "L21",
       "_origin": "ast",
       "id": "frontend_package_devdependencies_eslint_js",
-      "community": 2,
+      "community": 1,
       "norm_label": "@eslint/js"
     },
     {
@@ -2236,7 +2856,7 @@
       "source_location": "L22",
       "_origin": "ast",
       "id": "frontend_package_devdependencies_types_react",
-      "community": 2,
+      "community": 1,
       "norm_label": "@types/react"
     },
     {
@@ -2246,7 +2866,7 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "frontend_package_devdependencies_types_react_dom",
-      "community": 2,
+      "community": 1,
       "norm_label": "@types/react-dom"
     },
     {
@@ -2256,7 +2876,7 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "frontend_package_devdependencies_vitejs_plugin_react",
-      "community": 2,
+      "community": 1,
       "norm_label": "@vitejs/plugin-react"
     },
     {
@@ -2266,7 +2886,7 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "frontend_package_devdependencies_autoprefixer",
-      "community": 2,
+      "community": 1,
       "norm_label": "autoprefixer"
     },
     {
@@ -2276,7 +2896,7 @@
       "source_location": "L26",
       "_origin": "ast",
       "id": "frontend_package_devdependencies_eslint",
-      "community": 2,
+      "community": 1,
       "norm_label": "eslint"
     },
     {
@@ -2286,7 +2906,7 @@
       "source_location": "L27",
       "_origin": "ast",
       "id": "frontend_package_devdependencies_eslint_plugin_react",
-      "community": 2,
+      "community": 1,
       "norm_label": "eslint-plugin-react"
     },
     {
@@ -2296,7 +2916,7 @@
       "source_location": "L28",
       "_origin": "ast",
       "id": "frontend_package_devdependencies_eslint_plugin_react_hooks",
-      "community": 2,
+      "community": 1,
       "norm_label": "eslint-plugin-react-hooks"
     },
     {
@@ -2306,7 +2926,7 @@
       "source_location": "L29",
       "_origin": "ast",
       "id": "frontend_package_devdependencies_eslint_plugin_react_refresh",
-      "community": 2,
+      "community": 1,
       "norm_label": "eslint-plugin-react-refresh"
     },
     {
@@ -2316,7 +2936,7 @@
       "source_location": "L30",
       "_origin": "ast",
       "id": "frontend_package_devdependencies_globals",
-      "community": 2,
+      "community": 1,
       "norm_label": "globals"
     },
     {
@@ -2326,7 +2946,7 @@
       "source_location": "L31",
       "_origin": "ast",
       "id": "frontend_package_devdependencies_postcss",
-      "community": 2,
+      "community": 1,
       "norm_label": "postcss"
     },
     {
@@ -2336,7 +2956,7 @@
       "source_location": "L32",
       "_origin": "ast",
       "id": "frontend_package_devdependencies_tailwindcss",
-      "community": 2,
+      "community": 1,
       "norm_label": "tailwindcss"
     },
     {
@@ -2346,7 +2966,7 @@
       "source_location": "L33",
       "_origin": "ast",
       "id": "frontend_package_devdependencies_vite",
-      "community": 2,
+      "community": 1,
       "norm_label": "vite"
     },
     {
@@ -2373,7 +2993,7 @@
       "label": "App()",
       "file_type": "code",
       "source_file": "frontend/src/App.jsx",
-      "source_location": "L21",
+      "source_location": "L24",
       "_origin": "ast",
       "id": "frontend_src_app_app",
       "community": 0,
@@ -2573,7 +3193,7 @@
       "label": "MainLayout()",
       "file_type": "code",
       "source_file": "frontend/src/layouts/MainLayout.jsx",
-      "source_location": "L9",
+      "source_location": "L10",
       "_origin": "ast",
       "id": "frontend_src_layouts_mainlayout_mainlayout",
       "community": 0,
@@ -2588,6 +3208,36 @@
       "id": "frontend_src_main",
       "community": 0,
       "norm_label": "main.jsx"
+    },
+    {
+      "label": "AdminComercios.jsx",
+      "file_type": "code",
+      "source_file": "frontend/src/pages/AdminComercios.jsx",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "frontend_src_pages_admincomercios",
+      "community": 0,
+      "norm_label": "admincomercios.jsx"
+    },
+    {
+      "label": "ComercioFormModal()",
+      "file_type": "code",
+      "source_file": "frontend/src/pages/AdminComercios.jsx",
+      "source_location": "L44",
+      "_origin": "ast",
+      "id": "frontend_src_pages_admincomercios_comercioformmodal",
+      "community": 0,
+      "norm_label": "comercioformmodal()"
+    },
+    {
+      "label": "AdminComercios()",
+      "file_type": "code",
+      "source_file": "frontend/src/pages/AdminComercios.jsx",
+      "source_location": "L225",
+      "_origin": "ast",
+      "id": "frontend_src_pages_admincomercios_admincomercios",
+      "community": 0,
+      "norm_label": "admincomercios()"
     },
     {
       "label": "AdminInicio.jsx",
@@ -2648,6 +3298,126 @@
       "id": "frontend_src_pages_adminqrscanner_adminqrscanner",
       "community": 0,
       "norm_label": "adminqrscanner()"
+    },
+    {
+      "label": "AdminScanner.jsx",
+      "file_type": "code",
+      "source_file": "frontend/src/pages/AdminScanner.jsx",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "frontend_src_pages_adminscanner",
+      "community": 0,
+      "norm_label": "adminscanner.jsx"
+    },
+    {
+      "label": "resolverVariante()",
+      "file_type": "code",
+      "source_file": "frontend/src/pages/AdminScanner.jsx",
+      "source_location": "L51",
+      "_origin": "ast",
+      "id": "frontend_src_pages_adminscanner_resolvervariante",
+      "community": 0,
+      "norm_label": "resolvervariante()"
+    },
+    {
+      "label": "VARIANTES",
+      "file_type": "code",
+      "source_file": "frontend/src/pages/AdminScanner.jsx",
+      "source_location": "L58",
+      "_origin": "ast",
+      "id": "frontend_src_pages_adminscanner_variantes",
+      "community": 0,
+      "norm_label": "variantes"
+    },
+    {
+      "label": "TarjetaResultado()",
+      "file_type": "code",
+      "source_file": "frontend/src/pages/AdminScanner.jsx",
+      "source_location": "L84",
+      "_origin": "ast",
+      "id": "frontend_src_pages_adminscanner_tarjetaresultado",
+      "community": 0,
+      "norm_label": "tarjetaresultado()"
+    },
+    {
+      "label": "OverlayCarga()",
+      "file_type": "code",
+      "source_file": "frontend/src/pages/AdminScanner.jsx",
+      "source_location": "L200",
+      "_origin": "ast",
+      "id": "frontend_src_pages_adminscanner_overlaycarga",
+      "community": 0,
+      "norm_label": "overlaycarga()"
+    },
+    {
+      "label": "MiraEscaner()",
+      "file_type": "code",
+      "source_file": "frontend/src/pages/AdminScanner.jsx",
+      "source_location": "L212",
+      "_origin": "ast",
+      "id": "frontend_src_pages_adminscanner_miraescaner",
+      "community": 0,
+      "norm_label": "miraescaner()"
+    },
+    {
+      "label": "AdminScanner()",
+      "file_type": "code",
+      "source_file": "frontend/src/pages/AdminScanner.jsx",
+      "source_location": "L234",
+      "_origin": "ast",
+      "id": "frontend_src_pages_adminscanner_adminscanner",
+      "community": 0,
+      "norm_label": "adminscanner()"
+    },
+    {
+      "label": "AdminSocios.jsx",
+      "file_type": "code",
+      "source_file": "frontend/src/pages/AdminSocios.jsx",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "frontend_src_pages_adminsocios",
+      "community": 0,
+      "norm_label": "adminsocios.jsx"
+    },
+    {
+      "label": "RolCheckbox()",
+      "file_type": "code",
+      "source_file": "frontend/src/pages/AdminSocios.jsx",
+      "source_location": "L45",
+      "_origin": "ast",
+      "id": "frontend_src_pages_adminsocios_rolcheckbox",
+      "community": 0,
+      "norm_label": "rolcheckbox()"
+    },
+    {
+      "label": "SeccionRoles()",
+      "file_type": "code",
+      "source_file": "frontend/src/pages/AdminSocios.jsx",
+      "source_location": "L96",
+      "_origin": "ast",
+      "id": "frontend_src_pages_adminsocios_seccionroles",
+      "community": 0,
+      "norm_label": "seccionroles()"
+    },
+    {
+      "label": "SocioFormModal()",
+      "file_type": "code",
+      "source_file": "frontend/src/pages/AdminSocios.jsx",
+      "source_location": "L152",
+      "_origin": "ast",
+      "id": "frontend_src_pages_adminsocios_socioformmodal",
+      "community": 0,
+      "norm_label": "socioformmodal()"
+    },
+    {
+      "label": "AdminSocios()",
+      "file_type": "code",
+      "source_file": "frontend/src/pages/AdminSocios.jsx",
+      "source_location": "L417",
+      "_origin": "ast",
+      "id": "frontend_src_pages_adminsocios_adminsocios",
+      "community": 0,
+      "norm_label": "adminsocios()"
     },
     {
       "label": "AdminSolicitudes.jsx",
@@ -2753,7 +3523,7 @@
       "label": "Login()",
       "file_type": "code",
       "source_file": "frontend/src/pages/Login.jsx",
-      "source_location": "L5",
+      "source_location": "L6",
       "_origin": "ast",
       "id": "frontend_src_pages_login_login",
       "community": 0,
@@ -2793,7 +3563,7 @@
       "label": "Registro()",
       "file_type": "code",
       "source_file": "frontend/src/pages/Registro.jsx",
-      "source_location": "L4",
+      "source_location": "L5",
       "_origin": "ast",
       "id": "frontend_src_pages_registro_registro",
       "community": 0,
@@ -2920,6 +3690,26 @@
       "norm_label": "socioperfil()"
     },
     {
+      "label": "SocioQR.jsx",
+      "file_type": "code",
+      "source_file": "frontend/src/pages/SocioQR.jsx",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "frontend_src_pages_socioqr",
+      "community": 0,
+      "norm_label": "socioqr.jsx"
+    },
+    {
+      "label": "SocioQR()",
+      "file_type": "code",
+      "source_file": "frontend/src/pages/SocioQR.jsx",
+      "source_location": "L42",
+      "_origin": "ast",
+      "id": "frontend_src_pages_socioqr_socioqr",
+      "community": 0,
+      "norm_label": "socioqr()"
+    },
+    {
       "label": "SocioShopping.jsx",
       "file_type": "code",
       "source_file": "frontend/src/pages/SocioShopping.jsx",
@@ -2956,7 +3746,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "frontend_vite_config",
-      "community": 2,
+      "community": 1,
       "norm_label": "vite.config.js"
     },
     {
@@ -2984,7 +3774,7 @@
       "file_type": "code",
       "source_file": "backend/requirements.txt",
       "source_location": null,
-      "community": 12,
+      "community": 39,
       "norm_label": "backend requirements",
       "id": "backend_requirements"
     },
@@ -2993,7 +3783,7 @@
       "file_type": "code",
       "source_file": "backend/requirements.txt",
       "source_location": null,
-      "community": 12,
+      "community": 39,
       "norm_label": "fastapi",
       "id": "fastapi"
     },
@@ -3002,7 +3792,7 @@
       "file_type": "code",
       "source_file": "backend/requirements.txt",
       "source_location": null,
-      "community": 12,
+      "community": 39,
       "norm_label": "pydantic",
       "id": "pydantic"
     },
@@ -3011,7 +3801,7 @@
       "file_type": "code",
       "source_file": "backend/requirements.txt",
       "source_location": null,
-      "community": 12,
+      "community": 39,
       "norm_label": "uvicorn",
       "id": "uvicorn"
     },
@@ -3029,7 +3819,7 @@
       "file_type": "concept",
       "source_file": "frontend/README.md",
       "source_location": null,
-      "community": 2,
+      "community": 1,
       "norm_label": "vite",
       "id": "vite"
     },
@@ -3270,8 +4060,19 @@
       "relation": "imports_from",
       "context": "import",
       "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_comercios.py",
+      "source_location": "L32",
+      "weight": 1.0,
+      "source": "backend_routers_admin_comercios",
+      "target": "backend_database",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
       "source_file": "backend/routers/admin_usuarios.py",
-      "source_location": "L21",
+      "source_location": "L26",
       "weight": 1.0,
       "source": "backend_routers_admin_usuarios",
       "target": "backend_database",
@@ -3285,6 +4086,17 @@
       "source_location": "L8",
       "weight": 1.0,
       "source": "backend_routers_auth",
+      "target": "backend_database",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/qr_auth.py",
+      "source_location": "L39",
+      "weight": 1.0,
+      "source": "backend_routers_qr_auth",
       "target": "backend_database",
       "confidence_score": 1.0
     },
@@ -3366,10 +4178,32 @@
       "relation": "imports_from",
       "context": "import",
       "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_comercios.py",
+      "source_location": "L33",
+      "weight": 1.0,
+      "source": "backend_routers_admin_comercios",
+      "target": "backend_dependencies",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
       "source_file": "backend/routers/admin_usuarios.py",
-      "source_location": "L22",
+      "source_location": "L27",
       "weight": 1.0,
       "source": "backend_routers_admin_usuarios",
+      "target": "backend_dependencies",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/qr_auth.py",
+      "source_location": "L40",
+      "weight": 1.0,
+      "source": "backend_routers_qr_auth",
       "target": "backend_dependencies",
       "confidence_score": 1.0
     },
@@ -3462,7 +4296,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "backend/main.py",
-      "source_location": "L34",
+      "source_location": "L38",
       "weight": 1.0,
       "source": "backend_main",
       "target": "backend_main_read_root",
@@ -3653,8 +4487,19 @@
       "relation": "imports",
       "context": "import",
       "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_comercios.py",
+      "source_location": "L30",
+      "weight": 1.0,
+      "source": "backend_routers_admin_comercios",
+      "target": "backend_models",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
       "source_file": "backend/routers/admin_usuarios.py",
-      "source_location": "L19",
+      "source_location": "L24",
       "weight": 1.0,
       "source": "backend_routers_admin_usuarios",
       "target": "backend_models",
@@ -3668,6 +4513,17 @@
       "source_location": "L6",
       "weight": 1.0,
       "source": "backend_routers_auth",
+      "target": "backend_models",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/qr_auth.py",
+      "source_location": "L37",
+      "weight": 1.0,
+      "source": "backend_routers_qr_auth",
       "target": "backend_models",
       "confidence_score": 1.0
     },
@@ -3916,8 +4772,74 @@
       "relation": "references",
       "context": "parameter_type",
       "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_comercios.py",
+      "source_location": "L151",
+      "weight": 1.0,
+      "source": "backend_routers_admin_comercios_crear_comercio",
+      "target": "backend_models_usuario",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_comercios.py",
+      "source_location": "L190",
+      "weight": 1.0,
+      "source": "backend_routers_admin_comercios_editar_comercio",
+      "target": "backend_models_usuario",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_comercios.py",
+      "source_location": "L241",
+      "weight": 1.0,
+      "source": "backend_routers_admin_comercios_eliminar_comercio",
+      "target": "backend_models_usuario",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_comercios.py",
+      "source_location": "L111",
+      "weight": 1.0,
+      "source": "backend_routers_admin_comercios_listar_comercios",
+      "target": "backend_models_usuario",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_comercios.py",
+      "source_location": "L135",
+      "weight": 1.0,
+      "source": "backend_routers_admin_comercios_obtener_comercio",
+      "target": "backend_models_usuario",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
       "source_file": "backend/routers/admin_usuarios.py",
-      "source_location": "L123",
+      "source_location": "L431",
+      "weight": 1.0,
+      "source": "backend_routers_admin_usuarios_actualizar_roles_usuario",
+      "target": "backend_models_usuario",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_usuarios.py",
+      "source_location": "L180",
       "weight": 1.0,
       "source": "backend_routers_admin_usuarios_aprobar_usuario",
       "target": "backend_models_usuario",
@@ -3928,7 +4850,51 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "backend/routers/admin_usuarios.py",
-      "source_location": "L75",
+      "source_location": "L242",
+      "weight": 1.0,
+      "source": "backend_routers_admin_usuarios_crear_socio_manual",
+      "target": "backend_models_usuario",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_usuarios.py",
+      "source_location": "L315",
+      "weight": 1.0,
+      "source": "backend_routers_admin_usuarios_dar_baja_socio",
+      "target": "backend_models_usuario",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_usuarios.py",
+      "source_location": "L284",
+      "weight": 1.0,
+      "source": "backend_routers_admin_usuarios_editar_socio",
+      "target": "backend_models_usuario",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_usuarios.py",
+      "source_location": "L599",
+      "weight": 1.0,
+      "source": "backend_routers_admin_usuarios_get_usuario_detalle",
+      "target": "backend_models_usuario",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_usuarios.py",
+      "source_location": "L147",
       "weight": 1.0,
       "source": "backend_routers_admin_usuarios_get_usuarios_pendientes",
       "target": "backend_models_usuario",
@@ -3939,9 +4905,97 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "backend/routers/admin_usuarios.py",
-      "source_location": "L212",
+      "source_location": "L400",
+      "weight": 1.0,
+      "source": "backend_routers_admin_usuarios_listar_roles",
+      "target": "backend_models_usuario",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_usuarios.py",
+      "source_location": "L375",
       "weight": 1.0,
       "source": "backend_routers_admin_usuarios_listar_todos_los_usuarios",
+      "target": "backend_models_usuario",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_usuarios.py",
+      "source_location": "L126",
+      "weight": 1.0,
+      "source": "backend_routers_admin_usuarios_nombres_roles_activos",
+      "target": "backend_models_usuario",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_usuarios.py",
+      "source_location": "L347",
+      "weight": 1.0,
+      "source": "backend_routers_admin_usuarios_reactivar_socio",
+      "target": "backend_models_usuario",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/qr_auth.py",
+      "source_location": "L164",
+      "weight": 1.0,
+      "source": "backend_routers_qr_auth_construir_respuesta_desde_orm",
+      "target": "backend_models_usuario",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/qr_auth.py",
+      "source_location": "L204",
+      "weight": 1.0,
+      "source": "backend_routers_qr_auth_generar_qr_token",
+      "target": "backend_models_usuario",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/qr_auth.py",
+      "source_location": "L151",
+      "weight": 1.0,
+      "source": "backend_routers_qr_auth_roles_activos_list",
+      "target": "backend_models_usuario",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/qr_auth.py",
+      "source_location": "L344",
+      "weight": 1.0,
+      "source": "backend_routers_qr_auth_validar_dni",
+      "target": "backend_models_usuario",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/qr_auth.py",
+      "source_location": "L241",
+      "weight": 1.0,
+      "source": "backend_routers_qr_auth_validar_qr_token",
       "target": "backend_models_usuario",
       "confidence_score": 1.0
     },
@@ -4210,10 +5264,503 @@
       "confidence_score": 1.0
     },
     {
+      "relation": "references",
+      "context": "return_type",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_comercios.py",
+      "source_location": "L151",
+      "weight": 1.0,
+      "source": "backend_routers_admin_comercios_crear_comercio",
+      "target": "backend_models_comercioasociado",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "return_type",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_comercios.py",
+      "source_location": "L190",
+      "weight": 1.0,
+      "source": "backend_routers_admin_comercios_editar_comercio",
+      "target": "backend_models_comercioasociado",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "generic_arg",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_comercios.py",
+      "source_location": "L111",
+      "weight": 1.0,
+      "source": "backend_routers_admin_comercios_listar_comercios",
+      "target": "backend_models_comercioasociado",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "return_type",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_comercios.py",
+      "source_location": "L135",
+      "weight": 1.0,
+      "source": "backend_routers_admin_comercios_obtener_comercio",
+      "target": "backend_models_comercioasociado",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "return_type",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_comercios.py",
+      "source_location": "L73",
+      "weight": 1.0,
+      "source": "backend_routers_admin_comercios_obtener_comercio_o_404",
+      "target": "backend_models_comercioasociado",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_comercios.py",
+      "source_location": "L151",
+      "weight": 1.0,
+      "source": "backend_routers_admin_comercios",
+      "target": "backend_routers_admin_comercios_crear_comercio",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_comercios.py",
+      "source_location": "L190",
+      "weight": 1.0,
+      "source": "backend_routers_admin_comercios",
+      "target": "backend_routers_admin_comercios_editar_comercio",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_comercios.py",
+      "source_location": "L241",
+      "weight": 1.0,
+      "source": "backend_routers_admin_comercios",
+      "target": "backend_routers_admin_comercios_eliminar_comercio",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_comercios.py",
+      "source_location": "L45",
+      "weight": 1.0,
+      "source": "backend_routers_admin_comercios",
+      "target": "backend_routers_admin_comercios_extraer_ip",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_comercios.py",
+      "source_location": "L111",
+      "weight": 1.0,
+      "source": "backend_routers_admin_comercios",
+      "target": "backend_routers_admin_comercios_listar_comercios",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_comercios.py",
+      "source_location": "L135",
+      "weight": 1.0,
+      "source": "backend_routers_admin_comercios",
+      "target": "backend_routers_admin_comercios_obtener_comercio",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_comercios.py",
+      "source_location": "L73",
+      "weight": 1.0,
+      "source": "backend_routers_admin_comercios",
+      "target": "backend_routers_admin_comercios_obtener_comercio_o_404",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_comercios.py",
+      "source_location": "L52",
+      "weight": 1.0,
+      "source": "backend_routers_admin_comercios",
+      "target": "backend_routers_admin_comercios_registrar_audit",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_comercios.py",
+      "source_location": "L88",
+      "weight": 1.0,
+      "source": "backend_routers_admin_comercios",
+      "target": "backend_routers_admin_comercios_validar_usuario_acceso",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_comercios.py",
+      "source_location": "L27",
+      "weight": 1.0,
+      "source": "backend_routers_admin_comercios",
+      "target": "fastapi",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_comercios.py",
+      "source_location": "L31",
+      "weight": 1.0,
+      "source": "backend_routers_admin_comercios",
+      "target": "backend_schemas",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_comercios.py",
+      "source_location": "L175",
+      "weight": 1.0,
+      "source": "backend_routers_admin_comercios_crear_comercio",
+      "target": "backend_routers_admin_comercios_extraer_ip",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_comercios.py",
+      "source_location": "L226",
+      "weight": 1.0,
+      "source": "backend_routers_admin_comercios_editar_comercio",
+      "target": "backend_routers_admin_comercios_extraer_ip",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_comercios.py",
+      "source_location": "L260",
+      "weight": 1.0,
+      "source": "backend_routers_admin_comercios_eliminar_comercio",
+      "target": "backend_routers_admin_comercios_extraer_ip",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_comercios.py",
+      "source_location": "L45",
+      "weight": 1.0,
+      "source": "backend_routers_admin_comercios_extraer_ip",
+      "target": "backend_routers_admin_comercios_py_request",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_comercios.py",
+      "source_location": "L151",
+      "weight": 1.0,
+      "source": "backend_routers_admin_comercios_crear_comercio",
+      "target": "backend_routers_admin_comercios_py_request",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_comercios.py",
+      "source_location": "L190",
+      "weight": 1.0,
+      "source": "backend_routers_admin_comercios_editar_comercio",
+      "target": "backend_routers_admin_comercios_py_request",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_comercios.py",
+      "source_location": "L241",
+      "weight": 1.0,
+      "source": "backend_routers_admin_comercios_eliminar_comercio",
+      "target": "backend_routers_admin_comercios_py_request",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_comercios.py",
+      "source_location": "L169",
+      "weight": 1.0,
+      "source": "backend_routers_admin_comercios_crear_comercio",
+      "target": "backend_routers_admin_comercios_registrar_audit",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_comercios.py",
+      "source_location": "L220",
+      "weight": 1.0,
+      "source": "backend_routers_admin_comercios_editar_comercio",
+      "target": "backend_routers_admin_comercios_registrar_audit",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_comercios.py",
+      "source_location": "L254",
+      "weight": 1.0,
+      "source": "backend_routers_admin_comercios_eliminar_comercio",
+      "target": "backend_routers_admin_comercios_registrar_audit",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_comercios.py",
+      "source_location": "L52",
+      "weight": 1.0,
+      "source": "backend_routers_admin_comercios_registrar_audit",
+      "target": "backend_routers_admin_comercios_py_session",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_comercios.py",
+      "source_location": "L151",
+      "weight": 1.0,
+      "source": "backend_routers_admin_comercios_crear_comercio",
+      "target": "backend_routers_admin_comercios_py_session",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_comercios.py",
+      "source_location": "L190",
+      "weight": 1.0,
+      "source": "backend_routers_admin_comercios_editar_comercio",
+      "target": "backend_routers_admin_comercios_py_session",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_comercios.py",
+      "source_location": "L241",
+      "weight": 1.0,
+      "source": "backend_routers_admin_comercios_eliminar_comercio",
+      "target": "backend_routers_admin_comercios_py_session",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_comercios.py",
+      "source_location": "L111",
+      "weight": 1.0,
+      "source": "backend_routers_admin_comercios_listar_comercios",
+      "target": "backend_routers_admin_comercios_py_session",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_comercios.py",
+      "source_location": "L135",
+      "weight": 1.0,
+      "source": "backend_routers_admin_comercios_obtener_comercio",
+      "target": "backend_routers_admin_comercios_py_session",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_comercios.py",
+      "source_location": "L73",
+      "weight": 1.0,
+      "source": "backend_routers_admin_comercios_obtener_comercio_o_404",
+      "target": "backend_routers_admin_comercios_py_session",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_comercios.py",
+      "source_location": "L88",
+      "weight": 1.0,
+      "source": "backend_routers_admin_comercios_validar_usuario_acceso",
+      "target": "backend_routers_admin_comercios_py_session",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_comercios.py",
+      "source_location": "L180",
+      "weight": 1.0,
+      "source": "backend_routers_admin_comercios_crear_comercio",
+      "target": "backend_routers_admin_comercios_obtener_comercio_o_404",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_comercios.py",
+      "source_location": "L197",
+      "weight": 1.0,
+      "source": "backend_routers_admin_comercios_editar_comercio",
+      "target": "backend_routers_admin_comercios_obtener_comercio_o_404",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_comercios.py",
+      "source_location": "L251",
+      "weight": 1.0,
+      "source": "backend_routers_admin_comercios_eliminar_comercio",
+      "target": "backend_routers_admin_comercios_obtener_comercio_o_404",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_comercios.py",
+      "source_location": "L140",
+      "weight": 1.0,
+      "source": "backend_routers_admin_comercios_obtener_comercio",
+      "target": "backend_routers_admin_comercios_obtener_comercio_o_404",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_comercios.py",
+      "source_location": "L157",
+      "weight": 1.0,
+      "source": "backend_routers_admin_comercios_crear_comercio",
+      "target": "backend_routers_admin_comercios_validar_usuario_acceso",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_comercios.py",
+      "source_location": "L207",
+      "weight": 1.0,
+      "source": "backend_routers_admin_comercios_editar_comercio",
+      "target": "backend_routers_admin_comercios_validar_usuario_acceso",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_comercios.py",
+      "source_location": "L89",
+      "weight": 1.0,
+      "source": "backend_routers_admin_comercios_rationale_89",
+      "target": "backend_routers_admin_comercios_validar_usuario_acceso",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_comercios.py",
+      "source_location": "L151",
+      "weight": 1.0,
+      "source": "backend_routers_admin_comercios_crear_comercio",
+      "target": "backend_schemas_comercioasociadocreate",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_comercios.py",
+      "source_location": "L190",
+      "weight": 1.0,
+      "source": "backend_routers_admin_comercios_editar_comercio",
+      "target": "backend_schemas_comercioasociadoupdate",
+      "confidence_score": 1.0
+    },
+    {
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "backend/routers/admin_usuarios.py",
-      "source_location": "L123",
+      "source_location": "L431",
+      "weight": 1.0,
+      "source": "backend_routers_admin_usuarios",
+      "target": "backend_routers_admin_usuarios_actualizar_roles_usuario",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_usuarios.py",
+      "source_location": "L71",
+      "weight": 1.0,
+      "source": "backend_routers_admin_usuarios",
+      "target": "backend_routers_admin_usuarios_actualizarrolespayload",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_usuarios.py",
+      "source_location": "L98",
+      "weight": 1.0,
+      "source": "backend_routers_admin_usuarios",
+      "target": "backend_routers_admin_usuarios_actualizarrolesresponse",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_usuarios.py",
+      "source_location": "L180",
       "weight": 1.0,
       "source": "backend_routers_admin_usuarios",
       "target": "backend_routers_admin_usuarios_aprobar_usuario",
@@ -4223,7 +5770,47 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "backend/routers/admin_usuarios.py",
-      "source_location": "L75",
+      "source_location": "L242",
+      "weight": 1.0,
+      "source": "backend_routers_admin_usuarios",
+      "target": "backend_routers_admin_usuarios_crear_socio_manual",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_usuarios.py",
+      "source_location": "L315",
+      "weight": 1.0,
+      "source": "backend_routers_admin_usuarios",
+      "target": "backend_routers_admin_usuarios_dar_baja_socio",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_usuarios.py",
+      "source_location": "L284",
+      "weight": 1.0,
+      "source": "backend_routers_admin_usuarios",
+      "target": "backend_routers_admin_usuarios_editar_socio",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_usuarios.py",
+      "source_location": "L599",
+      "weight": 1.0,
+      "source": "backend_routers_admin_usuarios",
+      "target": "backend_routers_admin_usuarios_get_usuario_detalle",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_usuarios.py",
+      "source_location": "L147",
       "weight": 1.0,
       "source": "backend_routers_admin_usuarios",
       "target": "backend_routers_admin_usuarios_get_usuarios_pendientes",
@@ -4233,7 +5820,17 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "backend/routers/admin_usuarios.py",
-      "source_location": "L212",
+      "source_location": "L400",
+      "weight": 1.0,
+      "source": "backend_routers_admin_usuarios",
+      "target": "backend_routers_admin_usuarios_listar_roles",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_usuarios.py",
+      "source_location": "L375",
       "weight": 1.0,
       "source": "backend_routers_admin_usuarios",
       "target": "backend_routers_admin_usuarios_listar_todos_los_usuarios",
@@ -4243,7 +5840,47 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "backend/routers/admin_usuarios.py",
-      "source_location": "L51",
+      "source_location": "L126",
+      "weight": 1.0,
+      "source": "backend_routers_admin_usuarios",
+      "target": "backend_routers_admin_usuarios_nombres_roles_activos",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_usuarios.py",
+      "source_location": "L347",
+      "weight": 1.0,
+      "source": "backend_routers_admin_usuarios",
+      "target": "backend_routers_admin_usuarios_reactivar_socio",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_usuarios.py",
+      "source_location": "L90",
+      "weight": 1.0,
+      "source": "backend_routers_admin_usuarios",
+      "target": "backend_routers_admin_usuarios_rolasignadodetalle",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_usuarios.py",
+      "source_location": "L56",
+      "weight": 1.0,
+      "source": "backend_routers_admin_usuarios",
+      "target": "backend_routers_admin_usuarios_rolcatalogoresponse",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_usuarios.py",
+      "source_location": "L112",
       "weight": 1.0,
       "source": "backend_routers_admin_usuarios",
       "target": "backend_routers_admin_usuarios_subquery_con_roles_activos",
@@ -4253,7 +5890,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "backend/routers/admin_usuarios.py",
-      "source_location": "L36",
+      "source_location": "L43",
       "weight": 1.0,
       "source": "backend_routers_admin_usuarios",
       "target": "backend_routers_admin_usuarios_usuariopendienteresponse",
@@ -4264,7 +5901,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "backend/routers/admin_usuarios.py",
-      "source_location": "L14",
+      "source_location": "L19",
       "weight": 1.0,
       "source": "backend_routers_admin_usuarios",
       "target": "fastapi",
@@ -4275,7 +5912,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "backend/routers/admin_usuarios.py",
-      "source_location": "L15",
+      "source_location": "L20",
       "weight": 1.0,
       "source": "backend_routers_admin_usuarios",
       "target": "pydantic",
@@ -4286,29 +5923,90 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "backend/routers/admin_usuarios.py",
-      "source_location": "L20",
+      "source_location": "L25",
       "weight": 1.0,
       "source": "backend_routers_admin_usuarios",
       "target": "backend_schemas",
       "confidence_score": 1.0
     },
     {
-      "relation": "rationale_for",
+      "relation": "imports_from",
+      "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "backend/routers/admin_usuarios.py",
-      "source_location": "L37",
+      "source_location": "L28",
       "weight": 1.0,
-      "source": "backend_routers_admin_usuarios_rationale_37",
-      "target": "backend_routers_admin_usuarios_usuariopendienteresponse",
+      "source": "backend_routers_admin_usuarios",
+      "target": "backend_security",
       "confidence_score": 1.0
     },
     {
       "relation": "inherits",
       "confidence": "EXTRACTED",
       "source_file": "backend/routers/admin_usuarios.py",
-      "source_location": "L36",
+      "source_location": "L43",
       "weight": 1.0,
       "source": "backend_routers_admin_usuarios_usuariopendienteresponse",
+      "target": "basemodel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_usuarios.py",
+      "source_location": "L71",
+      "weight": 1.0,
+      "source": "backend_routers_admin_usuarios_actualizarrolespayload",
+      "target": "basemodel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_usuarios.py",
+      "source_location": "L98",
+      "weight": 1.0,
+      "source": "backend_routers_admin_usuarios_actualizarrolesresponse",
+      "target": "basemodel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_usuarios.py",
+      "source_location": "L90",
+      "weight": 1.0,
+      "source": "backend_routers_admin_usuarios_rolasignadodetalle",
+      "target": "basemodel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_usuarios.py",
+      "source_location": "L56",
+      "weight": 1.0,
+      "source": "backend_routers_admin_usuarios_rolcatalogoresponse",
+      "target": "basemodel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/qr_auth.py",
+      "source_location": "L66",
+      "weight": 1.0,
+      "source": "backend_routers_qr_auth_validardnipayload",
+      "target": "basemodel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/qr_auth.py",
+      "source_location": "L53",
+      "weight": 1.0,
+      "source": "backend_routers_qr_auth_validartokenpayload",
       "target": "basemodel",
       "confidence_score": 1.0
     },
@@ -4376,6 +6074,26 @@
       "relation": "inherits",
       "confidence": "EXTRACTED",
       "source_file": "backend/schemas.py",
+      "source_location": "L676",
+      "weight": 1.0,
+      "source": "backend_schemas_comercioasociadobase",
+      "target": "basemodel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/schemas.py",
+      "source_location": "L693",
+      "weight": 1.0,
+      "source": "backend_schemas_comercioasociadoupdate",
+      "target": "basemodel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/schemas.py",
       "source_location": "L52",
       "weight": 1.0,
       "source": "backend_schemas_configuracionglobalbase",
@@ -4409,6 +6127,16 @@
       "source_location": "L405",
       "weight": 1.0,
       "source": "backend_schemas_detalleordenresponse",
+      "target": "basemodel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/schemas.py",
+      "source_location": "L722",
+      "weight": 1.0,
+      "source": "backend_schemas_dnivalidationpayload",
       "target": "basemodel",
       "confidence_score": 1.0
     },
@@ -4556,6 +6284,26 @@
       "relation": "inherits",
       "confidence": "EXTRACTED",
       "source_file": "backend/schemas.py",
+      "source_location": "L714",
+      "weight": 1.0,
+      "source": "backend_schemas_qrtokenresponse",
+      "target": "basemodel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/schemas.py",
+      "source_location": "L718",
+      "weight": 1.0,
+      "source": "backend_schemas_qrvalidationpayload",
+      "target": "basemodel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/schemas.py",
       "source_location": "L269",
       "weight": 1.0,
       "source": "backend_schemas_removerrolpayload",
@@ -4629,6 +6377,16 @@
       "source_location": "L643",
       "weight": 1.0,
       "source": "backend_schemas_tokenresponse",
+      "target": "basemodel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/schemas.py",
+      "source_location": "L666",
+      "weight": 1.0,
+      "source": "backend_schemas_usuarioaccesosimple",
       "target": "basemodel",
       "confidence_score": 1.0
     },
@@ -4723,13 +6481,23 @@
       "confidence_score": 1.0
     },
     {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/schemas.py",
+      "source_location": "L725",
+      "weight": 1.0,
+      "source": "backend_schemas_validationresponse",
+      "target": "basemodel",
+      "confidence_score": 1.0
+    },
+    {
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "backend/routers/admin_usuarios.py",
-      "source_location": "L52",
+      "source_location": "L57",
       "weight": 1.0,
-      "source": "backend_routers_admin_usuarios_rationale_52",
-      "target": "backend_routers_admin_usuarios_subquery_con_roles_activos",
+      "source": "backend_routers_admin_usuarios_rationale_57",
+      "target": "backend_routers_admin_usuarios_rolcatalogoresponse",
       "confidence_score": 1.0
     },
     {
@@ -4737,20 +6505,94 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "backend/routers/admin_usuarios.py",
-      "source_location": "L75",
+      "source_location": "L431",
+      "weight": 1.0,
+      "source": "backend_routers_admin_usuarios_actualizar_roles_usuario",
+      "target": "backend_routers_admin_usuarios_actualizarrolespayload",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_usuarios.py",
+      "source_location": "L72",
+      "weight": 1.0,
+      "source": "backend_routers_admin_usuarios_rationale_72",
+      "target": "backend_routers_admin_usuarios_actualizarrolespayload",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_usuarios.py",
+      "source_location": "L91",
+      "weight": 1.0,
+      "source": "backend_routers_admin_usuarios_rationale_91",
+      "target": "backend_routers_admin_usuarios_rolasignadodetalle",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_usuarios.py",
+      "source_location": "L584",
+      "weight": 1.0,
+      "source": "backend_routers_admin_usuarios_actualizar_roles_usuario",
+      "target": "backend_routers_admin_usuarios_actualizarrolesresponse",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_usuarios.py",
+      "source_location": "L99",
+      "weight": 1.0,
+      "source": "backend_routers_admin_usuarios_rationale_99",
+      "target": "backend_routers_admin_usuarios_actualizarrolesresponse",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_usuarios.py",
+      "source_location": "L477",
+      "weight": 1.0,
+      "source": "backend_routers_admin_usuarios_actualizar_roles_usuario",
+      "target": "backend_routers_admin_usuarios_nombres_roles_activos",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_usuarios.py",
+      "source_location": "L127",
+      "weight": 1.0,
+      "source": "backend_routers_admin_usuarios_rationale_127",
+      "target": "backend_routers_admin_usuarios_nombres_roles_activos",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_usuarios.py",
+      "source_location": "L147",
       "weight": 1.0,
       "source": "backend_routers_admin_usuarios_get_usuarios_pendientes",
       "target": "backend_routers_admin_usuarios_py_session",
       "confidence_score": 1.0
     },
     {
-      "relation": "rationale_for",
+      "relation": "references",
+      "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "backend/routers/admin_usuarios.py",
-      "source_location": "L79",
+      "source_location": "L431",
       "weight": 1.0,
-      "source": "backend_routers_admin_usuarios_rationale_79",
-      "target": "backend_routers_admin_usuarios_get_usuarios_pendientes",
+      "source": "backend_routers_admin_usuarios_actualizar_roles_usuario",
+      "target": "backend_routers_admin_usuarios_py_session",
       "confidence_score": 1.0
     },
     {
@@ -4758,7 +6600,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "backend/routers/admin_usuarios.py",
-      "source_location": "L123",
+      "source_location": "L180",
       "weight": 1.0,
       "source": "backend_routers_admin_usuarios_aprobar_usuario",
       "target": "backend_routers_admin_usuarios_py_session",
@@ -4769,30 +6611,129 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "backend/routers/admin_usuarios.py",
-      "source_location": "L212",
+      "source_location": "L242",
+      "weight": 1.0,
+      "source": "backend_routers_admin_usuarios_crear_socio_manual",
+      "target": "backend_routers_admin_usuarios_py_session",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_usuarios.py",
+      "source_location": "L315",
+      "weight": 1.0,
+      "source": "backend_routers_admin_usuarios_dar_baja_socio",
+      "target": "backend_routers_admin_usuarios_py_session",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_usuarios.py",
+      "source_location": "L284",
+      "weight": 1.0,
+      "source": "backend_routers_admin_usuarios_editar_socio",
+      "target": "backend_routers_admin_usuarios_py_session",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_usuarios.py",
+      "source_location": "L599",
+      "weight": 1.0,
+      "source": "backend_routers_admin_usuarios_get_usuario_detalle",
+      "target": "backend_routers_admin_usuarios_py_session",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_usuarios.py",
+      "source_location": "L400",
+      "weight": 1.0,
+      "source": "backend_routers_admin_usuarios_listar_roles",
+      "target": "backend_routers_admin_usuarios_py_session",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_usuarios.py",
+      "source_location": "L375",
       "weight": 1.0,
       "source": "backend_routers_admin_usuarios_listar_todos_los_usuarios",
       "target": "backend_routers_admin_usuarios_py_session",
       "confidence_score": 1.0
     },
     {
-      "relation": "rationale_for",
+      "relation": "references",
+      "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "backend/routers/admin_usuarios.py",
-      "source_location": "L128",
+      "source_location": "L347",
       "weight": 1.0,
-      "source": "backend_routers_admin_usuarios_rationale_128",
-      "target": "backend_routers_admin_usuarios_aprobar_usuario",
+      "source": "backend_routers_admin_usuarios_reactivar_socio",
+      "target": "backend_routers_admin_usuarios_py_session",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_usuarios.py",
+      "source_location": "L242",
+      "weight": 1.0,
+      "source": "backend_routers_admin_usuarios_crear_socio_manual",
+      "target": "backend_schemas_usuariocreate",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "backend/routers/admin_usuarios.py",
+      "source_location": "L252",
+      "weight": 1.0,
+      "source": "backend_routers_admin_usuarios_crear_socio_manual",
+      "target": "backend_security_get_password_hash"
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_usuarios.py",
+      "source_location": "L284",
+      "weight": 1.0,
+      "source": "backend_routers_admin_usuarios_editar_socio",
+      "target": "backend_schemas_usuarioupdate",
       "confidence_score": 1.0
     },
     {
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "backend/routers/admin_usuarios.py",
-      "source_location": "L218",
+      "source_location": "L405",
       "weight": 1.0,
-      "source": "backend_routers_admin_usuarios_rationale_218",
-      "target": "backend_routers_admin_usuarios_listar_todos_los_usuarios",
+      "source": "backend_routers_admin_usuarios_rationale_405",
+      "target": "backend_routers_admin_usuarios_listar_roles",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/admin_usuarios.py",
+      "source_location": "L439",
+      "weight": 1.0,
+      "source": "backend_routers_admin_usuarios_rationale_439",
+      "target": "backend_routers_admin_usuarios_actualizar_roles_usuario",
       "confidence_score": 1.0
     },
     {
@@ -4892,6 +6833,502 @@
       "weight": 1.0,
       "source": "backend_routers_auth_login_for_access_token",
       "target": "timedelta"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/qr_auth.py",
+      "source_location": "L141",
+      "weight": 1.0,
+      "source": "backend_routers_qr_auth",
+      "target": "backend_routers_qr_auth_calcular_antiguedad_meses",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/qr_auth.py",
+      "source_location": "L164",
+      "weight": 1.0,
+      "source": "backend_routers_qr_auth",
+      "target": "backend_routers_qr_auth_construir_respuesta_desde_orm",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/qr_auth.py",
+      "source_location": "L133",
+      "weight": 1.0,
+      "source": "backend_routers_qr_auth",
+      "target": "backend_routers_qr_auth_extraer_ip",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/qr_auth.py",
+      "source_location": "L204",
+      "weight": 1.0,
+      "source": "backend_routers_qr_auth",
+      "target": "backend_routers_qr_auth_generar_qr_token",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/qr_auth.py",
+      "source_location": "L74",
+      "weight": 1.0,
+      "source": "backend_routers_qr_auth",
+      "target": "backend_routers_qr_auth_registrar_asistencia",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/qr_auth.py",
+      "source_location": "L114",
+      "weight": 1.0,
+      "source": "backend_routers_qr_auth",
+      "target": "backend_routers_qr_auth_registrar_audit",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/qr_auth.py",
+      "source_location": "L151",
+      "weight": 1.0,
+      "source": "backend_routers_qr_auth",
+      "target": "backend_routers_qr_auth_roles_activos_list",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/qr_auth.py",
+      "source_location": "L344",
+      "weight": 1.0,
+      "source": "backend_routers_qr_auth",
+      "target": "backend_routers_qr_auth_validar_dni",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/qr_auth.py",
+      "source_location": "L241",
+      "weight": 1.0,
+      "source": "backend_routers_qr_auth",
+      "target": "backend_routers_qr_auth_validar_qr_token",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/qr_auth.py",
+      "source_location": "L66",
+      "weight": 1.0,
+      "source": "backend_routers_qr_auth",
+      "target": "backend_routers_qr_auth_validardnipayload",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/qr_auth.py",
+      "source_location": "L53",
+      "weight": 1.0,
+      "source": "backend_routers_qr_auth",
+      "target": "backend_routers_qr_auth_validartokenpayload",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/qr_auth.py",
+      "source_location": "L32",
+      "weight": 1.0,
+      "source": "backend_routers_qr_auth",
+      "target": "fastapi",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/qr_auth.py",
+      "source_location": "L33",
+      "weight": 1.0,
+      "source": "backend_routers_qr_auth",
+      "target": "pydantic",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/qr_auth.py",
+      "source_location": "L38",
+      "weight": 1.0,
+      "source": "backend_routers_qr_auth",
+      "target": "backend_schemas",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/qr_auth.py",
+      "source_location": "L54",
+      "weight": 1.0,
+      "source": "backend_routers_qr_auth_rationale_54",
+      "target": "backend_routers_qr_auth_validartokenpayload",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/qr_auth.py",
+      "source_location": "L241",
+      "weight": 1.0,
+      "source": "backend_routers_qr_auth_validar_qr_token",
+      "target": "backend_routers_qr_auth_validartokenpayload",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/qr_auth.py",
+      "source_location": "L67",
+      "weight": 1.0,
+      "source": "backend_routers_qr_auth_rationale_67",
+      "target": "backend_routers_qr_auth_validardnipayload",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/qr_auth.py",
+      "source_location": "L344",
+      "weight": 1.0,
+      "source": "backend_routers_qr_auth_validar_dni",
+      "target": "backend_routers_qr_auth_validardnipayload",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/qr_auth.py",
+      "source_location": "L83",
+      "weight": 1.0,
+      "source": "backend_routers_qr_auth_rationale_83",
+      "target": "backend_routers_qr_auth_registrar_asistencia",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/qr_auth.py",
+      "source_location": "L74",
+      "weight": 1.0,
+      "source": "backend_routers_qr_auth_registrar_asistencia",
+      "target": "backend_routers_qr_auth_py_session",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/qr_auth.py",
+      "source_location": "L404",
+      "weight": 1.0,
+      "source": "backend_routers_qr_auth_validar_dni",
+      "target": "backend_routers_qr_auth_registrar_asistencia",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/qr_auth.py",
+      "source_location": "L306",
+      "weight": 1.0,
+      "source": "backend_routers_qr_auth_validar_qr_token",
+      "target": "backend_routers_qr_auth_registrar_asistencia",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/qr_auth.py",
+      "source_location": "L204",
+      "weight": 1.0,
+      "source": "backend_routers_qr_auth_generar_qr_token",
+      "target": "backend_routers_qr_auth_py_session",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/qr_auth.py",
+      "source_location": "L114",
+      "weight": 1.0,
+      "source": "backend_routers_qr_auth_registrar_audit",
+      "target": "backend_routers_qr_auth_py_session",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/qr_auth.py",
+      "source_location": "L344",
+      "weight": 1.0,
+      "source": "backend_routers_qr_auth_validar_dni",
+      "target": "backend_routers_qr_auth_py_session",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/qr_auth.py",
+      "source_location": "L241",
+      "weight": 1.0,
+      "source": "backend_routers_qr_auth_validar_qr_token",
+      "target": "backend_routers_qr_auth_py_session",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/qr_auth.py",
+      "source_location": "L375",
+      "weight": 1.0,
+      "source": "backend_routers_qr_auth_validar_dni",
+      "target": "backend_routers_qr_auth_registrar_audit",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/qr_auth.py",
+      "source_location": "L316",
+      "weight": 1.0,
+      "source": "backend_routers_qr_auth_validar_qr_token",
+      "target": "backend_routers_qr_auth_registrar_audit",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/qr_auth.py",
+      "source_location": "L133",
+      "weight": 1.0,
+      "source": "backend_routers_qr_auth_extraer_ip",
+      "target": "backend_routers_qr_auth_py_request",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/qr_auth.py",
+      "source_location": "L134",
+      "weight": 1.0,
+      "source": "backend_routers_qr_auth_rationale_134",
+      "target": "backend_routers_qr_auth_extraer_ip",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/qr_auth.py",
+      "source_location": "L359",
+      "weight": 1.0,
+      "source": "backend_routers_qr_auth_validar_dni",
+      "target": "backend_routers_qr_auth_extraer_ip",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/qr_auth.py",
+      "source_location": "L259",
+      "weight": 1.0,
+      "source": "backend_routers_qr_auth_validar_qr_token",
+      "target": "backend_routers_qr_auth_extraer_ip",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/qr_auth.py",
+      "source_location": "L344",
+      "weight": 1.0,
+      "source": "backend_routers_qr_auth_validar_dni",
+      "target": "backend_routers_qr_auth_py_request",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/qr_auth.py",
+      "source_location": "L241",
+      "weight": 1.0,
+      "source": "backend_routers_qr_auth_validar_qr_token",
+      "target": "backend_routers_qr_auth_py_request",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/qr_auth.py",
+      "source_location": "L183",
+      "weight": 1.0,
+      "source": "backend_routers_qr_auth_construir_respuesta_desde_orm",
+      "target": "backend_routers_qr_auth_calcular_antiguedad_meses",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/qr_auth.py",
+      "source_location": "L142",
+      "weight": 1.0,
+      "source": "backend_routers_qr_auth_rationale_142",
+      "target": "backend_routers_qr_auth_calcular_antiguedad_meses",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/qr_auth.py",
+      "source_location": "L182",
+      "weight": 1.0,
+      "source": "backend_routers_qr_auth_construir_respuesta_desde_orm",
+      "target": "backend_routers_qr_auth_roles_activos_list",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/qr_auth.py",
+      "source_location": "L152",
+      "weight": 1.0,
+      "source": "backend_routers_qr_auth_rationale_152",
+      "target": "backend_routers_qr_auth_roles_activos_list",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "return_type",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/qr_auth.py",
+      "source_location": "L164",
+      "weight": 1.0,
+      "source": "backend_routers_qr_auth_construir_respuesta_desde_orm",
+      "target": "backend_schemas_usuarioqrvalidacionresponse",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/qr_auth.py",
+      "source_location": "L165",
+      "weight": 1.0,
+      "source": "backend_routers_qr_auth_rationale_165",
+      "target": "backend_routers_qr_auth_construir_respuesta_desde_orm",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/qr_auth.py",
+      "source_location": "L400",
+      "weight": 1.0,
+      "source": "backend_routers_qr_auth_validar_dni",
+      "target": "backend_routers_qr_auth_construir_respuesta_desde_orm",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "return_type",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/qr_auth.py",
+      "source_location": "L204",
+      "weight": 1.0,
+      "source": "backend_routers_qr_auth_generar_qr_token",
+      "target": "backend_schemas_qrtokenresponse",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/qr_auth.py",
+      "source_location": "L208",
+      "weight": 1.0,
+      "source": "backend_routers_qr_auth_rationale_208",
+      "target": "backend_routers_qr_auth_generar_qr_token",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/qr_auth.py",
+      "source_location": "L247",
+      "weight": 1.0,
+      "source": "backend_routers_qr_auth_rationale_247",
+      "target": "backend_routers_qr_auth_validar_qr_token",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "return_type",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/qr_auth.py",
+      "source_location": "L241",
+      "weight": 1.0,
+      "source": "backend_routers_qr_auth_validar_qr_token",
+      "target": "backend_schemas_usuarioqrvalidacionresponse",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/qr_auth.py",
+      "source_location": "L350",
+      "weight": 1.0,
+      "source": "backend_routers_qr_auth_rationale_350",
+      "target": "backend_routers_qr_auth_validar_dni",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "return_type",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/routers/qr_auth.py",
+      "source_location": "L344",
+      "weight": 1.0,
+      "source": "backend_routers_qr_auth_validar_dni",
+      "target": "backend_schemas_usuarioqrvalidacionresponse",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -5146,6 +7583,46 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "backend/schemas.py",
+      "source_location": "L676",
+      "weight": 1.0,
+      "source": "backend_schemas",
+      "target": "backend_schemas_comercioasociadobase",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/schemas.py",
+      "source_location": "L683",
+      "weight": 1.0,
+      "source": "backend_schemas",
+      "target": "backend_schemas_comercioasociadocreate",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/schemas.py",
+      "source_location": "L702",
+      "weight": 1.0,
+      "source": "backend_schemas",
+      "target": "backend_schemas_comercioasociadoresponse",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/schemas.py",
+      "source_location": "L693",
+      "weight": 1.0,
+      "source": "backend_schemas",
+      "target": "backend_schemas_comercioasociadoupdate",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/schemas.py",
       "source_location": "L52",
       "weight": 1.0,
       "source": "backend_schemas",
@@ -5190,6 +7667,16 @@
       "weight": 1.0,
       "source": "backend_schemas",
       "target": "backend_schemas_detalleordenresponse",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/schemas.py",
+      "source_location": "L722",
+      "weight": 1.0,
+      "source": "backend_schemas",
+      "target": "backend_schemas_dnivalidationpayload",
       "confidence_score": 1.0
     },
     {
@@ -5376,6 +7863,26 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "backend/schemas.py",
+      "source_location": "L714",
+      "weight": 1.0,
+      "source": "backend_schemas",
+      "target": "backend_schemas_qrtokenresponse",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/schemas.py",
+      "source_location": "L718",
+      "weight": 1.0,
+      "source": "backend_schemas",
+      "target": "backend_schemas_qrvalidationpayload",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/schemas.py",
       "source_location": "L269",
       "weight": 1.0,
       "source": "backend_schemas",
@@ -5470,6 +7977,16 @@
       "weight": 1.0,
       "source": "backend_schemas",
       "target": "backend_schemas_tokenresponse",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/schemas.py",
+      "source_location": "L666",
+      "weight": 1.0,
+      "source": "backend_schemas",
+      "target": "backend_schemas_usuarioaccesosimple",
       "confidence_score": 1.0
     },
     {
@@ -5590,6 +8107,16 @@
       "weight": 1.0,
       "source": "backend_schemas",
       "target": "backend_schemas_usuarioupdate",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/schemas.py",
+      "source_location": "L725",
+      "weight": 1.0,
+      "source": "backend_schemas",
+      "target": "backend_schemas_validationresponse",
       "confidence_score": 1.0
     },
     {
@@ -6055,6 +8582,46 @@
       "confidence_score": 1.0
     },
     {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/schemas.py",
+      "source_location": "L667",
+      "weight": 1.0,
+      "source": "backend_schemas_rationale_667",
+      "target": "backend_schemas_usuarioaccesosimple",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/schemas.py",
+      "source_location": "L683",
+      "weight": 1.0,
+      "source": "backend_schemas_comercioasociadocreate",
+      "target": "backend_schemas_comercioasociadobase",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/schemas.py",
+      "source_location": "L702",
+      "weight": 1.0,
+      "source": "backend_schemas_comercioasociadoresponse",
+      "target": "backend_schemas_comercioasociadobase",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/schemas.py",
+      "source_location": "L694",
+      "weight": 1.0,
+      "source": "backend_schemas_rationale_694",
+      "target": "backend_schemas_comercioasociadoupdate",
+      "confidence_score": 1.0
+    },
+    {
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "backend/security.py",
@@ -6421,7 +8988,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/App.jsx",
-      "source_location": "L21",
+      "source_location": "L24",
       "weight": 1.0,
       "source": "frontend_src_app",
       "target": "frontend_src_app_app",
@@ -6498,6 +9065,28 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/App.jsx",
+      "source_location": "L19",
+      "weight": 1.0,
+      "source": "frontend_src_app",
+      "target": "frontend_src_pages_admincomercios",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/App.jsx",
+      "source_location": "L19",
+      "weight": 1.0,
+      "source": "frontend_src_app",
+      "target": "frontend_src_pages_admincomercios_admincomercios",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/App.jsx",
       "source_location": "L15",
       "weight": 1.0,
       "source": "frontend_src_app",
@@ -6542,10 +9131,32 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/App.jsx",
+      "source_location": "L22",
+      "weight": 1.0,
+      "source": "frontend_src_app",
+      "target": "frontend_src_pages_adminscanner",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/App.jsx",
+      "source_location": "L22",
+      "weight": 1.0,
+      "source": "frontend_src_app",
+      "target": "frontend_src_pages_adminscanner_adminscanner",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/App.jsx",
       "source_location": "L18",
       "weight": 1.0,
       "source": "frontend_src_app",
-      "target": "frontend_src_pages_adminqrscanner",
+      "target": "frontend_src_pages_adminsocios",
       "confidence_score": 1.0
     },
     {
@@ -6556,7 +9167,7 @@
       "source_location": "L18",
       "weight": 1.0,
       "source": "frontend_src_app",
-      "target": "frontend_src_pages_adminqrscanner_adminqrscanner",
+      "target": "frontend_src_pages_adminsocios_adminsocios",
       "confidence_score": 1.0
     },
     {
@@ -6586,7 +9197,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/App.jsx",
-      "source_location": "L19",
+      "source_location": "L20",
       "weight": 1.0,
       "source": "frontend_src_app",
       "target": "frontend_src_pages_jugadorcalendario",
@@ -6597,7 +9208,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/App.jsx",
-      "source_location": "L19",
+      "source_location": "L20",
       "weight": 1.0,
       "source": "frontend_src_app",
       "target": "frontend_src_pages_jugadorcalendario_jugadorcalendario",
@@ -6799,6 +9410,28 @@
       "weight": 1.0,
       "source": "frontend_src_app",
       "target": "frontend_src_pages_socioperfil_socioperfil",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/App.jsx",
+      "source_location": "L21",
+      "weight": 1.0,
+      "source": "frontend_src_app",
+      "target": "frontend_src_pages_socioqr",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/App.jsx",
+      "source_location": "L21",
+      "weight": 1.0,
+      "source": "frontend_src_app",
+      "target": "frontend_src_pages_socioqr_socioqr",
       "confidence_score": 1.0
     },
     {
@@ -7094,10 +9727,43 @@
       "relation": "imports_from",
       "context": "import",
       "confidence": "EXTRACTED",
+      "source_file": "frontend/src/pages/AdminComercios.jsx",
+      "source_location": "L24",
+      "weight": 1.0,
+      "source": "frontend_src_pages_admincomercios",
+      "target": "frontend_src_context_authcontext",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
       "source_file": "frontend/src/pages/AdminInicio.jsx",
       "source_location": "L1",
       "weight": 1.0,
       "source": "frontend_src_pages_admininicio",
+      "target": "frontend_src_context_authcontext",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/pages/AdminScanner.jsx",
+      "source_location": "L36",
+      "weight": 1.0,
+      "source": "frontend_src_pages_adminscanner",
+      "target": "frontend_src_context_authcontext",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/pages/AdminSocios.jsx",
+      "source_location": "L24",
+      "weight": 1.0,
+      "source": "frontend_src_pages_adminsocios",
       "target": "frontend_src_context_authcontext",
       "confidence_score": 1.0
     },
@@ -7146,6 +9812,17 @@
       "confidence_score": 1.0
     },
     {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/pages/SocioQR.jsx",
+      "source_location": "L32",
+      "weight": 1.0,
+      "source": "frontend_src_pages_socioqr",
+      "target": "frontend_src_context_authcontext",
+      "confidence_score": 1.0
+    },
+    {
       "relation": "imports",
       "context": "import",
       "confidence": "EXTRACTED",
@@ -7162,9 +9839,31 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "frontend/src/layouts/MainLayout.jsx",
-      "source_location": "L12",
+      "source_location": "L13",
       "weight": 1.0,
       "source": "frontend_src_layouts_mainlayout_mainlayout",
+      "target": "frontend_src_context_authcontext_useauth"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/pages/AdminComercios.jsx",
+      "source_location": "L24",
+      "weight": 1.0,
+      "source": "frontend_src_pages_admincomercios",
+      "target": "frontend_src_context_authcontext_useauth",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "frontend/src/pages/AdminComercios.jsx",
+      "source_location": "L226",
+      "weight": 1.0,
+      "source": "frontend_src_pages_admincomercios_admincomercios",
       "target": "frontend_src_context_authcontext_useauth"
     },
     {
@@ -7187,6 +9886,50 @@
       "source_location": "L5",
       "weight": 1.0,
       "source": "frontend_src_pages_admininicio_admininicio",
+      "target": "frontend_src_context_authcontext_useauth"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/pages/AdminScanner.jsx",
+      "source_location": "L36",
+      "weight": 1.0,
+      "source": "frontend_src_pages_adminscanner",
+      "target": "frontend_src_context_authcontext_useauth",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "frontend/src/pages/AdminScanner.jsx",
+      "source_location": "L235",
+      "weight": 1.0,
+      "source": "frontend_src_pages_adminscanner_adminscanner",
+      "target": "frontend_src_context_authcontext_useauth"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/pages/AdminSocios.jsx",
+      "source_location": "L24",
+      "weight": 1.0,
+      "source": "frontend_src_pages_adminsocios",
+      "target": "frontend_src_context_authcontext_useauth",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "frontend/src/pages/AdminSocios.jsx",
+      "source_location": "L418",
+      "weight": 1.0,
+      "source": "frontend_src_pages_adminsocios_adminsocios",
       "target": "frontend_src_context_authcontext_useauth"
     },
     {
@@ -7228,7 +9971,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "frontend/src/pages/Login.jsx",
-      "source_location": "L13",
+      "source_location": "L14",
       "weight": 1.0,
       "source": "frontend_src_pages_login_login",
       "target": "frontend_src_context_authcontext_useauth"
@@ -7275,6 +10018,28 @@
       "source_location": "L48",
       "weight": 1.0,
       "source": "frontend_src_pages_socioinicio_socioinicio",
+      "target": "frontend_src_context_authcontext_useauth"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/pages/SocioQR.jsx",
+      "source_location": "L32",
+      "weight": 1.0,
+      "source": "frontend_src_pages_socioqr",
+      "target": "frontend_src_context_authcontext_useauth",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "frontend/src/pages/SocioQR.jsx",
+      "source_location": "L43",
+      "weight": 1.0,
+      "source": "frontend_src_pages_socioqr_socioqr",
       "target": "frontend_src_context_authcontext_useauth"
     },
     {
@@ -7390,7 +10155,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "frontend/src/layouts/MainLayout.jsx",
-      "source_location": "L14",
+      "source_location": "L15",
       "weight": 1.0,
       "source": "frontend_src_layouts_mainlayout_mainlayout",
       "target": "frontend_src_context_cartcontext_usecart"
@@ -7487,7 +10252,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/layouts/MainLayout.jsx",
-      "source_location": "L9",
+      "source_location": "L10",
       "weight": 1.0,
       "source": "frontend_src_layouts_mainlayout",
       "target": "frontend_src_layouts_mainlayout_mainlayout",
@@ -7520,6 +10285,37 @@
       "source_location": "L1",
       "weight": 1.0,
       "source": "frontend_src_main",
+      "target": "react",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/pages/AdminComercios.jsx",
+      "source_location": "L225",
+      "weight": 1.0,
+      "source": "frontend_src_pages_admincomercios",
+      "target": "frontend_src_pages_admincomercios_admincomercios",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/pages/AdminComercios.jsx",
+      "source_location": "L44",
+      "weight": 1.0,
+      "source": "frontend_src_pages_admincomercios",
+      "target": "frontend_src_pages_admincomercios_comercioformmodal",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/pages/AdminComercios.jsx",
+      "source_location": "L23",
+      "weight": 1.0,
+      "source": "frontend_src_pages_admincomercios",
       "target": "react",
       "confidence_score": 1.0
     },
@@ -7572,6 +10368,139 @@
       "source_location": "L1",
       "weight": 1.0,
       "source": "frontend_src_pages_adminqrscanner",
+      "target": "react",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/pages/AdminScanner.jsx",
+      "source_location": "L234",
+      "weight": 1.0,
+      "source": "frontend_src_pages_adminscanner",
+      "target": "frontend_src_pages_adminscanner_adminscanner",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/pages/AdminScanner.jsx",
+      "source_location": "L212",
+      "weight": 1.0,
+      "source": "frontend_src_pages_adminscanner",
+      "target": "frontend_src_pages_adminscanner_miraescaner",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/pages/AdminScanner.jsx",
+      "source_location": "L200",
+      "weight": 1.0,
+      "source": "frontend_src_pages_adminscanner",
+      "target": "frontend_src_pages_adminscanner_overlaycarga",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/pages/AdminScanner.jsx",
+      "source_location": "L51",
+      "weight": 1.0,
+      "source": "frontend_src_pages_adminscanner",
+      "target": "frontend_src_pages_adminscanner_resolvervariante",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/pages/AdminScanner.jsx",
+      "source_location": "L84",
+      "weight": 1.0,
+      "source": "frontend_src_pages_adminscanner",
+      "target": "frontend_src_pages_adminscanner_tarjetaresultado",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/pages/AdminScanner.jsx",
+      "source_location": "L58",
+      "weight": 1.0,
+      "source": "frontend_src_pages_adminscanner",
+      "target": "frontend_src_pages_adminscanner_variantes",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/pages/AdminScanner.jsx",
+      "source_location": "L23",
+      "weight": 1.0,
+      "source": "frontend_src_pages_adminscanner",
+      "target": "react",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/pages/AdminScanner.jsx",
+      "source_location": "L86",
+      "weight": 1.0,
+      "source": "frontend_src_pages_adminscanner_tarjetaresultado",
+      "target": "frontend_src_pages_adminscanner_resolvervariante",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/pages/AdminSocios.jsx",
+      "source_location": "L417",
+      "weight": 1.0,
+      "source": "frontend_src_pages_adminsocios",
+      "target": "frontend_src_pages_adminsocios_adminsocios",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/pages/AdminSocios.jsx",
+      "source_location": "L45",
+      "weight": 1.0,
+      "source": "frontend_src_pages_adminsocios",
+      "target": "frontend_src_pages_adminsocios_rolcheckbox",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/pages/AdminSocios.jsx",
+      "source_location": "L96",
+      "weight": 1.0,
+      "source": "frontend_src_pages_adminsocios",
+      "target": "frontend_src_pages_adminsocios_seccionroles",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/pages/AdminSocios.jsx",
+      "source_location": "L152",
+      "weight": 1.0,
+      "source": "frontend_src_pages_adminsocios",
+      "target": "frontend_src_pages_adminsocios_socioformmodal",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/pages/AdminSocios.jsx",
+      "source_location": "L23",
+      "weight": 1.0,
+      "source": "frontend_src_pages_adminsocios",
       "target": "react",
       "confidence_score": 1.0
     },
@@ -7650,7 +10579,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/pages/Login.jsx",
-      "source_location": "L5",
+      "source_location": "L6",
       "weight": 1.0,
       "source": "frontend_src_pages_login",
       "target": "frontend_src_pages_login_login",
@@ -7692,7 +10621,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/pages/Registro.jsx",
-      "source_location": "L4",
+      "source_location": "L5",
       "weight": 1.0,
       "source": "frontend_src_pages_registro",
       "target": "frontend_src_pages_registro_registro",
@@ -7796,6 +10725,28 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/pages/SocioInicio.jsx",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "frontend_src_pages_socioinicio",
+      "target": "frontend_src_pages_socioqr",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/pages/SocioInicio.jsx",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "frontend_src_pages_socioinicio",
+      "target": "frontend_src_pages_socioqr_socioqr",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/pages/SocioInicio.jsx",
       "source_location": "L2",
       "weight": 1.0,
       "source": "frontend_src_pages_socioinicio",
@@ -7810,6 +10761,27 @@
       "weight": 1.0,
       "source": "frontend_src_pages_socioperfil",
       "target": "frontend_src_pages_socioperfil_socioperfil",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/pages/SocioQR.jsx",
+      "source_location": "L42",
+      "weight": 1.0,
+      "source": "frontend_src_pages_socioqr",
+      "target": "frontend_src_pages_socioqr_socioqr",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/pages/SocioQR.jsx",
+      "source_location": "L29",
+      "weight": 1.0,
+      "source": "frontend_src_pages_socioqr",
+      "target": "react",
       "confidence_score": 1.0
     },
     {
@@ -7902,5 +10874,5 @@
       "source_file": "backend/requirements.txt"
     }
   ],
-  "built_at_commit": "6a1f4a77962bd5c73093a9cba73ed4e0dfe16319"
+  "built_at_commit": "175fbfcb8a48c0d200792fa9cb8f2b1d47a7c352"
 }

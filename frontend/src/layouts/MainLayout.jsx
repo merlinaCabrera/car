@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
+import { ScanLine } from 'lucide-react';
 
 // Importación del asset real
 import escudoCar from '../assets/escudo-car.PNG';
@@ -36,6 +37,12 @@ export default function MainLayout({ userRole }) {
 
   // 4. Verificamos si el usuario tiene permisos de administrador.
   const isAdmin = userRoles.includes('admin_general') || userRoles.includes('personal_administrativo');
+  // 5. Verificamos si tiene acceso a funciones de admin (incluye rol temporal e invitado para escaner)
+  const adminAccessRoles = ['admin_general', 'personal_administrativo', 'admin_temporal', 'invitado'];
+  const hasAdminAccess = userRoles.some(role => adminAccessRoles.includes(role));
+  // 6. Cuentas de comercio: tienen ÚNICAMENTE el rol 'invitado'. Su menú debe
+  //    quedar limpio: solo Escáner y Cerrar Sesión (sin links de socio ni carrito).
+  const isSoloInvitado = userRoles.length > 0 && userRoles.every(role => role === 'invitado');
   // -----------------------------------------
 
   const handleLogout = () => {
@@ -77,7 +84,7 @@ export default function MainLayout({ userRole }) {
             </div>
 
             {/* Enlace del Carrito (A la derecha) */}
-            {!isAdmin && (
+            {!isAdmin && !isSoloInvitado && (
               <div>
                 <Link 
                   to="/carrito" 
@@ -145,11 +152,18 @@ export default function MainLayout({ userRole }) {
               >
                 Gestionar Socios
               </Link>
+              <Link
+                to="/admin/comercios"
+                onClick={closeMenu}
+                className="block w-full text-left px-4 py-2 mt-2 bg-slate-800 text-slate-300 rounded-lg font-medium hover:bg-slate-700 hover:text-white transition-colors"
+              >
+                Comercios Adheridos
+              </Link>
             </div>
           )}
 
-          {/* Enlaces de Socio (y otros roles) */}
-          {navLinks.map((link) => (
+          {/* Enlaces de Socio (y otros roles) — ocultos para cuentas de comercio (solo rol 'invitado') */}
+          {!isSoloInvitado && navLinks.map((link) => (
             <Link
               key={link.name}
               to={link.path}
@@ -159,6 +173,24 @@ export default function MainLayout({ userRole }) {
               {link.name}
             </Link>
           ))}
+
+          {/* Sección de funciones de Admin (ej: Escáner) */}
+          {hasAdminAccess && (
+            <div className="pt-4 mt-4 border-t border-slate-800">
+              <h3 className="px-2 mb-2 text-xs font-semibold tracking-wider text-slate-500 uppercase">
+                Funciones de Admin
+              </h3>
+              <Link
+                to="/admin/escaner"
+                onClick={closeMenu}
+                className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-blue-600 hover:text-white rounded-xl font-semibold transition-all duration-200"
+              >
+                <ScanLine size={18} />
+                <span>Control de Acceso (Escáner)</span>
+              </Link>
+            </div>
+          )}
+
         </nav>
 
         {/* Sección de cierre de sesión opcional al fondo */}

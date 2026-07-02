@@ -663,6 +663,54 @@ class PaginatedResponse(BaseModel):
 # QR AUTH
 # ─────────────────────────────────────────────────────────────────────────────
 
+class UsuarioAccesoSimple(BaseModel):
+    """Versión ligera de Usuario para embeber en ComercioAsociadoResponse."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id_usuario: int
+    nombre: str
+    apellido: str
+    dni: str
+
+
+class ComercioAsociadoBase(BaseModel):
+    nombre_fantasia: str = Field(min_length=1, max_length=150)
+    rubro: Optional[str] = Field(default=None, max_length=100)
+    beneficio_ofrecido: str = Field(min_length=1, max_length=200)
+    es_activo: bool = True
+
+
+class ComercioAsociadoCreate(ComercioAsociadoBase):
+    id_usuario_acceso: Optional[int] = Field(
+        default=None,
+        description=(
+            "ID de la cuenta (típicamente rol 'invitado') que el comercio "
+            "usará para acceder al escáner de validación de beneficios."
+        ),
+    )
+
+
+class ComercioAsociadoUpdate(BaseModel):
+    """Todos los campos son opcionales — PATCH parcial."""
+    nombre_fantasia: Optional[str] = Field(default=None, min_length=1, max_length=150)
+    rubro: Optional[str] = Field(default=None, max_length=100)
+    beneficio_ofrecido: Optional[str] = Field(default=None, min_length=1, max_length=200)
+    es_activo: Optional[bool] = None
+    id_usuario_acceso: Optional[int] = None
+
+
+class ComercioAsociadoResponse(ComercioAsociadoBase):
+    model_config = ConfigDict(from_attributes=True)
+
+    id_comercio: int
+    id_usuario_acceso: Optional[int] = None
+    usuario_acceso: Optional[UsuarioAccesoSimple] = None
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# QR AUTH
+# ─────────────────────────────────────────────────────────────────────────────
+
 class QRTokenResponse(BaseModel):
     qr_token: uuid.UUID
 

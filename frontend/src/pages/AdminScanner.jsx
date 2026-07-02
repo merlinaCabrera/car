@@ -285,6 +285,7 @@ export default function AdminScanner() {
     if (!codes?.length || procesandoRef.current || resultado) return
     const rawValue = codes[0]?.rawValue
     if (!rawValue) return
+    console.log("Token capturado:", rawValue);
     validar('/qr/validar-token', { token: rawValue })
   }, [validar, resultado])
 
@@ -436,17 +437,3 @@ export default function AdminScanner() {
     </div>
   )
 }
-
-/*
- * ─── CSS ADICIONAL para la línea de escaneo animada ────────────────────────
- *
- * Agregá esto en tu tailwind.config.js dentro de theme.extend.keyframes:
- *
- *   scan: {
- *     '0%, 100%': { top: '20%', opacity: '1' },
- *     '50%':      { top: '80%', opacity: '0.6' },
- *   }
- *
- * Si no querés tocar la config, borrá el div de la línea de escaneo en
- * <MiraEscaner> y la animación seguirá funcionando con solo las esquinas.
- */

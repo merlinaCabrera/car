@@ -148,6 +148,13 @@ export default function MainLayout({ userRole }) {
               >
                 Comercios Adheridos
               </Link>
+              <Link
+                to="/admin/pagos"
+                onClick={closeMenu}
+                className="block w-full text-left px-4 py-2 mt-2 bg-slate-800 text-slate-300 rounded-lg font-medium hover:bg-slate-700 hover:text-white transition-colors"
+              >
+                Tesorería y Pagos
+              </Link>
             </div>
           )}
 

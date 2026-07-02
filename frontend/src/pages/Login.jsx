@@ -25,13 +25,24 @@ export default function Login() {
         setLoading(true);
 
         try {
-            // La función login ahora devuelve true en caso de éxito
-            // y se encarga de guardar el token y disparar la carga del perfil.
-            await login(formData.dni, formData.password);
+            // login() ahora devuelve el perfil completo del usuario recién
+            // autenticado (con roles_asignados), así que podemos decidir el
+            // redirect correcto sin esperar un re-render del contexto.
+            const userData = await login(formData.dni, formData.password);
+            const roles = (userData?.roles_asignados ?? [])
+                .map(ur => ur.rol?.nombre)
+                .filter(Boolean);
 
-            // Redirección única: siempre al panel principal del socio.
-            // El MainLayout se encargará de mostrar los accesos a otros paneles (ej: Admin).
-            navigate('/socio', { replace: true });
+            let destino = '/socio'; // default: socio, jugador, y demás roles
+
+            if (roles.includes('admin_general') || roles.includes('personal_administrativo')) {
+                destino = '/admin';
+            } else if (roles.length > 0 && roles.every(r => r === 'invitado')) {
+                // Cuentas de comercio: tienen ÚNICAMENTE el rol 'invitado'.
+                destino = '/admin/escaner';
+            }
+
+            navigate(destino, { replace: true });
         } catch (err) {
             setError(err.message);
         } finally {

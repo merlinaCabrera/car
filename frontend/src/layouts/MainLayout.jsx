@@ -7,7 +7,7 @@ import { ScanLine } from 'lucide-react';
 // Importación del asset real
 import escudoCar from '../assets/escudo-car.PNG';
 
-export default function MainLayout({ userRole }) {
+export default function MainLayout() {
   // 1. Manejo del Estado del Menú
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { user, logout } = useAuth();
@@ -20,21 +20,7 @@ export default function MainLayout({ userRole }) {
   // --- Lógica de Navegación Multi-Rol ---
   // 1. Extraemos todos los nombres de roles del usuario.
   const userRoles = user?.roles_asignados?.map(r => r.rol.nombre) || [];
-
-  // 2. Definimos los enlaces base para un socio.
-  const navLinks = [
-    { name: 'Mi Panel de Socio', path: '/socio' },
-    { name: 'Mi Perfil', path: '/perfil' },
-    { name: 'Gestión de Cuotas', path: '/cuotas' },
-    { name: 'Shopping', path: '/shopping' },
-    { name: 'Reserva de Instalaciones', path: '/alquileres' },
-  ];
-
-  // 3. Agregamos enlaces adicionales según los roles.
-  if (userRoles.includes('jugador')) {
-    navLinks.push({ name: 'Calendario Deportivo', path: '/mi-equipo' });
-  }
-
+  
   // 4. Verificamos si el usuario tiene permisos de administrador.
   const isAdmin = userRoles.includes('admin_general') || userRoles.includes('personal_administrativo');
   // 5. Verificamos si tiene acceso a funciones de admin (incluye rol temporal e invitado para escaner)
@@ -137,14 +123,7 @@ export default function MainLayout({ userRole }) {
         <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
           {/* Botón destacado para acceder al panel de admin si el rol existe */}
           {isAdmin && (
-            <div className="px-2 pb-4 mb-4 border-b border-slate-800">
-              <Link
-                to="/admin"
-                onClick={closeMenu}
-                className="block w-full text-center px-4 py-3 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-500 transition-all duration-200 shadow-lg"
-              >
-                Panel de Admin
-              </Link>
+            <div className="px-2 pb-4 mb-4 border-b border-slate-800 space-y-2">
               <Link
                 to="/admin/socios"
                 onClick={closeMenu}
@@ -161,18 +140,6 @@ export default function MainLayout({ userRole }) {
               </Link>
             </div>
           )}
-
-          {/* Enlaces de Socio (y otros roles) — ocultos para cuentas de comercio (solo rol 'invitado') */}
-          {!isSoloInvitado && navLinks.map((link) => (
-            <Link
-              key={link.name}
-              to={link.path}
-              onClick={closeMenu} // Cierra el menú al hacer clic
-              className="block px-4 py-3 text-slate-300 hover:bg-blue-600 hover:text-white rounded-xl font-semibold transition-all duration-200"
-            >
-              {link.name}
-            </Link>
-          ))}
 
           {/* Sección de funciones de Admin (ej: Escáner) */}
           {hasAdminAccess && (

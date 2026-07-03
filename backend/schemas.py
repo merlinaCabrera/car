@@ -391,6 +391,21 @@ ESTADOS_ORDEN = (
 )
 
 
+class PagoResponse(BaseModel):
+    """
+    Cabecera de cobro — patrón "Split-Order bajo un único Pago".
+    Un Pago agrupa una o más Órdenes bajo un único comprobante/transferencia.
+    """
+    model_config = ConfigDict(from_attributes=True)
+
+    id_pago: int
+    id_usuario: int
+    monto_total: Decimal
+    comprobante_url: Optional[str] = None
+    estado: str
+    fecha_creacion: datetime
+
+
 class DetalleOrdenCreate(BaseModel):
     """Un ítem dentro del carrito. El precio se resuelve en el backend."""
     id_producto: int
@@ -461,16 +476,17 @@ class OrdenResponse(BaseModel):
 
     id_orden: int
     id_usuario: int
+    id_pago: int
     fecha_creacion: datetime
     estado: str
     monto_total: Decimal
-    comprobante_url: Optional[str] = None
     motivo_rechazo: Optional[str] = None
     aprobada_por: Optional[int] = None
     aprobada_at: Optional[datetime] = None
     expira_at: datetime
     notas_admin: Optional[str] = None
     detalles: List[DetalleOrdenResponse] = []
+    pago: Optional[PagoResponse] = None
 
 
 class OrdenListResponse(BaseModel):
@@ -479,10 +495,10 @@ class OrdenListResponse(BaseModel):
 
     id_orden: int
     id_usuario: int
+    id_pago: int
     fecha_creacion: datetime
     estado: str
     monto_total: Decimal
-    comprobante_url: Optional[str] = None
     expira_at: datetime
 
 
@@ -491,8 +507,8 @@ class OrdenListResponse(BaseModel):
 # ─────────────────────────────────────────────────────────────────────────────
 
 class ComprobanteUploadResponse(BaseModel):
-    """Confirmación de que el archivo se guardó y quedó asociado a la orden."""
-    id_orden: int
+    """Confirmación de que el archivo se guardó y quedó asociado al Pago."""
+    id_pago: int
     comprobante_url: str
     mensaje: str = "Comprobante subido correctamente. Un administrador verificará tu pago."
 
@@ -593,17 +609,19 @@ class OrdenSocioPendienteResponse(BaseModel):
     Orden de cuota social en estado 'pendiente_verificacion' del socio logueado.
     Devuelta por GET /socio/cuotas/orden-pendiente.
     Incluye los detalles con el producto para que el frontend pueda
-    mostrar el monto, los meses solicitados y el estado del comprobante.
+    mostrar el monto, los meses solicitados y el estado del comprobante
+    (accesible vía `orden.pago.comprobante_url`).
     """
     model_config = ConfigDict(from_attributes=True)
 
     id_orden: int
+    id_pago: int
     estado: str
     monto_total: Decimal
-    comprobante_url: Optional[str] = None
     fecha_creacion: datetime
     expira_at: datetime
     detalles: List[DetalleOrdenResponse] = []
+    pago: Optional[PagoResponse] = None
 
 
 class OrdenCancelarResponse(BaseModel):
@@ -648,8 +666,8 @@ class GenerarOrdenCuotaPayload(BaseModel):
 
 
 class GenerarOrdenCuotaResponse(BaseModel):
-    """Confirmación de la orden recién creada, pendiente de verificación."""
     id_orden: int
+    id_pago: int    
     estado: str
     monto_total: Decimal
     meses_a_pagar: int

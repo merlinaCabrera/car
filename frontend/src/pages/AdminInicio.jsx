@@ -6,15 +6,13 @@
  * (en vez del tema oscuro que tenía antes) para mantener consistencia visual
  * en toda la sección de administración.
  *
- * Tarjeta "Solicitudes de Socios":
- *   - Fetch real a GET /admin/usuarios/pendientes al montar.
- *   - Loading skeleton mientras carga, banner de error con reintento si falla.
- *   - Acepta tanto un array de solicitudes como un objeto { total: N } como
- *     respuesta, para no atarse a un shape específico del backend.
+ * Tres tarjetas de tareas pendientes, todas con datos reales:
+ *   - "Solicitudes de Socios"  → GET /admin/usuarios/pendientes
+ *   - "Pagos por Verificar"    → GET /admin/ordenes/pendientes/count
+ *   - "Órdenes de Tienda"      → GET /admin/ordenes/pendientes-tienda/count
  *
- * Tarjetas "Pagos por Verificar" y "Órdenes de Tienda":
- *   - Todavía no tienen endpoint de conteo → placeholder con "0" y aviso de
- *     "Próximamente", con link directo a la sección correspondiente.
+ * Todas comparten loading skeleton mientras cargan y banner de error con
+ * reintento si falla el fetch correspondiente.
  */
 
 import { useState, useEffect, useCallback } from 'react'
@@ -111,15 +109,17 @@ export default function AdminInicio() {
   const { user, token } = useAuth()
   const navigate = useNavigate()
 
+  // ── Solicitudes de Socios (altas nuevas) ─────────────────────────────────────
   const [solicitudesCount, setSolicitudesCount] = useState(0)
   const [loadingSolicitudes, setLoadingSolicitudes] = useState(true)
   const [errorSolicitudes, setErrorSolicitudes] = useState(null)
 
+  // ── Pagos por Verificar (transferencias de cuota) ────────────────────────────
   const [pagosCount, setPagosCount] = useState(0)
   const [loadingPagos, setLoadingPagos] = useState(true)
   const [errorPagos, setErrorPagos] = useState(null)
 
-
+  // ── Órdenes de Tienda (indumentaria / alquileres) ────────────────────────────
   const [ordenesTiendaCount, setOrdenesTiendaCount] = useState(0)
   const [loadingOrdenesTienda, setLoadingOrdenesTienda] = useState(true)
   const [errorOrdenesTienda, setErrorOrdenesTienda] = useState(null)
@@ -211,21 +211,21 @@ export default function AdminInicio() {
 
       {/* Grilla de tareas pendientes */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <TareaCard
-          icon={ShoppingBag}
-          iconColor="bg-blue-100 text-blue-700"
-          titulo="Órdenes de Tienda"
+        <TareaCard
+          icon={UserPlus}
+          iconColor="bg-amber-100 text-amber-700"
+          titulo="Solicitudes de Socios"
           descripcion={
-            !loadingOrdenesTienda && !errorOrdenesTienda && ordenesTiendaCount === 0
-              ? 'No hay pedidos pendientes.'
-              : 'Pedidos de indumentaria y alquileres esperando aprobación.'
+            !loadingSolicitudes && !errorSolicitudes && solicitudesCount === 0
+              ? 'No hay solicitudes pendientes.'
+              : 'Altas nuevas esperando revisión.'
           }
-          valor={ordenesTiendaCount}
-          loading={loadingOrdenesTienda}
-          error={errorOrdenesTienda}
-          onRetry={fetchOrdenesTiendaPendientes}
-          ctaLabel="Ir a Tienda"
-          ctaPath="/admin/tienda"
+          valor={solicitudesCount}
+          loading={loadingSolicitudes}
+          error={errorSolicitudes}
+          onRetry={fetchSolicitudesPendientes}
+          ctaLabel={solicitudesCount > 0 ? 'Revisar solicitudes' : 'Ver socios'}
+          ctaPath="/admin/socios"
         />
 
         <TareaCard
@@ -249,13 +249,17 @@ export default function AdminInicio() {
           icon={ShoppingBag}
           iconColor="bg-blue-100 text-blue-700"
           titulo="Órdenes de Tienda"
-          descripcion="Todavía no hay un contador automático ni una sección dedicada."
-          valor={0}
-          loading={false}
-          error={null}
-          ctaLabel={null}
-          ctaPath={null}
-          proximamente
+          descripcion={
+            !loadingOrdenesTienda && !errorOrdenesTienda && ordenesTiendaCount === 0
+              ? 'No hay pedidos pendientes.'
+              : 'Pedidos de indumentaria y alquileres esperando aprobación.'
+          }
+          valor={ordenesTiendaCount}
+          loading={loadingOrdenesTienda}
+          error={errorOrdenesTienda}
+          onRetry={fetchOrdenesTiendaPendientes}
+          ctaLabel="Ir a Tienda"
+          ctaPath="/admin/tienda"
         />
       </div>
     </div>

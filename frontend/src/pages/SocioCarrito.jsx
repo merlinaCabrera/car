@@ -51,6 +51,11 @@ const formatoMoneda = new Intl.NumberFormat('es-AR', {
 // Copia de OrdenGeneradaModal de SocioCuotas.jsx con textos de compra.
 // Endpoint de upload: /socio/cuotas/ordenes/{id_orden}/comprobante (agnóstico).
 //
+// ─── Modal de orden generada — comprobante de transferencia ───────────────────
+//
+// Actualizado para el patrón Split-Order: el backend devuelve un PagoResponse.
+// El upload se hace sobre /pagos/{id_pago}/comprobante.
+//
 function OrdenGeneradaModal({ orden, token, onClose }) {
   const [file,        setFile]        = useState(null)
   const [isUploading, setIsUploading] = useState(false)
@@ -78,9 +83,9 @@ function OrdenGeneradaModal({ orden, token, onClose }) {
     formData.append('file', file)
 
     try {
-      // Mismo endpoint que SocioCuotas — es agnóstico al origen de la orden.
+      // NUEVA URL: Apunta a /pagos/ y usa orden.id_pago
       const res = await fetch(
-        `${API}/socio/cuotas/ordenes/${orden.id_orden}/comprobante`,
+        `${API}/socio/cuotas/pagos/${orden.id_pago}/comprobante`,
         {
           method: 'POST',
           headers: { Authorization: `Bearer ${token}` },
@@ -109,7 +114,7 @@ function OrdenGeneradaModal({ orden, token, onClose }) {
           <div>
             <h2 className="text-xl font-bold text-gray-800">¡Compra generada!</h2>
             <p className="text-sm text-gray-500 mt-1">
-              Orden #{orden.id_orden} · {formatoMoneda.format(orden.monto_total)}
+              Pago #{orden.id_pago} · {formatoMoneda.format(orden.monto_total)}
             </p>
           </div>
           <button
@@ -151,25 +156,6 @@ function OrdenGeneradaModal({ orden, token, onClose }) {
             Transferí al alias <strong className="text-gray-900">CLUB.ROBERTS</strong> y subí
             el comprobante para que podamos verificar tu pago.
           </p>
-
-          {/* Detalles de los ítems */}
-          {orden.detalles?.length > 0 && (
-            <div className="rounded-xl border border-gray-100 divide-y divide-gray-50 text-sm overflow-hidden">
-              {orden.detalles.map(d => (
-                <div key={d.id_detalle} className="flex items-center justify-between px-4 py-2.5 gap-2">
-                  <span className="text-gray-700 truncate">
-                    {d.producto?.nombre ?? `Producto #${d.id_producto}`}
-                    {d.cantidad > 1 && (
-                      <span className="ml-1 text-gray-400 text-xs">× {d.cantidad}</span>
-                    )}
-                  </span>
-                  <span className="font-semibold text-gray-900 whitespace-nowrap">
-                    {formatoMoneda.format(Number(d.precio_unitario_historico) * d.cantidad)}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
 
           {/* Upload de comprobante */}
           <div>

@@ -70,7 +70,7 @@ function OrdenGeneradaModal({ orden, onClose, token }) {
     formData.append('file', file)
 
     try {
-      const res = await fetch(`${API}/socio/cuotas/ordenes/${orden.id_orden}/comprobante`, {
+      const res = await fetch(`${API}/socio/cuotas/pagos/${orden.id_pago}/comprobante`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
         body: formData,
@@ -94,7 +94,7 @@ function OrdenGeneradaModal({ orden, onClose, token }) {
         <div className="p-6 border-b flex-shrink-0 flex items-start justify-between">
           <div>
             <h2 className="text-xl font-bold text-gray-800">Transferencia Bancaria</h2>
-            <p className="text-sm text-gray-500 mt-1">Orden #{orden.id_orden}</p>
+            <p className="text-sm text-gray-500 mt-1">Pago #{orden.id_pago} (Orden #{orden.id_orden})</p>
           </div>
           <button onClick={onClose} disabled={isUploading} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
             <X size={18} />

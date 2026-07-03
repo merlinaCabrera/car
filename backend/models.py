@@ -258,6 +258,13 @@ class Usuario(Base):
         back_populates="usuario",
     )
 
+    # Pagos realizados por este usuario (agrupan una o más órdenes)
+    pagos: Mapped[List["Pago"]] = relationship(
+        "Pago",
+        foreign_keys="Pago.id_usuario",
+        back_populates="usuario",
+    )
+
     # Categorías deportivas
     categorias: Mapped[List["UsuarioCategoria"]] = relationship(
         "UsuarioCategoria", back_populates="usuario", cascade="all, delete-orphan",
@@ -525,17 +532,86 @@ class ReservaInstalacion(Base):
         return f"<ReservaInstalacion {self.instalacion} {self.fecha_inicio:%Y-%m-%d %H:%M} [{self.estado}]>"
 
 
+class Pago(Base):
+    """
+    Cabecera de cobro — patrón "Split-Order bajo un único Pago".
+
+    Un Pago agrupa una o más Órdenes bajo un único comprobante/transferencia:
+    el socio puede pagar varios conceptos distintos (ej: cuota social +
+    alquiler de cancha) en una sola operación, subiendo UN comprobante que
+    un admin verifica UNA vez para todas las órdenes asociadas, en vez de
+    tener que aprobar cada orden por separado.
+
+    El monto_total de un Pago debe ser igual a la suma de monto_total de
+    todas sus Órdenes asociadas — esa invariante se garantiza a nivel
+    aplicación (en el router que arma el "carrito"), no con un CHECK de DB,
+    porque calcular una suma de filas relacionadas en un CHECK constraint
+    no es soportado por PostgreSQL de forma nativa.
+    """
+    __tablename__ = "pagos"
+
+    id_pago: Mapped[int] = mapped_column(Integer, primary_key=True)
+    id_usuario: Mapped[int] = mapped_column(
+        ForeignKey("usuarios.id_usuario", ondelete="RESTRICT"), nullable=False,
+    )
+    monto_total: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
+    comprobante_url: Mapped[Optional[str]] = mapped_column(Text)
+    estado: Mapped[str] = mapped_column(
+        String(40), nullable=False, server_default=text("'pendiente'"),
+        comment="pendiente | verificado | rechazado",
+    )
+    fecha_creacion: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now(),
+    )
+
+    # Relaciones
+    usuario: Mapped["Usuario"] = relationship(
+        "Usuario",
+        foreign_keys=[id_usuario],
+        back_populates="pagos",
+    )
+    ordenes: Mapped[List["Orden"]] = relationship(
+        "Orden",
+        back_populates="pago",
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            "estado IN ('pendiente', 'verificado', 'rechazado')",
+            name="chk_pago_estado",
+        ),
+        Index("idx_pagos_usuario", "id_usuario"),
+        Index(
+            "idx_pagos_estado",
+            "estado",
+            postgresql_where=text("estado = 'pendiente'"),
+        ),
+    )
+
+    def __repr__(self) -> str:
+        return f"<Pago #{self.id_pago} usuario={self.id_usuario} estado={self.estado}>"
+
+
 class Orden(Base):
     """
     Cabecera del movimiento contable. Una orden puede contener múltiples ítems.
     La aprobación es atómica: cuotas + reservas + stock se actualizan juntos
     en la función fn_aprobar_orden() del lado de PostgreSQL.
+
+    A partir del patrón Split-Order, cada Orden pertenece obligatoriamente a
+    un Pago (id_pago NOT NULL): el comprobante y la verificación viven en el
+    Pago, no en la Orden individual. Una orden ya no se aprueba "sola" — se
+    aprueba el Pago que la contiene (y con él, todas sus órdenes hermanas).
     """
     __tablename__ = "ordenes"
 
     id_orden: Mapped[int] = mapped_column(Integer, primary_key=True)
     id_usuario: Mapped[int] = mapped_column(
         ForeignKey("usuarios.id_usuario", ondelete="RESTRICT"), nullable=False,
+    )
+    id_pago: Mapped[int] = mapped_column(
+        ForeignKey("pagos.id_pago", ondelete="RESTRICT"), nullable=False,
+        comment="Todo comprobante y verificación vive en el Pago, no acá.",
     )
     fecha_creacion: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now(),
@@ -544,7 +620,6 @@ class Orden(Base):
         String(40), nullable=False, server_default=text("'pendiente_verificacion'"),
     )
     monto_total: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
-    comprobante_url: Mapped[Optional[str]] = mapped_column(Text)
     motivo_rechazo: Mapped[Optional[str]] = mapped_column(
         Text,
         comment="Obligatorio cuando estado = 'rechazada'.",
@@ -567,6 +642,11 @@ class Orden(Base):
         foreign_keys=[id_usuario],
         back_populates="ordenes",
     )
+    pago: Mapped["Pago"] = relationship(
+        "Pago",
+        foreign_keys=[id_pago],
+        back_populates="ordenes",
+    )
     aprobador: Mapped[Optional["Usuario"]] = relationship(
         "Usuario", foreign_keys=[aprobada_por],
     )
@@ -587,6 +667,7 @@ class Orden(Base):
             name="chk_orden_estado",
         ),
         Index("idx_ordenes_usuario", "id_usuario"),
+        Index("idx_ordenes_pago",    "id_pago"),
         Index(
             "idx_ordenes_estado",
             "estado",
@@ -600,7 +681,7 @@ class Orden(Base):
     )
 
     def __repr__(self) -> str:
-        return f"<Orden #{self.id_orden} usuario={self.id_usuario} estado={self.estado}>"
+        return f"<Orden #{self.id_orden} usuario={self.id_usuario} pago={self.id_pago} estado={self.estado}>"
 
 
 class DetalleOrden(Base):

@@ -81,6 +81,13 @@ export default function MainLayout({ userRole }) {
                     </span>
                   )}
                 </Link>
+                <Link to="/admin/tienda" onClick={closeMenu} className="block w-full text-left px-4 py-2 mt-2 bg-slate-800 text-slate-300 rounded-lg font-medium hover:bg-slate-700 hover:text-white transition-colors">
+                  Órdenes de Tienda
+                </Link>
+                <Link to="/mis-compras" className="...">
+                  <ShoppingBag className="h-5 w-5" />
+                  Mis Compras
+                </Link>
               </div>
             )}
 

@@ -8,31 +8,47 @@ Router del carrito de compras genérico del socio.
 ────────────────────────────────────────────────────────────────────────────────
 
 Endpoints:
-  POST /socio/carrito/checkout  → Genera Orden en 'pendiente_verificacion'
-                                   a partir de los ítems del carrito.
+  POST /socio/carrito/checkout   → Genera un Pago + Órdenes hijas (split-order)
+                                    a partir de los ítems del carrito.
+  GET  /socio/carrito/productos  → Catálogo disponible para la tienda del socio.
 
 Subida de comprobante:
-  Se reutiliza el endpoint ya existente en socio_cuotas (agnóstico al origen):
-  POST /socio/cuotas/ordenes/{id_orden}/comprobante
+  Se adjunta al PAGO (no a cada orden individual), vía el endpoint agnóstico
+  al origen: POST /socio/cuotas/pagos/{id_pago}/comprobante
 
-Decisiones técnicas:
+── Patrón "Split-Order bajo un único Pago" ─────────────────────────────────────
+  El socio puede tener en el carrito, al mismo tiempo, ítems de dos dominios
+  de negocio distintos:
+    - cuota_social  → siempre se factura en SU PROPIA orden.
+    - tienda        → alquileres, indumentaria, otro → van juntos en otra orden.
+  Motivo de la separación: cada dominio tiene lógica de aprobación distinta
+  del lado de fn_aprobar_orden() (la cuota impacta deuda_historica_meses, la
+  tienda impacta stock/reservas), así que conviene que sean órdenes separadas
+  aunque el socio las pague con una sola transferencia y un solo comprobante.
+  Ese comprobante único vive en el `Pago` que agrupa ambas órdenes — por eso
+  el checkout ya NO crea una Orden suelta, crea un Pago y cuelga de él 1 o 2
+  Órdenes según qué haya en el carrito.
+
+Decisiones técnicas (se mantienen del router anterior):
   ─ PRECIO: el valor que envía el frontend se IGNORA completamente.
     El backend lee precio_actual de ProductoServicio en el momento exacto
     del checkout. Esto cierra el vector de manipulación de precios.
 
-  ─ STOCK: se VERIFICA disponibilidad en el checkout para dar feedback
-    inmediato al usuario, pero NO se decrementa todavía.
-    El decremento real ocurre de forma atómica cuando el admin aprueba
-    la orden (flujo existente en admin_pagos / fn_aprobar_orden).
-    Riesgo aceptado en MVP: dos socios podrían pedir el último ítem al
-    mismo tiempo; el admin resuelve el conflicto al aprobar.
+  ─ STOCK: se descuenta INMEDIATAMENTE en el checkout, no al aprobar.
+    Esto evita la sobreventa (dos socios reservando el mismo último ítem
+    mientras ambas órdenes están 'pendiente_verificacion'). El stock
+    reservado se libera automáticamente si el admin rechaza la orden
+    (ver rechazar_orden en admin_ordenes.py) o queda consumido si la
+    aprueba. La cuota_social nunca tiene stock (siempre None), así que
+    este descuento no la afecta.
 
-  ─ TRANSACCIÓN: Orden + DetalleOrden(es) + AuditLog en un único commit.
-    Si cualquier paso falla, la DB queda intacta.
+  ─ TRANSACCIÓN: Pago + Orden(es) + DetalleOrden(es) + AuditLog en un único
+    commit. Si cualquier paso falla, la DB queda intacta (todo lo agregado
+    antes del commit se descarta).
 
-  ─ REFRESH CON JOINEDLOAD: tras el commit se vuelve a cargar la orden
-    con sus detalles y productos anidados para que OrdenResponse pueda
-    serializar el campo detalles[].producto correctamente.
+  ─ RETORNO: PagoResponse (no OrdenResponse). El frontend necesita el
+    id_pago para saber dónde adjuntar el comprobante — ya no existe un solo
+    "id_orden" representativo del checkout, puede haber hasta dos órdenes.
 """
 
 from __future__ import annotations
@@ -41,7 +57,7 @@ from decimal import Decimal
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status, Query
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session
 
 import models
 import schemas
@@ -73,18 +89,19 @@ def _extraer_ip(request: Request) -> Optional[str]:
 
 @router.post(
     "/checkout",
-    response_model=schemas.OrdenResponse,
+    response_model=schemas.PagoResponse,
     status_code=status.HTTP_201_CREATED,
-    summary="Generar una orden de compra con los ítems del carrito",
+    summary="Generar un Pago (con sus Órdenes hijas) a partir de los ítems del carrito",
 )
 def checkout_carrito(
     payload: schemas.OrdenCreate,
     request: Request,
     db: Session = Depends(get_db),
     current_user: models.Usuario = Depends(require_roles(*_ROLES_COMPRADORES)),
-) -> schemas.OrdenResponse:
+) -> models.Pago:
     """
-    Convierte el carrito del frontend en una Orden persistida.
+    Convierte el carrito del frontend en un Pago con 1 o 2 Órdenes hijas
+    (split-order: cuota_social separada de tienda).
 
     Flujo (todo en una sola transacción):
       1. Verifica que el usuario esté activo.
@@ -92,16 +109,18 @@ def checkout_carrito(
          a. Busca el ProductoServicio por id_producto en la BD.
          b. Verifica que exista y que es_activo sea True.
          c. Verifica que haya stock suficiente (si aplica).
-         d. Congela precio_actual como precio_unitario_historico.
-      3. Calcula monto_total = Σ(precio_congelado × cantidad).
-      4. Crea la Orden en estado 'pendiente_verificacion'.
-      5. Crea un DetalleOrden por cada ítem.
-      6. Registra CHECKOUT_CARRITO en audit_log.
-      7. Commit único.
-      8. Recarga con joinedload y retorna OrdenResponse completo.
-
-    El frontend debe llamar a POST /socio/cuotas/ordenes/{id_orden}/comprobante
-    inmediatamente después para que el socio adjunte el comprobante de pago.
+         d. Descuenta stock ya en este paso (excepto cuota_social, que no tiene).
+         e. Congela precio_actual como precio_unitario_historico.
+      3. Calcula monto_total GLOBAL = Σ(precio_congelado × cantidad) de todo el carrito.
+      4. Crea el Pago (estado='pendiente', monto_total=global) y hace flush
+         para obtener id_pago.
+      5. Separa los ítems resueltos en dos dominios: cuota_social vs. tienda.
+      6. Por cada dominio no vacío, crea UNA Orden (id_pago=el recién creado,
+         monto_total=subtotal de ese dominio) y sus DetalleOrden.
+      7. Registra CHECKOUT_PAGO en audit_log, referenciado a "pagos"/id_pago.
+      8. Commit único.
+      9. Retorna el Pago (PagoResponse). El frontend usa pago.id_pago para
+         adjuntar el comprobante único de la operación.
     """
 
     # 1 ── Usuario activo ───────────────────────────────────────────────────
@@ -114,8 +133,8 @@ def checkout_carrito(
     # 2 ── Resolución de productos y validaciones ───────────────────────────
     #
     # items_resueltos: lista de tuplas (ProductoServicio, DetalleOrdenCreate)
-    # Permite iterar dos veces (para calcular total y luego insertar detalles)
-    # sin volver a consultar la BD.
+    # Permite iterar varias veces (calcular totales, separar por dominio,
+    # insertar detalles) sin volver a consultar la BD.
     #
     items_resueltos: list[tuple[models.ProductoServicio, schemas.DetalleOrdenCreate]] = []
 
@@ -154,43 +173,109 @@ def checkout_carrito(
                 ),
             )
 
+        # 2d. Descontar stock ya en el checkout, no al aprobar (evita overselling).
+        #     Se restaura si el admin rechaza la orden (ver rechazar_orden).
+        #     cuota_social siempre tiene stock=None, así que nunca entra acá.
+        if producto.stock is not None:
+            producto.stock -= item.cantidad
+
         items_resueltos.append((producto, item))
 
-    # 3 ── Calcular monto_total exclusivamente en el backend ────────────────
-    monto_total: Decimal = sum(
-        producto.precio_actual * Decimal(item.cantidad)
-        for producto, item in items_resueltos
+    # 3 ── Calcular monto_total GLOBAL exclusivamente en el backend ─────────
+    monto_total_global: Decimal = sum(
+        (producto.precio_actual * Decimal(item.cantidad) for producto, item in items_resueltos),
+        Decimal("0"),
     )
 
-    # 4 ── Crear Orden ──────────────────────────────────────────────────────
-    nueva_orden = models.Orden(
+    # 4 ── Crear el Pago (cabecera única de cobro) ───────────────────────────
+    nuevo_pago = models.Pago(
         id_usuario=current_user.id_usuario,
-        estado="pendiente_verificacion",
-        monto_total=monto_total,
-        # expira_at: server_default en el modelo = NOW() + 48 horas
+        monto_total=monto_total_global,
+        estado="pendiente",
+        # comprobante_url queda NULL hasta que el socio lo suba.
     )
-    db.add(nueva_orden)
-    db.flush()  # obtenemos nueva_orden.id_orden sin hacer commit aún
+    db.add(nuevo_pago)
+    db.flush()  # obtenemos nuevo_pago.id_pago sin hacer commit aún
 
-    # 5 ── Crear DetalleOrden con precio histórico congelado ────────────────
-    for producto, item in items_resueltos:
-        db.add(models.DetalleOrden(
-            id_orden=nueva_orden.id_orden,
-            id_producto=producto.id_producto,
-            cantidad=item.cantidad,
-            precio_unitario_historico=producto.precio_actual,  # ← CONGELADO
-            mes_referencia=item.mes_referencia,                # None para no-cuotas
-        ))
+    # 5 ── Split-order: separar ítems resueltos por dominio de negocio ──────
+    items_cuotas = [
+        (producto, item) for producto, item in items_resueltos
+        if producto.categoria == "cuota_social"
+    ]
+    items_tienda = [
+        (producto, item) for producto, item in items_resueltos
+        if producto.categoria != "cuota_social"
+    ]
 
-    # 6 ── Audit log ────────────────────────────────────────────────────────
+    ordenes_creadas: list[models.Orden] = []
+
+    def _crear_orden_para_dominio(
+        grupo: list[tuple[models.ProductoServicio, schemas.DetalleOrdenCreate]],
+    ) -> Optional[models.Orden]:
+        """Crea una Orden + sus DetalleOrden para un dominio (cuota o tienda).
+        No hace nada si el grupo está vacío."""
+        if not grupo:
+            return None
+
+        subtotal: Decimal = sum(
+            (producto.precio_actual * Decimal(item.cantidad) for producto, item in grupo),
+            Decimal("0"),
+        )
+
+        orden = models.Orden(
+            id_usuario=current_user.id_usuario,
+            id_pago=nuevo_pago.id_pago,
+            estado="pendiente_verificacion",
+            monto_total=subtotal,
+            # expira_at: server_default en el modelo = NOW() + 48 horas
+        )
+        db.add(orden)
+        db.flush()  # obtenemos orden.id_orden para los DetalleOrden
+
+        for producto, item in grupo:
+            db.add(models.DetalleOrden(
+                id_orden=orden.id_orden,
+                id_producto=producto.id_producto,
+                cantidad=item.cantidad,
+                precio_unitario_historico=producto.precio_actual,  # ← CONGELADO
+                mes_referencia=item.mes_referencia,                # None para no-cuotas
+            ))
+
+        return orden
+
+    # 6 ── Crear una Orden por dominio no vacío ──────────────────────────────
+    orden_cuota  = _crear_orden_para_dominio(items_cuotas)
+    orden_tienda = _crear_orden_para_dominio(items_tienda)
+
+    for orden in (orden_cuota, orden_tienda):
+        if orden is not None:
+            ordenes_creadas.append(orden)
+
+    # Salvaguarda: si por algún motivo no se generó ninguna orden (no debería
+    # pasar si payload.items no está vacío), no dejamos un Pago huérfano.
+    if not ordenes_creadas:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="El carrito no generó ninguna orden válida.",
+        )
+
+    # 7 ── Audit log — referenciado al Pago, no a una orden individual ──────
     db.add(models.AuditLog(
         usuario_actor=current_user.id_usuario,
-        accion="CHECKOUT_CARRITO",
-        tabla_afectada="ordenes",
-        registro_id=nueva_orden.id_orden,
+        accion="CHECKOUT_PAGO",
+        tabla_afectada="pagos",
+        registro_id=nuevo_pago.id_pago,
         detalle={
-            "monto_total": str(monto_total),
+            "monto_total": str(monto_total_global),
             "cantidad_items": len(items_resueltos),
+            "ordenes_generadas": [
+                {
+                    "id_orden": orden.id_orden,
+                    "dominio": "cuota_social" if orden is orden_cuota else "tienda",
+                    "monto_total": str(orden.monto_total),
+                }
+                for orden in ordenes_creadas
+            ],
             "items": [
                 {
                     "id_producto":  producto.id_producto,
@@ -206,45 +291,14 @@ def checkout_carrito(
         ip_origen=_extraer_ip(request),
     ))
 
-    # 7 ── Commit único ─────────────────────────────────────────────────────
+    # 8 ── Commit único — Pago + Orden(es) + DetalleOrden(es) + AuditLog ────
     db.commit()
+    db.refresh(nuevo_pago)
 
-    # 8 ── Reload con relaciones para serializar OrdenResponse.detalles ─────
-    #
-    # db.refresh(nueva_orden) no carga las relaciones lazy.
-    # Hacemos una query explícita con joinedload para que Pydantic pueda
-    # acceder a detalles[].producto sin lazy-load fuera de la sesión.
-    #
-    orden_completa = (
-        db.query(models.Orden)
-        .options(
-            joinedload(models.Orden.detalles)
-            .joinedload(models.DetalleOrden.producto)
-        )
-        .filter(models.Orden.id_orden == nueva_orden.id_orden)
-        .first()
-    )
-
-    return orden_completa
+    return nuevo_pago
 
 
-# ════════════════════════════════════════════════════════════════════════════════
-# FRAGMENTO BACKEND — agregar a backend/routers/socio_carrito.py
-# ════════════════════════════════════════════════════════════════════════════════
-#
-# Importar en el encabezado del archivo (si no están ya):
-#   from typing import List, Optional
-#   from fastapi import Query
-#
-# ────────────────────────────────────────────────────────────────────────────────
-
-"""
-GET /socio/carrito/productos
-
-Retorna el catálogo de productos disponibles para el socio.
-Excluye 'cuota_social' (tiene su propia pantalla) y los inactivos.
-Soporta filtro opcional por categoría.
-"""
+# ─── GET /socio/carrito/productos ─────────────────────────────────────────────
 
 @router.get(
     "/productos",
@@ -294,3 +348,53 @@ def listar_productos_tienda(
     agotados    = [p for p in productos if p.stock is not None and p.stock == 0]
 
     return disponibles + agotados
+
+# ─── GET /socio/carrito/mis-compras ───────────────────────────────────────────
+
+@router.get(
+    "/mis-compras",
+    response_model=List[schemas.OrdenResponse],
+    summary="Historial de órdenes de tienda (indumentaria/alquileres) del socio logueado",
+)
+def listar_mis_compras(
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(require_roles(*_ROLES_COMPRADORES)),
+) -> List[schemas.OrdenResponse]:
+    """
+    Devuelve las órdenes de "tienda" del socio: alquileres, indumentaria, otro.
+    Excluye explícitamente cualquier orden que tenga al menos un ítem de
+    categoría 'cuota_social' — esas se ven en la pantalla dedicada "Mis Cuotas"
+    (socio_cuotas.py), no acá, para no duplicar/confundir el historial.
+
+    La exclusión se hace con NOT EXISTS en vez de traer todo y filtrar en
+    Python: así una orden mixta (si alguna vez llegara a existir) tampoco
+    se cuela, sin tener que cargar sus detalles primero para decidir.
+    """
+    subquery_tiene_cuota = (
+        db.query(models.DetalleOrden.id_detalle)
+        .join(
+            models.ProductoServicio,
+            models.DetalleOrden.id_producto == models.ProductoServicio.id_producto,
+        )
+        .filter(
+            models.DetalleOrden.id_orden == models.Orden.id_orden,
+            models.ProductoServicio.categoria == "cuota_social",
+        )
+        .exists()
+    )
+
+    ordenes = (
+        db.query(models.Orden)
+        .options(
+            joinedload(models.Orden.detalles).joinedload(models.DetalleOrden.producto),
+            joinedload(models.Orden.pago),
+        )
+        .filter(
+            models.Orden.id_usuario == current_user.id_usuario,
+            ~subquery_tiene_cuota,
+        )
+        .order_by(models.Orden.fecha_creacion.desc())
+        .all()
+    )
+
+    return ordenes

@@ -94,6 +94,7 @@ def _obtener_orden_o_404(db: Session, id_orden: int) -> models.Orden:
         .options(
             joinedload(models.Orden.detalles).joinedload(models.DetalleOrden.producto),
             joinedload(models.Orden.usuario),
+            joinedload(models.Orden.pago),
         )
         .filter(models.Orden.id_orden == id_orden)
         .first()
@@ -177,6 +178,7 @@ def listar_ordenes_pendientes(
         .options(
             joinedload(models.Orden.detalles).joinedload(models.DetalleOrden.producto),
             joinedload(models.Orden.usuario),
+            joinedload(models.Orden.pago),
         )
         .filter(models.Orden.estado == "pendiente_verificacion")
     )
@@ -289,6 +291,19 @@ def aprobar_orden(
     if payload.notas_admin:
         orden.notas_admin = payload.notas_admin
 
+    # ── Resolver el Pago padre ─────────────────────────────────────────────
+    # Aprobar una orden significa que el admin vio el comprobante adjunto al
+    # Pago y confirmó que la transferencia es real. Si el Pago todavía estaba
+    # 'pendiente', queda 'verificado'. Se mantiene la aprobación GRANULAR
+    # a nivel Orden (Tesorería y Secretaría siguen operando cada una sobre
+    # su propio dominio de forma independiente); esto solo refleja en el
+    # Pago que YA HUBO al menos una verificación positiva sobre su comprobante.
+    pago = orden.pago
+    pago_marcado_verificado = False
+    if pago is not None and pago.estado == "pendiente":
+        pago.estado = "verificado"
+        pago_marcado_verificado = True
+
     _registrar_audit(
         db=db,
         actor_id=admin.id_usuario,
@@ -303,6 +318,8 @@ def aprobar_orden(
             "deuda_historica_meses_despues": socio.deuda_historica_meses,
             "monto_total": str(orden.monto_total),
             "notas_admin": payload.notas_admin,
+            "id_pago": orden.id_pago,
+            "pago_marcado_verificado": pago_marcado_verificado,
         },
         ip=_extraer_ip(request),
     )
@@ -341,6 +358,28 @@ def rechazar_orden(
     orden.estado = "rechazada"
     orden.motivo_rechazo = payload.motivo_rechazo
 
+    # ── Resolver el Pago padre si quedó "huérfano" ──────────────────────────
+    # Un Pago puede tener más de una Orden hija (split-order: cuota + tienda).
+    # Si esta era la única orden útil (ninguna otra sigue pendiente ni ya fue
+    # aprobada), el rechazo es total: no tiene sentido dejar el Pago
+    # eternamente 'pendiente' sin nada más que resolver.
+    quedan_ordenes_utiles = (
+        db.query(models.Orden.id_orden)
+        .filter(
+            models.Orden.id_pago == orden.id_pago,
+            models.Orden.id_orden != orden.id_orden,
+            models.Orden.estado.in_(("pendiente_verificacion", "aprobada")),
+        )
+        .first()
+        is not None
+    )
+
+    pago = orden.pago
+    pago_marcado_rechazado = False
+    if pago is not None and pago.estado == "pendiente" and not quedan_ordenes_utiles:
+        pago.estado = "rechazado"
+        pago_marcado_rechazado = True
+
     _registrar_audit(
         db=db,
         actor_id=admin.id_usuario,
@@ -351,6 +390,8 @@ def rechazar_orden(
             "id_usuario": orden.id_usuario,
             "motivo_rechazo": payload.motivo_rechazo,
             "monto_total": str(orden.monto_total),
+            "id_pago": orden.id_pago,
+            "pago_marcado_rechazado": pago_marcado_rechazado,
         },
         ip=_extraer_ip(request),
     )

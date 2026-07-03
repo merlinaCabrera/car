@@ -3,11 +3,13 @@
 Router de autogestión de Cuotas Sociales — pantalla "Mis Cuotas" del socio.
 
 Endpoints:
-  GET  /socio/cuotas/estado           → Estado financiero del socio logueado.
-  GET  /socio/cuotas/historial        → Historial de pagos de cuota ya aprobados.
-  POST /socio/cuotas/generar-orden    → El socio pide pagar N meses (queda pendiente
-                                          de verificación por un admin, o de que suba
-                                          comprobante — igual que cualquier otra orden).
+  GET  /socio/cuotas/estado                → Estado financiero del socio logueado.
+  GET  /socio/cuotas/historial             → Historial de pagos de cuota ya aprobados.
+  POST /socio/cuotas/generar-orden         → El socio pide pagar N meses (crea un
+                                               Pago + su Orden hija de cuota_social).
+  GET  /socio/cuotas/orden-pendiente       → Orden de cuota pendiente del socio (o null).
+  POST /socio/cuotas/ordenes/{id}/cancelar → Cancela una orden propia pendiente.
+  POST /socio/cuotas/pagos/{id_pago}/comprobante → Sube el comprobante del PAGO.
 
 Todos los endpoints requieren rol 'socio'.
 
@@ -15,6 +17,11 @@ Decisiones técnicas:
   - Igual que en admin_pagos.py, el precio de referencia es siempre
     ProductoServicio.precio_actual (categoria='cuota_social'), porque es el
     valor que se congela en cada DetalleOrden.
+  - Patrón "Split-Order bajo un único Pago": Orden.id_pago es NOT NULL, así
+    que generar-orden ya NO crea una Orden suelta. Primero crea un Pago
+    (estado='pendiente', comprobante_url=NULL) y recién después cuelga de él
+    la Orden de cuota_social. El comprobante se sube al PAGO, no a la Orden
+    — por eso el endpoint de subida ahora vive en /pagos/{id_pago}/comprobante.
   - generar-orden crea la orden en estado 'pendiente_verificacion' (NO
     'aprobada' — a diferencia del cobro manual de admin_pagos, acá no hay
     plata en mano todavía; el socio tiene que subir comprobante o coordinar
@@ -162,7 +169,9 @@ def obtener_historial_pagos(
     detalles = (
         db.query(models.DetalleOrden)
         .join(models.Orden, models.DetalleOrden.id_orden == models.Orden.id_orden)
-        .options(joinedload(models.DetalleOrden.orden))
+        .options(
+            joinedload(models.DetalleOrden.orden).joinedload(models.Orden.pago)
+        )
         .filter(
             models.Orden.id_usuario == socio.id_usuario,
             models.Orden.estado == "aprobada",
@@ -179,7 +188,7 @@ def obtener_historial_pagos(
             cantidad_meses=d.cantidad,
             monto_pagado=d.precio_unitario_historico * d.cantidad,
             mes_referencia=d.mes_referencia,
-            comprobante_url=d.orden.comprobante_url,
+            comprobante_url=d.orden.pago.comprobante_url if d.orden.pago else None,
         )
         for d in detalles
     ]
@@ -225,8 +234,21 @@ def generar_orden_cuota(
     precio_congelado = producto_cuota.precio_actual
     monto_total = precio_congelado * payload.meses_a_pagar
 
+    # 1 ── Crear el Pago (cabecera única de cobro) ──────────────────────────
+    # Split-Order: la Orden.id_pago es NOT NULL, así que el Pago se crea
+    # PRIMERO. El socio va a subir el comprobante acá, no en la Orden.
+    nuevo_pago = models.Pago(
+        id_usuario=socio.id_usuario,
+        monto_total=monto_total,
+        estado="pendiente",
+    )
+    db.add(nuevo_pago)
+    db.flush()  # necesitamos nuevo_pago.id_pago para la Orden
+
+    # 2 ── Crear la Orden hija de cuota_social, colgada del Pago ────────────
     nueva_orden = models.Orden(
         id_usuario=socio.id_usuario,
+        id_pago=nuevo_pago.id_pago,
         estado="pendiente_verificacion",
         monto_total=monto_total,
     )
@@ -241,6 +263,9 @@ def generar_orden_cuota(
     )
     db.add(detalle)
 
+    # Un solo registro de auditoría alcanza: referenciamos la Orden (que es
+    # el objeto de negocio concreto — "el socio pidió pagar N meses"), y
+    # dejamos el id_pago en el detalle para trazabilidad completa.
     _registrar_audit(
         db=db,
         actor_id=socio.id_usuario,
@@ -248,6 +273,7 @@ def generar_orden_cuota(
         tabla_afectada="ordenes",
         registro_id=nueva_orden.id_orden,
         detalle={
+            "id_pago": nuevo_pago.id_pago,
             "meses_a_pagar": payload.meses_a_pagar,
             "precio_unitario_historico": str(precio_congelado),
             "monto_total": str(monto_total),
@@ -260,6 +286,7 @@ def generar_orden_cuota(
 
     return schemas.GenerarOrdenCuotaResponse(
         id_orden=nueva_orden.id_orden,
+        id_pago=nuevo_pago.id_pago,
         estado=nueva_orden.estado,
         monto_total=nueva_orden.monto_total,
         meses_a_pagar=payload.meses_a_pagar,
@@ -293,7 +320,8 @@ def obtener_orden_pendiente(
         db.query(models.Orden)
         .join(models.DetalleOrden, models.DetalleOrden.id_orden == models.Orden.id_orden)
         .options(
-            joinedload(models.Orden.detalles).joinedload(models.DetalleOrden.producto)
+            joinedload(models.Orden.detalles).joinedload(models.DetalleOrden.producto),
+            joinedload(models.Orden.pago),
         )
         .filter(
             models.Orden.id_usuario == socio.id_usuario,
@@ -354,6 +382,28 @@ def cancelar_orden_pendiente(
 
     orden.estado = "cancelada_socio"
 
+    # ── Resolver el Pago padre si se quedó sin órdenes activas ──────────────
+    # Split-Order: un Pago puede tener más de una Orden hija (ej: cuota +
+    # tienda). Si esta era la última orden en 'pendiente_verificacion', no
+    # tiene sentido dejar el Pago eternamente en 'pendiente' sin nada que
+    # verificar — lo marcamos 'rechazado' (estado terminal).
+    pago = orden.pago
+    pago_actualizado = False
+    if pago is not None and pago.estado == "pendiente":
+        quedan_ordenes_activas = (
+            db.query(models.Orden.id_orden)
+            .filter(
+                models.Orden.id_pago == pago.id_pago,
+                models.Orden.id_orden != orden.id_orden,
+                models.Orden.estado == "pendiente_verificacion",
+            )
+            .first()
+            is not None
+        )
+        if not quedan_ordenes_activas:
+            pago.estado = "rechazado"
+            pago_actualizado = True
+
     _registrar_audit(
         db=db,
         actor_id=socio.id_usuario,
@@ -364,7 +414,8 @@ def cancelar_orden_pendiente(
             "estado_anterior": "pendiente_verificacion",
             "estado_nuevo": "cancelada_socio",
             "monto_total": str(orden.monto_total),
-            "tenia_comprobante": orden.comprobante_url is not None,
+            "id_pago": orden.id_pago,
+            "pago_marcado_rechazado": pago_actualizado,
         },
         ip=_extraer_ip(request),
     )
@@ -381,41 +432,46 @@ def cancelar_orden_pendiente(
 # ─── ENDPOINT: Subir comprobante de pago ──────────────────────────────────────
 
 @router.post(
-    "/ordenes/{id_orden}/comprobante",
+    "/pagos/{id_pago}/comprobante",
     response_model=schemas.ComprobanteUploadResponse,
-    summary="Subir el comprobante de pago de una orden propia",
+    summary="Subir el comprobante de un pago propio (cubre todas sus órdenes hijas)",
 )
 async def subir_comprobante(
-    id_orden: int,
+    id_pago: int,
     request: Request,
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
     socio: models.Usuario = Depends(require_roles(*_ROLES_SOCIO)),
 ) -> schemas.ComprobanteUploadResponse:
-    orden = (
-        db.query(models.Orden)
-        .filter(models.Orden.id_orden == id_orden)
+    """
+    El comprobante ahora se adjunta al Pago (patrón Split-Order), no a cada
+    Orden individual — un mismo comprobante puede cubrir, por ejemplo, la
+    orden de cuota_social y la orden de tienda generadas en un mismo checkout.
+    """
+    pago = (
+        db.query(models.Pago)
+        .filter(models.Pago.id_pago == id_pago)
         .first()
     )
-    if orden is None:
+    if pago is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="La orden indicada no existe.",
+            detail="El pago indicado no existe.",
         )
 
-    # No revelamos si la orden existe pero es de otro socio: mismo mensaje que "no existe".
-    if orden.id_usuario != socio.id_usuario:
+    # No revelamos si el pago existe pero es de otro socio: mismo mensaje que "no existe".
+    if pago.id_usuario != socio.id_usuario:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="La orden indicada no existe.",
+            detail="El pago indicado no existe.",
         )
 
-    if orden.estado != "pendiente_verificacion":
+    if pago.estado != "pendiente":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=(
-                f"No se puede subir comprobante: la orden está en estado "
-                f"'{orden.estado}', no 'pendiente_verificacion'."
+                f"No se puede subir comprobante: el pago está en estado "
+                f"'{pago.estado}', no 'pendiente'."
             ),
         )
 
@@ -475,15 +531,15 @@ async def subir_comprobante(
         )
 
     comprobante_url = f"/uploads/comprobantes/{nombre_archivo}"
-    comprobante_anterior = orden.comprobante_url
-    orden.comprobante_url = comprobante_url
+    comprobante_anterior = pago.comprobante_url
+    pago.comprobante_url = comprobante_url
 
     _registrar_audit(
         db=db,
         actor_id=socio.id_usuario,
         accion="SUBIR_COMPROBANTE_CUOTA",
-        tabla_afectada="ordenes",
-        registro_id=orden.id_orden,
+        tabla_afectada="pagos",
+        registro_id=pago.id_pago,
         detalle={
             "comprobante_url": comprobante_url,
             "comprobante_anterior": comprobante_anterior,
@@ -494,9 +550,9 @@ async def subir_comprobante(
     )
 
     db.commit()
-    db.refresh(orden)
+    db.refresh(pago)
 
     return schemas.ComprobanteUploadResponse(
-        id_orden=orden.id_orden,
-        comprobante_url=orden.comprobante_url,
+        id_pago=pago.id_pago,
+        comprobante_url=pago.comprobante_url,
     )

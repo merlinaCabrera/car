@@ -81,7 +81,7 @@ function VerificacionModal({ orden, onClose, onActionSuccess, token }) {
   const [showRechazoInput, setShowRechazoInput] = useState(false)
   const [motivoRechazo, setMotivoRechazo] = useState('')
 
-  const esPdf = orden.comprobante_url?.toLowerCase().endsWith('.pdf')
+  const esPdf = orden.pago?.comprobante_url?.toLowerCase().endsWith('.pdf')
   
   // Novedad: Lógica de corrección de meses
   const detalleCuota = orden.detalles?.find(d => d.producto?.categoria === 'cuota_social')
@@ -195,10 +195,10 @@ function VerificacionModal({ orden, onClose, onActionSuccess, token }) {
 
           <div className="space-y-2">
             <h3 className="text-sm font-semibold text-gray-700">Comprobante adjunto:</h3>
-            {orden.comprobante_url ? (
+            {orden.pago?.comprobante_url ? (
               <div className="border rounded-lg overflow-hidden">
                 {esPdf ? (
-                  <a href={`${API}${orden.comprobante_url}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-4 bg-gray-50 hover:bg-gray-100">
+                  <a href={`${API}${orden.pago.comprobante_url}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-4 bg-gray-50 hover:bg-gray-100">
                     <FileText className="h-8 w-8 text-red-500" />
                     <div>
                       <p className="font-semibold text-gray-800">Comprobante.pdf</p>
@@ -206,7 +206,7 @@ function VerificacionModal({ orden, onClose, onActionSuccess, token }) {
                     </div>
                   </a>
                 ) : (
-                  <img src={`${API}${orden.comprobante_url}`} alt={`Comprobante orden #${orden.id_orden}`} className="w-full h-auto max-h-96 object-contain bg-gray-100" />
+                  <img src={`${API}${orden.pago.comprobante_url}`} alt={`Comprobante orden #${orden.id_orden}`} className="w-full h-auto max-h-96 object-contain bg-gray-100" />
                 )}
               </div>
             ) : (
@@ -237,7 +237,7 @@ function VerificacionModal({ orden, onClose, onActionSuccess, token }) {
               <button onClick={() => setShowRechazoInput(true)} disabled={isSubmitting} className="px-4 py-2 rounded-lg text-red-600 bg-red-100 hover:bg-red-200 font-semibold disabled:opacity-50 transition-colors flex items-center gap-2">
                 <X size={14} /> Rechazar
               </button>
-              <button onClick={handleAprobar} disabled={isSubmitting || !orden.comprobante_url} className="px-4 py-2 rounded-lg text-white bg-green-600 hover:bg-green-700 font-semibold disabled:opacity-50 transition-colors flex items-center gap-2">
+              <button onClick={handleAprobar} disabled={isSubmitting || !orden.pago?.comprobante_url} className="px-4 py-2 rounded-lg text-white bg-green-600 hover:bg-green-700 font-semibold disabled:opacity-50 transition-colors flex items-center gap-2">
                 {isSubmitting && <Loader2 size={14} className="animate-spin" />} <Check size={14} /> Aprobar Pago
               </button>
             </>

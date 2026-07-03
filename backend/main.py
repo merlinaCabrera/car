@@ -11,6 +11,7 @@ from routers import admin_pagos
 from routers import socio_cuotas
 from routers import admin_ordenes
 from routers import socio_carrito
+from routers import admin_productos
 
 
 # ─── Gestión de archivos subidos (comprobantes de pago) ───────────────────────
@@ -54,6 +55,7 @@ app.include_router(admin_pagos.router)
 app.include_router(socio_cuotas.router)
 app.include_router(admin_ordenes.router)
 app.include_router(socio_carrito.router)
+app.include_router(router=admin_productos.router)
 
 # Ruta raíz de prueba
 @app.get("/")

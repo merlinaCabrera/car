@@ -20,6 +20,7 @@ import AdminComercios from './pages/AdminComercios';
 import JugadorCalendario from './pages/JugadorCalendario';
 import SocioQR from './pages/SocioQR';
 import AdminScanner from './pages/AdminScanner';
+import AdminProductos from './pages/AdminProductos';
 
 function App() {
   return (
@@ -49,6 +50,8 @@ function App() {
               <Route path="/admin/pagos" element={<AdminPagos />} />
               <Route path="/admin/escaner" element={<AdminScanner />} />
               <Route path="/socio-qr" element={<SocioQR />} />
+              <Route path="/admin/comercios" element={<AdminComercios />} />
+              <Route path="/admin/productos" element={<AdminProductos />} />
             </Route>
           </Routes>
         </BrowserRouter>

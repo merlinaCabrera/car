@@ -38,9 +38,9 @@ Decisiones técnicas:
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Optional
+from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status, Query
 from sqlalchemy.orm import Session, joinedload
 
 import models
@@ -226,3 +226,71 @@ def checkout_carrito(
     )
 
     return orden_completa
+
+
+# ════════════════════════════════════════════════════════════════════════════════
+# FRAGMENTO BACKEND — agregar a backend/routers/socio_carrito.py
+# ════════════════════════════════════════════════════════════════════════════════
+#
+# Importar en el encabezado del archivo (si no están ya):
+#   from typing import List, Optional
+#   from fastapi import Query
+#
+# ────────────────────────────────────────────────────────────────────────────────
+
+"""
+GET /socio/carrito/productos
+
+Retorna el catálogo de productos disponibles para el socio.
+Excluye 'cuota_social' (tiene su propia pantalla) y los inactivos.
+Soporta filtro opcional por categoría.
+"""
+
+@router.get(
+    "/productos",
+    response_model=List[schemas.ProductoServicioResponse],
+    summary="Catálogo de productos disponibles en la tienda del socio",
+)
+def listar_productos_tienda(
+    categoria: Optional[str] = Query(
+        default=None,
+        description="Filtrar por categoría: 'indumentaria', 'alquiler' u 'otro'.",
+    ),
+    db: Session = Depends(get_db),
+    _: models.Usuario = Depends(require_roles(*_ROLES_COMPRADORES)),
+) -> List[schemas.ProductoServicioResponse]:
+    """
+    Reglas de negocio:
+      - Excluye siempre categoria='cuota_social' (pantalla de cuotas dedicada).
+      - Excluye productos con es_activo=False.
+      - Si se pasa `categoria`, filtra por ese valor además de los anteriores.
+      - Ordenado: primero los que tienen stock (o sin límite), luego los agotados.
+        Dentro de cada grupo, alfabético por nombre.
+    """
+    CATEGORIAS_TIENDA = ("indumentaria", "alquiler", "otro")
+
+    if categoria and categoria not in CATEGORIAS_TIENDA:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Categoría inválida. Opciones: {CATEGORIAS_TIENDA}",
+        )
+
+    query = (
+        db.query(models.ProductoServicio)
+        .filter(
+            models.ProductoServicio.es_activo.is_(True),
+            models.ProductoServicio.categoria != "cuota_social",
+        )
+    )
+
+    if categoria:
+        query = query.filter(models.ProductoServicio.categoria == categoria)
+
+    # Ordenar: sin_stock al final, luego alfabético
+    productos = query.order_by(models.ProductoServicio.nombre).all()
+
+    # Separar en dos grupos: disponibles y agotados
+    disponibles = [p for p in productos if p.stock is None or p.stock > 0]
+    agotados    = [p for p in productos if p.stock is not None and p.stock == 0]
+
+    return disponibles + agotados

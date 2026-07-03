@@ -435,7 +435,7 @@ export default function AdminPagos() {
     setLoadingOrdenes(true)
     setErrorOrdenes(null)
     try {
-      const res = await fetch(`${API}/admin/ordenes/pendientes`, {
+      const res = await fetch(`${API}/admin/ordenes/pendientes?tipo=cuota`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       if (!res.ok) throw new Error(`Error ${res.status}: No se pudieron cargar las órdenes pendientes.`)

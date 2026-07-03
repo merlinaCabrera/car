@@ -3,9 +3,13 @@
 Router de verificación de Órdenes — panel del administrador.
 
 Endpoints:
-  GET  /admin/ordenes/pendientes         → Bandeja de órdenes esperando verificación.
-  POST /admin/ordenes/{id_orden}/aprobar → Aprueba la orden y aplica sus efectos.
-  POST /admin/ordenes/{id_orden}/rechazar→ Rechaza la orden con motivo obligatorio.
+  GET  /admin/ordenes/pendientes              → Bandeja de órdenes esperando verificación
+                                                  (con filtro opcional por tipo: cuota | tienda).
+  GET  /admin/ordenes/pendientes/count        → Cantidad total de órdenes pendientes.
+  GET  /admin/ordenes/pendientes-tienda/count → Cantidad de órdenes pendientes que son
+                                                  puras ventas de tienda/alquiler (sin cuota_social).
+  POST /admin/ordenes/{id_orden}/aprobar      → Aprueba la orden y aplica sus efectos.
+  POST /admin/ordenes/{id_orden}/rechazar     → Rechaza la orden con motivo obligatorio.
 
 Todos los endpoints requieren rol 'admin_general' o 'personal_administrativo'.
 
@@ -15,8 +19,16 @@ Decisiones técnicas:
     `cantidad` a `deuda_historica_meses` del socio dueño de la orden, con
     clamp en 0 (nunca queda negativa — coherente con el
     CheckConstraint chk_deuda_no_negativa de models.py).
-  - Otras categorías (alquiler, indumentaria, otro) no tocan la deuda; quedan
-    como puntos de extensión futura (ej: confirmar reserva, descontar stock).
+  - Para el resto de las categorías (alquiler, indumentaria, otro) con manejo
+    de stock (`stock IS NOT NULL`), se valida disponibilidad y se descuenta
+    `cantidad` del stock del producto. Si no alcanza, se aborta la aprobación
+    completa con 400 (nada se persiste porque el commit es único, al final).
+  - "Tipo" de orden (cuota vs. tienda) se determina por la presencia de al
+    menos un DetalleOrden cuyo producto sea categoria='cuota_social'. Una
+    orden mixta (cuota + tienda en el mismo carrito) se considera 'cuota'
+    a fines del filtro — no debería ocurrir en el flujo normal, pero así
+    ninguna orden con componente de cuota social queda fuera de la bandeja
+    de cuotas.
   - Solo se puede aprobar/rechazar una orden que esté en
     'pendiente_verificacion'; cualquier otro estado es un 400, para evitar
     doble procesamiento.
@@ -28,7 +40,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.orm import Session, joinedload
 
 import models
@@ -42,6 +54,7 @@ router = APIRouter(
 )
 
 _ROLES_ADMIN = ("admin_general", "personal_administrativo")
+_TIPOS_FILTRO_VALIDOS = ("cuota", "tienda")
 
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -105,27 +118,72 @@ def _verificar_pendiente(orden: models.Orden) -> None:
         )
 
 
+def _subquery_tiene_cuota_social(db: Session):
+    """
+    Subquery EXISTS: True si la orden (correlacionada por id_orden) tiene al
+    menos un DetalleOrden cuyo producto es de categoría 'cuota_social'.
+    """
+    return (
+        db.query(models.DetalleOrden.id_detalle)
+        .join(
+            models.ProductoServicio,
+            models.DetalleOrden.id_producto == models.ProductoServicio.id_producto,
+        )
+        .filter(
+            models.DetalleOrden.id_orden == models.Orden.id_orden,
+            models.ProductoServicio.categoria == "cuota_social",
+        )
+        .exists()
+    )
+
+
+def _aplicar_filtro_tipo(query, db: Session, tipo: Optional[str]):
+    """Aplica el filtro `tipo` ('cuota' | 'tienda') a un query de Orden ya construido."""
+    if tipo is None:
+        return query
+
+    if tipo not in _TIPOS_FILTRO_VALIDOS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Parámetro 'tipo' inválido. Opciones válidas: {_TIPOS_FILTRO_VALIDOS}.",
+        )
+
+    tiene_cuota = _subquery_tiene_cuota_social(db)
+    if tipo == "cuota":
+        return query.filter(tiene_cuota)
+    # tipo == "tienda"
+    return query.filter(~tiene_cuota)
+
+
 # ─── ENDPOINT: Bandeja de órdenes pendientes ──────────────────────────────────
 
 @router.get(
     "/pendientes",
     response_model=List[schemas.OrdenAdminResponse],
-    summary="Listar todas las órdenes pendientes de verificación",
+    summary="Listar órdenes pendientes de verificación (con filtro opcional por tipo)",
 )
 def listar_ordenes_pendientes(
+    tipo: Optional[str] = Query(
+        None,
+        description="Filtro opcional: 'cuota' (contienen cuota_social) o "
+                    "'tienda' (indumentaria/alquileres, sin cuota_social). "
+                    "Si se omite, devuelve todas.",
+    ),
     db: Session = Depends(get_db),
     admin: models.Usuario = Depends(require_roles(*_ROLES_ADMIN)),
 ) -> List[schemas.OrdenAdminResponse]:
-    ordenes = (
+    query = (
         db.query(models.Orden)
         .options(
             joinedload(models.Orden.detalles).joinedload(models.DetalleOrden.producto),
             joinedload(models.Orden.usuario),
         )
         .filter(models.Orden.estado == "pendiente_verificacion")
-        .order_by(models.Orden.fecha_creacion.asc())
-        .all()
     )
+
+    query = _aplicar_filtro_tipo(query, db, tipo)
+
+    ordenes = query.order_by(models.Orden.fecha_creacion.asc()).all()
     return ordenes
 
 
@@ -135,6 +193,20 @@ def contar_ordenes_pendientes(
     admin: models.Usuario = Depends(require_roles(*_ROLES_ADMIN)),
 ) -> int:
     return db.query(models.Orden).filter(models.Orden.estado == "pendiente_verificacion").count()
+
+
+@router.get(
+    "/pendientes-tienda/count",
+    response_model=int,
+    summary="Cantidad de órdenes pendientes que son puras ventas de tienda (sin cuota_social)",
+)
+def contar_ordenes_pendientes_tienda(
+    db: Session = Depends(get_db),
+    admin: models.Usuario = Depends(require_roles(*_ROLES_ADMIN)),
+) -> int:
+    query = db.query(models.Orden).filter(models.Orden.estado == "pendiente_verificacion")
+    query = _aplicar_filtro_tipo(query, db, "tienda")
+    return query.count()
 
 
 # ─── ENDPOINT: Aprobar orden ───────────────────────────────────────────────────
@@ -185,12 +257,28 @@ def aprobar_orden(
         detalle_cuota.cantidad = meses_corregidos_aplicados
         orden.monto_total = detalle_cuota.precio_unitario_historico * meses_corregidos_aplicados
 
-    # ── Descuento de deuda ────────────────────────────────────────────────────
-    # Recorremos los detalles (ya potencialmente actualizados arriba) para
-    # sumar los meses de cuota_social que esta aprobación va a saldar.
+    # ── Descuento de deuda (cuota_social) y de stock (tienda) ─────────────────
+    # Recorremos los detalles (ya potencialmente actualizados arriba). Nada de
+    # esto se persiste todavía porque el commit es único, al final: si algún
+    # ítem de tienda no tiene stock suficiente, abortamos con 400 y ningún
+    # cambio (deuda ni stock) queda guardado.
     for detalle in orden.detalles:
-        if detalle.producto is not None and detalle.producto.categoria == "cuota_social":
+        if detalle.producto is None:
+            continue
+
+        if detalle.producto.categoria == "cuota_social":
             meses_cuota_descontados += detalle.cantidad
+        elif detalle.producto.stock is not None:
+            if detalle.producto.stock < detalle.cantidad:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=(
+                        f"Stock insuficiente para '{detalle.producto.nombre}': "
+                        f"disponible {detalle.producto.stock}, solicitado {detalle.cantidad}. "
+                        f"No se puede aprobar la orden #{orden.id_orden}."
+                    ),
+                )
+            detalle.producto.stock -= detalle.cantidad
 
     if meses_cuota_descontados > 0:
         socio.deuda_historica_meses = max(0, socio.deuda_historica_meses - meses_cuota_descontados)

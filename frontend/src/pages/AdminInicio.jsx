@@ -119,6 +119,11 @@ export default function AdminInicio() {
   const [loadingPagos, setLoadingPagos] = useState(true)
   const [errorPagos, setErrorPagos] = useState(null)
 
+
+  const [ordenesTiendaCount, setOrdenesTiendaCount] = useState(0)
+  const [loadingOrdenesTienda, setLoadingOrdenesTienda] = useState(true)
+  const [errorOrdenesTienda, setErrorOrdenesTienda] = useState(null)
+
   const fetchSolicitudesPendientes = useCallback(async () => {
     if (!token) return
     setLoadingSolicitudes(true)
@@ -157,10 +162,29 @@ export default function AdminInicio() {
     }
   }, [token])
 
+  const fetchOrdenesTiendaPendientes = useCallback(async () => {
+    if (!token) return
+    setLoadingOrdenesTienda(true)
+    setErrorOrdenesTienda(null)
+    try {
+      const res = await fetch(`${API}/admin/ordenes/pendientes-tienda/count`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!res.ok) throw new Error(`Error ${res.status}: No se pudo obtener el contador de tienda.`)
+      const count = await res.json()
+      setOrdenesTiendaCount(count)
+    } catch (err) {
+      setErrorOrdenesTienda(err.message)
+    } finally {
+      setLoadingOrdenesTienda(false)
+    }
+  }, [token])
+
   useEffect(() => {
     fetchSolicitudesPendientes()
     fetchPagosPendientes()
-  }, [fetchSolicitudesPendientes, fetchPagosPendientes])
+    fetchOrdenesTiendaPendientes()
+  }, [fetchSolicitudesPendientes, fetchPagosPendientes, fetchOrdenesTiendaPendientes])
 
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-6">
@@ -187,21 +211,21 @@ export default function AdminInicio() {
 
       {/* Grilla de tareas pendientes */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <TareaCard
-          icon={UserPlus}
-          iconColor="bg-amber-100 text-amber-700"
-          titulo="Solicitudes de Socios"
+          <TareaCard
+          icon={ShoppingBag}
+          iconColor="bg-blue-100 text-blue-700"
+          titulo="Órdenes de Tienda"
           descripcion={
-            !loadingSolicitudes && !errorSolicitudes && solicitudesCount === 0
-              ? 'No hay solicitudes pendientes.'
-              : 'Altas nuevas esperando revisión.'
+            !loadingOrdenesTienda && !errorOrdenesTienda && ordenesTiendaCount === 0
+              ? 'No hay pedidos pendientes.'
+              : 'Pedidos de indumentaria y alquileres esperando aprobación.'
           }
-          valor={solicitudesCount}
-          loading={loadingSolicitudes}
-          error={errorSolicitudes}
-          onRetry={fetchSolicitudesPendientes}
-          ctaLabel={solicitudesCount > 0 ? 'Revisar solicitudes' : 'Ver socios'}
-          ctaPath="/admin/socios"
+          valor={ordenesTiendaCount}
+          loading={loadingOrdenesTienda}
+          error={errorOrdenesTienda}
+          onRetry={fetchOrdenesTiendaPendientes}
+          ctaLabel="Ir a Tienda"
+          ctaPath="/admin/tienda"
         />
 
         <TareaCard

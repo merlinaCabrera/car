@@ -20,6 +20,30 @@ Notas de arquitectura:
     qr_generado_at, actualizado_at) se declaran con server_default / onupdate
     para que SQLAlchemy los lea correctamente tras un INSERT/UPDATE pero no
     intente escribirlos por su cuenta.
+
+── Cambios (refactor motor de cuotas) ─────────────────────────────────────────
+  ConfiguracionGlobal:
+    + dia_vencimiento_cuota (Integer, default=10, CHECK BETWEEN 1 AND 28)
+      Referencia universal del día del mes en que vence el período del socio.
+      Se usa en toda la lógica de negocio que calcula si un socio está "al día"
+      en una fecha dada (backend) o para mostrar la fecha de vencimiento en el
+      frontend, sin hardcodear el día en el código.
+
+  Usuario.mes_cubierto_hasta:
+    Sin cambio de tipo — ya era Date desde el modelo inicial.
+    El campo representa la fecha exacta hasta la cual el socio tiene acceso
+    habilitado. La evaluación "¿está al día?" es: CURRENT_DATE <= mes_cubierto_hasta.
+
+  ── Migración Alembic requerida ────────────────────────────────────────────────
+    op.add_column("configuracion_global", sa.Column(
+        "dia_vencimiento_cuota", sa.Integer(), nullable=False, server_default="10"
+    ))
+    op.create_check_constraint(
+        "chk_dia_vencimiento_cuota",
+        "configuracion_global",
+        "dia_vencimiento_cuota BETWEEN 1 AND 28",
+    )
+    # Límite superior = 28 para evitar problemas con febrero en años no bisiestos.
 """
 
 from __future__ import annotations
@@ -80,6 +104,16 @@ class ConfiguracionGlobal(Base):
         comment="Precio vigente de la cuota. Modifica este campo y toda la deuda se recalcula.",
     )
 
+    # Vencimiento de períodos de cuota
+    dia_vencimiento_cuota: Mapped[int] = mapped_column(
+        Integer, nullable=False, server_default=text("10"),
+        comment=(
+            "Día del mes en que vence el período de cobertura del socio (1–28). "
+            "Por ejemplo: 10 → el acceso del socio expira el día 10 de cada mes. "
+            "Limitado a 28 para evitar fechas inexistentes en febrero."
+        ),
+    )
+
     # Beneficios de antigüedad
     meses_antiguedad_beneficio: Mapped[int] = mapped_column(
         Integer, nullable=False, server_default=text("6"),
@@ -106,8 +140,20 @@ class ConfiguracionGlobal(Base):
         foreign_keys=[actualizado_por],
     )
 
+    # Constraints
+    __table_args__ = (
+        CheckConstraint(
+            "dia_vencimiento_cuota BETWEEN 1 AND 28",
+            name="chk_dia_vencimiento_cuota",
+            comment=(
+                "Cota superior 28 = día más bajo que existe en todos los meses "
+                "(febrero no bisiesto). Evita fechas inválidas al calcular vencimientos."
+            ),
+        ),
+    )
+
     def __repr__(self) -> str:
-        return f"<ConfiguracionGlobal cuota={self.valor_cuota_base}>"
+        return f"<ConfiguracionGlobal cuota={self.valor_cuota_base} vence_dia={self.dia_vencimiento_cuota}>"
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -188,7 +234,17 @@ class Usuario(Base):
     # Estado financiero (cacheado; la deuda real = deuda_historica_meses × cuota_vigente)
     mes_cubierto_hasta: Mapped[Optional[date]] = mapped_column(
         Date,
-        comment="Si pagó por adelantado, queda inmune a aumentos hasta esta fecha.",
+        comment=(
+            "Fecha exacta hasta la cual el socio tiene el acceso habilitado. "
+            "NULL = nunca pagó (socio nuevo o sin cuotas aprobadas). "
+            "Evaluación de estado: CURRENT_DATE <= mes_cubierto_hasta → 'al_dia'. "
+            "El backend calcula esta fecha al aprobar una orden de cuota_social: "
+            "  nueva_fecha = MAX(mes_cubierto_hasta_actual, hoy) "
+            "              + meses_pagados meses "
+            "              con día = dia_vencimiento_cuota de ConfiguracionGlobal. "
+            "Si el socio pagó por adelantado, queda inmune a aumentos de precio "
+            "hasta esta fecha (el precio ya fue congelado en precio_unitario_historico)."
+        ),
     )
     deuda_historica_meses: Mapped[int] = mapped_column(
         Integer, nullable=False, server_default=text("0"),

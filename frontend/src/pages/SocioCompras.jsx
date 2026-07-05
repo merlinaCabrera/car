@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 import {
   ShoppingBag,
   Package,
@@ -236,6 +237,7 @@ export default function SocioCompras() {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(null);
   const [recargarTick, setRecargarTick] = useState(0);
+  const { token } = useAuth();
 
   useEffect(() => {
     const controller = new AbortController();
@@ -244,8 +246,6 @@ export default function SocioCompras() {
       setCargando(true);
       setError(null);
       try {
-        const token = localStorage.getItem("access_token");
-
         const respuesta = await fetch(
           `${API_BASE_URL}/socio/carrito/mis-compras`,
           {

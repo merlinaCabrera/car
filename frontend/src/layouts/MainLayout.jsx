@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
-import { ScanLine } from 'lucide-react';
+import { Menu, Home, CreditCard, ShoppingBag, Package, Settings, LogOut, X, ScanLine, ShoppingCart } from 'lucide-react'
 
 // Importación del asset real
 import escudoCar from '../assets/escudo-car.PNG';
@@ -26,7 +26,13 @@ export default function MainLayout({ userRole }) {
   
   // Enlaces de navegación visibles solo para socios (no admin, no invitado puro)
   const navLinks = [
+    { name: 'Inicio', path: '/socio/inicio', icon: Home },
+    { name: 'Gestión de Cuotas', path: '/socio/cuotas', icon: CreditCard },
     { name: 'Gestión de Cuotas', path: '/cuotas' },
+    { name: 'Reservas', path: '/reservas' },
+    { name: 'Tienda', path: '/shopping', icon: ShoppingBag },
+    { name: 'Mis Compras', path: '/mis-compras', icon: Package },
+    { name: 'Configuración', path: '/configuracion', icon: Settings },
   ];
   // -----------------------------------------
 
@@ -52,9 +58,7 @@ export default function MainLayout({ userRole }) {
                 onClick={() => setIsMenuOpen(true)}
                 className="p-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 focus:outline-none transition-colors"
               >
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
+                <Menu className="h-6 w-6" />
               </button>
             </div>
 
@@ -72,21 +76,12 @@ export default function MainLayout({ userRole }) {
                   to="/carrito" 
                   className="flex p-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 transition-colors relative"
                 >
-                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-                  </svg>
+                  <ShoppingCart className="h-6 w-6" />
                   {itemCount > 0 && (
                     <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white ring-2 ring-slate-900">
                       {itemCount}
                     </span>
                   )}
-                </Link>
-                <Link to="/admin/tienda" onClick={closeMenu} className="block w-full text-left px-4 py-2 mt-2 bg-slate-800 text-slate-300 rounded-lg font-medium hover:bg-slate-700 hover:text-white transition-colors">
-                  Órdenes de Tienda
-                </Link>
-                <Link to="/mis-compras" className="...">
-                  <ShoppingBag className="h-5 w-5" />
-                  Mis Compras
                 </Link>
               </div>
             )}
@@ -111,23 +106,22 @@ export default function MainLayout({ userRole }) {
         <div className="p-5 border-b border-slate-800 flex justify-between items-center bg-slate-950">
           <span className="font-bold text-white tracking-widest text-lg">MENÚ</span>
           <button onClick={closeMenu} className="p-2 text-slate-400 hover:text-white bg-slate-800 rounded-lg transition-colors">
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
+            <X className="h-5 w-5" />
           </button>
         </div>
         
         <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
           
           {/* Enlaces de Socio */}
-          {!isAdmin && !isSoloInvitado && navLinks.map(link => (
+          {!isAdmin && !isSoloInvitado && navLinks.map((link) => (
             <Link
               key={link.path}
               to={link.path}
               onClick={closeMenu}
-              className="block w-full text-left px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors"
+              className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors"
             >
-              {link.name}
+              <link.icon size={18} />
+              <span>{link.name}</span>
             </Link>
           ))}
 

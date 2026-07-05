@@ -57,7 +57,7 @@ from decimal import Decimal
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status, Query
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 import models
 import schemas

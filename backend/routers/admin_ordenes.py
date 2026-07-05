@@ -15,29 +15,34 @@ Todos los endpoints requieren rol 'admin_general' o 'personal_administrativo'.
 
 Decisiones técnicas:
   - Al aprobar, se recorren los detalles de la orden y, únicamente para los
-    ítems cuyo producto pertenece a la categoría 'cuota_social', se resta
-    `cantidad` a `deuda_historica_meses` del socio dueño de la orden, con
-    clamp en 0 (nunca queda negativa — coherente con el
-    CheckConstraint chk_deuda_no_negativa de models.py).
+    ítems cuyo producto pertenece a la categoría 'cuota_social':
+      · Se resta `cantidad` a `deuda_historica_meses` del socio (clamp en 0).
+      · Se recalcula `mes_cubierto_hasta` usando _calcular_nuevo_mes_cubierto():
+          - Base = MAX(mes_cubierto_hasta_actual, hoy).
+            Si el campo es NULL o ya venció, se parte de hoy; si está vigente,
+            se extiende desde ahí (preserva los meses pagados por adelantado).
+          - La base se normaliza al dia_vencimiento_cuota de ConfiguracionGlobal
+            dentro del mismo mes.
+          - Se suman N meses (suma correcta de meses, sin errores de 30/31 días,
+            usando calendar.monthrange de la stdlib).
+          - El día resultante se ajusta a dia_vencimiento_cuota (con clamp al
+            último día del mes destino, relevante para meses cortos).
   - Para el resto de las categorías (alquiler, indumentaria, otro) con manejo
     de stock (`stock IS NOT NULL`), se valida disponibilidad y se descuenta
     `cantidad` del stock del producto. Si no alcanza, se aborta la aprobación
     completa con 400 (nada se persiste porque el commit es único, al final).
   - "Tipo" de orden (cuota vs. tienda) se determina por la presencia de al
-    menos un DetalleOrden cuyo producto sea categoria='cuota_social'. Una
-    orden mixta (cuota + tienda en el mismo carrito) se considera 'cuota'
-    a fines del filtro — no debería ocurrir en el flujo normal, pero así
-    ninguna orden con componente de cuota social queda fuera de la bandeja
-    de cuotas.
-  - Solo se puede aprobar/rechazar una orden que esté en
-    'pendiente_verificacion'; cualquier otro estado es un 400, para evitar
-    doble procesamiento.
-  - Cada acción queda en audit_log con snapshot de antes/después.
+    menos un DetalleOrden cuyo producto sea categoria='cuota_social'.
+  - Solo se puede aprobar/rechazar una orden en 'pendiente_verificacion'; otro
+    estado → 400, para evitar doble procesamiento.
+  - Cada acción queda en audit_log con snapshot de antes/después, incluyendo
+    el cambio de mes_cubierto_hasta.
 """
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+import calendar
+from datetime import date, datetime, timezone
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
@@ -57,7 +62,87 @@ _ROLES_ADMIN = ("admin_general", "personal_administrativo")
 _TIPOS_FILTRO_VALIDOS = ("cuota", "tienda")
 
 
-# ─── Helpers ──────────────────────────────────────────────────────────────────
+# ─── Motor de cálculo de períodos de cobertura ───────────────────────────────
+
+def _sumar_meses(base: date, meses: int) -> date:
+    """
+    Suma `meses` enteros positivos a `base` usando únicamente la stdlib
+    (calendar + datetime.date). Evita los errores clásicos de overflow de mes
+    (ej: 31 de enero + 1 mes ≠ 31 de febrero).
+
+    Algoritmo:
+      1. Convierte year/month a índice lineal de meses (0-based).
+      2. Suma directamente.
+      3. Divide con //12 para obtener el año y %12+1 para el mes.
+      4. Clampea el día al máximo del mes destino con monthrange().
+    """
+    total_meses = base.month - 1 + meses
+    anio = base.year + total_meses // 12
+    mes = total_meses % 12 + 1
+    dia = min(base.day, calendar.monthrange(anio, mes)[1])
+    return date(anio, mes, dia)
+
+
+def _calcular_nuevo_mes_cubierto(
+    mes_cubierto_hasta_actual: Optional[date],
+    meses_pagados: int,
+    dia_vencimiento: int,
+) -> date:
+    """
+    Calcula la nueva fecha de cobertura del socio tras un pago de cuota.
+
+    Reglas de negocio:
+      · Base = MAX(mes_cubierto_hasta_actual, hoy).
+        - Si es NULL o ya venció → partimos de hoy (no "retroactivo").
+        - Si está vigente → extendemos desde ahí (preserva pagos adelantados).
+      · La base se normaliza al `dia_vencimiento` dentro del mismo mes/año.
+        Esto ancla el período al día de vencimiento configurado globalmente
+        sin importar en qué día del mes cae hoy o la fecha previa.
+      · Se suman exactamente `meses_pagados` meses mediante _sumar_meses().
+      · El día final se ajusta a `dia_vencimiento` en el mes resultado,
+        con clamp al último día del mes destino (relevante para febrero).
+
+    Ejemplo:
+      mes_cubierto_hasta_actual = 2025-08-10, meses_pagados = 3, dia_vencimiento = 10
+      → base = 2025-08-10 (vigente)
+      → base_normalizada = 2025-08-10 (ya coincide con el día de vencimiento)
+      → nueva_fecha = _sumar_meses(2025-08-10, 3) = 2025-11-10
+      → resultado: 2025-11-10  ✓
+    """
+    hoy = date.today()
+
+    # Paso 1: determinar la base de extensión
+    if mes_cubierto_hasta_actual is None or mes_cubierto_hasta_actual < hoy:
+        base = hoy
+    else:
+        base = mes_cubierto_hasta_actual
+
+    # Paso 2: normalizar el día al dia_vencimiento dentro del mismo mes/año
+    # (clamp al último día del mes por si el mes base tiene menos días que
+    # dia_vencimiento — raro porque el CHECK lo limita a 28, pero defensivo)
+    dia_normalizado = min(dia_vencimiento, calendar.monthrange(base.year, base.month)[1])
+    base_normalizada = base.replace(day=dia_normalizado)
+
+    # Paso 3: sumar meses correctamente
+    nueva_fecha = _sumar_meses(base_normalizada, meses_pagados)
+
+    # Paso 4: asegurar que el día final sea dia_vencimiento (con clamp)
+    dia_final = min(dia_vencimiento, calendar.monthrange(nueva_fecha.year, nueva_fecha.month)[1])
+    return nueva_fecha.replace(day=dia_final)
+
+
+def _obtener_dia_vencimiento(db: Session) -> int:
+    """
+    Lee dia_vencimiento_cuota de la fila singleton de ConfiguracionGlobal.
+    Si la tabla está vacía (entorno de tests sin seed), devuelve 10 como fallback.
+    """
+    config = db.query(models.ConfiguracionGlobal).first()
+    if config is None:
+        return 10  # valor por defecto razonable; el seed debería haber creado la fila
+    return config.dia_vencimiento_cuota
+
+
+# ─── Helpers generales ────────────────────────────────────────────────────────
 
 def _extraer_ip(request: Request) -> Optional[str]:
     forwarded = request.headers.get("X-Forwarded-For")
@@ -121,8 +206,8 @@ def _verificar_pendiente(orden: models.Orden) -> None:
 
 def _subquery_tiene_cuota_social(db: Session):
     """
-    Subquery EXISTS: True si la orden (correlacionada por id_orden) tiene al
-    menos un DetalleOrden cuyo producto es de categoría 'cuota_social'.
+    Subquery EXISTS: True si la orden tiene al menos un DetalleOrden cuyo
+    producto es de categoría 'cuota_social'.
     """
     return (
         db.query(models.DetalleOrden.id_detalle)
@@ -139,7 +224,7 @@ def _subquery_tiene_cuota_social(db: Session):
 
 
 def _aplicar_filtro_tipo(query, db: Session, tipo: Optional[str]):
-    """Aplica el filtro `tipo` ('cuota' | 'tienda') a un query de Orden ya construido."""
+    """Aplica el filtro `tipo` ('cuota' | 'tienda') a un query de Orden."""
     if tipo is None:
         return query
 
@@ -152,7 +237,6 @@ def _aplicar_filtro_tipo(query, db: Session, tipo: Optional[str]):
     tiene_cuota = _subquery_tiene_cuota_social(db)
     if tipo == "cuota":
         return query.filter(tiene_cuota)
-    # tipo == "tienda"
     return query.filter(~tiene_cuota)
 
 
@@ -184,7 +268,6 @@ def listar_ordenes_pendientes(
     )
 
     query = _aplicar_filtro_tipo(query, db, tipo)
-
     ordenes = query.order_by(models.Orden.fecha_creacion.asc()).all()
     return ordenes
 
@@ -229,16 +312,22 @@ def aprobar_orden(
     _verificar_pendiente(orden)
 
     socio = orden.usuario
+
+    # Snapshots para el audit_log (capturados ANTES de cualquier modificación)
     deuda_antes = socio.deuda_historica_meses
+    mes_cubierto_hasta_antes: Optional[date] = socio.mes_cubierto_hasta
+
+    # Contadores y resultados a llenar durante el procesamiento de detalles
     meses_cuota_descontados = 0
+    mes_cubierto_hasta_nuevo: Optional[date] = None
     meses_corregidos_aplicados: Optional[int] = None
 
-    # ── Corrección opcional de meses antes de aprobar ─────────────────────────
+    # ── Paso 1: corrección opcional de meses antes de procesar ───────────────
     # Si el admin indica `meses_corregidos`, actualizamos el DetalleOrden de
     # cuota_social y recalculamos el monto_total de la orden con el precio
-    # unitario que ya estaba congelado en el detalle (precio_unitario_historico).
-    # Esto cubre el caso habitual: el socio solicitó N meses pero el comprobante
-    # adjunto muestra un importe que corresponde a M meses distintos.
+    # unitario ya congelado en el detalle (precio_unitario_historico).
+    # Esto cubre el caso: el socio solicitó N meses pero el comprobante muestra
+    # un importe que corresponde a M meses distintos.
     if payload.meses_corregidos is not None:
         detalle_cuota = next(
             (
@@ -259,18 +348,25 @@ def aprobar_orden(
         detalle_cuota.cantidad = meses_corregidos_aplicados
         orden.monto_total = detalle_cuota.precio_unitario_historico * meses_corregidos_aplicados
 
-    # ── Descuento de deuda (cuota_social) y de stock (tienda) ─────────────────
-    # Recorremos los detalles (ya potencialmente actualizados arriba). Nada de
-    # esto se persiste todavía porque el commit es único, al final: si algún
-    # ítem de tienda no tiene stock suficiente, abortamos con 400 y ningún
-    # cambio (deuda ni stock) queda guardado.
+    # ── Paso 2: leer dia_vencimiento_cuota ANTES del bucle (una sola consulta) ─
+    # Solo se necesita si hay ítems de cuota; lo cargamos igual para no hacer
+    # la lectura dentro del bucle en caso de órdenes mixtas con múltiples ítems.
+    dia_vencimiento = _obtener_dia_vencimiento(db)
+
+    # ── Paso 3: procesar cada detalle de la orden ─────────────────────────────
+    # Recorremos los detalles (ya potencialmente actualizados en el paso 1).
+    # Nada de esto se persiste todavía — el commit es único al final, por lo que
+    # un error en cualquier ítem (stock insuficiente, etc.) aborta todo.
     for detalle in orden.detalles:
         if detalle.producto is None:
             continue
 
         if detalle.producto.categoria == "cuota_social":
+            # ── Cuota social: descontar deuda y calcular nueva cobertura ──────
             meses_cuota_descontados += detalle.cantidad
+
         elif detalle.producto.stock is not None:
+            # ── Tienda con stock físico: validar y descontar ──────────────────
             if detalle.producto.stock < detalle.cantidad:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
@@ -282,28 +378,41 @@ def aprobar_orden(
                 )
             detalle.producto.stock -= detalle.cantidad
 
+    # ── Paso 4: aplicar cambios al estado financiero del socio ─────────────────
+    # Se aplica en un bloque separado del bucle para que la lógica de deuda
+    # y cobertura quede concentrada y sea fácil de leer, testear y auditar.
     if meses_cuota_descontados > 0:
-        socio.deuda_historica_meses = max(0, socio.deuda_historica_meses - meses_cuota_descontados)
+        # 4a. Reducir deuda (clamp en 0 — coherente con chk_deuda_no_negativa)
+        socio.deuda_historica_meses = max(
+            0, socio.deuda_historica_meses - meses_cuota_descontados
+        )
 
+        # 4b. Calcular y actualizar mes_cubierto_hasta con el motor de períodos
+        mes_cubierto_hasta_nuevo = _calcular_nuevo_mes_cubierto(
+            mes_cubierto_hasta_actual=mes_cubierto_hasta_antes,
+            meses_pagados=meses_cuota_descontados,
+            dia_vencimiento=dia_vencimiento,
+        )
+        socio.mes_cubierto_hasta = mes_cubierto_hasta_nuevo
+
+    # ── Paso 5: cerrar la orden ────────────────────────────────────────────────
     orden.estado = "aprobada"
     orden.aprobada_por = admin.id_usuario
     orden.aprobada_at = datetime.now(timezone.utc)
     if payload.notas_admin:
         orden.notas_admin = payload.notas_admin
 
-    # ── Resolver el Pago padre ─────────────────────────────────────────────
-    # Aprobar una orden significa que el admin vio el comprobante adjunto al
-    # Pago y confirmó que la transferencia es real. Si el Pago todavía estaba
-    # 'pendiente', queda 'verificado'. Se mantiene la aprobación GRANULAR
-    # a nivel Orden (Tesorería y Secretaría siguen operando cada una sobre
-    # su propio dominio de forma independiente); esto solo refleja en el
-    # Pago que YA HUBO al menos una verificación positiva sobre su comprobante.
+    # ── Paso 6: resolver el Pago padre ────────────────────────────────────────
+    # Si el Pago todavía estaba 'pendiente', queda 'verificado'.
+    # La aprobación sigue siendo granular a nivel Orden; esto solo refleja que
+    # ya hubo una verificación positiva sobre el comprobante del Pago.
     pago = orden.pago
     pago_marcado_verificado = False
     if pago is not None and pago.estado == "pendiente":
         pago.estado = "verificado"
         pago_marcado_verificado = True
 
+    # ── Paso 7: audit_log con snapshot completo ───────────────────────────────
     _registrar_audit(
         db=db,
         actor_id=admin.id_usuario,
@@ -312,10 +421,24 @@ def aprobar_orden(
         registro_id=orden.id_orden,
         detalle={
             "id_usuario": socio.id_usuario,
-            "meses_cuota_descontados": meses_cuota_descontados,
-            "meses_corregidos_aplicados": meses_corregidos_aplicados,
+            # Deuda
             "deuda_historica_meses_antes": deuda_antes,
             "deuda_historica_meses_despues": socio.deuda_historica_meses,
+            "meses_cuota_descontados": meses_cuota_descontados,
+            "meses_corregidos_aplicados": meses_corregidos_aplicados,
+            # Cobertura (motor de períodos)
+            "mes_cubierto_hasta_antes": (
+                mes_cubierto_hasta_antes.isoformat()
+                if mes_cubierto_hasta_antes else None
+            ),
+            "mes_cubierto_hasta_despues": (
+                mes_cubierto_hasta_nuevo.isoformat()
+                if mes_cubierto_hasta_nuevo else None
+            ),
+            "dia_vencimiento_cuota_usado": (
+                dia_vencimiento if meses_cuota_descontados > 0 else None
+            ),
+            # Orden y pago
             "monto_total": str(orden.monto_total),
             "notas_admin": payload.notas_admin,
             "id_pago": orden.id_pago,
@@ -358,11 +481,10 @@ def rechazar_orden(
     orden.estado = "rechazada"
     orden.motivo_rechazo = payload.motivo_rechazo
 
-    # ── Resolver el Pago padre si quedó "huérfano" ──────────────────────────
+    # ── Resolver el Pago padre si quedó "huérfano" ────────────────────────────
     # Un Pago puede tener más de una Orden hija (split-order: cuota + tienda).
-    # Si esta era la única orden útil (ninguna otra sigue pendiente ni ya fue
-    # aprobada), el rechazo es total: no tiene sentido dejar el Pago
-    # eternamente 'pendiente' sin nada más que resolver.
+    # Si esta era la única orden útil (ninguna otra sigue pendiente ni fue
+    # aprobada), el rechazo es total: dejamos el Pago en 'rechazado'.
     quedan_ordenes_utiles = (
         db.query(models.Orden.id_orden)
         .filter(

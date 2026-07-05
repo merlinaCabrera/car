@@ -309,18 +309,28 @@ export default function SocioCarrito() {
   const [modalAbierto, setModalAbierto]   = useState(false)
 
   // ── Checkout ────────────────────────────────────────────────────────────────
-  const handleCheckout = async () => {
+const handleCheckout = async () => {
     if (!cart.length) return
+
+    // Validación defensiva: si algún ítem quedó sin id numérico válido
+    // (carritos viejos guardados en localStorage antes de este fix), avisamos
+    // en vez de mandarlo al backend y recibir un 422 críptico.
+    const itemInvalido = cart.find(item => !Number.isInteger(Number(item.id)))
+    if (itemInvalido) {
+      setCheckoutError(
+        `El ítem "${itemInvalido.name}" quedó corrupto en tu carrito (sin ID válido). ` +
+        'Quitalo y agregalo de nuevo.'
+      )
+      return
+    }
 
     setIsCheckingOut(true)
     setCheckoutError(null)
 
-    // El backend ignora el price del frontend y recalcula con precio_actual real.
     const payload = {
       items: cart.map(item => ({
-        id_producto: item.id,
-        cantidad:    item.qty,
-        // mes_referencia: null (solo aplica para cuotas sociales)
+        id_producto: Number(item.id),
+        cantidad:    parseInt(item.qty, 10),
       })),
     }
 
@@ -405,7 +415,7 @@ export default function SocioCarrito() {
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 divide-y divide-gray-50 overflow-hidden">
         {cart.map(item => (
           <ItemCarrito
-            key={item.id}
+            key={`${item.id}-${item.qty}`} // Usamos una combinación única
             item={item}
             onRemove={removeFromCart}
           />

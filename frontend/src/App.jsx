@@ -22,7 +22,8 @@ import SocioQR from './pages/SocioQR';
 import AdminScanner from './pages/AdminScanner';
 import AdminProductos from './pages/AdminProductos';
 import AdminTienda from './pages/AdminTienda';
-import SocioCompras from "./pages/SocioCompras"
+import SocioCompras from "./pages/SocioCompras";
+import Reservas from './pages/Reservas';
 
 function App() {
   return (
@@ -40,9 +41,10 @@ function App() {
             <Route element={<MainLayout userRole="socio" />}>
               <Route path="/socio" element={<SocioInicio />} />
               <Route path="/carrito" element={<SocioCarrito />} />
-              <Route path="/cuotas" element={<SocioCuotas />} />
+              <Route path="/socio/cuotas" element={<SocioCuotas />} />
               <Route path="/shopping" element={<SocioShopping />} />
               <Route path="/alquileres" element={<SocioAlquileres />} />
+              <Route path="/configuracion" element={<SocioPerfil />} />
               <Route path="/perfil" element={<SocioPerfil />} />
               <Route path="/mi-equipo" element={<JugadorCalendario />} />
               <Route path="/admin" element={<AdminInicio />} />
@@ -56,6 +58,7 @@ function App() {
               <Route path="/admin/productos" element={<AdminProductos />} />
               <Route path="/admin/tienda" element={<AdminTienda />} />
               <Route path="/mis-compras" element={<SocioCompras />} />
+              <Route path="reservas" element={<Reservas />} />
             </Route>
           </Routes>
         </BrowserRouter>

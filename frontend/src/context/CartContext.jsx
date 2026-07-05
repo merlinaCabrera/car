@@ -23,15 +23,24 @@ export function CartProvider({ children }) {
   }, [cart]);
 
   // Función para agregar ítems sumando cantidades si ya existen
-  const addToCart = (item) => {
+  const addToCart = (newItem) => {
+    if (newItem.id === undefined || newItem.id === null || Number.isNaN(Number(newItem.id))) {
+      console.error('CartContext.addToCart: se intentó agregar un ítem sin id válido', newItem)
+      return
+    }
     setCart((prevCart) => {
-      const existingItem = prevCart.find((i) => i.id === item.id);
+      const existingItem = prevCart.find((i) => i.id === newItem.id);
+      
+      // Si el ítem ya existe, sumamos la cantidad que viene en el nuevo ítem
       if (existingItem) {
         return prevCart.map((i) => 
-          i.id === item.id ? { ...i, qty: i.qty + 1 } : i
+          i.id === newItem.id 
+            ? { ...i, qty: i.qty + (newItem.qty || 1) } 
+            : i
         );
       }
-      return [...prevCart, { ...item, qty: 1 }];
+      // Si no existe, agregamos el ítem con su cantidad inicial (o 1)
+      return [...prevCart, { ...newItem, qty: newItem.qty || 1 }];
     });
   };
 

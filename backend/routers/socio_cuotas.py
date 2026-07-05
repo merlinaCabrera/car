@@ -144,12 +144,19 @@ def obtener_estado_cuota(
     socio: models.Usuario = Depends(require_roles(*_ROLES_SOCIO)),
 ) -> schemas.EstadoCuotaSocioResponse:
     producto_cuota = _obtener_producto_cuota_social(db)
+    
+    # BUSCAMOS LA CONFIGURACIÓN GLOBAL
+    config = db.query(models.ConfiguracionGlobal).first()
+    # ASIGNAMOS EL VALOR O EL DEFAULT
+    dia_vencimiento = config.dia_vencimiento_cuota if config else 10
 
     return schemas.EstadoCuotaSocioResponse(
+        id_producto=producto_cuota.id_producto,
         deuda_historica_meses=socio.deuda_historica_meses,
         mes_cubierto_hasta=socio.mes_cubierto_hasta,
         precio_cuota_actual=producto_cuota.precio_actual,
         deuda_total_pesos=Decimal(socio.deuda_historica_meses) * producto_cuota.precio_actual,
+        dia_vencimiento_cuota=dia_vencimiento, 
     )
 
 

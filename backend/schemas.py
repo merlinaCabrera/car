@@ -17,6 +17,23 @@ Reglas de validación relevantes:
   - Estado financiero se calcula en backend; nunca lo envía el frontend
   - El frontend NUNCA envía password_hash; siempre envía `password` en texto plano
   - qr_token es de solo lectura desde el backend
+
+── Cambios (refactor motor de cuotas) ─────────────────────────────────────────
+  ConfiguracionGlobalBase:
+    + dia_vencimiento_cuota (int, ge=1, le=28, default=10)
+
+  ConfiguracionGlobalUpdate:
+    + dia_vencimiento_cuota (Optional[int], ge=1, le=28)
+
+  ConfiguracionGlobalResponse:
+    Hereda dia_vencimiento_cuota de ConfiguracionGlobalBase — sin cambios manuales.
+
+  UsuarioResponse.mes_cubierto_hasta:
+    Ya era Optional[date]. Pydantic v2 serializa date → "YYYY-MM-DD" (ISO 8601)
+    de forma automática. Se agrega Field con description para documentar la semántica.
+
+  UsuarioListResponse.mes_cubierto_hasta:
+    Idem — ya era Optional[date], se agrega description para alinearlo.
 """
 
 from __future__ import annotations
@@ -53,6 +70,19 @@ class ConfiguracionGlobalBase(BaseModel):
     valor_cuota_base: MontoPositivo = Field(
         description="Precio vigente de la cuota social."
     )
+    dia_vencimiento_cuota: int = Field(
+        default=10,
+        ge=1,
+        le=28,
+        description=(
+            "Día del mes en que vence el período de cobertura del socio (1–28). "
+            "Límite superior = 28 para garantizar que la fecha sea válida en todos "
+            "los meses, incluido febrero no bisiesto. "
+            "Ejemplo: 10 → el acceso expira el día 10 de cada mes. "
+            "Todo el backend usa este valor para calcular la fecha exacta de "
+            "mes_cubierto_hasta al aprobar una orden de cuota_social."
+        ),
+    )
     meses_antiguedad_beneficio: int = Field(
         ge=1, description="Meses requeridos para acceder al descuento por antigüedad."
     )
@@ -64,6 +94,12 @@ class ConfiguracionGlobalBase(BaseModel):
 class ConfiguracionGlobalUpdate(BaseModel):
     """Todos los campos son opcionales — PATCH parcial."""
     valor_cuota_base: Optional[MontoPositivo] = None
+    dia_vencimiento_cuota: Optional[int] = Field(
+        default=None,
+        ge=1,
+        le=28,
+        description="Día de vencimiento mensual del período del socio (1–28).",
+    )
     meses_antiguedad_beneficio: Optional[int] = Field(default=None, ge=1)
     descuento_beneficio: Optional[Porcentaje] = None
 
@@ -208,13 +244,26 @@ class UsuarioResponse(UsuarioBase):
     """
     Respuesta estándar. No expone password_hash.
     qr_token y estado financiero son de solo lectura.
+
+    mes_cubierto_hasta: serializado por Pydantic v2 como "YYYY-MM-DD" (ISO 8601)
+    automáticamente, sin configuración adicional. NULL = nunca pagó o sin cobertura.
+    El frontend evalúa: new Date() <= new Date(mes_cubierto_hasta) → habilitado.
     """
     model_config = ConfigDict(from_attributes=True)
 
     id_usuario: int
     qr_token: uuid.UUID
     qr_generado_at: datetime
-    mes_cubierto_hasta: Optional[date] = None
+    mes_cubierto_hasta: Optional[date] = Field(
+        default=None,
+        description=(
+            "Fecha hasta la cual el socio tiene acceso habilitado (ISO 8601: YYYY-MM-DD). "
+            "NULL → nunca pagó o sin cobertura activa. "
+            "Evaluación de estado en frontend: today <= mes_cubierto_hasta → 'al_dia'. "
+            "El día de corte dentro del mes es configurable via "
+            "ConfiguracionGlobal.dia_vencimiento_cuota."
+        ),
+    )
     deuda_historica_meses: int
     fecha_ingreso: date
     fecha_baja: Optional[date] = None
@@ -236,7 +285,10 @@ class UsuarioListResponse(BaseModel):
     email: Optional[str] = None
     fecha_baja: Optional[date] = None
     deuda_historica_meses: int
-    mes_cubierto_hasta: Optional[date] = None
+    mes_cubierto_hasta: Optional[date] = Field(
+        default=None,
+        description="Fecha de cobertura vigente (ISO 8601). NULL = sin cobertura activa.",
+    )
 
 
 class UsuarioQRValidacionResponse(BaseModel):
@@ -376,6 +428,21 @@ class ReservaInstalacionResponse(BaseModel):
     estado: str
     id_orden: Optional[int] = None
     creado_at: datetime
+
+
+class DisponibilidadReservaResponse(BaseModel):
+    """
+    Vista pública/liviana de una franja ocupada, para pintar el calendario
+    de disponibilidad. A propósito NO incluye `id_orden` ni `id_producto`:
+    cualquier socio puede consultar la agenda de una instalación y no debe
+    ver a qué orden (de qué otro socio) corresponde cada bloqueo.
+    """
+    model_config = ConfigDict(from_attributes=True)
+
+    id_reserva: int
+    fecha_inicio: datetime
+    fecha_fin: datetime
+    estado: str
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -637,14 +704,28 @@ class OrdenCancelarResponse(BaseModel):
 
 class EstadoCuotaSocioResponse(BaseModel):
     """Estado financiero del socio logueado, para su propia pantalla de cuotas."""
+    id_producto: int = Field(
+        description="ID del ProductoServicio de categoría 'cuota_social' vigente."
+    )
     deuda_historica_meses: int
     mes_cubierto_hasta: Optional[date] = Field(
         default=None,
-        description="Si pagó por adelantado, queda inmune a aumentos hasta esta fecha.",
+        description=(
+            "Fecha exacta hasta la que el socio tiene acceso habilitado (ISO 8601). "
+            "NULL = sin cobertura activa (nunca pagó o deuda total). "
+            "El frontend puede mostrar: 'Tu acceso está activo hasta el {mes_cubierto_hasta}'."
+        ),
     )
     precio_cuota_actual: Decimal
     deuda_total_pesos: Decimal = Field(
         description="deuda_historica_meses × precio_cuota_actual."
+    )
+    dia_vencimiento_cuota: int = Field(
+        description=(
+            "Día del mes configurado como fecha de corte (de ConfiguracionGlobal). "
+            "El frontend lo usa para construir el mensaje de vencimiento: "
+            "'Tu cuota vence el día {dia_vencimiento_cuota} de cada mes'."
+        ),
     )
 
 

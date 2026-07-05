@@ -28,6 +28,7 @@ import SocioNotificaciones from './pages/SocioNotificaciones';
 import JugadorEquipo from './pages/JugadorEquipo';
 import TecnicoPlanteles from './pages/TecnicoPlanteles';
 import TecnicoAsistencias from './pages/TecnicoAsistencias';
+import AdminScannerEvento from './pages/AdminScannerEvento';
 
 function App() {
   return (
@@ -70,6 +71,7 @@ function App() {
               <Route path="/admin/comercios" element={<AdminComercios />} />
               <Route path="/admin/pagos" element={<AdminPagos />} />
               <Route path="/admin/escaner" element={<AdminScanner />} />
+              <Route path="/admin/escaner-evento" element={<AdminScannerEvento />} />
               <Route path="/admin/reservas" element={<AdminReservas />} />
               <Route path="/admin/productos" element={<AdminProductos />} />
               <Route path="/admin/tienda" element={<AdminTienda />} />

@@ -47,6 +47,18 @@ const formatoMoneda = new Intl.NumberFormat('es-AR', {
   maximumFractionDigits: 0,
 })
 
+const formatoMesAno = (isoDateString) => {
+  if (!isoDateString) return '';
+  // Las fechas del backend son YYYY-MM-DD. new Date() puede tener problemas de timezone.
+  // Usar timeZone: 'UTC' asegura que se interprete como tal y no se corra un día.
+  const date = new Date(isoDateString);
+  return new Intl.DateTimeFormat('es-AR', {
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC'
+  }).format(date);
+};
+
 // ─── Sub-componente: tarjeta de estadística ──────────────────────────────────
 
 function StatCard({ icon: Icon, colorClasses, titulo, valor, loading, error, formato }) {
@@ -723,14 +735,23 @@ export default function AdminPagos() {
                   </td>
                   <td className="px-6 py-4 font-mono text-sm text-gray-600">{m.dni}</td>
                   <td className="px-6 py-4">
-                    {m.deuda_historica_meses > 0 ? (
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
-                        {m.deuda_historica_meses} mes{m.deuda_historica_meses !== 1 ? 'es' : ''}
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                        Al día
-                      </span>
+                    <div>
+                      {m.deuda_historica_meses > 0 ? (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                          {m.deuda_historica_meses} mes{m.deuda_historica_meses !== 1 ? 'es' : ''}
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                          Al día
+                        </span>
+                      )}
+                    </div>
+                    {m.deuda_historica_meses > 0 && (
+                      <div className="text-xs text-gray-500 mt-1 capitalize">
+                        {m.mes_cubierto_hasta
+                          ? `Vencido desde: ${formatoMesAno(m.mes_cubierto_hasta)}`
+                          : `Socio desde: ${formatoMesAno(m.fecha_ingreso)}`}
+                      </div>
                     )}
                   </td>
                   <td className="px-6 py-4 text-sm font-semibold text-gray-900">

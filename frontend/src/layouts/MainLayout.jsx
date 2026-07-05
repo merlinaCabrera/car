@@ -1,14 +1,59 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
-import { Menu, Home, CreditCard, ShoppingBag, Package, Settings, LogOut, X, ScanLine, ShoppingCart } from 'lucide-react'
+import {
+  Menu,
+  Home,
+  CreditCard,
+  ShoppingBag,
+  Package,
+  Settings,
+  LogOut,
+  X,
+  ScanLine,
+  ShoppingCart,
+  Calendar,
+  Bell,
+  Users,
+  CalendarDays,
+  ClipboardList,
+  UserCheck,
+  LayoutDashboard,
+  Wallet,
+  Store,
+} from 'lucide-react'
 
 // Importación del asset real
 import escudoCar from '../assets/escudo-car.PNG';
 
+// ─── Definición de bloques de navegación por rol ───────────────────────────
+// Cada bloque sabe qué rol(es) lo habilitan y qué enlaces contiene.
+// Esto permite que un mismo usuario con varios roles (ej: socio + jugador)
+// vea todos los bloques que le correspondan, uno debajo del otro.
+
+const NAV_SOCIO = [
+  { name: 'Inicio', path: '/socio', icon: Home },
+  { name: 'Gestión de Cuotas', path: '/socio/cuotas', icon: CreditCard },
+  { name: 'Reservas', path: '/socio/reservas', icon: Calendar },
+  { name: 'Tienda', path: '/shopping', icon: ShoppingBag },
+  { name: 'Mis Compras', path: '/mis-compras', icon: Package },
+  { name: 'Configuración', path: '/perfil', icon: Settings },
+];
+
+const NAV_JUGADOR = [
+  { name: 'Mi Equipo', path: '/mi-equipo', icon: Users },
+  { name: 'Calendario Deportivo', path: '/calendario-deportivo', icon: CalendarDays },
+];
+
+const NAV_PERSONAL_TECNICO = [
+  { name: 'Gestión de Planteles', path: '/gestion-planteles', icon: ClipboardList },
+  { name: 'Asistencias', path: '/asistencias', icon: UserCheck },
+];
+
 export default function MainLayout({ userRole }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const { cart } = useCart();
@@ -16,25 +61,52 @@ export default function MainLayout({ userRole }) {
   const closeMenu = () => setIsMenuOpen(false);
 
   // --- Lógica de Navegación Multi-Rol ---
-  const userRoles = user?.roles_asignados?.map(r => r.rol.nombre) || [];
+  // El usuario puede tener varios roles a la vez (ej: socio + jugador), así
+  // que cada bloque del menú se evalúa de forma independiente y pueden
+  // aparecer varios apilados para la misma persona.
+  const userRoles = user?.roles_asignados?.map(r => r.rol.nombre) || user?.roles || [];
 
-  const isAdmin = userRoles.includes('admin_general') || userRoles.includes('personal_administrativo');
-  const adminAccessRoles = ['admin_general', 'personal_administrativo', 'admin_temporal', 'invitado'];
-  const hasAdminAccess = userRoles.some(role => adminAccessRoles.includes(role));
-  
-  const isSoloInvitado = userRoles.length > 0 && userRoles.every(role => role === 'invitado');
-  
-  // Enlaces de navegación visibles solo para socios (no admin, no invitado puro)
-  const navLinks = [
-    { name: 'Inicio', path: '/socio/inicio', icon: Home },
-    { name: 'Gestión de Cuotas', path: '/socio/cuotas', icon: CreditCard },
-    { name: 'Gestión de Cuotas', path: '/cuotas' },
-    { name: 'Reservas', path: '/reservas' },
-    { name: 'Tienda', path: '/shopping', icon: ShoppingBag },
-    { name: 'Mis Compras', path: '/mis-compras', icon: Package },
-    { name: 'Configuración', path: '/configuracion', icon: Settings },
-  ];
+  const esSocio = userRoles.includes('socio');
+  const esJugador = userRoles.includes('jugador');
+  const esPersonalTecnico = userRoles.includes('personal_tecnico');
+
+  // Lógica de roles de administración estricta
+  const esAdminGeneral = userRoles.includes('admin_general');
+  const esPersonalAdministrativo = userRoles.includes('personal_administrativo');
+  const esAdminTemporal = userRoles.includes('admin_temporal');
+  const esAdmin = esAdminGeneral || esPersonalAdministrativo || esAdminTemporal;
+
+  const isSoloInvitado = userRoles.length > 0 && userRoles.every((role) => role === 'invitado');
+
+  // El header (notificaciones/carrito) se oculta para perfiles puramente
+  // administrativos o invitados, igual que antes.
+  const mostrarIconosCompra = !esAdmin && !isSoloInvitado;
   // -----------------------------------------
+
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      try {
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/notificaciones`, {
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+
+        if (response.ok) {
+          const notifications = await response.json();
+          const unread = notifications.filter(n => !n.leida).length;
+          setUnreadCount(unread);
+        }
+      } catch (error) {
+        console.error("Error al buscar notificaciones:", error);
+      }
+    };
+
+    if (user) {
+      fetchNotifications();
+    }
+  }, [user]);
 
   const handleLogout = () => {
     logout();
@@ -46,15 +118,15 @@ export default function MainLayout({ userRole }) {
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans flex flex-col">
-      
+
       {/* Header Principal */}
       <header className="bg-slate-900 text-slate-100 sticky top-0 z-40 shadow-lg border-b border-slate-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="relative flex items-center justify-between py-3">
-            
+
             {/* Menú Hamburguesa */}
             <div>
-              <button 
+              <button
                 onClick={() => setIsMenuOpen(true)}
                 className="p-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 focus:outline-none transition-colors"
               >
@@ -69,11 +141,25 @@ export default function MainLayout({ userRole }) {
               </Link>
             </div>
 
-            {/* Carrito */}
-            {!isAdmin && !isSoloInvitado && (
-              <div>
-                <Link 
-                  to="/carrito" 
+            {/* Iconos de la derecha: Notificaciones y Carrito */}
+            {mostrarIconosCompra && (
+              <div className="flex items-center gap-4">
+                {/* Notificaciones */}
+                <Link
+                  to="/notificaciones"
+                  className="flex p-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 transition-colors relative"
+                >
+                  <Bell className="h-6 w-6" />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white ring-2 ring-slate-900">
+                      {unreadCount}
+                    </span>
+                  )}
+                </Link>
+
+                {/* Carrito */}
+                <Link
+                  to="/carrito"
                   className="flex p-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 transition-colors relative"
                 >
                   <ShoppingCart className="h-6 w-6" />
@@ -92,13 +178,13 @@ export default function MainLayout({ userRole }) {
 
       {/* Modal del Menú */}
       {isMenuOpen && (
-        <div 
+        <div
           className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm transition-opacity"
           onClick={closeMenu}
         ></div>
       )}
 
-      <div 
+      <div
         className={`fixed inset-y-0 left-0 z-50 w-72 bg-slate-900 shadow-2xl transform transition-transform duration-300 ease-in-out flex flex-col border-r border-slate-800 ${
           isMenuOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
@@ -109,83 +195,175 @@ export default function MainLayout({ userRole }) {
             <X className="h-5 w-5" />
           </button>
         </div>
-        
-        <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
-          
-          {/* Enlaces de Socio */}
-          {!isAdmin && !isSoloInvitado && navLinks.map((link) => (
-            <Link
-              key={link.path}
-              to={link.path}
-              onClick={closeMenu}
-              className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors"
-            >
-              <link.icon size={18} />
-              <span>{link.name}</span>
-            </Link>
-          ))}
 
-          {/* Enlaces de Admin */}
-          {isAdmin && (
-            <div className="px-2 pb-4 mb-4 border-b border-slate-800">
-              <Link
-                to="/admin"
-                onClick={closeMenu}
-                className="block w-full text-center px-4 py-3 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-500 transition-all duration-200 shadow-lg"
-              >
-                Panel de Admin
-              </Link>
-              <Link
-                to="/admin/socios"
-                onClick={closeMenu}
-                className="block w-full text-left px-4 py-2 mt-2 bg-slate-800 text-slate-300 rounded-lg font-medium hover:bg-slate-700 hover:text-white transition-colors"
-              >
-                Gestionar Socios
-              </Link>
-              <Link
-                to="/admin/comercios"
-                onClick={closeMenu}
-                className="block w-full text-left px-4 py-2 mt-2 bg-slate-800 text-slate-300 rounded-lg font-medium hover:bg-slate-700 hover:text-white transition-colors"
-              >
-                Comercios Adheridos
-              </Link>
-              <Link
-                to="/admin/productos"
-                onClick={closeMenu}
-                className="block w-full text-left px-4 py-2 mt-2 bg-slate-800 text-slate-300 rounded-lg font-medium hover:bg-slate-700 hover:text-white transition-colors"
-              >
-                Catálogo de Productos
-              </Link>
-              <Link
-                to="/admin/pagos"
-                onClick={closeMenu}
-                className="block w-full text-left px-4 py-2 mt-2 bg-slate-800 text-slate-300 rounded-lg font-medium hover:bg-slate-700 hover:text-white transition-colors"
-              >
-                Tesorería y Pagos
-              </Link>
+        <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
+
+          {/* ── Bloque SOCIO (base) ──────────────────────────────────────── */}
+          {esSocio && (
+            <div>
+              {NAV_SOCIO.map((link) => (
+                <Link
+                  key={link.path}
+                  to={link.path}
+                  onClick={closeMenu}
+                  className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors"
+                >
+                  <link.icon size={18} />
+                  <span>{link.name}</span>
+                </Link>
+              ))}
             </div>
           )}
 
-          {/* Funciones de Admin (Escáner) */}
-          {hasAdminAccess && (
-            <div className="pt-4 mt-4 border-t border-slate-800">
-              <h3 className="px-2 mb-2 text-xs font-semibold tracking-wider text-slate-500 uppercase">
-                Funciones de Admin
-              </h3>
+          {/* ── Bloque JUGADOR ───────────────────────────────────────────── */}
+          {esJugador && (
+            <div>
+              <hr className="border-gray-700 my-4" />
+              <p className="px-2 mb-2 text-xs text-gray-400 uppercase tracking-wider font-semibold">
+                Deportivo
+              </p>
+              {NAV_JUGADOR.map((link) => (
+                <Link
+                  key={link.path}
+                  to={link.path}
+                  onClick={closeMenu}
+                  className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors"
+                >
+                  <link.icon size={18} />
+                  <span>{link.name}</span>
+                </Link>
+              ))}
+            </div>
+          )}
+
+          {/* ── Bloque PERSONAL TÉCNICO ──────────────────────────────────── */}
+          {esPersonalTecnico && (
+            <div>
+              <hr className="border-gray-700 my-4" />
+              <p className="px-2 mb-2 text-xs text-gray-400 uppercase tracking-wider font-semibold">
+                Cuerpo Técnico
+              </p>
+              {NAV_PERSONAL_TECNICO.map((link) => (
+                <Link
+                  key={link.path}
+                  to={link.path}
+                  onClick={closeMenu}
+                  className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors"
+                >
+                  <link.icon size={18} />
+                  <span>{link.name}</span>
+                </Link>
+              ))}
+            </div>
+          )}
+
+          {/* ── Bloque CUERPO ADMINISTRATIVO ───────────────────────────────── */}
+          {(esPersonalAdministrativo || esAdminGeneral) && (
+            <div>
+              <hr className="border-gray-700 my-4" />
+              <p className="px-2 mb-2 text-xs text-gray-400 uppercase tracking-wider font-semibold">
+                Cuerpo Administrativo
+              </p>
+
+              {/* Panel de Admin (verde) - Solo para Admin General */}
+              {esAdminGeneral && (
+                <Link
+                  to="/admin"
+                  onClick={closeMenu}
+                  className="flex items-center justify-center gap-2 w-full px-4 py-3 mb-2 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-500 transition-all duration-200 shadow-lg"
+                >
+                  <LayoutDashboard size={18} />
+                  Panel de Admin
+                </Link>
+              )}
+
+              {/* Tesorería (solo Admin General) */}
+              {esAdminGeneral && (
+                <Link
+                  to="/admin/pagos"
+                  onClick={closeMenu}
+                  className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors"
+                >
+                  <Wallet size={18} />
+                  <span>Tesorería</span>
+                </Link>
+              )}
+
+              {/* Socios (Admin General y Personal Admin) */}
+              {(esAdminGeneral || esPersonalAdministrativo) && (
+                <Link
+                  to="/admin/socios"
+                  onClick={closeMenu}
+                  className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors"
+                >
+                  <Users size={18} />
+                  <span>Socios</span>
+                </Link>
+              )}
+
+              {/* Comercios (Admin General y Personal Admin) */}
+              {(esAdminGeneral || esPersonalAdministrativo) && (
+                <Link
+                  to="/admin/comercios"
+                  onClick={closeMenu}
+                  className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors"
+                >
+                  <Store size={18} />
+                  <span>Comercios Adheridos</span>
+                </Link>
+              )}
+
+              {/* Catálogo (solo Admin General) */}
+              {esAdminGeneral && (
+                <Link
+                  to="/admin/productos"
+                  onClick={closeMenu}
+                  className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors"
+                >
+                  <Package size={18} />
+                  <span>Catálogo de Productos</span>
+                </Link>
+              )}
+
+              {/* Agenda de Reservas (Admin General y Personal Admin) */}
+              {(esAdminGeneral || esPersonalAdministrativo) && (
+                <Link
+                  to="/admin/reservas"
+                  onClick={closeMenu}
+                  className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors"
+                >
+                  <Calendar size={18} />
+                  <span>Agenda de Reservas</span>
+                </Link>
+              )}
+            </div>
+          )}
+
+          {/* ── Bloque CONTROL DE ACCESO ───────────────────────────────────── */}
+          {(esAdminTemporal || esPersonalAdministrativo || esAdminGeneral) && (
+            <div>
+              <hr className="border-gray-700 my-4" />
+              <p className="px-2 mb-2 text-xs text-gray-400 uppercase tracking-wider font-semibold">
+                Control de Acceso
+              </p>
+
+              {/* Escáner QR */}
               <Link
                 to="/admin/escaner"
                 onClick={closeMenu}
-                className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-blue-600 hover:text-white rounded-xl font-semibold transition-all duration-200"
+                className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors"
               >
                 <ScanLine size={18} />
-                <span>Control de Acceso (Escáner)</span>
+                <span>Escáner QR</span>
               </Link>
             </div>
           )}
+
         </nav>
 
         <div className="p-6 border-t border-slate-800 bg-slate-950">
-          <button onClick={handleLogout} className="w-full flex items-center justify-center px-4 py-3 border border-red-500/30 text-red-400 rounded-xl hover:text-white hover:bg-red-600 transition-colors font-bold">
+          <button onClick={handleLogout} className="w-full flex items-center justify-center gap-2 px-4 py-3 border border-red-500/30 text-red-400 rounded-xl hover:text-white hover:bg-red-600 transition-colors font-bold">
+            <LogOut size={18} />
             Cerrar Sesión
           </button>
         </div>

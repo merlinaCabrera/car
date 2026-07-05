@@ -18,12 +18,16 @@ import AdminPagos from './pages/AdminPagos';
 import AdminSocios from './pages/AdminSocios';
 import AdminComercios from './pages/AdminComercios';
 import JugadorCalendario from './pages/JugadorCalendario';
-import SocioQR from './pages/SocioQR';
+import AdminReservas from './pages/AdminReservas';
 import AdminScanner from './pages/AdminScanner';
 import AdminProductos from './pages/AdminProductos';
 import AdminTienda from './pages/AdminTienda';
 import SocioCompras from "./pages/SocioCompras";
 import Reservas from './pages/Reservas';
+import SocioNotificaciones from './pages/SocioNotificaciones';
+import JugadorEquipo from './pages/JugadorEquipo';
+import TecnicoPlanteles from './pages/TecnicoPlanteles';
+import TecnicoAsistencias from './pages/TecnicoAsistencias';
 
 function App() {
   return (
@@ -39,6 +43,7 @@ function App() {
 
             {/* Rutas privadas envueltas en el Layout del Portal */}
             <Route element={<MainLayout userRole="socio" />}>
+              {/* Socio */}
               <Route path="/socio" element={<SocioInicio />} />
               <Route path="/carrito" element={<SocioCarrito />} />
               <Route path="/socio/cuotas" element={<SocioCuotas />} />
@@ -46,19 +51,28 @@ function App() {
               <Route path="/alquileres" element={<SocioAlquileres />} />
               <Route path="/configuracion" element={<SocioPerfil />} />
               <Route path="/perfil" element={<SocioPerfil />} />
-              <Route path="/mi-equipo" element={<JugadorCalendario />} />
+              <Route path="/mis-compras" element={<SocioCompras />} />
+              <Route path="/socio/reservas" element={<Reservas />} />
+              <Route path="/notificaciones" element={<SocioNotificaciones />} />
+
+              {/* Jugador */}
+              <Route path="/mi-equipo" element={<JugadorEquipo />} />
+              <Route path="/calendario-deportivo" element={<JugadorCalendario />} />
+
+              {/* Técnico */}
+              <Route path="/gestion-planteles" element={<TecnicoPlanteles />} />
+              <Route path="/asistencias" element={<TecnicoAsistencias />} />
+
+              {/* Admin */}
               <Route path="/admin" element={<AdminInicio />} />
               <Route path="/admin/solicitudes" element={<AdminSolicitudes />} />
               <Route path="/admin/socios" element={<AdminSocios />} />
               <Route path="/admin/comercios" element={<AdminComercios />} />
               <Route path="/admin/pagos" element={<AdminPagos />} />
               <Route path="/admin/escaner" element={<AdminScanner />} />
-              <Route path="/socio-qr" element={<SocioQR />} />
-              <Route path="/admin/comercios" element={<AdminComercios />} />
+              <Route path="/admin/reservas" element={<AdminReservas />} />
               <Route path="/admin/productos" element={<AdminProductos />} />
               <Route path="/admin/tienda" element={<AdminTienda />} />
-              <Route path="/mis-compras" element={<SocioCompras />} />
-              <Route path="reservas" element={<Reservas />} />
             </Route>
           </Routes>
         </BrowserRouter>

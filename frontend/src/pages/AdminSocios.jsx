@@ -95,8 +95,24 @@ function RolCheckbox({ rol, checked, onChange, disabled }) {
 }
 
 // ─── Sub-componente: Sección de roles en el modal ────────────────────────────
-
+//
+// Reglas de negocio aplicadas en este componente:
+//   1. El rol 'admin_general' se OCULTA completamente del listado.
+//      Solo puede asignarse directamente desde la base de datos.
+//   2. El rol 'invitado' es mutuamente exclusivo con todos los demás:
+//      si se selecciona, los demás se desmarcan automáticamente (y viceversa).
+//      Esta exclusividad la maneja `toggleRol` en el modal padre; aquí solo
+//      se renderiza el estado.
+//
 function SeccionRoles({ catalogoRoles, selectedRoles, onToggle, loadingRoles, errorRoles }) {
+  // ── Filtrar roles que NO deben aparecer en la UI ─────────────────────────
+  // 'admin_general' se gestiona únicamente desde la BD, nunca desde esta pantalla.
+  const rolesMostrables = catalogoRoles.filter(rol => rol.nombre !== 'admin_general')
+
+  // ── Detectar si el 'invitado' está seleccionado (para hint visual) ────────
+  const idInvitado       = catalogoRoles.find(r => r.nombre === 'invitado')?.id_rol
+  const invitadoActivo   = idInvitado != null && selectedRoles.includes(idInvitado)
+
   return (
     <div className="space-y-3">
       {/* Divider con título */}
@@ -108,6 +124,14 @@ function SeccionRoles({ catalogoRoles, selectedRoles, onToggle, loadingRoles, er
         </span>
         <div className="h-px flex-1 bg-gray-200" />
       </div>
+
+      {/* Aviso cuando Invitado está activo */}
+      {invitadoActivo && (
+        <p className="text-xs text-blue-700 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
+          ℹ️ El rol <strong>Invitado</strong> es exclusivo: no puede combinarse con otros roles.
+          Al asignarlo, los demás se desmarcan automáticamente.
+        </p>
+      )}
 
       {/* Estado: cargando roles actuales */}
       {loadingRoles && (
@@ -127,24 +151,32 @@ function SeccionRoles({ catalogoRoles, selectedRoles, onToggle, loadingRoles, er
       {/* Grid de checkboxes */}
       {!loadingRoles && (
         <div className="grid grid-cols-1 gap-2">
-          {catalogoRoles.length === 0 && (
+          {rolesMostrables.length === 0 && (
             <p className="text-sm text-gray-400 text-center py-3">
               No hay roles disponibles en el catálogo.
             </p>
           )}
-          {catalogoRoles.map(rol => (
-            <RolCheckbox
-              key={rol.id_rol}
-              rol={rol}
-              checked={selectedRoles.includes(rol.id_rol)}
-              onChange={() => onToggle(rol.id_rol)}
-            />
-          ))}
+          {rolesMostrables.map(rol => {
+            // Un rol no-invitado se deshabilita visualmente (no en el DOM) si
+            // 'invitado' está activo — el toggle lo limpiará al hacer clic,
+            // pero el aspecto "apagado" ayuda al admin a entender la exclusividad.
+            const bloqueadoPorInvitado = invitadoActivo && rol.nombre !== 'invitado'
+            return (
+              <RolCheckbox
+                key={rol.id_rol}
+                rol={rol}
+                checked={selectedRoles.includes(rol.id_rol)}
+                onChange={() => onToggle(rol.id_rol)}
+                disabled={bloqueadoPorInvitado}
+              />
+            )
+          })}
         </div>
       )}
 
       <p className="text-xs text-gray-400">
         Los cambios de roles se guardan al presionar <strong>Guardar</strong>.
+        El rol <span className="font-semibold">Admin General</span> solo se asigna desde la base de datos.
       </p>
     </div>
   )
@@ -214,13 +246,42 @@ function SocioFormModal({ socio, onClose, onSave, catalogoRoles, token }) {
     fetchRolesActuales()
   }, [socio?.id_usuario, token, isEditMode])
 
-  // ── Toggle de un rol en el estado local ───────────────────────────────────
+  // ── Toggle de un rol con lógica de exclusividad para 'invitado' ──────────
+  //
+  // Reglas:
+  //   • Tildar 'invitado'  → selectedRoles queda con SOLO ese rol.
+  //   • Tildar cualquier otro rol → 'invitado' se desmarca automáticamente.
+  //   • Destildar cualquier rol   → comportamiento estándar (quita ese rol).
+  //
+  // La búsqueda por nombre ('invitado') en lugar de por ID hardcodeado hace
+  // que la lógica funcione en cualquier entorno (dev, staging, producción)
+  // independientemente del ID que tenga el rol en cada BD.
+  //
   const toggleRol = (id_rol) => {
-    setSelectedRoles(prev =>
-      prev.includes(id_rol)
-        ? prev.filter(id => id !== id_rol)
-        : [...prev, id_rol]
-    )
+    // Obtener el id del rol 'invitado' del catálogo que ya tenemos en memoria.
+    // Si el catálogo aún no cargó, idInvitado será undefined y la exclusividad
+    // no aplica (comportamiento seguro: no se rompe nada).
+    const idInvitado = catalogoRoles.find(r => r.nombre === 'invitado')?.id_rol
+
+    setSelectedRoles(prev => {
+      const yaSeleccionado = prev.includes(id_rol)
+
+      // ── Destildar: comportamiento estándar ───────────────────────────────
+      if (yaSeleccionado) {
+        return prev.filter(id => id !== id_rol)
+      }
+
+      // ── Tildar 'invitado' → exclusivo: borrar todo lo demás ─────────────
+      if (idInvitado != null && id_rol === idInvitado) {
+        return [idInvitado]
+      }
+
+      // ── Tildar cualquier otro rol → quitar 'invitado' si estaba ─────────
+      const sinInvitado = (idInvitado != null)
+        ? prev.filter(id => id !== idInvitado)
+        : prev
+      return [...sinInvitado, id_rol]
+    })
   }
 
   // ── Validación de campos del formulario ───────────────────────────────────

@@ -646,10 +646,38 @@ class MorosoResponse(BaseModel):
     apellido: str
     email: Optional[str] = None
     telefono: Optional[str] = None
+    fecha_ingreso: date = Field(
+        description="Fecha de alta original del socio."
+    )
+    mes_cubierto_hasta: Optional[date] = Field(
+        default=None,
+        description="Último período cubierto por un pago. NULL si nunca pagó.",
+    )
     deuda_historica_meses: int
     deuda_estimada: Decimal = Field(
         description="deuda_historica_meses × precio_actual de la cuota social."
     )
+
+
+class OrdenParaReservaAdmin(BaseModel):
+    """Vista simple de una Orden para anidar en la respuesta de reservas del admin."""
+    model_config = ConfigDict(from_attributes=True)
+    id_orden: int
+    estado: str
+    usuario: Optional[UsuarioOrdenSimple] = None
+
+
+class ReservaAdminResponse(BaseModel):
+    """Respuesta para la tabla de reservas del admin, con datos de la orden y el socio."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id_reserva: int
+    instalacion: str
+    fecha_inicio: datetime
+    fecha_fin: datetime
+    estado: str  # 'bloqueada', 'confirmada', etc.
+    creado_at: datetime
+    orden: Optional[OrdenParaReservaAdmin] = None
 
 
 class RegistrarPagoManualPayload(BaseModel):

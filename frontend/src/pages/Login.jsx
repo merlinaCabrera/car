@@ -32,16 +32,12 @@ export default function Login() {
             const roles = (userData?.roles_asignados ?? [])
                 .map(ur => ur.rol?.nombre)
                 .filter(Boolean);
-
-            let destino = '/socio'; // default: socio, jugador, y demás roles
-
-            if (roles.includes('admin_general') || roles.includes('personal_administrativo')) {
+ 
+            let destino = '/socio'; // Por defecto, para socios y otros roles.
+ 
+            if (roles.includes('admin_general')) {
                 destino = '/admin';
-            } else if (roles.length > 0 && roles.every(r => r === 'invitado')) {
-                // Cuentas de comercio: tienen ÚNICAMENTE el rol 'invitado'.
-                destino = '/admin/escaner';
             }
-
             navigate(destino, { replace: true });
         } catch (err) {
             setError(err.message);

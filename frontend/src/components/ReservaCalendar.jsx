@@ -16,7 +16,7 @@
  * un pedido que sabemos de antemano que va a fallar.
  */
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { Calendar, dateFnsLocalizer } from 'react-big-calendar'
 import format from 'date-fns/format'
@@ -26,9 +26,17 @@ import getDay from 'date-fns/getDay'
 import es from 'date-fns/locale/es'
 import { AlertCircle, Loader2 } from 'lucide-react'
 import 'react-big-calendar/lib/css/react-big-calendar.css'
+import { useCart } from '../context/CartContext'
 
 const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 
+// TODO: Esto debería venir de una API o configuración.
+const PRODUCTO_ALQUILER_QUINCHO = {
+  id_producto: 11, // ID estático para el producto "Alquiler Quincho"
+  name: 'Alquiler de Quincho',
+  price: 15000,
+  categoria: 'alquiler',
+}
 const locales = { es }
 
 const localizer = dateFnsLocalizer({
@@ -46,12 +54,11 @@ function rangosSeSuperponen(aInicio, aFin, bInicio, bFin) {
 
 export default function ReservaCalendar({ instalacion, onSeleccionar }) {
   const { token } = useAuth()
+  const { addToCart } = useCart()
 
   const [eventos, setEventos] = useState([])       // franjas ocupadas, ya mapeadas para el calendario
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-
-  const [rangoSeleccionado, setRangoSeleccionado] = useState(null)
   const [avisoSuperposicion, setAvisoSuperposicion] = useState(false)
 
   const fetchDisponibilidad = useCallback(async () => {
@@ -59,16 +66,16 @@ export default function ReservaCalendar({ instalacion, onSeleccionar }) {
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch(`${API}/socio/reservas/${encodeURIComponent(instalacion)}`, {
+      const res = await fetch(`${API}/socio/reservas/?instalacion=${encodeURIComponent(instalacion)}`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       if (!res.ok) throw new Error(`Error ${res.status}: No se pudo cargar la disponibilidad.`)
       const data = await res.json()
 
       setEventos(
-        data.map(r => ({
+        data.map((r) => ({
           id: r.id_reserva,
-          title: r.estado === 'confirmada' ? 'Reservado' : 'Pendiente de pago',
+          title: 'Ocupado',
           start: new Date(r.fecha_inicio),
           end: new Date(r.fecha_fin),
           estado: r.estado,
@@ -84,25 +91,52 @@ export default function ReservaCalendar({ instalacion, onSeleccionar }) {
 
   useEffect(() => {
     fetchDisponibilidad()
-    setRangoSeleccionado(null)
   }, [fetchDisponibilidad])
 
   // Se dispara al arrastrar/clickear un rango en el calendario.
-  const handleSelectSlot = useCallback((slotInfo) => {
-    const inicio = slotInfo.start
-    const fin = slotInfo.end
+  const handleSelectSlot = useCallback(
+    (slotInfo) => {
+      const { start: inicio, end: fin } = slotInfo
 
-    const chocaConOcupado = eventos.some(ev => rangosSeSuperponen(inicio, fin, ev.start, ev.end))
-    if (chocaConOcupado) {
-      setAvisoSuperposicion(true)
-      setRangoSeleccionado(null)
-      return
-    }
+      const chocaConOcupado = eventos.some((ev) => rangosSeSuperponen(inicio, fin, ev.start, ev.end))
+      if (chocaConOcupado) {
+        setAvisoSuperposicion(true)
+        return
+      }
+      setAvisoSuperposicion(false)
 
-    setAvisoSuperposicion(false)
-    setRangoSeleccionado({ inicio, fin })
-    onSeleccionar?.({ inicio, fin })
-  }, [eventos, onSeleccionar])
+      // Formateo para el mensaje de confirmación
+      const formatoFecha = new Intl.DateTimeFormat('es-AR', { dateStyle: 'full' })
+      const formatoHora = new Intl.DateTimeFormat('es-AR', { timeStyle: 'short' })
+
+      const confirmacion = window.confirm(
+        `¿Querés agregar al carrito la reserva del ${instalacion} para el ${formatoFecha.format(
+          inicio
+        )} de ${formatoHora.format(inicio)} a ${formatoHora.format(fin)} hs?`
+      )
+
+      if (confirmacion) {
+        // Creamos un ID único para el item del carrito para que no se agrupen.
+        const uniqueItemId = `reserva_${PRODUCTO_ALQUILER_QUINCHO.id_producto}_${inicio.getTime()}`
+        const itemName = `${PRODUCTO_ALQUILER_QUINCHO.name} (${formatoFecha.format(
+          inicio
+        )} ${formatoHora.format(inicio)}hs)`
+
+        const cartItem = {
+          id: uniqueItemId,
+          id_producto: PRODUCTO_ALQUILER_QUINCHO.id_producto,
+          name: itemName,
+          price: PRODUCTO_ALQUILER_QUINCHO.price,
+          qty: 1,
+          categoria: PRODUCTO_ALQUILER_QUINCHO.categoria,
+        }
+
+        addToCart(cartItem)
+        alert('¡Horario agregado al carrito con éxito!')
+      }
+    },
+    [eventos, instalacion, addToCart]
+  )
 
   // Colorea bloqueada (ámbar, pago pendiente) vs confirmada (rojo, ocupado en firme)
   const eventPropGetter = useCallback((event) => ({
@@ -154,13 +188,6 @@ export default function ReservaCalendar({ instalacion, onSeleccionar }) {
         timeslots={2}
         style={{ height: 550 }}
       />
-
-      {rangoSeleccionado && (
-        <p className="text-xs text-gray-500 mt-3">
-          Seleccionado: {rangoSeleccionado.inicio.toLocaleString('es-AR')} →{' '}
-          {rangoSeleccionado.fin.toLocaleString('es-AR')}
-        </p>
-      )}
     </div>
   )
 }

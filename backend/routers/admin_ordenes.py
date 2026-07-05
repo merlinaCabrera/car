@@ -447,6 +447,20 @@ def aprobar_orden(
         ip=_extraer_ip(request),
     )
 
+    # ── Paso 8: Notificar al socio ───────────────────────────────────────────
+    db.add(
+        models.Notificacion(
+            id_usuario=socio.id_usuario,
+            tipo="orden_aprobada",
+            titulo="¡Pago verificado!",
+            cuerpo=(
+                f"Tu pago para la orden #{orden.id_orden} fue aprobado correctamente."
+            ),
+            referencia_id=orden.id_orden,
+            referencia_tabla="ordenes",
+        )
+    )
+
     db.commit()
     db.refresh(orden)
 
@@ -516,6 +530,21 @@ def rechazar_orden(
             "pago_marcado_rechazado": pago_marcado_rechazado,
         },
         ip=_extraer_ip(request),
+    )
+
+    # ── Notificar al socio ───────────────────────────────────────────────────
+    db.add(
+        models.Notificacion(
+            id_usuario=orden.id_usuario,
+            tipo="orden_rechazada",
+            titulo="Problema con tu pago",
+            cuerpo=(
+                f"Tu pago para la orden #{orden.id_orden} fue rechazado. "
+                f"Motivo: {payload.motivo_rechazo}"
+            ),
+            referencia_id=orden.id_orden,
+            referencia_tabla="ordenes",
+        )
     )
 
     db.commit()

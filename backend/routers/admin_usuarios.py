@@ -438,17 +438,21 @@ def actualizar_roles_usuario(
 ):
     """
     Reemplaza el conjunto de roles de un usuario en una única transacción.
+    El rol 'admin_general' está PROTEGIDO y no puede ser tocado por este endpoint:
+      - Si aparece en el payload → 403 inmediato.
+      - El DELETE del paso 3 lo PRESERVA (no lo elimina aunque no esté en el payload).
+    Para modificar el rol admin_general hay que operar directamente en la base de datos.
 
     Flujo atómico:
       1. Cargar el usuario con sus roles actuales (para el snapshot de auditoría).
-      2. Validar restricciones de negocio.
-      3. DELETE de todas las filas de `usuarios_roles` para ese usuario
-         (con sqlalchemy.delete() para evitar N+1 queries de ORM).
-      4. INSERT de los nuevos roles uno por uno.
+      2. Validar restricciones de negocio (incluyendo guardia sobre admin_general).
+      3. DELETE de las filas de `usuarios_roles` del usuario, EXCEPTO admin_general.
+      4. INSERT de los nuevos roles (que no incluirán admin_general).
       5. Insertar en `audit_log` con estado antes/después.
       6. Commit único.
 
     Restricciones de negocio aplicadas:
+      - admin_general en el payload → 403 (solo se modifica desde la BD).
       - IDs de roles duplicados en el payload → 400.
       - Algún id_rol no existe o está inactivo → 422 con detalle.
       - El admin no puede quitarse su propio rol 'admin_general' → 403.
@@ -478,32 +482,59 @@ def actualizar_roles_usuario(
 
     # ── 2. Validaciones de negocio ────────────────────────────────────────────
 
-    # 2a. IDs duplicados en el payload
     ids_nuevos = payload.ids_roles
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # 2a. GUARDIA DE SEGURIDAD: admin_general protegido de la API
+    #
+    # Buscamos el rol admin_general UNA SOLA VEZ y reutilizamos su ID en los
+    # pasos siguientes (validación, DELETE, INSERT). Si la BD no tiene ese rol
+    # (seeds no ejecutados), id_admin_general queda None y las guardas se omiten
+    # de forma segura.
+    # ─────────────────────────────────────────────────────────────────────────
+    rol_admin_general_obj = (
+        db.query(models.Rol)
+        .filter(models.Rol.nombre == "admin_general")
+        .first()
+    )
+    id_admin_general = rol_admin_general_obj.id_rol if rol_admin_general_obj else None
+
+    if id_admin_general is not None and id_admin_general in set(ids_nuevos):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=(
+                "El rol 'Admin General' solo puede modificarse directamente "
+                "en la base de datos. No está permitido asignarlo o quitarlo "
+                "desde esta interfaz."
+            ),
+        )
+
+    # 2b. IDs duplicados en el payload
     if len(ids_nuevos) != len(set(ids_nuevos)):
         raise HTTPException(
             status_code=400,
             detail="La lista de roles contiene IDs duplicados.",
         )
 
-    # 2b. Auto-remoción del propio rol admin_general
-    if current_admin.id_usuario == id_usuario and ids_nuevos:
-        rol_admin = (
-            db.query(models.Rol)
-            .filter(models.Rol.nombre == "admin_general")
-            .first()
-        )
-        if rol_admin and rol_admin.id_rol not in ids_nuevos:
-            raise HTTPException(
-                status_code=403,
-                detail=(
-                    "No podés quitarte tu propio rol de 'admin_general'. "
-                    "Pedile a otro administrador que lo haga."
-                ),
+    # 2c. Auto-remoción del propio rol admin_general
+    #     (protección redundante con 2a, pero se mantiene por claridad semántica)
+    if current_admin.id_usuario == id_usuario and id_admin_general is not None:
+        if id_admin_general not in set(ids_nuevos):
+            tiene_admin = any(
+                ur.rol and ur.rol.nombre == "admin_general"
+                for ur in usuario.roles_asignados
             )
+            if tiene_admin:
+                raise HTTPException(
+                    status_code=403,
+                    detail=(
+                        "No podés quitarte tu propio rol de 'admin_general'. "
+                        "Pedile a otro administrador que lo haga."
+                    ),
+                )
 
-    # 2c. Verificar que todos los IDs existan y estén activos
-    roles_validos: list[models.Rol] = []
+    # 2d. Verificar que todos los IDs existan y estén activos
+    roles_validos: dict = {}
     if ids_nuevos:
         roles_db = (
             db.query(models.Rol)
@@ -523,27 +554,32 @@ def actualizar_roles_usuario(
                 status_code=422,
                 detail=f"Los siguientes roles están desactivados y no se pueden asignar: {ids_inactivos}",
             )
-        # Ordenar igual que ids_nuevos para el INSERT posterior
         roles_validos = {r.id_rol: r for r in roles_db}
 
-    # ── 3. DELETE de todos los roles actuales del usuario ─────────────────────
+    # ── 3. DELETE de roles del usuario, PRESERVANDO admin_general ─────────────
     #
-    # Usamos sqlalchemy.delete() (Core) en lugar de iterar con ORM para hacerlo
-    # en UN SOLO round-trip a la base de datos, independientemente de cuántos
-    # roles tenga el usuario. La alternativa con ORM (for ur in usuario.roles_asignados:
-    # db.delete(ur)) generaría un DELETE por cada rol.
+    # El DELETE excluye explícitamente las filas de admin_general para que este
+    # endpoint nunca pueda quitar ese rol, ni siquiera por omisión en el payload.
+    # Admin_general solo se puede agregar o quitar directamente en la BD.
     #
-    db.execute(
+    # Usamos sqlalchemy.delete() (Core) en lugar de ORM para hacer la operación
+    # en un único round-trip a la BD, sin N+1 queries.
+    #
+    stmt_delete = (
         delete(models.UsuarioRol)
         .where(models.UsuarioRol.id_usuario == id_usuario)
     )
+    if id_admin_general is not None:
+        # Excluir la fila de admin_general si existe: así no la tocamos
+        stmt_delete = stmt_delete.where(
+            models.UsuarioRol.id_rol != id_admin_general
+        )
+    db.execute(stmt_delete)
 
     # ── 4. INSERT de los nuevos roles ─────────────────────────────────────────
     #
-    # Insertamos todos de una vez usando db.add_all() con una lista de ORM objects.
+    # ids_nuevos ya fue validado en 2a para no contener admin_general.
     # Cada rol se asigna como permanente (valido_hasta=None).
-    # Para roles temporales (admin_temporal), usar el endpoint /aprobar o el
-    # endpoint dedicado que recibe valido_hasta.
     #
     nuevos_roles_orm = [
         models.UsuarioRol(
@@ -570,10 +606,11 @@ def actualizar_roles_usuario(
             tabla_afectada="usuarios_roles",
             registro_id=id_usuario,
             detalle={
-                "antes":  {"roles": roles_anteriores},
+                "antes":   {"roles": roles_anteriores},
                 "despues": {"roles": roles_nuevos_nombres},
                 "usuario_afectado_dni": usuario.dni,
                 "modificado_por_dni":   current_admin.dni,
+                "admin_general_preservado": id_admin_general is not None,
             },
         )
     )

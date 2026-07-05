@@ -1,5 +1,5 @@
 // frontend/src/pages/SocioCuotas.jsx
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useCart } from '../context/CartContext'
 import {
@@ -185,7 +185,7 @@ function OrdenGeneradaModal({ orden, onClose, token }) {
  * `price` = precio de 1 mes; `qty` = meses elegidos.
  * Así el carrito calcula el subtotal como price × qty, que es lo esperado.
  */
-function SeleccionMesesModal({ precioCuota, idProducto, onClose }) {
+function SeleccionMesesModal({ precioCuota, idProducto, onClose, mesCubiertoHasta, diaVencimiento }) {
   const { addToCart } = useCart()
   const [meses, setMeses] = useState(1)
   const [agregado, setAgregado] = useState(false)
@@ -214,6 +214,45 @@ function SeleccionMesesModal({ precioCuota, idProducto, onClose }) {
     setAgregado(true)
     setTimeout(() => onClose(), 1500)
   }
+
+  // Calcula la fecha de cobertura proyectada con el pago actual
+  const fechaProyectada = useMemo(() => {
+    if (!diaVencimiento || !meses) return null;
+
+    // Helper para parsear 'YYYY-MM-DD' a un objeto Date local sin corrimientos de timezone
+    const parseISODate = (isoString) => {
+      if (!isoString) return null;
+      const [y, m, d] = isoString.split('-').map(Number);
+      return new Date(y, m - 1, d);
+    };
+
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+
+    // 1. Determinar fecha base: la cobertura actual (si está vigente) o hoy.
+    let fechaBase = parseISODate(mesCubiertoHasta);
+    if (!fechaBase || fechaBase < hoy) {
+      fechaBase = hoy;
+    }
+
+    // 2. Sumar la cantidad de meses seleccionados.
+    const fechaConMesesSumados = new Date(fechaBase);
+    fechaConMesesSumados.setMonth(fechaConMesesSumados.getMonth() + parseInt(meses, 10));
+
+    // 3. Fijar el día usando diaVencimiento, con clamp al último día del mes destino.
+    const anioFinal = fechaConMesesSumados.getFullYear();
+    const mesFinal = fechaConMesesSumados.getMonth(); // 0-indexed
+    const ultimoDiaDelMes = new Date(anioFinal, mesFinal + 1, 0).getDate();
+    const diaFinal = Math.min(diaVencimiento, ultimoDiaDelMes);
+    const fechaFinal = new Date(anioFinal, mesFinal, diaFinal);
+
+    // Formatear a texto amigable
+    return new Intl.DateTimeFormat('es-AR', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    }).format(fechaFinal);
+  }, [meses, mesCubiertoHasta, diaVencimiento]);
 
   return (
     <div
@@ -288,6 +327,14 @@ function SeleccionMesesModal({ precioCuota, idProducto, onClose }) {
                   {formatoMoneda.format(precioCuota * meses)}
                 </span>
               </div>
+
+              {/* Proyección de cobertura */}
+              {fechaProyectada && (
+                <div className="text-center text-xs text-gray-500 pt-2 flex items-center justify-center gap-2">
+                  <CalendarClock size={14} />
+                  <span>Con este pago, tu acceso quedará activo hasta el <strong>{fechaProyectada}</strong>.</span>
+                </div>
+              )}
             </>
           )}
         </div>
@@ -484,6 +531,8 @@ export default function SocioCuotas() {
         <SeleccionMesesModal
           precioCuota={estado?.precio_cuota_actual ?? 0}
           idProducto={estado?.id_producto}
+          mesCubiertoHasta={estado?.mes_cubierto_hasta}
+          diaVencimiento={estado?.dia_vencimiento_cuota}
           onClose={() => setMostrarSeleccionMeses(false)}
         />
       )}

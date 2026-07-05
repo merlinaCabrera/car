@@ -182,6 +182,8 @@ def listar_morosos(
             apellido=u.apellido,
             email=u.email,
             telefono=u.telefono,
+            fecha_ingreso=u.fecha_ingreso,
+            mes_cubierto_hasta=u.mes_cubierto_hasta,
             deuda_historica_meses=u.deuda_historica_meses,
             deuda_estimada=Decimal(u.deuda_historica_meses) * producto_cuota.precio_actual,
         )

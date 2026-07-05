@@ -9,17 +9,15 @@ para el socio — Módulo de Reservas.
 ────────────────────────────────────────────────────────────────────────────────
 
 Endpoints:
-  GET /socio/reservas/{instalacion}  → Franjas ocupadas (bloqueada/confirmada)
-                                         de esa instalación, para pintar el
-                                         calendario y evitar que el socio elija
-                                         un horario ya tomado.
+  GET /socio/reservas/  → Franjas ocupadas (bloqueada/confirmada)
+                          para pintar el calendario. Permite filtrar por
+                          instalación y/o fecha.
 
 Decisiones técnicas:
   - Solo se devuelven reservas en estado 'bloqueada' o 'confirmada'. Las
     'liberada'/'expirada' no ocupan la agenda y no tiene sentido pintarlas.
-  - Se filtra por defecto `fecha_fin >= ahora` para no traer reservas pasadas
-    (el calendario del frontend solo necesita futuro). Params `desde`/`hasta`
-    opcionales permiten paginar por rango si el calendario los usa.
+  - Si no se especifica `fecha`, se filtra por defecto `fecha_fin >= ahora`
+    para no traer reservas pasadas (el calendario solo necesita futuro).
   - La respuesta es intencionalmente liviana (`DisponibilidadReservaResponse`):
     no expone `id_orden` ni `id_producto`, porque cualquier socio autenticado
     puede consultar la agenda de una instalación y no debe ver a qué orden
@@ -30,7 +28,7 @@ Decisiones técnicas:
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, Query
@@ -54,35 +52,42 @@ _ESTADOS_OCUPA_AGENDA = ("bloqueada", "confirmada")
 
 
 @router.get(
-    "/{instalacion}",
+    "/",
     response_model=List[schemas.DisponibilidadReservaResponse],
-    summary="Franjas ocupadas de una instalación (para pintar el calendario)",
+    summary="Franjas ocupadas de instalaciones (para pintar el calendario)",
 )
 def listar_disponibilidad(
-    instalacion: str,
-    desde: Optional[datetime] = Query(
+    instalacion: Optional[str] = Query(
         default=None,
-        description="Incluye reservas con fecha_fin >= desde. Default: ahora (UTC).",
+        description="Filtrar por una instalación específica (ej: 'quincho').",
     ),
-    hasta: Optional[datetime] = Query(
+    fecha: Optional[date] = Query(
         default=None,
-        description="Incluye reservas con fecha_inicio <= hasta. Default: sin límite.",
+        description="Filtrar por una fecha específica (YYYY-MM-DD). Devuelve reservas que se superponen con ese día.",
     ),
     db: Session = Depends(get_db),
     _socio: models.Usuario = Depends(require_roles(*_ROLES_COMPRADORES)),
 ) -> List[schemas.DisponibilidadReservaResponse]:
-    limite_inferior = desde if desde is not None else datetime.now(timezone.utc)
-
     query = (
         db.query(models.ReservaInstalacion)
         .filter(
-            models.ReservaInstalacion.instalacion == instalacion,
             models.ReservaInstalacion.estado.in_(_ESTADOS_OCUPA_AGENDA),
-            models.ReservaInstalacion.fecha_fin >= limite_inferior,
         )
     )
 
-    if hasta is not None:
-        query = query.filter(models.ReservaInstalacion.fecha_inicio <= hasta)
+    if instalacion:
+        query = query.filter(models.ReservaInstalacion.instalacion == instalacion)
+
+    if fecha:
+        # Filtra reservas que se superponen con el día consultado.
+        start_of_day = datetime.combine(fecha, datetime.min.time()).replace(tzinfo=timezone.utc)
+        end_of_day = start_of_day + timedelta(days=1)
+        query = query.filter(
+            models.ReservaInstalacion.fecha_inicio < end_of_day,
+            models.ReservaInstalacion.fecha_fin > start_of_day,
+        )
+    else:
+        # Comportamiento por defecto: mostrar todas las reservas futuras
+        query = query.filter(models.ReservaInstalacion.fecha_fin >= datetime.now(timezone.utc))
 
     return query.order_by(models.ReservaInstalacion.fecha_inicio.asc()).all()

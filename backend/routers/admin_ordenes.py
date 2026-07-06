@@ -475,6 +475,7 @@ def aprobar_orden(
             referencia_tabla="ordenes",
         )
     )
+    
 
     db.commit()
     db.refresh(orden)

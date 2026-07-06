@@ -19,7 +19,7 @@
  * deshabilitado en modo edición.
  */
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, Fragment, useCallback, useMemo } from 'react'
 import { useAuth } from '../context/AuthContext'
 import {
   Package,
@@ -32,6 +32,8 @@ import {
   X,
   Wallet,
   Infinity as InfinityIcon,
+  CalendarDays,
+  Save,
 } from 'lucide-react'
 
 const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
@@ -310,6 +312,14 @@ export default function AdminProductos() {
   const [isModalOpen,     setIsModalOpen]     = useState(false)
   const [editingProducto, setEditingProducto] = useState(null)
 
+  // Estados para la configuración del día de vencimiento
+  const [diaVencimiento, setDiaVencimiento] = useState(10)
+  const [isEditingDia,   setIsEditingDia]   = useState(false)
+  const [nuevoDia,       setNuevoDia]       = useState(10)
+  const [isLoadingDia,   setIsLoadingDia]   = useState(true)
+  const [errorDia,       setErrorDia]       = useState(null)
+  const [successDia,     setSuccessDia]     = useState(null)
+
   const fetchProductos = useCallback(async () => {
     if (!token) return
     setLoading(true)
@@ -328,6 +338,64 @@ export default function AdminProductos() {
   }, [token])
 
   useEffect(() => { fetchProductos() }, [fetchProductos])
+
+  // ── Fetch de configuración global (día de vencimiento) ─────────────────────
+  const fetchDiaVencimiento = useCallback(async () => {
+    if (!token) return
+    setIsLoadingDia(true)
+    setErrorDia(null)
+    try {
+      const res = await fetch(`${API}/admin/productos/configuracion/dia-vencimiento`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!res.ok) throw new Error('No se pudo cargar la configuración.')
+      const data = await res.json()
+      setDiaVencimiento(data.dia_vencimiento_cuota)
+      setNuevoDia(data.dia_vencimiento_cuota)
+    } catch (err) {
+      setErrorDia(err.message)
+    } finally {
+      setIsLoadingDia(false)
+    }
+  }, [token])
+
+  useEffect(() => { fetchDiaVencimiento() }, [fetchDiaVencimiento])
+
+  // ── Guardar día de vencimiento (PATCH) ──────────────────────────────────────
+  const handleSaveDiaVencimiento = async () => {
+    if (nuevoDia < 1 || nuevoDia > 28) {
+      setErrorDia('El día debe estar entre 1 y 28.')
+      return
+    }
+    setIsLoadingDia(true)
+    setErrorDia(null)
+    setSuccessDia(null)
+
+    try {
+      const res = await fetch(`${API}/admin/productos/configuracion/dia-vencimiento`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ dia_vencimiento_cuota: Number(nuevoDia) }),
+      })
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.detail ?? 'Error al actualizar.')
+      }
+
+      const data = await res.json()
+      setDiaVencimiento(data.dia_vencimiento_cuota)
+      setIsEditingDia(false)
+      setSuccessDia('Día de vencimiento actualizado.')
+    } catch (err) {
+      setErrorDia(err.message)
+    } finally {
+      setIsLoadingDia(false)
+    }
+  }
 
   // ── Guardar (POST o PATCH) — fail-fast ──────────────────────────────────────
   const handleSaveProducto = async (data, id) => {
@@ -355,6 +423,14 @@ export default function AdminProductos() {
   const openModalForCreate = () => { setEditingProducto(null); setIsModalOpen(true) }
   const openModalForEdit   = (producto) => { setEditingProducto(producto); setIsModalOpen(true) }
   const closeModal         = () => setIsModalOpen(false)
+
+  // Limpiar mensaje de éxito después de unos segundos
+  useEffect(() => {
+    if (successDia) {
+      const timer = setTimeout(() => setSuccessDia(null), 3000)
+      return () => clearTimeout(timer)
+    }
+  }, [successDia])
 
   // ── Filtro local por nombre o categoría ─────────────────────────────────────
   const productosFiltrados = useMemo(() => {
@@ -441,40 +517,116 @@ export default function AdminProductos() {
         />
       </div>
 
-      {/* TAREA 3: Pedestal de la Cuota Social */}
-      {!loading && (
-        <div className="space-y-4">
-          {cuotaSocial ? (
-            <div className="bg-blue-50 border-2 border-blue-200 rounded-2xl p-6 shadow-sm flex items-center justify-between gap-6">
-              <div className="flex items-center gap-5">
-                <div className="p-3 rounded-full bg-blue-100 text-blue-600">
-                  <Wallet size={28} />
-                </div>
-                <div>
-                  <h2 className="text-lg font-bold text-blue-900">Cuota Social Base</h2>
-                  <p className="text-3xl font-extrabold text-gray-900 tracking-tight mt-1">
-                    {formatoMoneda.format(cuotaSocial.precio_actual)}
-                  </p>
-                </div>
+      {/* Pedestales de Configuración Global */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Card 1: Valor de la Cuota Social */}
+        {loading ? (
+          <div className="bg-gray-100 rounded-2xl p-6 h-40 animate-pulse" />
+        ) : cuotaSocial ? (
+          <div className="bg-blue-50 border-2 border-blue-200 rounded-2xl p-6 shadow-sm flex items-center justify-between gap-6">
+            <div className="flex items-center gap-5">
+              <div className="p-3 rounded-full bg-blue-100 text-blue-600">
+                <Wallet size={28} />
               </div>
-              <button
-                onClick={() => openModalForEdit(cuotaSocial)}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-gray-300 text-gray-700 font-semibold hover:bg-gray-100 hover:border-gray-400 transition-colors shadow-sm"
-              >
-                <Edit size={14} />
-                Actualizar Valor
-              </button>
+              <div>
+                <h2 className="text-lg font-bold text-blue-900">Cuota Social Base</h2>
+                <p className="text-3xl font-extrabold text-gray-900 tracking-tight mt-1">
+                  {formatoMoneda.format(cuotaSocial.precio_actual)}
+                </p>
+              </div>
             </div>
-          ) : (
-            <div className="flex items-center gap-3 p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-sm">
-              <AlertCircle size={18} className="flex-shrink-0" />
-              <span className="flex-1 font-medium">
-                No hay una cuota social configurada. Créala desde el botón '+ Nuevo Producto'.
-              </span>
-            </div>
-          )}
-        </div>
-      )}
+            <button
+              onClick={() => openModalForEdit(cuotaSocial)}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-gray-300 text-gray-700 font-semibold hover:bg-gray-100 hover:border-gray-400 transition-colors shadow-sm"
+            >
+              <Edit size={14} />
+              Actualizar Valor
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-3 p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-sm">
+            <AlertCircle size={18} className="flex-shrink-0" />
+            <span className="flex-1 font-medium">
+              No hay una cuota social configurada. Créala desde el botón '+ Nuevo Producto'.
+            </span>
+          </div>
+        )}
+
+        {/* Card 2: Día de Vencimiento */}
+        {isLoadingDia ? (
+          <div className="bg-gray-100 rounded-2xl p-6 h-40 animate-pulse" />
+        ) : (
+          <div className="bg-indigo-50 border-2 border-indigo-200 rounded-2xl p-6 shadow-sm">
+            {isEditingDia ? (
+              <Fragment>
+                <h2 className="text-lg font-bold text-indigo-900">Editar Día de Vencimiento</h2>
+                <div className="mt-2 flex items-start gap-3">
+                  <div className="flex-1">
+                    <input
+                      type="number"
+                      min="1" max="28"
+                      value={nuevoDia}
+                      onChange={e => setNuevoDia(e.target.value)}
+                      className={`form-input ${errorDia ? 'border-red-500' : ''}`}
+                    />
+                    {errorDia && <p className="text-red-600 text-xs mt-1">{errorDia}</p>}
+                  </div>
+                  <div className="flex-shrink-0 flex items-center gap-2">
+                    <button
+                      onClick={handleSaveDiaVencimiento}
+                      disabled={isLoadingDia}
+                      className="p-2.5 rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+                      title="Guardar"
+                    >
+                      {isLoadingDia ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                    </button>
+                    <button
+                      onClick={() => { setIsEditingDia(false); setErrorDia(null); }}
+                      className="p-2.5 rounded-lg text-gray-600 bg-gray-200 hover:bg-gray-300 transition-colors"
+                      title="Cancelar"
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+                </div>
+              </Fragment>
+            ) : (
+              <Fragment>
+                <div className="flex items-center justify-between gap-6">
+                  <div className="flex items-center gap-5">
+                    <div className="p-3 rounded-full bg-indigo-100 text-indigo-600">
+                      <CalendarDays size={28} />
+                    </div>
+                    <div>
+                      <h2 className="text-lg font-bold text-indigo-900">Día de Vencimiento</h2>
+                      <p className="text-3xl font-extrabold text-gray-900 tracking-tight mt-1">
+                        Día {diaVencimiento}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => { setIsEditingDia(true); setNuevoDia(diaVencimiento); setErrorDia(null); setSuccessDia(null); }}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-gray-300 text-gray-700 font-semibold hover:bg-gray-100 hover:border-gray-400 transition-colors shadow-sm"
+                  >
+                    <Edit size={14} />
+                    Editar
+                  </button>
+                </div>
+                {successDia && (
+                  <p className="text-sm text-green-700 font-medium mt-3 text-center">
+                    {successDia}
+                  </p>
+                )}
+                {errorDia && !isEditingDia && (
+                  <p className="text-sm text-red-700 font-medium mt-3 text-center">
+                    {errorDia}
+                  </p>
+                )}
+              </Fragment>
+            )}
+          </div>
+        )}
+      </div>
 
       <h2 className="text-lg font-bold text-gray-800 pt-2 border-t border-gray-200">
         Otros Productos y Servicios

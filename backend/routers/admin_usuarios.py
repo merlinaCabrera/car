@@ -16,7 +16,7 @@ Todos los endpoints requieren rol 'admin_general' o 'personal_administrativo'.
 from datetime import date, datetime, timezone
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import delete, exists, or_
 from sqlalchemy.orm import Session, joinedload
@@ -370,16 +370,52 @@ def reactivar_socio(
 @router.get(
     "/",
     response_model=list[schemas.UsuarioListResponse],
-    summary="Listado general de todos los usuarios",
+    summary="Listado general de todos los usuarios con filtro opcional por rol",
 )
 def listar_todos_los_usuarios(
     skip: int = 0,
     limit: int = 100,
+    rol: Optional[str] = Query(
+        default=None,
+        description=(
+            "Filtrar por nombre de rol activo. "
+            "Ejemplos: 'socio', 'jugador', 'personal_tecnico', 'personal_administrativo'. "
+            "Si se omite, devuelve todos los usuarios sin importar sus roles."
+        ),
+    ),
     db: Session = Depends(get_db),
     _: models.Usuario = Depends(require_roles(*_ADMIN)),
 ):
+    """
+    Lista usuarios ordenados por apellido/nombre.
+
+    Filtro por rol (parámetro opcional `?rol=<nombre>`):
+      Devuelve solo los usuarios que tengan ese rol activo y vigente
+      (es_activo=True, sin expiración o con expiración futura).
+      El filtro usa una subquery EXISTS para una sola query a la BD.
+    """
+    query = db.query(models.Usuario)
+
+    if rol:
+        ahora = datetime.now(timezone.utc)
+        # Subquery: usuarios que tienen el rol pedido, activo y no expirado
+        subq = (
+            db.query(models.UsuarioRol.id_usuario)
+            .join(models.Rol, models.UsuarioRol.id_rol == models.Rol.id_rol)
+            .filter(
+                models.Rol.nombre == rol,
+                models.Rol.es_activo.is_(True),
+                or_(
+                    models.UsuarioRol.valido_hasta.is_(None),
+                    models.UsuarioRol.valido_hasta > ahora,
+                ),
+            )
+            .subquery()
+        )
+        query = query.filter(models.Usuario.id_usuario.in_(subq))
+
     return (
-        db.query(models.Usuario)
+        query
         .order_by(models.Usuario.apellido, models.Usuario.nombre)
         .offset(skip)
         .limit(limit)

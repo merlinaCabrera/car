@@ -2,25 +2,16 @@
 /**
  * Panel de gestión de socios para el administrador.
  *
- * ── Cambios respecto a la versión anterior ────────────────────────────────────
- * 1. AdminSocios fetcha el catálogo de roles una sola vez al montar
- *    (GET /admin/usuarios/roles) y lo pasa al modal como prop.
- *
- * 2. SocioFormModal recibe `catalogoRoles` y `token`.
- *    En modo edición, fetchea los roles actuales del usuario desde
- *    GET /admin/usuarios/{id_usuario} (endpoint que necesitás agregar al backend —
- *    ver nota al final del archivo).
- *
- * 3. La sección "Roles del Usuario" con checkboxes aparece solo en modo edición.
- *    Estado `selectedRoles`: array de id_rol (integers).
- *
- * 4. handleSaveSocio extendido: hace PATCH de datos + PUT de roles en secuencia.
- *    Ambos errores se propagan al catch del modal y se muestran en el banner rojo.
- *    Si el PATCH falla, el PUT de roles NO se ejecuta (fail-fast).
- *    Si el PATCH tiene éxito pero el PUT falla, se muestra el mensaje diferenciado.
+ * Novedades respecto a la versión anterior:
+ *   1. Filtro por rol: tabs en la parte superior que pasan `?rol=` al
+ *      backend. El backend (admin_usuarios.py) ya acepta GET /admin/usuarios/?rol=...
+ *   2. Botón "Registrar Pago" en cada fila de la tabla — abre el modal de
+ *      cobro en ventanilla migrado desde AdminPagos.jsx.
+ *   3. CobroModal migrado aquí por completo, incluyendo el fetch de precio
+ *      y el POST a /admin/pagos/registrar-pago-manual.
  */
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useAuth } from '../context/AuthContext'
 import {
   PlusCircle,
@@ -39,9 +30,125 @@ import {
   Search,
   CheckCircle,
   UserPlus,
+  Banknote,
+  X,
 } from 'lucide-react'
 
 const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
+
+const formatoMoneda = new Intl.NumberFormat('es-AR', {
+  style: 'currency',
+  currency: 'ARS',
+  maximumFractionDigits: 0,
+})
+
+const DESCUENTO_MENOR_PORCENTAJE = 0.40
+
+// ─── Helpers de fecha (sin desfase UTC) ──────────────────────────────────────
+// Duplicados intencionalmente respecto a SocioCuotas.jsx: cada página de este
+// proyecto es un módulo independiente (mismo patrón que ya usan los routers
+// del backend con _extraer_ip/_registrar_audit).
+
+/**
+ * Construye un Date en tiempo local desde partes individuales.
+ * Evita el desfase UTC que produce `new Date("YYYY-MM-DD")` en zonas negativas
+ * como America/Argentina/Buenos_Aires (UTC-3).
+ */
+function fechaLocal(anio, mes1based, dia) {
+  return new Date(anio, mes1based - 1, dia)
+}
+
+/**
+ * Parsea una ISO Date string "YYYY-MM-DD" a Date local. Devuelve null si es
+ * nulo/undefined/inválido.
+ */
+function parsearISO(isoDate) {
+  if (!isoDate) return null
+  const partes = String(isoDate).split('-').map(Number)
+  if (partes.length !== 3 || partes.some(Number.isNaN)) return null
+  return fechaLocal(partes[0], partes[1], partes[2])
+}
+
+/**
+ * Edad en años completos a partir de una fecha de nacimiento ISO ("YYYY-MM-DD").
+ * Devuelve null si no hay fecha de nacimiento cargada.
+ */
+function calcularEdad(fechaNacimientoISO) {
+  const nacimiento = parsearISO(fechaNacimientoISO)
+  if (!nacimiento) return null
+  const hoy = new Date()
+  let edad = hoy.getFullYear() - nacimiento.getFullYear()
+  const mes = hoy.getMonth() - nacimiento.getMonth()
+  if (mes < 0 || (mes === 0 && hoy.getDate() < nacimiento.getDate())) {
+    edad--
+  }
+  return edad
+}
+
+/**
+ * Fuente única de verdad para el estado financiero del socio (moroso / al día
+ * / meses adeudados), calculado "al vuelo" en vez de leer el campo crudo
+ * `socio.deuda_historica_meses` de la API (que queda obsoleto con el tiempo).
+ *
+ * Reglas de negocio:
+ *   · fechaBase = mes_cubierto_hasta si no es nulo (SIN importar si está en
+ *     el pasado o en el futuro).
+ *   · Si mes_cubierto_hasta es nulo, fechaBase = fecha_ingreso normalizada al
+ *     día de vencimiento (con clamp al último día del mes).
+ *   · hoy <= fechaBase  → { moroso: false, mesesAdeudados: 0 }
+ *   · hoy >  fechaBase  → moroso: true, con la diferencia de meses de
+ *     calendario entre hoy y fechaBase (+1 si ya pasó el día de vencimiento
+ *     del mes en curso). Así, un socio nuevo o que debe el mes en curso NO
+ *     es moroso hasta pasado el día de vencimiento (ej. día 11 si vence el 10).
+ */
+function calcularEstadoFinanciero(mesCubiertoHastaISO, fechaIngresoISO, diaVencimiento = 10) {
+  let fechaBase = parsearISO(mesCubiertoHastaISO)
+
+  if (!fechaBase) {
+    const ingreso = parsearISO(fechaIngresoISO)
+    if (ingreso) {
+      const ultimoDiaMes = new Date(ingreso.getFullYear(), ingreso.getMonth() + 1, 0).getDate()
+      const diaClamp = Math.min(diaVencimiento, ultimoDiaMes)
+      fechaBase = fechaLocal(ingreso.getFullYear(), ingreso.getMonth() + 1, diaClamp)
+    }
+  }
+
+  if (!fechaBase) return { moroso: false, mesesAdeudados: 0 }
+
+  const hoy = new Date()
+  hoy.setHours(0, 0, 0, 0)
+
+  if (hoy <= fechaBase) return { moroso: false, mesesAdeudados: 0 }
+
+  let mesesAdeudados =
+    (hoy.getFullYear() - fechaBase.getFullYear()) * 12 +
+    (hoy.getMonth() - fechaBase.getMonth())
+
+  if (hoy.getDate() > fechaBase.getDate()) {
+    mesesAdeudados += 1
+  }
+
+  return { moroso: true, mesesAdeudados }
+}
+
+/** Precio final de la cuota para un socio puntual, aplicando el descuento de menor si corresponde. */
+function calcularPrecioFinal(precioCuota, fechaNacimientoISO) {
+  if (!Number.isFinite(precioCuota)) return 0
+  const edad = calcularEdad(fechaNacimientoISO)
+  const esMenor = edad !== null && edad < 18
+  return esMenor ? precioCuota * (1 - DESCUENTO_MENOR_PORCENTAJE) : precioCuota
+}
+
+// ─── Tabs de filtro por rol ───────────────────────────────────────────────────
+
+const TABS_ROLES = [
+  { label: 'Todos',             value: ''                    },
+  { label: 'Socios',            value: 'socio'               },
+  { label: 'Jugadores',         value: 'jugador'             },
+  { label: 'Personal Técnico',  value: 'personal_tecnico'    },
+  { label: 'Administrativos',   value: 'personal_administrativo' },
+  { label: 'Invitados',         value: 'invitado'            },
+]
 
 // ─── Sub-componente: Checkbox elegante para un rol ───────────────────────────
 
@@ -58,7 +165,6 @@ function RolCheckbox({ rol, checked, onChange, disabled }) {
         ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
       `}
     >
-      {/* Checkbox visual custom */}
       <div className={`
         mt-0.5 flex-shrink-0 w-5 h-5 rounded-md border-2 flex items-center justify-center
         transition-colors
@@ -79,7 +185,6 @@ function RolCheckbox({ rol, checked, onChange, disabled }) {
         disabled={disabled}
       />
 
-      {/* Texto del rol */}
       <div className="min-w-0">
         <p className={`text-sm font-semibold capitalize ${checked ? 'text-indigo-900' : 'text-gray-800'}`}>
           {rol.nombre.replace(/_/g, ' ')}
@@ -94,28 +199,16 @@ function RolCheckbox({ rol, checked, onChange, disabled }) {
   )
 }
 
-// ─── Sub-componente: Sección de roles en el modal ────────────────────────────
-//
-// Reglas de negocio aplicadas en este componente:
-//   1. El rol 'admin_general' se OCULTA completamente del listado.
-//      Solo puede asignarse directamente desde la base de datos.
-//   2. El rol 'invitado' es mutuamente exclusivo con todos los demás:
-//      si se selecciona, los demás se desmarcan automáticamente (y viceversa).
-//      Esta exclusividad la maneja `toggleRol` en el modal padre; aquí solo
-//      se renderiza el estado.
-//
+// ─── Sub-componente: Sección de roles en el modal de edición ─────────────────
+
 function SeccionRoles({ catalogoRoles, selectedRoles, onToggle, loadingRoles, errorRoles }) {
-  // ── Filtrar roles que NO deben aparecer en la UI ─────────────────────────
-  // 'admin_general' se gestiona únicamente desde la BD, nunca desde esta pantalla.
   const rolesMostrables = catalogoRoles.filter(rol => rol.nombre !== 'admin_general')
 
-  // ── Detectar si el 'invitado' está seleccionado (para hint visual) ────────
-  const idInvitado       = catalogoRoles.find(r => r.nombre === 'invitado')?.id_rol
-  const invitadoActivo   = idInvitado != null && selectedRoles.includes(idInvitado)
+  const idInvitado     = catalogoRoles.find(r => r.nombre === 'invitado')?.id_rol
+  const invitadoActivo = idInvitado != null && selectedRoles.includes(idInvitado)
 
   return (
     <div className="space-y-3">
-      {/* Divider con título */}
       <div className="flex items-center gap-3 pt-2">
         <div className="h-px flex-1 bg-gray-200" />
         <span className="flex items-center gap-1.5 text-xs font-bold text-gray-500 uppercase tracking-widest whitespace-nowrap">
@@ -125,7 +218,6 @@ function SeccionRoles({ catalogoRoles, selectedRoles, onToggle, loadingRoles, er
         <div className="h-px flex-1 bg-gray-200" />
       </div>
 
-      {/* Aviso cuando Invitado está activo */}
       {invitadoActivo && (
         <p className="text-xs text-blue-700 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
           ℹ️ El rol <strong>Invitado</strong> es exclusivo: no puede combinarse con otros roles.
@@ -133,7 +225,6 @@ function SeccionRoles({ catalogoRoles, selectedRoles, onToggle, loadingRoles, er
         </p>
       )}
 
-      {/* Estado: cargando roles actuales */}
       {loadingRoles && (
         <div className="flex items-center gap-2 text-sm text-gray-500 py-2">
           <Loader2 size={15} className="animate-spin text-indigo-500" />
@@ -141,14 +232,12 @@ function SeccionRoles({ catalogoRoles, selectedRoles, onToggle, loadingRoles, er
         </div>
       )}
 
-      {/* Error al cargar roles actuales (no bloquea el formulario) */}
       {errorRoles && !loadingRoles && (
         <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
           ⚠️ No se pudieron cargar los roles actuales. Los checkboxes inician en blanco.
         </p>
       )}
 
-      {/* Grid de checkboxes */}
       {!loadingRoles && (
         <div className="grid grid-cols-1 gap-2">
           {rolesMostrables.length === 0 && (
@@ -157,9 +246,6 @@ function SeccionRoles({ catalogoRoles, selectedRoles, onToggle, loadingRoles, er
             </p>
           )}
           {rolesMostrables.map(rol => {
-            // Un rol no-invitado se deshabilita visualmente (no en el DOM) si
-            // 'invitado' está activo — el toggle lo limpiará al hacer clic,
-            // pero el aspecto "apagado" ayuda al admin a entender la exclusividad.
             const bloqueadoPorInvitado = invitadoActivo && rol.nombre !== 'invitado'
             return (
               <RolCheckbox
@@ -182,7 +268,7 @@ function SeccionRoles({ catalogoRoles, selectedRoles, onToggle, loadingRoles, er
   )
 }
 
-// ─── Modal principal ──────────────────────────────────────────────────────────
+// ─── Modal de edición / creación de socio ─────────────────────────────────────
 
 function SocioFormModal({ socio, onClose, onSave, catalogoRoles, token }) {
   const [formData, setFormData] = useState({
@@ -192,6 +278,7 @@ function SocioFormModal({ socio, onClose, onSave, catalogoRoles, token }) {
     email:     socio?.email     ?? '',
     telefono:  socio?.telefono  ?? '',
     direccion: socio?.direccion ?? '',
+    fecha_nacimiento: socio?.fecha_nacimiento ?? '',
     password:  '',
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -199,27 +286,12 @@ function SocioFormModal({ socio, onClose, onSave, catalogoRoles, token }) {
   const [formErrors,   setFormErrors]   = useState({})
   const [showPassword, setShowPassword] = useState(false)
 
-  // ── Estado de roles ────────────────────────────────────────────────────────
-  const [selectedRoles, setSelectedRoles] = useState([])      // array de id_rol (int)
+  const [selectedRoles, setSelectedRoles] = useState([])
   const [loadingRoles,  setLoadingRoles]  = useState(false)
   const [errorRoles,    setErrorRoles]    = useState(false)
 
   const isEditMode = !!socio
 
-  // ── Fetch de roles actuales del usuario al abrir el modal en modo edición ──
-  //
-  // Necesita GET /admin/usuarios/{id_usuario} en el backend que retorne
-  // UsuarioResponse (con roles_asignados[].id_rol).
-  //
-  // ⚠️  Si ese endpoint aún no existe, los checkboxes inician desmarcados
-  //     y se muestra una advertencia no bloqueante. Agregá al backend:
-  //
-  //     @router.get("/{id_usuario}", response_model=schemas.UsuarioResponse)
-  //     def get_usuario(id_usuario: int, db=..., _=Depends(require_roles(*_ADMIN))):
-  //         u = db.query(models.Usuario).options(joinedload(...)).filter(...).first()
-  //         if not u: raise HTTPException(404)
-  //         return u
-  //
   useEffect(() => {
     if (!isEditMode || !socio?.id_usuario || !token) return
 
@@ -232,7 +304,6 @@ function SocioFormModal({ socio, onClose, onSave, catalogoRoles, token }) {
         })
         if (!res.ok) throw new Error()
         const data = await res.json()
-        // UsuarioResponse.roles_asignados → [{id_rol, rol: {...}, valido_hasta, ...}]
         const ids = (data.roles_asignados ?? []).map(ur => ur.id_rol)
         setSelectedRoles(ids)
       } catch {
@@ -246,37 +317,20 @@ function SocioFormModal({ socio, onClose, onSave, catalogoRoles, token }) {
     fetchRolesActuales()
   }, [socio?.id_usuario, token, isEditMode])
 
-  // ── Toggle de un rol con lógica de exclusividad para 'invitado' ──────────
-  //
-  // Reglas:
-  //   • Tildar 'invitado'  → selectedRoles queda con SOLO ese rol.
-  //   • Tildar cualquier otro rol → 'invitado' se desmarca automáticamente.
-  //   • Destildar cualquier rol   → comportamiento estándar (quita ese rol).
-  //
-  // La búsqueda por nombre ('invitado') en lugar de por ID hardcodeado hace
-  // que la lógica funcione en cualquier entorno (dev, staging, producción)
-  // independientemente del ID que tenga el rol en cada BD.
-  //
   const toggleRol = (id_rol) => {
-    // Obtener el id del rol 'invitado' del catálogo que ya tenemos en memoria.
-    // Si el catálogo aún no cargó, idInvitado será undefined y la exclusividad
-    // no aplica (comportamiento seguro: no se rompe nada).
     const idInvitado = catalogoRoles.find(r => r.nombre === 'invitado')?.id_rol
 
     setSelectedRoles(prev => {
       const yaSeleccionado = prev.includes(id_rol)
 
-      // ── Destildar: comportamiento estándar ───────────────────────────────
       if (yaSeleccionado) {
         return prev.filter(id => id !== id_rol)
       }
 
-      // ── Tildar 'invitado' → exclusivo: borrar todo lo demás ─────────────
       if (idInvitado != null && id_rol === idInvitado) {
         return [idInvitado]
       }
 
-      // ── Tildar cualquier otro rol → quitar 'invitado' si estaba ─────────
       const sinInvitado = (idInvitado != null)
         ? prev.filter(id => id !== idInvitado)
         : prev
@@ -284,7 +338,6 @@ function SocioFormModal({ socio, onClose, onSave, catalogoRoles, token }) {
     })
   }
 
-  // ── Validación de campos del formulario ───────────────────────────────────
   const validate = () => {
     const errs = {}
     if (!formData.nombre.trim())   errs.nombre   = 'El nombre es obligatorio.'
@@ -295,6 +348,7 @@ function SocioFormModal({ socio, onClose, onSave, catalogoRoles, token }) {
     if (!isEditMode) {
       if (!formData.dni) errs.dni = 'El DNI es obligatorio.'
       else if (!/^\d{7,10}$/.test(formData.dni)) errs.dni = 'Entre 7 y 10 dígitos numéricos.'
+      if (!formData.fecha_nacimiento) errs.fecha_nacimiento = 'La fecha de nacimiento es obligatoria.'
       if (!formData.password)               errs.password = 'La contraseña es obligatoria.'
       else if (formData.password.length < 8) errs.password = 'Mínimo 8 caracteres.'
       else if (/^\d+$/.test(formData.password)) errs.password = 'No puede ser solo números.'
@@ -309,7 +363,6 @@ function SocioFormModal({ socio, onClose, onSave, catalogoRoles, token }) {
     return Object.keys(errs).length === 0
   }
 
-  // ── Submit ─────────────────────────────────────────────────────────────────
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!validate()) return
@@ -317,7 +370,6 @@ function SocioFormModal({ socio, onClose, onSave, catalogoRoles, token }) {
     setIsSubmitting(true)
     setApiError(null)
 
-    // En edición: omitir campos vacíos para no blanquearlos en la BD
     const payload = isEditMode
       ? Object.fromEntries(Object.entries(formData).filter(([, v]) => v !== ''))
       : { ...formData }
@@ -325,8 +377,6 @@ function SocioFormModal({ socio, onClose, onSave, catalogoRoles, token }) {
     if (isEditMode && !payload.password) delete payload.password
 
     try {
-      // onSave recibe (data, id_usuario, selectedRoles|null)
-      // En creación: selectedRoles = null → no se hace PUT de roles
       await onSave(payload, socio?.id_usuario ?? null, isEditMode ? selectedRoles : null)
       onClose()
     } catch (err) {
@@ -343,7 +393,6 @@ function SocioFormModal({ socio, onClose, onSave, catalogoRoles, token }) {
     >
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md flex flex-col max-h-[92dvh]">
 
-        {/* Header fijo */}
         <div className="p-6 border-b flex-shrink-0">
           <h2 className="text-xl font-bold text-gray-800">
             {isEditMode ? 'Editar Socio' : 'Nuevo Socio'}
@@ -356,11 +405,9 @@ function SocioFormModal({ socio, onClose, onSave, catalogoRoles, token }) {
           </p>
         </div>
 
-        {/* Cuerpo scrolleable */}
         <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
           <div className="p-6 space-y-4 overflow-y-auto flex-1">
 
-            {/* Banner de error de API */}
             {apiError && (
               <div className="flex items-start gap-2 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
                 <AlertCircle size={15} className="flex-shrink-0 mt-0.5" />
@@ -368,7 +415,6 @@ function SocioFormModal({ socio, onClose, onSave, catalogoRoles, token }) {
               </div>
             )}
 
-            {/* ── Datos personales ──────────────────────────────────── */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <input
@@ -410,6 +456,17 @@ function SocioFormModal({ socio, onClose, onSave, catalogoRoles, token }) {
               {formErrors.email && <p className="text-red-600 text-xs mt-1">{formErrors.email}</p>}
             </div>
 
+            <div>
+              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Fecha de Nacimiento</label>
+              <input
+                type="date" name="fecha_nacimiento" value={formData.fecha_nacimiento}
+                onChange={e => setFormData({ ...formData, fecha_nacimiento: e.target.value })}
+                required
+                className={`form-input mt-1.5 ${formErrors.fecha_nacimiento ? 'border-red-500' : ''}`}
+              />
+              {formErrors.fecha_nacimiento && <p className="text-red-600 text-xs mt-1">{formErrors.fecha_nacimiento}</p>}
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <input
                 name="telefono" value={formData.telefono}
@@ -442,7 +499,6 @@ function SocioFormModal({ socio, onClose, onSave, catalogoRoles, token }) {
               {formErrors.password && <p className="text-red-600 text-xs mt-1">{formErrors.password}</p>}
             </div>
 
-            {/* ── Sección de roles (solo en modo edición) ───────────── */}
             {isEditMode && (
               <SeccionRoles
                 catalogoRoles={catalogoRoles}
@@ -454,7 +510,6 @@ function SocioFormModal({ socio, onClose, onSave, catalogoRoles, token }) {
             )}
           </div>
 
-          {/* Footer fijo */}
           <div className="p-4 bg-gray-50 rounded-b-2xl border-t flex justify-end gap-3 flex-shrink-0">
             <button
               type="button" onClick={onClose}
@@ -476,6 +531,162 @@ function SocioFormModal({ socio, onClose, onSave, catalogoRoles, token }) {
   )
 }
 
+// ─── Modal de cobro manual en ventanilla (migrado desde AdminPagos) ──────────
+//
+// Recibe el socio seleccionado (con deuda_historica_meses y deuda_estimada)
+// y el precio actual de la cuota (fetcheado por AdminSocios al montar).
+// El backend aplica automáticamente la tarifa correcta (Cuota Menor vs adulto)
+// al ejecutar /admin/pagos/registrar-pago-manual — el precio que mostramos
+// acá es orientativo, basado en el precio_cuota_actual de estadísticas.
+
+function CobroModal({ socio, precioCuota, onClose, onSave, diaVencimiento }) {
+  const estadoFinanciero = useMemo(
+    () => calcularEstadoFinanciero(socio.mes_cubierto_hasta, socio.fecha_ingreso, diaVencimiento),
+    [socio.mes_cubierto_hasta, socio.fecha_ingreso, diaVencimiento]
+  )
+  const { moroso, mesesAdeudados } = estadoFinanciero
+
+  const [meses, setMeses] = useState(moroso && mesesAdeudados > 0 ? mesesAdeudados : 1)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [apiError, setApiError] = useState(null)
+  const [formError, setFormError] = useState(null)
+
+  const edad = useMemo(() => calcularEdad(socio.fecha_nacimiento), [socio.fecha_nacimiento])
+  const esMenor = edad !== null && edad < 18
+
+  const precioFinalSocio = useMemo(
+    () => calcularPrecioFinal(precioCuota, socio.fecha_nacimiento),
+    [precioCuota, socio.fecha_nacimiento]
+  )
+
+  const deudaRealPesos = useMemo(
+    () => mesesAdeudados * precioFinalSocio,
+    [mesesAdeudados, precioFinalSocio]
+  )
+
+  const totalACobrar = useMemo(() => {
+    return precioFinalSocio * (Number(meses) || 0)
+  }, [meses, precioFinalSocio])
+
+  const validar = () => {
+    const n = Number(meses)
+    if (!Number.isInteger(n) || n <= 0) {
+      setFormError('Ingresá una cantidad de meses válida (entero mayor a 0).')
+      return false
+    }
+    setFormError(null)
+    return true
+  }
+
+  const handleConfirmar = async () => {
+    if (!validar()) return
+    setIsSubmitting(true)
+    setApiError(null)
+    try {
+      await onSave({ id_usuario: socio.id_usuario, meses_a_pagar: Number(meses) })
+      onClose()
+    } catch (err) {
+      setApiError(err.message)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex justify-center items-center p-4"
+      onClick={e => { if (e.target === e.currentTarget) onClose() }}
+    >
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md flex flex-col max-h-[92dvh]">
+
+        <div className="p-6 border-b flex-shrink-0 flex items-start justify-between">
+          <div>
+            <h2 className="text-xl font-bold text-gray-800">Registrar Pago en Ventanilla</h2>
+            <p className="text-sm text-gray-500 mt-1">
+              {socio.apellido}, {socio.nombre} — DNI {socio.dni}
+            </p>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="p-6 space-y-4 overflow-y-auto flex-1">
+
+          {apiError && (
+            <div className="flex items-start gap-2 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
+              <AlertCircle size={15} className="flex-shrink-0 mt-0.5" />
+              <span>{apiError}</span>
+            </div>
+          )}
+
+          {moroso ? (
+            <div className="flex items-center justify-between px-4 py-3 rounded-xl bg-amber-50 border border-amber-200">
+              <span className="text-sm font-medium text-amber-800">Deuda actual</span>
+              <span className="text-sm font-bold text-amber-800">
+                {mesesAdeudados} mes{mesesAdeudados !== 1 ? 'es' : ''} — {formatoMoneda.format(deudaRealPesos)}
+              </span>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between px-4 py-3 rounded-xl bg-green-50 border border-green-200">
+              <span className="text-sm font-medium text-green-800">Socio al día (Adelantar pago)</span>
+              <span className="text-sm font-bold text-green-800">{formatoMoneda.format(0)}</span>
+            </div>
+          )}
+
+          {esMenor && (
+            <div className="flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-blue-50 border border-blue-200 text-blue-800">
+              <span className="text-sm font-semibold">
+                Aplica Tarifa Menor (40% de descuento)
+              </span>
+            </div>
+          )}
+
+          <div>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              Cantidad de meses a abonar
+            </label>
+            <input
+              type="number"
+              min={1}
+              step={1}
+              value={meses}
+              onChange={e => setMeses(e.target.value)}
+              className={`form-input mt-1.5 ${formError ? 'border-red-500' : ''}`}
+            />
+            {formError && <p className="text-red-600 text-xs mt-1">{formError}</p>}
+          </div>
+
+          <div className="flex items-center justify-between px-4 py-4 rounded-xl bg-blue-50 border border-blue-200">
+            <span className="text-sm font-semibold text-blue-900">Total a cobrar</span>
+            <span className="text-xl font-bold text-blue-900">{formatoMoneda.format(totalACobrar)}</span>
+          </div>
+
+          <p className="text-xs text-gray-400 leading-relaxed">
+            El sistema aplica automáticamente un descuento para socios menores de 18 años. El total a cobrar ya refleja este beneficio.
+          </p>
+        </div>
+
+        <div className="p-4 bg-gray-50 rounded-b-2xl border-t flex justify-end gap-3 flex-shrink-0">
+          <button
+            type="button" onClick={onClose}
+            className="px-4 py-2 rounded-lg text-gray-600 bg-gray-200 hover:bg-gray-300 font-semibold transition-colors"
+          >
+            Cancelar
+          </button>
+          <button
+            type="button" onClick={handleConfirmar} disabled={isSubmitting}
+            className="px-4 py-2 rounded-lg text-white bg-emerald-600 hover:bg-emerald-700 font-semibold disabled:opacity-50 transition-colors flex items-center gap-2"
+          >
+            {isSubmitting && <Loader2 size={14} className="animate-spin" />}
+            {isSubmitting ? 'Procesando…' : 'Confirmar Pago'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Componente principal ─────────────────────────────────────────────────────
 
 export default function AdminSocios() {
@@ -489,6 +700,10 @@ export default function AdminSocios() {
   const [editingSocio, setEditingSocio] = useState(null)
   const [searchTerm,   setSearchTerm]   = useState('')
   const [approvingId,  setApprovingId]  = useState(null)
+  const [rolFiltro,    setRolFiltro]    = useState('')       // tab activo
+  const [socioACobrar, setSocioACobrar] = useState(null)    // abre CobroModal
+  const [precioCuota,  setPrecioCuota]  = useState(0)       // precio de referencia
+  const [diaVencimiento, setDiaVencimiento] = useState(10);
 
   // ── Catálogo de roles — fetch único al montar ─────────────────────────────
   const [catalogoRoles, setCatalogoRoles] = useState([])
@@ -503,14 +718,31 @@ export default function AdminSocios() {
       .catch(() => setCatalogoRoles([]))
   }, [token])
 
+  // ── Fetch de datos de configuración (precio de cuota, día de vencimiento) ──
+  useEffect(() => {
+    if (!token) return
+    fetch(`${API}/admin/pagos/estadisticas`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data) {
+          setPrecioCuota(Number(data.precio_cuota_actual) || 0)
+          setDiaVencimiento(Number(data.dia_vencimiento_cuota) || 10)
+        }
+      })
+      .catch(() => {})
+  }, [token])
+
   // ── Fetch de datos (socios y pendientes) ──────────────────────────────────
   const fetchData = useCallback(async () => {
     if (!token) return
     setLoading(true)
     setError(null)
     try {
+      const params = rolFiltro ? `?rol=${encodeURIComponent(rolFiltro)}` : ''
       const [sociosRes, pendientesRes] = await Promise.all([
-        fetch(`${API}/admin/usuarios/`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${API}/admin/usuarios/${params}`, { headers: { Authorization: `Bearer ${token}` } }),
         fetch(`${API}/admin/usuarios/pendientes`, { headers: { Authorization: `Bearer ${token}` } }),
       ])
 
@@ -526,29 +758,16 @@ export default function AdminSocios() {
     } finally {
       setLoading(false)
     }
-  }, [token])
+  }, [token, rolFiltro])
 
   useEffect(() => { fetchData() }, [fetchData])
 
-  // ── Guardar socio: PATCH/POST de datos + PUT de roles (en edición) ─────────
-  //
-  // Firma extendida: handleSaveSocio(data, id_usuario, selectedRoles)
-  //   - data:          payload de campos del formulario
-  //   - id_usuario:    null en creación, int en edición
-  //   - selectedRoles: null en creación, array de ids en edición
-  //
-  // Estrategia de errores (fail-fast):
-  //   1. Si el PATCH/POST falla → lanza error, no ejecuta el PUT de roles.
-  //   2. Si el PATCH tiene éxito y el PUT falla → lanza error diferenciado
-  //      ("Datos guardados, pero error al actualizar roles").
-  //   El modal captura el error y lo muestra en el banner rojo.
-  //
+  // ── Guardar socio ──────────────────────────────────────────────────────────
   const handleSaveSocio = async (data, id, selectedRoles) => {
-    const isEdit  = !!id
-    const url     = isEdit ? `${API}/admin/usuarios/${id}` : `${API}/admin/usuarios/`
-    const method  = isEdit ? 'PATCH' : 'POST'
+    const isEdit = !!id
+    const url    = isEdit ? `${API}/admin/usuarios/${id}` : `${API}/admin/usuarios/`
+    const method = isEdit ? 'PATCH' : 'POST'
 
-    // ── 1. PATCH o POST de datos del usuario ──────────────────────────────
     const res = await fetch(url, {
       method,
       headers: {
@@ -563,7 +782,6 @@ export default function AdminSocios() {
       throw new Error(err.detail ?? `Error al ${isEdit ? 'actualizar' : 'crear'} el socio.`)
     }
 
-    // ── 2. PUT de roles (solo en edición, si selectedRoles fue enviado) ────
     if (isEdit && selectedRoles !== null) {
       const rolesRes = await fetch(`${API}/admin/usuarios/${id}/roles`, {
         method: 'PUT',
@@ -576,14 +794,32 @@ export default function AdminSocios() {
 
       if (!rolesRes.ok) {
         const err = await rolesRes.json().catch(() => ({}))
-        // Los datos del usuario YA se guardaron. Aclaramos eso en el mensaje.
         throw new Error(
           `Datos personales guardados correctamente, pero error al actualizar los roles: ${err.detail ?? 'Error desconocido.'}`
         )
       }
     }
 
-    // Refrescar la tabla con los datos actualizados
+    fetchData()
+  }
+
+  // ── Registrar pago manual (modal de cobro) ─────────────────────────────────
+  const handleRegistrarPago = async ({ id_usuario, meses_a_pagar }) => {
+    const res = await fetch(`${API}/admin/pagos/registrar-pago-manual`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ id_usuario, meses_a_pagar }),
+    })
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(err.detail ?? 'Error al registrar el pago.')
+    }
+
+    // Refrescar la tabla para actualizar el estado de cuenta del socio
     fetchData()
   }
 
@@ -651,20 +887,22 @@ export default function AdminSocios() {
   const openModalForEdit   = (socio) => { setEditingSocio(socio); setIsModalOpen(true) }
   const closeModal         = () => setIsModalOpen(false)
 
-  const filteredSocios = socios.filter(socio => {
+  // ── Filtro local por texto ─────────────────────────────────────────────────
+  const filteredSocios = useMemo(() => {
     const term = searchTerm.toLowerCase()
-    return (
-      socio.nombre.toLowerCase().includes(term) ||
-      socio.apellido.toLowerCase().includes(term) ||
-      socio.dni.includes(term)
+    if (!term) return socios
+    return socios.filter(s =>
+      s.nombre.toLowerCase().includes(term) ||
+      s.apellido.toLowerCase().includes(term) ||
+      s.dni.includes(term)
     )
-  })
+  }, [socios, searchTerm])
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-6">
 
-      {/* Modal */}
+      {/* Modal de edición / creación */}
       {isModalOpen && (
         <SocioFormModal
           socio={editingSocio}
@@ -672,6 +910,17 @@ export default function AdminSocios() {
           onSave={handleSaveSocio}
           catalogoRoles={catalogoRoles}
           token={token}
+        />
+      )}
+
+      {/* Modal de cobro en ventanilla */}
+      {socioACobrar && (
+        <CobroModal
+          socio={socioACobrar}
+          precioCuota={precioCuota}
+          onClose={() => setSocioACobrar(null)}
+          onSave={handleRegistrarPago}
+          diaVencimiento={diaVencimiento}
         />
       )}
 
@@ -683,7 +932,7 @@ export default function AdminSocios() {
             Gestión de Socios
           </h1>
           <p className="text-sm text-gray-500 mt-1">
-            Crear, editar, aprobar y dar de baja a los socios del club.
+            Crear, editar, aprobar, cobrar y dar de baja a los socios del club.
           </p>
         </div>
         <div className="flex items-center gap-3 flex-shrink-0 mt-1">
@@ -702,6 +951,23 @@ export default function AdminSocios() {
             <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
           </button>
         </div>
+      </div>
+
+      {/* ── Tabs de filtro por rol ─────────────────────────────────────────── */}
+      <div className="flex gap-1 flex-wrap p-1 bg-gray-100 rounded-xl w-fit">
+        {TABS_ROLES.map(tab => (
+          <button
+            key={tab.value}
+            onClick={() => { setRolFiltro(tab.value); setSearchTerm('') }}
+            className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-all ${
+              rolFiltro === tab.value
+                ? 'bg-white text-gray-900 shadow-sm'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
 
       {/* Buscador */}
@@ -727,7 +993,7 @@ export default function AdminSocios() {
         </div>
       )}
 
-      {/* Sección de Pendientes */}
+      {/* Sección de Pendientes (no se filtra por rol) */}
       {!loading && pendientes.length > 0 && (
         <div className="space-y-4 p-5 rounded-2xl bg-amber-50 border-2 border-amber-200">
           <div className="flex items-center gap-3">
@@ -776,7 +1042,7 @@ export default function AdminSocios() {
         <table className="min-w-full divide-y divide-gray-100">
           <thead className="bg-gray-50">
             <tr>
-              {['Socio', 'DNI', 'Email', 'Estado', 'Acciones'].map(h => (
+              {['Socio', 'DNI', 'Email', 'Estado de Cuenta', 'Estado', 'Acciones'].map(h => (
                 <th key={h} className="px-6 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">
                   {h}
                 </th>
@@ -786,19 +1052,40 @@ export default function AdminSocios() {
           <tbody className="divide-y divide-gray-50">
             {loading && [...Array(5)].map((_, i) => (
               <tr key={i} className="animate-pulse">
-                <td colSpan="5" className="px-6 py-4">
+                <td colSpan="6" className="px-6 py-4">
                   <div className="h-4 bg-gray-200 rounded-md" />
                 </td>
               </tr>
             ))}
 
-            {!loading && filteredSocios.map(socio => (
+            {!loading && filteredSocios.map(socio => {
+              const { moroso: socioMoroso, mesesAdeudados: socioMesesAdeudados } = calcularEstadoFinanciero(
+                socio.mes_cubierto_hasta,
+                socio.fecha_ingreso,
+                diaVencimiento
+              )
+              const socioPrecioFinal = calcularPrecioFinal(precioCuota, socio.fecha_nacimiento)
+              const socioDeudaPesos = socioMesesAdeudados * socioPrecioFinal
+
+              return (
               <tr key={socio.id_usuario} className="hover:bg-gray-50/70 transition-colors">
                 <td className="px-6 py-4">
                   <div className="font-medium text-gray-900">{socio.apellido}, {socio.nombre}</div>
+                  {socio.email && <div className="text-xs text-gray-400 mt-0.5">{socio.email}</div>}
                 </td>
                 <td className="px-6 py-4 font-mono text-sm text-gray-600">{socio.dni}</td>
                 <td className="px-6 py-4 text-sm text-gray-500">{socio.email ?? '—'}</td>
+                <td className="px-6 py-4">
+                  {socioMoroso ? (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                      {socioMesesAdeudados} mes{socioMesesAdeudados !== 1 ? 'es' : ''} — {formatoMoneda.format(socioDeudaPesos)}
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                      Al día
+                    </span>
+                  )}
+                </td>
                 <td className="px-6 py-4">
                   {socio.fecha_baja ? (
                     <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
@@ -811,6 +1098,16 @@ export default function AdminSocios() {
                   )}
                 </td>
                 <td className="px-6 py-4 text-right space-x-1 whitespace-nowrap">
+                  {/* Registrar Pago — solo para socios activos */}
+                  {!socio.fecha_baja && (
+                    <button
+                      onClick={() => setSocioACobrar(socio)}
+                      className="p-2 text-gray-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
+                      title="Registrar Pago"
+                    >
+                      <Banknote size={16} />
+                    </button>
+                  )}
                   <button
                     onClick={() => openModalForEdit(socio)}
                     className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
@@ -837,14 +1134,17 @@ export default function AdminSocios() {
                   )}
                 </td>
               </tr>
-            ))}
+              )
+            })}
 
             {!loading && filteredSocios.length === 0 && (
               <tr>
-                <td colSpan="5" className="text-center py-12 text-gray-500">
+                <td colSpan="6" className="text-center py-12 text-gray-500">
                   {searchTerm
                     ? 'No se encontraron socios que coincidan con la búsqueda.'
-                    : 'No hay socios para mostrar.'}
+                    : rolFiltro
+                      ? `No hay usuarios con el rol "${rolFiltro}".`
+                      : 'No hay socios para mostrar.'}
                 </td>
               </tr>
             )}
@@ -854,45 +1154,3 @@ export default function AdminSocios() {
     </div>
   )
 }
-
-/*
- * ── NOTA: Endpoint backend requerido ────────────────────────────────────────────
- *
- * El modal de edición fetcha GET /admin/usuarios/{id_usuario} para conocer los
- * roles actuales del socio. Ese endpoint NO existe todavía en admin_usuarios.py.
- *
- * Agregar estas líneas al final de backend/routers/admin_usuarios.py:
- *
- *   @router.get(
- *       "/{id_usuario}",
- *       response_model=schemas.UsuarioResponse,
- *       summary="Detalle completo de un usuario (incluye roles_asignados)",
- *   )
- *   def get_usuario_detalle(
- *       id_usuario: int,
- *       db: Session = Depends(get_db),
- *       _: models.Usuario = Depends(require_roles(*_ADMIN)),
- *   ):
- *       usuario = (
- *           db.query(models.Usuario)
- *           .options(
- *               joinedload(models.Usuario.roles_asignados)
- *               .joinedload(models.UsuarioRol.rol)
- *           )
- *           .filter(models.Usuario.id_usuario == id_usuario)
- *           .first()
- *       )
- *       if not usuario:
- *           raise HTTPException(status_code=404, detail="Usuario no encontrado.")
- *       return usuario
- *
- * ── NOTA: Clase CSS form-input ────────────────────────────────────────────────
- *
- *   @layer components {
- *     .form-input {
- *       @apply block w-full px-3 py-2 bg-white border border-gray-300 rounded-lg
- *              shadow-sm placeholder-gray-400 text-sm
- *              focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500;
- *     }
- *   }
- */

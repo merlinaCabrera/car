@@ -19,6 +19,9 @@ import {
   ShoppingCart,
   Plus,
   Minus,
+  ChevronLeft,
+  ChevronRight,
+  Lock,
 } from 'lucide-react'
 
 const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
@@ -35,32 +38,358 @@ const formatoFecha = new Intl.DateTimeFormat('es-AR', {
   year: 'numeric',
 })
 
+const NOMBRES_MES = [
+  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
+]
+
+// ─── Helpers de fecha (sin UTC offset) ───────────────────────────────────────
+
 /**
- * Formatea una ISO Date string ("2026-07-10") a texto legible en español.
- * Usa Date(y, m-1, d) en tiempo local para evitar el desfase UTC que
- * ocurre con `new Date("2026-07-10")` en zonas UTC- (ej: Argentina).
+ * Construye un Date en tiempo local desde partes individuales.
+ * Evita el desfase UTC que produce `new Date("YYYY-MM-DD")` en zonas negativas
+ * como America/Argentina/Buenos_Aires (UTC-3).
  */
-function formatearFechaCobertura(isoDate) {
-  if (!isoDate) return null
-  const partes = isoDate.split('-').map(Number)
-  if (partes.length !== 3 || partes.some(Number.isNaN)) return null
-  const [anio, mes, dia] = partes
-  return new Date(anio, mes - 1, dia).toLocaleDateString('es-AR', {
-    day: 'numeric', month: 'long', year: 'numeric',
-  })
+function fechaLocal(anio, mes1based, dia) {
+  return new Date(anio, mes1based - 1, dia)
 }
 
 /**
- * Devuelve true si hoy supera `mes_cubierto_hasta` o si es nulo.
- * Compara solo fecha (sin horas) para coincidir con el tipo `date` del backend.
+ * Parsea una ISO Date string "YYYY-MM-DD" a Date local.
+ * Si es null/undefined devuelve null.
  */
-function esMoroso(isoDate) {
-  if (!isoDate) return true
-  const [anio, mes, dia] = isoDate.split('-').map(Number)
-  const cobertura = new Date(anio, mes - 1, dia)
+function parsearISO(isoDate) {
+  if (!isoDate) return null
+  const partes = String(isoDate).split('-').map(Number)
+  if (partes.length !== 3 || partes.some(Number.isNaN)) return null
+  return fechaLocal(partes[0], partes[1], partes[2])
+}
+
+/**
+ * Formatea una ISO Date string a texto legible en español.
+ * Ej: "2026-07-10" → "10 de julio de 2026"
+ */
+function formatearFechaCobertura(isoDate) {
+  const d = parsearISO(isoDate)
+  if (!d) return null
+  return d.toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' })
+}
+
+/**
+ * Fuente única de verdad para el estado financiero del socio (moroso / al día
+ * / meses adeudados). Reemplaza a los viejos `esMoroso` y
+ * `calcularMesesAdeudadosReal`, que marcaban como moroso a cualquier socio
+ * sin `mes_cubierto_hasta` (ej. recién ingresado) desde el día 1 del mes,
+ * sin respetar el día de vencimiento configurado — un socio nuevo o que debe
+ * el mes en curso NO es moroso hasta que pase el día de vencimiento.
+ *
+ * Reglas de negocio:
+ *   · fechaBase = mes_cubierto_hasta si no es nulo (SIN importar si está en
+ *     el pasado o en el futuro).
+ *   · Si mes_cubierto_hasta es nulo, fechaBase = fecha_ingreso normalizada al
+ *     día de vencimiento (con clamp al último día del mes, ej. para meses
+ *     cortos como febrero).
+ *   · hoy <= fechaBase  → { moroso: false, mesesAdeudados: 0 }
+ *   · hoy >  fechaBase  → moroso: true. mesesAdeudados = diferencia de meses
+ *     de calendario entre hoy y fechaBase; si además ya pasó el día de
+ *     vencimiento dentro del mes actual (hoy.getDate() > fechaBase.getDate()),
+ *     se suma 1 mes extra (ese mes en curso también ya venció sin pagar).
+ */
+function calcularEstadoFinanciero(mesCubiertoHastaISO, fechaIngresoISO, diaVencimiento = 10) {
+  let fechaBase = parsearISO(mesCubiertoHastaISO)
+
+  if (!fechaBase) {
+    const ingreso = parsearISO(fechaIngresoISO)
+    if (ingreso) {
+      const ultimoDiaMes = new Date(ingreso.getFullYear(), ingreso.getMonth() + 1, 0).getDate()
+      const diaClamp = Math.min(diaVencimiento, ultimoDiaMes)
+      fechaBase = fechaLocal(ingreso.getFullYear(), ingreso.getMonth() + 1, diaClamp)
+    }
+  }
+
+  // Defensivo: sin mes_cubierto_hasta ni fecha_ingreso no hay nada que evaluar.
+  if (!fechaBase) return { moroso: false, mesesAdeudados: 0 }
+
   const hoy = new Date()
   hoy.setHours(0, 0, 0, 0)
-  return hoy > cobertura
+
+  if (hoy <= fechaBase) return { moroso: false, mesesAdeudados: 0 }
+
+  let mesesAdeudados =
+    (hoy.getFullYear() - fechaBase.getFullYear()) * 12 +
+    (hoy.getMonth() - fechaBase.getMonth())
+
+  if (hoy.getDate() > fechaBase.getDate()) {
+    mesesAdeudados += 1
+  }
+
+  return { moroso: true, mesesAdeudados }
+}
+
+// ─── Motor de estado de mes para el Calendario ───────────────────────────────
+
+/**
+ * Evalúa el estado de un mes dado (anio, mes1based) contra las 3 variables
+ * clave del motor de cuotas.
+ *
+ * La "fecha representativa" del mes es el dia_vencimiento_cuota dentro de ese
+ * mes. Eso es exactamente lo que el backend usa para calcular mes_cubierto_hasta,
+ * así que la comparación es perfectamente simétrica.
+ *
+ * @returns {'inactivo'|'pagado'|'adeudado'|'futuro'}
+ *
+ * Reglas (en orden de prioridad):
+ *   1. inactivo  — fechaRep < fechaIngreso           (no era socio aún)
+ *   2. pagado    — fechaRep < mesCubiertoHasta        (cuota saldada)
+ *   3. adeudado  — fechaRep <= hoy  (mes ya venció sin pagar)
+ *   4. futuro    — fechaRep > hoy   (mes por venir, sin cobertura)
+ */
+function estadoDeMes(anio, mes1based, diaVencimiento, fechaIngreso, mesCubiertoHasta) {
+  // Clamp del día al último día del mes para robustez
+  // (diaVencimiento ≤ 28 por constraint del backend, así que en la práctica
+  //  no se necesita clamp, pero lo dejamos defensive)
+  const ultimoDia = new Date(anio, mes1based, 0).getDate()
+  const dia = Math.min(diaVencimiento, ultimoDia)
+  const fechaRep = fechaLocal(anio, mes1based, dia)
+
+  const hoy = new Date()
+  hoy.setHours(0, 0, 0, 0)
+
+  // Regla 1: inactivo
+  if (fechaIngreso && fechaRep < fechaIngreso) return 'inactivo'
+
+  // Regla 2: pagado
+  if (mesCubiertoHasta && fechaRep < mesCubiertoHasta) return 'pagado'
+
+  // Regla 3: adeudado (venció sin pagar)
+  if (fechaRep <= hoy) return 'adeudado'
+
+  // Regla 4: futuro
+  return 'futuro'
+}
+
+// ─── Componente: celda de mes en el calendario ───────────────────────────────
+
+const ESTADO_CONFIG = {
+  inactivo: {
+    card: 'bg-gray-50 border-gray-200 opacity-60',
+    label: 'text-gray-400',
+    dot: 'bg-gray-300',
+    texto: 'Inactivo',
+    textoClase: 'text-gray-400',
+  },
+  pagado: {
+    card: 'bg-green-50 border-green-200',
+    label: 'text-green-900',
+    dot: 'bg-green-500',
+    texto: 'Pagado',
+    textoClase: 'text-green-700',
+  },
+  adeudado: {
+    card: 'bg-red-50 border-red-200',
+    label: 'text-red-900',
+    dot: 'bg-red-500',
+    texto: 'Adeudado',
+    textoClase: 'text-red-600',
+  },
+  futuro: {
+    card: 'bg-white border-gray-200',
+    label: 'text-gray-500',
+    dot: 'bg-blue-200',
+    texto: 'Futuro',
+    textoClase: 'text-blue-400',
+  },
+}
+
+function CeldaMes({ nombreMes, estado, esHoy }) {
+  const cfg = ESTADO_CONFIG[estado] ?? ESTADO_CONFIG.futuro
+
+  return (
+    <div
+      className={`
+        relative rounded-xl border p-3 flex flex-col items-center gap-1.5
+        transition-all duration-150 select-none
+        ${cfg.card}
+        ${esHoy ? 'ring-2 ring-blue-400 ring-offset-1' : ''}
+      `}
+    >
+      {/* Indicador de mes actual */}
+      {esHoy && (
+        <span className="absolute -top-2 left-1/2 -translate-x-1/2 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-blue-500 text-white whitespace-nowrap leading-none">
+          Hoy
+        </span>
+      )}
+
+      {/* Ícono de estado */}
+      <div className="mt-1">
+        {estado === 'inactivo' && <Lock size={14} className="text-gray-400" />}
+        {estado === 'pagado'   && <CheckCircle2 size={14} className="text-green-600" />}
+        {estado === 'adeudado' && <AlertTriangle size={14} className="text-red-500" />}
+        {estado === 'futuro'   && <div className="w-3 h-3 rounded-full border-2 border-blue-300" />}
+      </div>
+
+      {/* Nombre del mes */}
+      <p className={`text-xs font-bold leading-tight text-center ${cfg.label}`}>
+        {nombreMes}
+      </p>
+
+      {/* Badge de estado */}
+      <span className={`text-[10px] font-semibold leading-none ${cfg.textoClase}`}>
+        {cfg.texto}
+      </span>
+    </div>
+  )
+}
+
+// ─── Componente: Calendario Anual ─────────────────────────────────────────────
+
+/**
+ * Muestra una grilla de 12 meses para el año navegado.
+ *
+ * Props:
+ *   estado   Objeto completo de EstadoCuotaSocioResponse (incluye fecha_ingreso,
+ *            mes_cubierto_hasta y dia_vencimiento_cuota).
+ */
+function CalendarioAnual({ estado }) {
+  const anioHoy = new Date().getFullYear()
+  const mesHoy  = new Date().getMonth() + 1  // 1-based
+
+  const [anioVisto, setAnioVisto] = useState(anioHoy)
+
+  const fechaIngreso      = useMemo(() => parsearISO(estado.fecha_ingreso),       [estado.fecha_ingreso])
+  const mesCubiertoHasta  = useMemo(() => parsearISO(estado.mes_cubierto_hasta),  [estado.mes_cubierto_hasta])
+  const diaVenc           = estado.dia_vencimiento_cuota ?? 10
+
+  // Límites de navegación: no permitir ir más atrás del año de ingreso.
+  const anioMin = fechaIngreso ? fechaIngreso.getFullYear() : anioHoy - 5
+
+  // El año máximo es el más lejano entre el año siguiente y el año de cobertura.
+  // Esto permite al socio navegar para ver sus cuotas pagadas por adelantado.
+  const anioMax = useMemo(() => {
+    const anioSiguiente = anioHoy + 1
+    if (mesCubiertoHasta) {
+      return Math.max(anioSiguiente, mesCubiertoHasta.getFullYear())
+    }
+    return anioSiguiente
+  }, [anioHoy, mesCubiertoHasta])
+
+  const meses = useMemo(() => {
+    return NOMBRES_MES.map((nombre, idx) => {
+      const mes1based = idx + 1
+      const estado_mes = estadoDeMes(
+        anioVisto, mes1based, diaVenc, fechaIngreso, mesCubiertoHasta
+      )
+      const esHoy = anioVisto === anioHoy && mes1based === mesHoy
+      return { nombre, estado: estado_mes, esHoy }
+    })
+  }, [anioVisto, diaVenc, fechaIngreso, mesCubiertoHasta, anioHoy, mesHoy])
+
+  // Resumen del año visible
+  const resumen = useMemo(() => {
+    const conteo = { pagado: 0, adeudado: 0, futuro: 0, inactivo: 0 }
+    meses.forEach(m => { conteo[m.estado]++ })
+    return conteo
+  }, [meses])
+
+  return (
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+      {/* Header del calendario */}
+      <div className="px-5 pt-5 pb-4 border-b border-gray-100">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-base font-bold text-gray-900 flex items-center gap-2">
+              <CalendarClock size={17} className="text-gray-400" />
+              Calendario de Cuotas
+            </h2>
+            <p className="text-xs text-gray-400 mt-0.5">
+              Día de vencimiento: <strong className="text-gray-600">{diaVenc}</strong> de cada mes
+            </p>
+          </div>
+
+          {/* Navegación de año */}
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setAnioVisto(a => Math.max(anioMin, a - 1))}
+              disabled={anioVisto <= anioMin}
+              className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 disabled:opacity-30 transition-colors"
+              aria-label="Año anterior"
+            >
+              <ChevronLeft size={16} />
+            </button>
+            <span className="text-lg font-bold text-gray-900 w-14 text-center tabular-nums">
+              {anioVisto}
+            </span>
+            <button
+              onClick={() => setAnioVisto(a => Math.min(anioMax, a + 1))}
+              disabled={anioVisto >= anioMax}
+              className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 disabled:opacity-30 transition-colors"
+              aria-label="Año siguiente"
+            >
+              <ChevronRight size={16} />
+            </button>
+          </div>
+        </div>
+
+        {/* Resumen de estados del año */}
+        <div className="flex flex-wrap gap-3 mt-3">
+          {resumen.pagado > 0 && (
+            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-green-700">
+              <span className="w-2 h-2 rounded-full bg-green-500 inline-block" />
+              {resumen.pagado} pagado{resumen.pagado !== 1 ? 's' : ''}
+            </span>
+          )}
+          {resumen.adeudado > 0 && (
+            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-red-600">
+              <span className="w-2 h-2 rounded-full bg-red-500 inline-block" />
+              {resumen.adeudado} adeudado{resumen.adeudado !== 1 ? 's' : ''}
+            </span>
+          )}
+          {resumen.futuro > 0 && (
+            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-blue-500">
+              <span className="w-2 h-2 rounded-full bg-blue-300 inline-block" />
+              {resumen.futuro} por vencer
+            </span>
+          )}
+          {resumen.inactivo > 0 && (
+            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-400">
+              <Lock size={10} />
+              {resumen.inactivo} sin actividad
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Grilla de 12 meses */}
+      <div className="p-4 grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
+        {meses.map(({ nombre, estado: estadoMes, esHoy }) => (
+          <CeldaMes
+            key={nombre}
+            nombreMes={nombre}
+            estado={estadoMes}
+            esHoy={esHoy}
+          />
+        ))}
+      </div>
+
+      {/* Leyenda */}
+      <div className="px-5 pb-4 flex flex-wrap gap-x-4 gap-y-1.5">
+        {[
+          { estado: 'pagado',   label: 'Pagado' },
+          { estado: 'adeudado', label: 'Adeudado' },
+          { estado: 'futuro',   label: 'Futuro' },
+          { estado: 'inactivo', label: 'No era socio' },
+        ].map(({ estado: e, label }) => {
+          const cfg = ESTADO_CONFIG[e]
+          return (
+            <span key={e} className="inline-flex items-center gap-1.5 text-xs text-gray-500">
+              <span className={`w-2 h-2 rounded-full inline-block ${cfg.dot}`} />
+              {label}
+            </span>
+          )
+        })}
+      </div>
+    </div>
+  )
 }
 
 // ─── Modal: subir / cambiar comprobante ───────────────────────────────────────
@@ -173,19 +502,7 @@ function OrdenGeneradaModal({ orden, onClose, token }) {
 
 // ─── Modal: elegir meses y agregar al carrito ─────────────────────────────────
 
-/**
- * Modal con selector +/- para elegir cuántos meses pagar.
- * Al confirmar, agrega un ítem 'cuota_social' al CartContext y muestra
- * feedback de éxito antes de cerrarse.
- *
- * Ítem que se agrega al carrito:
- *   { id: 'cuota_social', name, price, qty, categoria }
- *
- * `id` fijo → CartContext detecta el ítem existente y acumula `qty`.
- * `price` = precio de 1 mes; `qty` = meses elegidos.
- * Así el carrito calcula el subtotal como price × qty, que es lo esperado.
- */
-function SeleccionMesesModal({ precioCuota, idProducto, onClose, mesCubiertoHasta, diaVencimiento }) {
+function SeleccionMesesModal({ precioCuota, idProducto, onClose }) {
   const { addToCart } = useCart()
   const [meses, setMeses] = useState(1)
   const [agregado, setAgregado] = useState(false)
@@ -193,66 +510,22 @@ function SeleccionMesesModal({ precioCuota, idProducto, onClose, mesCubiertoHast
   const decrementar = () => setMeses(m => Math.max(1, m - 1))
   const incrementar = () => setMeses(m => Math.min(24, m + 1))
 
-  // Permite tipear directamente en el input con validación al salir del foco
   const handleInputChange = (e) => {
     const val = parseInt(e.target.value, 10)
     if (!isNaN(val)) setMeses(Math.min(24, Math.max(1, val)))
   }
 
   const handleAgregarAlCarrito = () => {
-    if (!Number.isInteger(idProducto)) {
-      console.error('idProducto inválido, no se puede agregar al carrito:', idProducto)
-      return
-    }
     addToCart({
       id: idProducto,
       name: `Cuota social × ${meses} mes${meses !== 1 ? 'es' : ''}`,
-      price: precioCuota,   // precio de 1 mes (se congela aquí)
-      qty: parseInt(meses, 10),           // 1 qty = 1 mes en este contexto
+      price: precioCuota,
+      qty: meses,
       categoria: 'cuota_social',
     })
     setAgregado(true)
     setTimeout(() => onClose(), 1500)
   }
-
-  // Calcula la fecha de cobertura proyectada con el pago actual
-  const fechaProyectada = useMemo(() => {
-    if (!diaVencimiento || !meses) return null;
-
-    // Helper para parsear 'YYYY-MM-DD' a un objeto Date local sin corrimientos de timezone
-    const parseISODate = (isoString) => {
-      if (!isoString) return null;
-      const [y, m, d] = isoString.split('-').map(Number);
-      return new Date(y, m - 1, d);
-    };
-
-    const hoy = new Date();
-    hoy.setHours(0, 0, 0, 0);
-
-    // 1. Determinar fecha base: la cobertura actual (si está vigente) o hoy.
-    let fechaBase = parseISODate(mesCubiertoHasta);
-    if (!fechaBase || fechaBase < hoy) {
-      fechaBase = hoy;
-    }
-
-    // 2. Sumar la cantidad de meses seleccionados.
-    const fechaConMesesSumados = new Date(fechaBase);
-    fechaConMesesSumados.setMonth(fechaConMesesSumados.getMonth() + parseInt(meses, 10));
-
-    // 3. Fijar el día usando diaVencimiento, con clamp al último día del mes destino.
-    const anioFinal = fechaConMesesSumados.getFullYear();
-    const mesFinal = fechaConMesesSumados.getMonth(); // 0-indexed
-    const ultimoDiaDelMes = new Date(anioFinal, mesFinal + 1, 0).getDate();
-    const diaFinal = Math.min(diaVencimiento, ultimoDiaDelMes);
-    const fechaFinal = new Date(anioFinal, mesFinal, diaFinal);
-
-    // Formatear a texto amigable
-    return new Intl.DateTimeFormat('es-AR', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-    }).format(fechaFinal);
-  }, [meses, mesCubiertoHasta, diaVencimiento]);
 
   return (
     <div
@@ -260,7 +533,6 @@ function SeleccionMesesModal({ precioCuota, idProducto, onClose, mesCubiertoHast
       onClick={e => { if (e.target === e.currentTarget && !agregado) onClose() }}
     >
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm flex flex-col">
-        {/* Header */}
         <div className="p-6 border-b flex items-center justify-between">
           <h2 className="text-lg font-bold text-gray-800">Pagar Cuotas</h2>
           <button onClick={onClose} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
@@ -268,7 +540,6 @@ function SeleccionMesesModal({ precioCuota, idProducto, onClose, mesCubiertoHast
           </button>
         </div>
 
-        {/* Cuerpo */}
         <div className="p-6 space-y-5">
           {agregado ? (
             <div className="flex flex-col items-center gap-3 py-2 text-center">
@@ -284,7 +555,6 @@ function SeleccionMesesModal({ precioCuota, idProducto, onClose, mesCubiertoHast
                 Elegí cuántos meses querés abonar y finalizá la compra desde el carrito.
               </p>
 
-              {/* Selector +/- con input editable */}
               <div className="flex items-center justify-center gap-3">
                 <button
                   onClick={decrementar}
@@ -315,7 +585,6 @@ function SeleccionMesesModal({ precioCuota, idProducto, onClose, mesCubiertoHast
                 </button>
               </div>
 
-              {/* Resumen precio */}
               <div className="flex items-center justify-between px-4 py-3 rounded-xl bg-blue-50 border border-blue-200">
                 <div>
                   <p className="text-xs text-blue-700 font-medium">
@@ -327,19 +596,10 @@ function SeleccionMesesModal({ precioCuota, idProducto, onClose, mesCubiertoHast
                   {formatoMoneda.format(precioCuota * meses)}
                 </span>
               </div>
-
-              {/* Proyección de cobertura */}
-              {fechaProyectada && (
-                <div className="text-center text-xs text-gray-500 pt-2 flex items-center justify-center gap-2">
-                  <CalendarClock size={14} />
-                  <span>Con este pago, tu acceso quedará activo hasta el <strong>{fechaProyectada}</strong>.</span>
-                </div>
-              )}
             </>
           )}
         </div>
 
-        {/* Footer */}
         {!agregado && (
           <div className="p-4 bg-gray-50 rounded-b-2xl border-t flex justify-end gap-3">
             <button
@@ -378,11 +638,16 @@ function EstadoCard({ estado, loading, error, ordenPendiente, onAbrirCarrito }) 
 
   if (error || !estado) return null
 
-  const moroso     = esMoroso(estado.mes_cubierto_hasta)
-  const tieneDeuda = estado.deuda_historica_meses > 0
-  const esGrave    = estado.deuda_historica_meses >= 2
-  const fechaLegible = formatearFechaCobertura(estado.mes_cubierto_hasta)
-  const diaVenc    = estado.dia_vencimiento_cuota ?? null
+  const { moroso, mesesAdeudados: mesesAdeudadosReal } = calcularEstadoFinanciero(
+    estado.mes_cubierto_hasta,
+    estado.fecha_ingreso,
+    estado.dia_vencimiento_cuota ?? 10
+  )
+  const tieneDeuda          = mesesAdeudadosReal > 0
+  const esGrave             = mesesAdeudadosReal >= 2
+  const montoEstimado       = mesesAdeudadosReal * (estado.precio_cuota_actual ?? 0)
+  const fechaLegible        = formatearFechaCobertura(estado.mes_cubierto_hasta)
+  const diaVenc             = estado.dia_vencimiento_cuota ?? null
 
   const paleta = moroso
     ? esGrave
@@ -411,7 +676,7 @@ function EstadoCard({ estado, loading, error, ordenPendiente, onAbrirCarrito }) 
           <p className={`text-sm font-medium leading-snug ${paleta.sub}`}>
             {moroso
               ? tieneDeuda
-                ? <>{estado.deuda_historica_meses} mes{estado.deuda_historica_meses !== 1 ? 'es' : ''} adeudado{estado.deuda_historica_meses !== 1 ? 's' : ''}&nbsp;·&nbsp;{formatoMoneda.format(estado.deuda_total_pesos)}</>
+                ? <>{mesesAdeudadosReal} mes{mesesAdeudadosReal !== 1 ? 'es' : ''} adeudado{mesesAdeudadosReal !== 1 ? 's' : ''}&nbsp;·&nbsp;{formatoMoneda.format(montoEstimado)}</>
                 : 'Tu cobertura ha vencido.'
               : fechaLegible
                 ? <>Tu acceso está activo hasta el <strong>{fechaLegible}</strong>.</>
@@ -427,7 +692,6 @@ function EstadoCard({ estado, loading, error, ordenPendiente, onAbrirCarrito }) 
         </div>
       </div>
 
-      {/* CTA "Pagar cuotas" → abre SeleccionMesesModal */}
       {moroso && tieneDeuda && !ordenPendiente && (
         <button
           onClick={onAbrirCarrito}
@@ -454,8 +718,6 @@ export default function SocioCuotas() {
   const [error, setError] = useState(null)
 
   const [isCanceling, setIsCanceling] = useState(false)
-
-  // Modales
   const [mostrarUpload, setMostrarUpload] = useState(false)
   const [mostrarSeleccionMeses, setMostrarSeleccionMeses] = useState(false)
 
@@ -509,9 +771,7 @@ export default function SocioCuotas() {
     )
   }
 
-  // ── El comprobante vive en el Pago padre, no en la Orden ──────────────────
-  // OrdenSocioPendienteResponse incluye el objeto `pago` anidado.
-  // La fuente de verdad para el comprobante es `ordenPendiente.pago.comprobante_url`.
+  // El comprobante vive en el Pago padre (pago.comprobante_url), no en la Orden.
   const comprobanteUrl = ordenPendiente?.pago?.comprobante_url ?? null
 
   return (
@@ -531,8 +791,6 @@ export default function SocioCuotas() {
         <SeleccionMesesModal
           precioCuota={estado?.precio_cuota_actual ?? 0}
           idProducto={estado?.id_producto}
-          mesCubiertoHasta={estado?.mes_cubierto_hasta}
-          diaVencimiento={estado?.dia_vencimiento_cuota}
           onClose={() => setMostrarSeleccionMeses(false)}
         />
       )}
@@ -552,9 +810,7 @@ export default function SocioCuotas() {
         </div>
       )}
 
-      {/* ── TAREA 1: Banner de Orden Pendiente ──────────────────────────────
-           Lee comprobante de `ordenPendiente.pago.comprobante_url`.
-           Muestra link "Ver comprobante" cuando ya hay uno subido.          */}
+      {/* Banner de Orden Pendiente */}
       {ordenPendiente && (
         <div className="bg-blue-50 border border-blue-200 rounded-2xl p-6 shadow-sm space-y-4">
           <div className="flex items-start gap-4">
@@ -567,8 +823,6 @@ export default function SocioCuotas() {
                 Orden #{ordenPendiente.id_orden} — Total a transferir:{' '}
                 <span className="font-bold">{formatoMoneda.format(ordenPendiente.monto_total)}</span>
               </p>
-
-              {/* Estado del comprobante + link para verlo */}
               <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
                 {comprobanteUrl ? (
                   <>
@@ -596,7 +850,6 @@ export default function SocioCuotas() {
             </div>
           </div>
 
-          {/* Acciones */}
           <div className="flex flex-wrap gap-2 sm:justify-end">
             <button
               onClick={() => setMostrarUpload(true)}
@@ -624,9 +877,13 @@ export default function SocioCuotas() {
         onAbrirCarrito={() => setMostrarSeleccionMeses(true)}
       />
 
-      {/* ── TAREA 2: Botón único "Pagar Cuotas" → SeleccionMesesModal ────────
-           Reemplaza los tres botones fijos (1/2/6 meses).
-           Solo visible cuando no hay orden pendiente en curso.               */}
+      {/* ── Calendario Anual Interactivo ────────────────────────────────────── */}
+      {/* Se muestra solo cuando ya tenemos el estado del socio cargado        */}
+      {estado?.fecha_ingreso && (
+        <CalendarioAnual estado={estado} />
+      )}
+
+      {/* Botón "Pagar Cuotas" → SeleccionMesesModal (oculto si hay orden pendiente) */}
       {!ordenPendiente && (
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-2">
           <div>
@@ -647,16 +904,15 @@ export default function SocioCuotas() {
         </div>
       )}
 
-      {/* ── TAREA 3: Historial — usa pago.comprobante_url ────────────────────
-           El schema HistorialPagoCuotaResponse expone el comprobante
-           en `pago.comprobante_url`. Se acepta también `comprobante_url`
-           directo como fallback por retrocompatibilidad.                     */}
+      {/* Historial de Pagos */}
       <div>
         <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wide mb-3">
           Historial de Pagos
         </h2>
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 divide-y divide-gray-50">
           {historial.map(pago => {
+            // comprobante_url viene directo en HistorialPagoCuotaResponse
+            // (el backend lo mapea desde pago.comprobante_url al construir la lista)
             const urlComprobante = pago.pago?.comprobante_url ?? pago.comprobante_url ?? null
             return (
               <div key={pago.id_orden} className="p-5 flex items-center justify-between gap-4">
@@ -673,7 +929,6 @@ export default function SocioCuotas() {
                     </p>
                   </div>
                 </div>
-
                 {urlComprobante && (
                   <a
                     href={`${API}${urlComprobante}`}
@@ -688,7 +943,6 @@ export default function SocioCuotas() {
               </div>
             )
           })}
-
           {historial.length === 0 && (
             <div className="text-center py-12 text-gray-500 text-sm">
               Todavía no registrás pagos completados.

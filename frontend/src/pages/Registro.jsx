@@ -8,6 +8,7 @@ export default function Registro() {
         nombre: '',
         apellido: '',
         email: '',
+        fecha_nacimiento: '',
         telefono: '',
         password: '',
         confirmPassword: '',
@@ -36,6 +37,10 @@ export default function Registro() {
             setError("La contraseña debe tener al menos 8 caracteres.");
             return;
         }
+        if (!formData.fecha_nacimiento) {
+            setError("La fecha de nacimiento es obligatoria.");
+            return;
+        }
 
         setLoading(true);
 
@@ -54,7 +59,7 @@ export default function Registro() {
             }
 
             setSuccess(true);
-            setFormData({ dni: '', nombre: '', apellido: '', email: '', telefono: '', password: '', confirmPassword: '' });
+            setFormData({ dni: '', nombre: '', apellido: '', email: '', fecha_nacimiento: '', telefono: '', password: '', confirmPassword: '' });
 
         } catch (err) {
             setError(err.message);
@@ -90,6 +95,10 @@ export default function Registro() {
                         <input type="text" name="apellido" placeholder="Apellido" value={formData.apellido} onChange={handleChange} required className="w-full p-3 rounded-lg border bg-slate-50 focus:border-blue-500 focus:ring-blue-500" />
                     </div>
                     <input type="text" name="dni" placeholder="DNI (sin puntos)" value={formData.dni} onChange={handleChange} required className="w-full p-3 rounded-lg border bg-slate-50 focus:border-blue-500 focus:ring-blue-500" />
+                    <div>
+                        <label htmlFor="fecha_nacimiento" className="block text-sm font-semibold text-slate-700 mb-2">Fecha de Nacimiento</label>
+                        <input id="fecha_nacimiento" type="date" name="fecha_nacimiento" value={formData.fecha_nacimiento} onChange={handleChange} required className="w-full p-3 rounded-lg border bg-slate-50 focus:border-blue-500 focus:ring-blue-500" />
+                    </div>
                     <input type="email" name="email" placeholder="Email" value={formData.email} onChange={handleChange} required className="w-full p-3 rounded-lg border bg-slate-50 focus:border-blue-500 focus:ring-blue-500" />
                     <input type="tel" name="telefono" placeholder="Teléfono (opcional)" value={formData.telefono} onChange={handleChange} className="w-full p-3 rounded-lg border bg-slate-50 focus:border-blue-500 focus:ring-blue-500" />
                     <div className="relative">

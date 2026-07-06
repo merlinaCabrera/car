@@ -18,9 +18,15 @@ Decisiones técnicas:
     ítems cuyo producto pertenece a la categoría 'cuota_social':
       · Se resta `cantidad` a `deuda_historica_meses` del socio (clamp en 0).
       · Se recalcula `mes_cubierto_hasta` usando _calcular_nuevo_mes_cubierto():
-          - Base = MAX(mes_cubierto_hasta_actual, hoy).
-            Si el campo es NULL o ya venció, se parte de hoy; si está vigente,
-            se extiende desde ahí (preserva los meses pagados por adelantado).
+          - Base = usuario.mes_cubierto_hasta si NO es None, SIN IMPORTAR si
+            esa fecha ya está vencida en el pasado. El pago siempre extiende
+            la cobertura desde donde el socio se quedó, llenando
+            cronológicamente los meses adeudados — nunca "saltea" a hoy.
+            (Bug corregido: la versión anterior usaba
+            MAX(mes_cubierto_hasta, hoy), lo que perdonaba en silencio toda
+            la deuda histórica de un socio con la cobertura vencida.)
+          - Si mes_cubierto_hasta es None (nunca tuvo una cuota aprobada), la
+            base es usuario.fecha_ingreso; si también fuera None, date.today().
           - La base se normaliza al dia_vencimiento_cuota de ConfiguracionGlobal
             dentro del mismo mes.
           - Se suman N meses (suma correcta de meses, sin errores de 30/31 días,
@@ -84,50 +90,58 @@ def _sumar_meses(base: date, meses: int) -> date:
 
 
 def _calcular_nuevo_mes_cubierto(
-    mes_cubierto_hasta_actual: Optional[date],
-    meses_pagados: int,
-    dia_vencimiento: int,
+    usuario: models.Usuario,
+    meses_a_pagar: int,
+    dia_vencimiento_cuota: int,
 ) -> date:
     """
     Calcula la nueva fecha de cobertura del socio tras un pago de cuota.
 
-    Reglas de negocio:
-      · Base = MAX(mes_cubierto_hasta_actual, hoy).
-        - Si es NULL o ya venció → partimos de hoy (no "retroactivo").
-        - Si está vigente → extendemos desde ahí (preserva pagos adelantados).
-      · La base se normaliza al `dia_vencimiento` dentro del mismo mes/año.
-        Esto ancla el período al día de vencimiento configurado globalmente
-        sin importar en qué día del mes cae hoy o la fecha previa.
-      · Se suman exactamente `meses_pagados` meses mediante _sumar_meses().
-      · El día final se ajusta a `dia_vencimiento` en el mes resultado,
-        con clamp al último día del mes destino (relevante para febrero).
+    REGLA DE NEGOCIO ESTRICTA (corrige el bug de "amnistía de deuda"):
+      · Base = usuario.mes_cubierto_hasta, SIEMPRE que no sea None — sin
+        importar si esa fecha ya está vencida en el pasado. Un pago nunca
+        "saltea" al día de hoy: extiende la cobertura desde donde el socio
+        se quedó, llenando cronológicamente los meses adeudados. Usar
+        MAX(mes_cubierto_hasta, hoy) —como se hacía antes— perdona en
+        silencio toda la deuda acumulada, porque ancla el nuevo período en
+        el presente en vez de continuar la secuencia real de meses impagos.
+      · Si mes_cubierto_hasta es None (el socio nunca tuvo una cuota
+        aprobada), la base es usuario.fecha_ingreso. Si también fuera None
+        (no debería pasar — la columna es NOT NULL — pero se cubre
+        defensivamente), se usa date.today() como última red de seguridad.
+      · La base se normaliza al día `dia_vencimiento_cuota` dentro de su
+        propio mes/año.
+      · Se suman `meses_a_pagar` meses mediante _sumar_meses() (aritmética
+        de calendario correcta, sin errores de overflow de 30/31 días).
+      · El día final se fuerza a `dia_vencimiento_cuota`, con clamp al
+        último día del mes destino (relevante para febrero).
 
-    Ejemplo:
-      mes_cubierto_hasta_actual = 2025-08-10, meses_pagados = 3, dia_vencimiento = 10
-      → base = 2025-08-10 (vigente)
-      → base_normalizada = 2025-08-10 (ya coincide con el día de vencimiento)
-      → nueva_fecha = _sumar_meses(2025-08-10, 3) = 2025-11-10
-      → resultado: 2025-11-10  ✓
+    Ejemplo del bug corregido:
+      Socio con mes_cubierto_hasta = 2025-01-10 (debe ~11 meses) paga 4.
+        ANTES (con MAX): base = hoy → nueva_fecha ≈ hoy + 4 meses → el
+          sistema lo marca "al día", perdonando de facto los ~7 meses de
+          deuda que ese pago no alcanza a cubrir.
+        AHORA: base = 2025-01-10 (estrictamente, aunque esté vencida) →
+          nueva_fecha = 2025-05-10. La fecha refleja con precisión cuánta
+          deuda sigue existiendo después de este pago parcial.
     """
-    hoy = date.today()
-
-    # Paso 1: determinar la base de extensión
-    if mes_cubierto_hasta_actual is None or mes_cubierto_hasta_actual < hoy:
-        base = hoy
+    if usuario.mes_cubierto_hasta is not None:
+        base = usuario.mes_cubierto_hasta
+    elif usuario.fecha_ingreso is not None:
+        base = usuario.fecha_ingreso
     else:
-        base = mes_cubierto_hasta_actual
+        base = date.today()
 
-    # Paso 2: normalizar el día al dia_vencimiento dentro del mismo mes/año
-    # (clamp al último día del mes por si el mes base tiene menos días que
-    # dia_vencimiento — raro porque el CHECK lo limita a 28, pero defensivo)
-    dia_normalizado = min(dia_vencimiento, calendar.monthrange(base.year, base.month)[1])
+    # Normalizar la base al día de vencimiento dentro de su propio mes/año
+    # (clamp al último día del mes por si tiene menos días que dia_vencimiento)
+    dia_normalizado = min(dia_vencimiento_cuota, calendar.monthrange(base.year, base.month)[1])
     base_normalizada = base.replace(day=dia_normalizado)
 
-    # Paso 3: sumar meses correctamente
-    nueva_fecha = _sumar_meses(base_normalizada, meses_pagados)
+    # Sumar los meses pagados con aritmética de calendario correcta
+    nueva_fecha = _sumar_meses(base_normalizada, meses_a_pagar)
 
-    # Paso 4: asegurar que el día final sea dia_vencimiento (con clamp)
-    dia_final = min(dia_vencimiento, calendar.monthrange(nueva_fecha.year, nueva_fecha.month)[1])
+    # Forzar el día final a dia_vencimiento_cuota (con clamp para meses cortos)
+    dia_final = min(dia_vencimiento_cuota, calendar.monthrange(nueva_fecha.year, nueva_fecha.month)[1])
     return nueva_fecha.replace(day=dia_final)
 
 
@@ -389,9 +403,9 @@ def aprobar_orden(
 
         # 4b. Calcular y actualizar mes_cubierto_hasta con el motor de períodos
         mes_cubierto_hasta_nuevo = _calcular_nuevo_mes_cubierto(
-            mes_cubierto_hasta_actual=mes_cubierto_hasta_antes,
-            meses_pagados=meses_cuota_descontados,
-            dia_vencimiento=dia_vencimiento,
+            usuario=socio,
+            meses_a_pagar=meses_cuota_descontados,
+            dia_vencimiento_cuota=dia_vencimiento,
         )
         socio.mes_cubierto_hasta = mes_cubierto_hasta_nuevo
 
@@ -454,7 +468,8 @@ def aprobar_orden(
             tipo="orden_aprobada",
             titulo="¡Pago verificado!",
             cuerpo=(
-                f"Tu pago para la orden #{orden.id_orden} fue aprobado correctamente."
+                f"Tu pago por un total de ${orden.monto_total} ha sido verificado y "
+                "aprobado. ¡Gracias por estar al día!"
             ),
             referencia_id=orden.id_orden,
             referencia_tabla="ordenes",
@@ -538,10 +553,8 @@ def rechazar_orden(
             id_usuario=orden.id_usuario,
             tipo="orden_rechazada",
             titulo="Problema con tu pago",
-            cuerpo=(
-                f"Tu pago para la orden #{orden.id_orden} fue rechazado. "
-                f"Motivo: {payload.motivo_rechazo}"
-            ),
+            cuerpo=f"Hubo un problema con tu transferencia por ${orden.monto_total}. "
+                   f"Motivo: {payload.motivo_rechazo}.",
             referencia_id=orden.id_orden,
             referencia_tabla="ordenes",
         )

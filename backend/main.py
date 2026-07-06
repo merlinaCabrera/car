@@ -1,5 +1,7 @@
 import os
 
+load_dotenv()
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -15,7 +17,6 @@ from routers import admin_productos
 from routers import socio_reservas
 from routers import notificaciones
 from routers import deportivo
-
 
 # ─── Gestión de archivos subidos (comprobantes de pago) ───────────────────────
 # Se crea el directorio al arrancar la app para que el primer upload no falle

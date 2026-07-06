@@ -49,10 +49,10 @@ app = FastAPI(
 )
 
 origins = [
-    "http://localhost:5173",      # Tu frontend local
-    "http://127.0.0.1:5173",      # Alternativa local
-    "https://club-atletico-api.onrender.com", # Tu frontend en producción (si aplica)
-    # Agregá acá la URL de Vercel cuando la tengas
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "https://club-atletico-api.onrender.com", 
+    "https://car-frontend-1m63wmrd6-merlina-s-projects.vercel.app" 
 ]
 
 origins = [

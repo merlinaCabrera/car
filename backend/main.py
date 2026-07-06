@@ -52,13 +52,8 @@ origins = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
     "https://club-atletico-api.onrender.com", 
-    "https://car-frontend-dusky.vercel.app", # <-- ¡El link nuevo de producción!
-    "https://car-frontend-1m63wmrd6-merlina-s-projects.vercel.app" # Dejamos el viejo por las dudas
-]
-
-origins = [
-    "http://localhost:5173",
-    "http://localhost:3000",
+    "https://car-frontend-dusky.vercel.app",
+    "https://car-frontend-git-main-merlina-s-projects.vercel.app"
 ]
 
 app.add_middleware(

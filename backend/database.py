@@ -1,21 +1,54 @@
+# database.py
+import os
+
 from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import declarative_base, sessionmaker
 
-# La URL de conexión a tu contenedor Docker de PostgreSQL
-# admin_car:usuario, password123:contraseña, club_roberts_db:nombre_base
-SQLALCHEMY_DATABASE_URL = "postgresql://admin_car:password123@localhost:5432/club_roberts_db"
+# ─────────────────────────────────────────────────────────────────────────────
+# Lee la URL desde os.environ en el MOMENTO en que se llama a get_engine(),
+# no cuando se importa el módulo.
+#
+# Esto es seguro porque load_dotenv() en main.py corre antes de que cualquier
+# REQUEST sea procesado — solo necesitamos que la URL esté disponible cuando
+# la primera sesión de BD se abra, no cuando el módulo se importa.
+#
+# DATABASE_URL debe estar en tu .env (desarrollo) o en las variables de entorno
+# de Render (producción). Ejemplo de .env:
+#   DATABASE_URL=postgresql://neondb_owner:xxx@ep-calm-bread.neon.tech/neondb?sslmode=require
+# ─────────────────────────────────────────────────────────────────────────────
 
-# Motor de conexión
-engine = create_engine(SQLALCHEMY_DATABASE_URL)
+def _get_database_url() -> str:
+    url = os.environ.get("DATABASE_URL")
+    if not url:
+        raise RuntimeError(
+            "La variable de entorno DATABASE_URL no está definida. "
+            "Verificá tu archivo .env (desarrollo) o las variables de entorno "
+            "de Render (producción)."
+        )
+    # Neon y algunos proveedores usan el prefijo 'postgres://' (sin ql al final).
+    # SQLAlchemy 1.4+ requiere 'postgresql://'. Este fix lo corrige automáticamente.
+    if url.startswith("postgres://"):
+        url = url.replace("postgres://", "postgresql://", 1)
+    return url
 
-# Sesión para interactuar con la DB
+
+SQLALCHEMY_DATABASE_URL = _get_database_url()
+
+engine = create_engine(
+    SQLALCHEMY_DATABASE_URL,
+    # pool_pre_ping=True verifica que la conexión siga activa antes de usarla.
+    # Esencial para Neon, que cierra conexiones inactivas agresivamente.
+    pool_pre_ping=True,
+    # pool_size y max_overflow para el plan gratuito de Neon (límite de conexiones).
+    pool_size=5,
+    max_overflow=2,
+)
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-# Clase base para tus modelos
 Base = declarative_base()
 
-# Función para obtener la sesión en cada request (útil para FastAPI)
+
 def get_db():
     db = SessionLocal()
     try:

@@ -1,6 +1,6 @@
 // frontend/src/pages/SocioNotificaciones.jsx
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
   Bell,
@@ -10,6 +10,9 @@ import {
   CheckCircle2,
   XCircle,
   Info,
+  Receipt,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL;
@@ -41,11 +44,12 @@ const NOTIFICATION_ICONS = {
 
 // --- Sub-componentes ---
 
-function NotificationCard({ notificacion }) {
+function NotificationCard({ notificacion, isExpanded, onToggleExpand }) {
   const { Icon, color } = NOTIFICATION_ICONS[notificacion.tipo] || NOTIFICATION_ICONS.default;
-  // Las notificaciones se marcan como leídas en el backend, pero el estado
-  // local mantiene `leida: false` para el destacado visual en la primera carga.
   const isUnread = !notificacion.leida;
+
+  const isLongText = notificacion.cuerpo && notificacion.cuerpo.length > 120;
+  const hasAction = notificacion.referencia_id && notificacion.referencia_tabla === 'ordenes';
 
   return (
     <div
@@ -53,7 +57,7 @@ function NotificationCard({ notificacion }) {
         flex items-start gap-4 p-4 rounded-2xl border transition-colors
         ${isUnread
           ? 'bg-blue-50 border-blue-200'
-          : 'bg-white border-gray-100 hover:bg-gray-50'
+          : 'bg-white border-gray-100'
         }
       `}
     >
@@ -67,7 +71,35 @@ function NotificationCard({ notificacion }) {
             {formatRelativeTime(notificacion.created_at)}
           </p>
         </div>
-        <p className="text-sm text-gray-600 mt-1">{notificacion.cuerpo}</p>
+        {notificacion.cuerpo && (
+          <p className={`text-sm text-gray-600 mt-1 ${!isExpanded && isLongText ? 'line-clamp-2' : ''}`}>
+            {notificacion.cuerpo}
+          </p>
+        )}
+        
+        {(isLongText || hasAction) && (
+          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
+            {isLongText && (
+              <button
+                onClick={onToggleExpand}
+                className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-800 transition-colors"
+              >
+                <span>{isExpanded ? 'Ver menos' : 'Ver más'}</span>
+                {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+              </button>
+            )}
+
+            {hasAction && (
+              <Link
+                to="/mis-compras"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-gray-200 hover:bg-gray-100 hover:border-gray-300 text-xs font-semibold text-gray-700 transition-colors shadow-sm"
+              >
+                <Receipt size={14} />
+                Ver detalle de compra
+              </Link>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -95,8 +127,13 @@ export default function SocioNotificaciones() {
   const [notificaciones, setNotificaciones] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [expandedId, setExpandedId] = useState(null);
   const { token } = useAuth();
   const navigate = useNavigate();
+
+  const handleToggleExpand = (id) => {
+    setExpandedId(prevId => (prevId === id ? null : id));
+  };
 
   const fetchAndMarkNotifications = useCallback(async () => {
     if (!token) {
@@ -201,7 +238,12 @@ export default function SocioNotificaciones() {
 
         {!loading && !error && notificaciones.length > 0 && (
           notificaciones.map(notif => (
-            <NotificationCard key={notif.id_notificacion} notificacion={notif} />
+            <NotificationCard
+              key={notif.id_notificacion}
+              notificacion={notif}
+              isExpanded={expandedId === notif.id_notificacion}
+              onToggleExpand={() => handleToggleExpand(notif.id_notificacion)}
+            />
           ))
         )}
       </div>

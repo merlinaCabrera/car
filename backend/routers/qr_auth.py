@@ -26,7 +26,7 @@ Decisiones técnicas:
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -178,19 +178,20 @@ def _construir_respuesta_desde_orm(usuario: models.Usuario) -> schemas.UsuarioQR
             mensaje_display="SOCIO INACTIVO",
         )
 
-    estado = "moroso" if usuario.deuda_historica_meses > 0 else "al_dia"
+    esta_al_dia = usuario.mes_cubierto_hasta is not None and usuario.mes_cubierto_hasta >= date.today()
+    estado = "al_dia" if esta_al_dia else "moroso"
     roles  = _roles_activos_list(usuario)
     meses  = _calcular_antiguedad_meses(usuario.fecha_ingreso)
 
     return schemas.UsuarioQRValidacionResponse(
-        es_valido=True,
+        es_valido=esta_al_dia,
         id_usuario=usuario.id_usuario,
         nombre_completo=f"{usuario.nombre} {usuario.apellido}",
         foto_perfil_url=usuario.foto_perfil_url,
         estado_financiero=estado,
         roles_activos=roles,
         antiguedad_meses=meses,
-        mensaje_display="SOCIO HABILITADO ✓" if estado == "al_dia" else "SOCIO NO HABILITADO ✗",
+        mensaje_display="SOCIO HABILITADO ✓" if esta_al_dia else "SOCIO NO HABILITADO ✗",
     )
 
 
@@ -267,61 +268,58 @@ def validar_qr_token(
             detail="Formato de QR inválido. Se esperaba un UUID.",
         )
 
-    # 2 — Llamar a fn_validar_qr usando SQLAlchemy text()
-    #     La función retorna SETOF TABLE (una sola fila siempre).
-    #     .mappings().first() nos da un dict-like con los nombres de columna.
-    try:
-        result = db.execute(
-            text("SELECT * FROM fn_validar_qr(:token)"),
-            {"token": str(token_uuid)},
-        ).mappings().first()
-    except Exception as exc:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error al consultar la base de datos: {exc}",
+    # 2 — Buscar usuario por token con ORM, unificando la lógica con la validación por DNI
+    usuario = (
+        db.query(models.Usuario)
+        .options(
+            joinedload(models.Usuario.roles_asignados)
+            .joinedload(models.UsuarioRol.rol)
         )
-
-    if result is None:
-        # La función siempre retorna al menos una fila, esto no debería pasar
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="La función fn_validar_qr no retornó resultado.",
-        )
-
-    # 3 — Mapear resultado al schema de respuesta
-    #     Los nombres de columna de fn_validar_qr coinciden 1:1 con los campos del schema.
-    respuesta = schemas.UsuarioQRValidacionResponse(
-        es_valido=result["es_valido"],
-        id_usuario=result["id_usuario"],          # puede ser None si token inválido
-        nombre_completo=result["nombre_completo"],
-        foto_perfil_url=result["foto_perfil_url"],
-        estado_financiero=result["estado_financiero"],
-        roles_activos=list(result["roles_activos"] or []),
-        antiguedad_meses=result["antiguedad_meses"] or 0,
-        mensaje_display=result["mensaje_display"],
+        .filter(models.Usuario.qr_token == token_uuid)
+        .first()
     )
 
-    # 4 — Registrar asistencia (solo si hay evento y el usuario fue identificado)
-    if payload.id_evento and result["id_usuario"] is not None:
+    # 3 — Construir respuesta (o manejar token no encontrado)
+    if usuario is None:
+        respuesta = schemas.UsuarioQRValidacionResponse(
+            es_valido=False,
+            id_usuario=None,
+            nombre_completo="Token inválido",
+            foto_perfil_url=None,
+            estado_financiero="desconocido",
+            roles_activos=[],
+            antiguedad_meses=0,
+            mensaje_display="QR NO RECONOCIDO ✗",
+        )
+    else:
+        respuesta = _construir_respuesta_desde_orm(usuario)
+
+    # 4 — Registrar asistencia (si hay evento y el usuario fue identificado)
+    if payload.id_evento and respuesta.id_usuario is not None:
         _registrar_asistencia(
             db=db,
             id_evento=payload.id_evento,
-            id_usuario=result["id_usuario"],
+            id_usuario=respuesta.id_usuario,
             metodo="QR",
             operador_id=operador.id_usuario,
-            estado_financiero=result["estado_financiero"],
+            estado_financiero=respuesta.estado_financiero,
         )
 
     # 5 — Audit log
+    if usuario is None:
+        accion_audit = "VALIDACION_QR_FALLIDA"
+    else:
+        accion_audit = "VALIDACION_QR_OK" if respuesta.es_valido else "VALIDACION_QR_FALLIDA"
+
     _registrar_audit(
         db=db,
         actor_id=operador.id_usuario,
-        accion="VALIDACION_QR_OK" if respuesta.es_valido else "VALIDACION_QR_FALLIDA",
+        accion=accion_audit,
         detalle={
             "token_parcial": str(token_uuid)[:8] + "…",  # nunca logueamos el token completo
-            "usuario_id": result["id_usuario"],
-            "estado": result["estado_financiero"],
-            "mensaje": result["mensaje_display"],
+            "usuario_id": respuesta.id_usuario,
+            "estado": respuesta.estado_financiero,
+            "mensaje": respuesta.mensaje_display,
             "id_evento": payload.id_evento,
             "operador_dni": operador.dni,
         },

@@ -687,7 +687,9 @@ def registrar_asistencia(
         )
 
     # Snapshot financiero calculado EN ESTE INSTANTE — nunca se recibe del frontend.
-    estado_financiero = "al_dia" if socio.deuda_historica_meses == 0 else "moroso"
+    # Un socio está "al día" si su cobertura está vigente (>= hoy).
+    esta_al_dia = socio.mes_cubierto_hasta is not None and socio.mes_cubierto_hasta >= date.today()
+    estado_financiero = "al_dia" if esta_al_dia else "moroso"
 
     nueva_asistencia = models.Asistencia(
         id_evento=id_evento,

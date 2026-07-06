@@ -166,12 +166,21 @@ class UsuarioCreate(UsuarioBase):
     El backend hashea `password` antes de guardarlo como `password_hash`.
     """
     password: str = Field(min_length=8, description="Contraseña en texto plano.")
+    fecha_nacimiento: date = Field(description="Fecha de nacimiento (obligatoria).")
 
     @field_validator("password")
     @classmethod
     def password_no_trivial(cls, v: str) -> str:
         if v.isdigit():
             raise ValueError("La contraseña no puede ser solo números.")
+        return v
+
+    @field_validator("fecha_nacimiento")
+    @classmethod
+    def fecha_nacimiento_en_pasado(cls, v: date) -> date:
+        """Valida que la fecha de nacimiento no sea en el futuro."""
+        if v >= date.today():
+            raise ValueError("La fecha de nacimiento debe ser anterior a la fecha actual.")
         return v
 
 
@@ -634,6 +643,7 @@ class EstadisticasPagosResponse(BaseModel):
         description="Suma de deuda_historica_meses de todos los morosos, "
                      "multiplicada por el precio_actual vigente del producto 'cuota_social'.",
     )
+    dia_vencimiento_cuota: int
 
 
 class MorosoResponse(BaseModel):
@@ -753,6 +763,13 @@ class EstadoCuotaSocioResponse(BaseModel):
             "Día del mes configurado como fecha de corte (de ConfiguracionGlobal). "
             "El frontend lo usa para construir el mensaje de vencimiento: "
             "'Tu cuota vence el día {dia_vencimiento_cuota} de cada mes'."
+        ),
+    )
+    fecha_ingreso: date = Field(
+        description=(
+            "Fecha en que el socio se unió al club (fecha de alta original). "
+            "El frontend la usa para el Calendario Anual: cualquier mes anterior "
+            "a esta fecha se muestra como 'Inactivo / No era socio'."
         ),
     )
 

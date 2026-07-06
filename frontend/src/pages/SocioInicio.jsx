@@ -121,7 +121,21 @@ export default function SocioInicio() {
   };
 
   // --- Datos Derivados ---
-  const esMoroso = (perfil?.deuda_historica_meses ?? 0) > 0;
+  const esMoroso = (() => {
+    // La fuente de la verdad es si la cobertura está vigente, no la deuda en meses.
+    if (!perfil?.mes_cubierto_hasta) {
+      return true; // Si es NULL, nunca pagó o no tiene cobertura.
+    }
+    const hoy = new Date();
+    // Para evitar problemas de timezone, se compara el string YYYY-MM-DD.
+    // Se construye el string de hoy en el formato correcto.
+    const year = hoy.getFullYear();
+    const month = String(hoy.getMonth() + 1).padStart(2, '0');
+    const day = String(hoy.getDate()).padStart(2, '0');
+    const hoyString = `${year}-${month}-${day}`;
+    
+    return perfil.mes_cubierto_hasta < hoyString;
+  })();
   const nombreCorto = perfil?.nombre?.split(' ')[0] ?? 'Socio';
 
   if (loading) {

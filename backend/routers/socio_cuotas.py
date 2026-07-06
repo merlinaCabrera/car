@@ -11,33 +11,28 @@ Endpoints:
   POST /socio/cuotas/ordenes/{id}/cancelar → Cancela una orden propia pendiente.
   POST /socio/cuotas/pagos/{id_pago}/comprobante → Sube el comprobante del PAGO.
 
-Todos los endpoints requieren rol 'socio'.
+Todos los endpoints requieren rol 'socio' o 'jugador'.
 
 Decisiones técnicas:
-  - Igual que en admin_pagos.py, el precio de referencia es siempre
-    ProductoServicio.precio_actual (categoria='cuota_social'), porque es el
-    valor que se congela en cada DetalleOrden.
+  - El precio se calcula con _calcular_precio_cuota(), que aplica un descuento
+    dinámico del 40% sobre el producto único de 'cuota_social' si el socio
+    es menor de 18 años.
   - Patrón "Split-Order bajo un único Pago": Orden.id_pago es NOT NULL, así
     que generar-orden ya NO crea una Orden suelta. Primero crea un Pago
     (estado='pendiente', comprobante_url=NULL) y recién después cuelga de él
-    la Orden de cuota_social. El comprobante se sube al PAGO, no a la Orden
-    — por eso el endpoint de subida ahora vive en /pagos/{id_pago}/comprobante.
+    la Orden de cuota_social. El comprobante se sube al PAGO, no a la Orden.
   - generar-orden crea la orden en estado 'pendiente_verificacion' (NO
-    'aprobada' — a diferencia del cobro manual de admin_pagos, acá no hay
-    plata en mano todavía; el socio tiene que subir comprobante o coordinar
-    el pago, y un admin la aprueba después). No toca deuda_historica_meses:
-    eso solo se actualiza cuando la orden pasa a 'aprobada'.
+    'aprobada'). No toca deuda_historica_meses: eso solo se actualiza cuando
+    la orden pasa a 'aprobada'.
   - Se bloquea la creación de una nueva orden de cuota si el socio ya tiene
-    una orden de cuota 'pendiente_verificacion' sin resolver, para evitar
-    duplicados que el admin tendría que desenredar a mano.
-  - El historial solo muestra órdenes 'aprobada' (pagos confirmados), no
-    intentos pendientes ni rechazados — para eso está la bandeja de "Mis
-    Órdenes" general, si existe.
+    una orden de cuota 'pendiente_verificacion' sin resolver.
+  - El historial solo muestra órdenes 'aprobada' (pagos confirmados).
 """
 
 from __future__ import annotations
 
 import uuid
+from datetime import date
 from decimal import Decimal
 from pathlib import Path
 from typing import List, Optional
@@ -63,11 +58,11 @@ router = APIRouter(
     tags=["Socio — Mis Cuotas"],
 )
 
-_ROLES_SOCIO = ("socio",)
+DESCUENTO_MENOR = Decimal("0.40")
 
-# ─── Configuración de subida de comprobantes ─────────────────────────────────
-# Debe coincidir con el directorio creado/montado en main.py
-# (os.makedirs(...) al arrancar la app y app.mount("/uploads", ...)).
+_ROLES_SOCIO = ("socio", "jugador")
+
+# ─── Configuración de subida de comprobantes ──────────────────────────────────
 UPLOAD_DIR = Path("uploads/comprobantes")
 _EXTENSIONES_PERMITIDAS = {".jpg", ".jpeg", ".png", ".pdf", ".webp"}
 _CONTENT_TYPES_PERMITIDOS = {
@@ -110,26 +105,54 @@ def _registrar_audit(
     )
 
 
+def _calcular_edad(fecha_nacimiento: Optional[date]) -> Optional[int]:
+    """
+    Retorna la edad en años completos al día de hoy.
+    Devuelve None si fecha_nacimiento es NULL.
+    """
+    if fecha_nacimiento is None:
+        return None
+    hoy = date.today()
+    return (
+        hoy.year - fecha_nacimiento.year
+        - ((hoy.month, hoy.day) < (fecha_nacimiento.month, fecha_nacimiento.day))
+    )
+
+
 def _obtener_producto_cuota_social(db: Session) -> models.ProductoServicio:
-    """Mismo criterio que admin_pagos.py: producto activo más reciente."""
+    """Busca el único producto activo de categoría 'cuota_social'."""
     producto = (
         db.query(models.ProductoServicio)
         .filter(
             models.ProductoServicio.categoria == "cuota_social",
             models.ProductoServicio.es_activo.is_(True),
         )
-        .order_by(models.ProductoServicio.id_producto.desc())
         .first()
     )
     if producto is None:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=(
-                "No existe un producto activo con categoria='cuota_social'. "
-                "Contactá a administración."
+                "No existe ningún producto activo con categoria='cuota_social'. "
+                "Por favor, cargá la 'Cuota Social' base en el sistema."
             ),
         )
     return producto
+
+
+def _calcular_precio_cuota(
+    precio_base: Decimal,
+    fecha_nacimiento: Optional[date],
+) -> Decimal:
+    """
+    Calcula el precio final de la cuota.
+    Aplica DESCUENTO_MENOR si el socio tiene menos de 18 años.
+    """
+    edad = _calcular_edad(fecha_nacimiento)
+    if edad is not None and edad < 18:
+        # Aplica un 40% de descuento para menores
+        return precio_base * (Decimal("1") - DESCUENTO_MENOR)
+    return precio_base
 
 
 # ─── ENDPOINT: Estado financiero del socio ────────────────────────────────────
@@ -143,20 +166,23 @@ def obtener_estado_cuota(
     db: Session = Depends(get_db),
     socio: models.Usuario = Depends(require_roles(*_ROLES_SOCIO)),
 ) -> schemas.EstadoCuotaSocioResponse:
+    # Obtiene el producto base y calcula el precio real para este socio
     producto_cuota = _obtener_producto_cuota_social(db)
-    
-    # BUSCAMOS LA CONFIGURACIÓN GLOBAL
+    precio_real_socio = _calcular_precio_cuota(
+        producto_cuota.precio_actual, socio.fecha_nacimiento
+    )
+
     config = db.query(models.ConfiguracionGlobal).first()
-    # ASIGNAMOS EL VALOR O EL DEFAULT
     dia_vencimiento = config.dia_vencimiento_cuota if config else 10
 
     return schemas.EstadoCuotaSocioResponse(
         id_producto=producto_cuota.id_producto,
         deuda_historica_meses=socio.deuda_historica_meses,
         mes_cubierto_hasta=socio.mes_cubierto_hasta,
-        precio_cuota_actual=producto_cuota.precio_actual,
-        deuda_total_pesos=Decimal(socio.deuda_historica_meses) * producto_cuota.precio_actual,
-        dia_vencimiento_cuota=dia_vencimiento, 
+        precio_cuota_actual=precio_real_socio,
+        deuda_total_pesos=Decimal(socio.deuda_historica_meses) * precio_real_socio,
+        dia_vencimiento_cuota=dia_vencimiento,
+        fecha_ingreso=socio.fecha_ingreso,
     )
 
 
@@ -171,7 +197,15 @@ def obtener_historial_pagos(
     db: Session = Depends(get_db),
     socio: models.Usuario = Depends(require_roles(*_ROLES_SOCIO)),
 ) -> List[schemas.HistorialPagoCuotaResponse]:
-    producto_cuota = _obtener_producto_cuota_social(db)
+    # Traemos todos los id_producto de categoría cuota_social activos para
+    # cubrir el caso en que el socio pagó con el producto de menor siendo menor
+    # y ahora tiene la cuota de adulto. Así el historial nunca queda truncado.
+    ids_cuota = [
+        p.id_producto
+        for p in db.query(models.ProductoServicio)
+        .filter(models.ProductoServicio.categoria == "cuota_social")
+        .all()
+    ]
 
     detalles = (
         db.query(models.DetalleOrden)
@@ -182,7 +216,7 @@ def obtener_historial_pagos(
         .filter(
             models.Orden.id_usuario == socio.id_usuario,
             models.Orden.estado == "aprobada",
-            models.DetalleOrden.id_producto == producto_cuota.id_producto,
+            models.DetalleOrden.id_producto.in_(ids_cuota),
         )
         .order_by(models.Orden.aprobada_at.desc())
         .all()
@@ -215,17 +249,29 @@ def generar_orden_cuota(
     db: Session = Depends(get_db),
     socio: models.Usuario = Depends(require_roles(*_ROLES_SOCIO)),
 ) -> schemas.GenerarOrdenCuotaResponse:
+    # El precio se calcula dinámicamente: un socio menor de 18 recibe el
+    # descuento automáticamente, sin intervención del admin.
     producto_cuota = _obtener_producto_cuota_social(db)
+    precio_congelado = _calcular_precio_cuota(
+        producto_cuota.precio_actual, socio.fecha_nacimiento
+    )
 
-    # Evitar duplicados: si ya hay una orden de cuota sin resolver, no dejamos
-    # generar otra (el socio debería subir el comprobante de esa o esperar).
+    # Evitar duplicados: si ya hay una orden de cualquier cuota_social sin
+    # resolver, no dejamos generar otra.
+    ids_cuota = [
+        p.id_producto
+        for p in db.query(models.ProductoServicio)
+        .filter(models.ProductoServicio.categoria == "cuota_social")
+        .all()
+    ]
+
     orden_pendiente_existente = (
         db.query(models.Orden.id_orden)
         .join(models.DetalleOrden, models.DetalleOrden.id_orden == models.Orden.id_orden)
         .filter(
             models.Orden.id_usuario == socio.id_usuario,
             models.Orden.estado == "pendiente_verificacion",
-            models.DetalleOrden.id_producto == producto_cuota.id_producto,
+            models.DetalleOrden.id_producto.in_(ids_cuota),
         )
         .first()
     )
@@ -238,19 +284,16 @@ def generar_orden_cuota(
             ),
         )
 
-    precio_congelado = producto_cuota.precio_actual
     monto_total = precio_congelado * payload.meses_a_pagar
 
     # 1 ── Crear el Pago (cabecera única de cobro) ──────────────────────────
-    # Split-Order: la Orden.id_pago es NOT NULL, así que el Pago se crea
-    # PRIMERO. El socio va a subir el comprobante acá, no en la Orden.
     nuevo_pago = models.Pago(
         id_usuario=socio.id_usuario,
         monto_total=monto_total,
         estado="pendiente",
     )
     db.add(nuevo_pago)
-    db.flush()  # necesitamos nuevo_pago.id_pago para la Orden
+    db.flush()
 
     # 2 ── Crear la Orden hija de cuota_social, colgada del Pago ────────────
     nueva_orden = models.Orden(
@@ -260,7 +303,7 @@ def generar_orden_cuota(
         monto_total=monto_total,
     )
     db.add(nueva_orden)
-    db.flush()  # necesitamos nueva_orden.id_orden para el detalle
+    db.flush()
 
     detalle = models.DetalleOrden(
         id_orden=nueva_orden.id_orden,
@@ -270,9 +313,6 @@ def generar_orden_cuota(
     )
     db.add(detalle)
 
-    # Un solo registro de auditoría alcanza: referenciamos la Orden (que es
-    # el objeto de negocio concreto — "el socio pidió pagar N meses"), y
-    # dejamos el id_pago en el detalle para trazabilidad completa.
     _registrar_audit(
         db=db,
         actor_id=socio.id_usuario,
@@ -281,9 +321,13 @@ def generar_orden_cuota(
         registro_id=nueva_orden.id_orden,
         detalle={
             "id_pago": nuevo_pago.id_pago,
+            "id_producto": producto_cuota.id_producto,
+            "nombre_producto": producto_cuota.nombre,
             "meses_a_pagar": payload.meses_a_pagar,
             "precio_unitario_historico": str(precio_congelado),
             "monto_total": str(monto_total),
+            "es_menor": _calcular_edad(socio.fecha_nacimiento) is not None
+                        and _calcular_edad(socio.fecha_nacimiento) < 18,
         },
         ip=_extraer_ip(request),
     )
@@ -313,15 +357,18 @@ def obtener_orden_pendiente(
     socio: models.Usuario = Depends(require_roles(*_ROLES_SOCIO)),
 ) -> Optional[schemas.OrdenSocioPendienteResponse]:
     """
-    Devuelve la primera orden de cuota social en estado 'pendiente_verificacion'
-    que tenga el socio logueado, incluyendo sus detalles y el producto asociado.
-
-    Si no existe ninguna, devuelve null (HTTP 200 con body `null`).
-    Se prefiere null sobre 404 porque la ausencia de orden pendiente es un estado
-    válido y esperado, no un error — el frontend puede ramificar sin capturar
-    excepciones.
+    Devuelve null (HTTP 200 con body `null`) cuando no hay orden pendiente.
+    Se prefiere null sobre 404 porque la ausencia es un estado válido y
+    esperado — el frontend puede ramificar sin capturar excepciones.
     """
-    producto_cuota = _obtener_producto_cuota_social(db)
+    # Seleccionamos el producto correcto para el socio y filtramos por
+    # categoría cuota_social en general, para cubrir cambios de edad.
+    ids_cuota = [
+        p.id_producto
+        for p in db.query(models.ProductoServicio)
+        .filter(models.ProductoServicio.categoria == "cuota_social")
+        .all()
+    ]
 
     orden = (
         db.query(models.Orden)
@@ -333,16 +380,16 @@ def obtener_orden_pendiente(
         .filter(
             models.Orden.id_usuario == socio.id_usuario,
             models.Orden.estado == "pendiente_verificacion",
-            models.DetalleOrden.id_producto == producto_cuota.id_producto,
+            models.DetalleOrden.id_producto.in_(ids_cuota),
         )
         .order_by(models.Orden.fecha_creacion.desc())
         .first()
     )
 
-    return orden  # Pydantic serializa None → `null` en la respuesta JSON
+    return orden
 
 
-# ─── ENDPOINT: Cancelar orden pendiente ──────────────────────────────────────
+# ─── ENDPOINT: Cancelar orden pendiente ───────────────────────────────────────
 
 @router.post(
     "/ordenes/{id_orden}/cancelar",
@@ -359,9 +406,8 @@ def cancelar_orden_pendiente(
     Permite que el socio cancele su propia orden mientras esté en
     'pendiente_verificacion'. Una vez aprobada o rechazada no puede cancelarse.
 
-    Seguridad: se verifica primero que la orden exista Y que pertenezca al
-    socio autenticado; si no cumple alguna condición se devuelve 404 para no
-    revelar la existencia de órdenes ajenas (IDOR mitigation).
+    Seguridad: se devuelve 404 aunque la orden exista pero sea ajena,
+    para evitar IDOR (no revelar existencia de órdenes de otros socios).
     """
     orden = (
         db.query(models.Orden)
@@ -390,10 +436,6 @@ def cancelar_orden_pendiente(
     orden.estado = "cancelada_socio"
 
     # ── Resolver el Pago padre si se quedó sin órdenes activas ──────────────
-    # Split-Order: un Pago puede tener más de una Orden hija (ej: cuota +
-    # tienda). Si esta era la última orden en 'pendiente_verificacion', no
-    # tiene sentido dejar el Pago eternamente en 'pendiente' sin nada que
-    # verificar — lo marcamos 'rechazado' (estado terminal).
     pago = orden.pago
     pago_actualizado = False
     if pago is not None and pago.estado == "pendiente":
@@ -451,9 +493,9 @@ async def subir_comprobante(
     socio: models.Usuario = Depends(require_roles(*_ROLES_SOCIO)),
 ) -> schemas.ComprobanteUploadResponse:
     """
-    El comprobante ahora se adjunta al Pago (patrón Split-Order), no a cada
-    Orden individual — un mismo comprobante puede cubrir, por ejemplo, la
-    orden de cuota_social y la orden de tienda generadas en un mismo checkout.
+    El comprobante se adjunta al Pago (patrón Split-Order), no a cada Orden
+    individual — un mismo comprobante puede cubrir la orden de cuota_social
+    y la orden de tienda generadas en un mismo checkout.
     """
     pago = (
         db.query(models.Pago)
@@ -466,7 +508,7 @@ async def subir_comprobante(
             detail="El pago indicado no existe.",
         )
 
-    # No revelamos si el pago existe pero es de otro socio: mismo mensaje que "no existe".
+    # No revelamos si el pago existe pero es de otro socio: mismo 404.
     if pago.id_usuario != socio.id_usuario:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -500,7 +542,6 @@ async def subir_comprobante(
             detail=f"Tipo de archivo '{file.content_type}' no permitido.",
         )
 
-    # Nombre físico con UUID para evitar colisiones y no exponer el nombre original.
     nombre_archivo = f"{uuid.uuid4().hex}{extension}"
 
     UPLOAD_DIR.mkdir(parents=True, exist_ok=True)

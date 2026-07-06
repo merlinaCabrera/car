@@ -26,9 +26,12 @@ Decisiones técnicas:
 
 from __future__ import annotations
 
+from decimal import Decimal
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from pydantic import BaseModel, Field
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 import models
@@ -42,7 +45,20 @@ router = APIRouter(
 )
 
 _ROLES_ADMIN_PRODUCTOS = ("admin_general", "personal_administrativo")
+_ROLES_ADMIN_GENERAL = ("admin_general",)
 
+
+# ─── Schemas locales ──────────────────────────────────────────────────────────
+
+class DiaVencimientoResponse(BaseModel):
+    dia_vencimiento_cuota: int
+
+
+class DiaVencimientoUpdatePayload(BaseModel):
+    dia_vencimiento_cuota: int = Field(
+        ge=1, le=28, description="Día de vencimiento (1-28)"
+    )
+    
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -147,6 +163,79 @@ def crear_producto(
 
     return nuevo
 
+
+# ─── ENDPOINTS: Configuración Global ──────────────────────────────────────────
+
+@router.get(
+    "/configuracion/dia-vencimiento",
+    response_model=DiaVencimientoResponse,
+    summary="Obtener el día de vencimiento de las cuotas",
+    tags=["Admin — Configuración Global"],
+)
+def obtener_dia_vencimiento(
+    db: Session = Depends(get_db),
+    _admin: models.Usuario = Depends(require_roles(*_ROLES_ADMIN_PRODUCTOS)),
+) -> DiaVencimientoResponse:
+    """
+    Devuelve el día del mes configurado globalmente para el vencimiento de cuotas.
+    Si no hay configuración, devuelve 10 por defecto.
+    """
+    config = db.query(models.ConfiguracionGlobal).first()
+    dia = config.dia_vencimiento_cuota if config else 10
+    return DiaVencimientoResponse(dia_vencimiento_cuota=dia)
+
+
+@router.patch(
+    "/configuracion/dia-vencimiento",
+    response_model=schemas.ConfiguracionGlobalResponse,
+    summary="Actualizar el día de vencimiento de las cuotas",
+    tags=["Admin — Configuración Global"],
+)
+def actualizar_dia_vencimiento(
+    payload: DiaVencimientoUpdatePayload,
+    request: Request,
+    db: Session = Depends(get_db),
+    admin: models.Usuario = Depends(require_roles(*_ROLES_ADMIN_GENERAL)),
+) -> models.ConfiguracionGlobal:
+    """
+    Actualiza el día de vencimiento global. Si no existe una configuración,
+    la crea. Esta operación requiere rol 'admin_general'.
+    """
+    config = db.query(models.ConfiguracionGlobal).first()
+    
+    antes = {
+        "dia_vencimiento_cuota": config.dia_vencimiento_cuota if config else None
+    }
+
+    if config:
+        config.dia_vencimiento_cuota = payload.dia_vencimiento_cuota
+        config.actualizado_por = admin.id_usuario
+        config.actualizado_at = func.now()
+    else:
+        producto_cuota = db.query(models.ProductoServicio).filter(
+            models.ProductoServicio.categoria == "cuota_social",
+            models.ProductoServicio.es_activo.is_(True)
+        ).first()
+        valor_base = producto_cuota.precio_actual if producto_cuota else Decimal("10000.00")
+
+        config = models.ConfiguracionGlobal(
+            valor_cuota_base=valor_base,
+            dia_vencimiento_cuota=payload.dia_vencimiento_cuota,
+            actualizado_por=admin.id_usuario,
+            actualizado_at=func.now()
+        )
+        db.add(config)
+        db.flush()
+
+    _registrar_audit(
+        db=db, actor_id=admin.id_usuario, accion="EDITAR_CONFIG_GLOBAL",
+        tabla_afectada="configuracion_global", registro_id=config.id,
+        detalle={"antes": antes, "despues": {"dia_vencimiento_cuota": payload.dia_vencimiento_cuota}},
+        ip=_extraer_ip(request),
+    )
+    db.commit()
+    db.refresh(config)
+    return config
 
 # ─── ENDPOINT: Editar producto (PATCH parcial) ────────────────────────────────
 

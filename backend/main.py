@@ -52,7 +52,8 @@ origins = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
     "https://club-atletico-api.onrender.com", 
-    "https://car-frontend-1m63wmrd6-merlina-s-projects.vercel.app" 
+    "https://car-frontend-dusky.vercel.app", # <-- ¡El link nuevo de producción!
+    "https://car-frontend-1m63wmrd6-merlina-s-projects.vercel.app" # Dejamos el viejo por las dudas
 ]
 
 origins = [

@@ -1,26 +1,24 @@
 from datetime import datetime, timedelta, timezone
 from typing import Optional
-
+import bcrypt
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 
-# --- Configuración de Seguridad ---
-# ¡IMPORTANTE! Mueve esto a variables de entorno en producción.
 SECRET_KEY = "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2"
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 8 # 8 horas
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 8
 
-# --- Hashing de Contraseñas ---
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
+# --- Hashing de Contraseñas usando bcrypt puro ---
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
-
+    # Truncamos a 72 bytes como pide bcrypt
+    password_bytes = plain_password.encode('utf-8')[:72]
+    hashed_bytes = hashed_password.encode('utf-8')
+    return bcrypt.checkpw(password_bytes, hashed_bytes)
 
 def get_password_hash(password: str) -> str:
-    return pwd_context.hash(password)
-
+    # Truncamos a 72 bytes y hasheamos
+    password_bytes = password.encode('utf-8')[:72]
+    return bcrypt.hashpw(password_bytes, bcrypt.gensalt()).decode('utf-8')
 
 # --- JSON Web Tokens (JWT) ---
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):

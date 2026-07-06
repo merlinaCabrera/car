@@ -1,7 +1,6 @@
 fastapi
 uvicorn
 bcrypt>=4.0.1
-passlib[bcrypt]
 sqlalchemy
 psycopg2-binary
 pydantic[email]

@@ -17,6 +17,63 @@ const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8000';
 const REFRESH_INTERVAL_SEC = 55; // Rotamos antes de que el token expire en el backend (60s)
 const QR_SIZE = 260; // px — se escala bien en móvil con max-w-xs del contenedor
 
+// ─── Helpers de fecha y estado financiero (copiados de SocioCuotas.jsx) ─────
+
+/**
+ * Construye un Date en tiempo local desde partes individuales.
+ * Evita el desfase UTC que produce `new Date("YYYY-MM-DD")` en zonas negativas
+ * como America/Argentina/Buenos_Aires (UTC-3).
+ */
+function fechaLocal(anio, mes1based, dia) {
+  return new Date(anio, mes1based - 1, dia);
+}
+
+/**
+ * Parsea una ISO Date string "YYYY-MM-DD" a Date local.
+ * Si es null/undefined devuelve null.
+ */
+function parsearISO(isoDate) {
+  if (!isoDate) return null;
+  const partes = String(isoDate).split('-').map(Number);
+  if (partes.length !== 3 || partes.some(Number.isNaN)) return null;
+  return fechaLocal(partes[0], partes[1], partes[2]);
+}
+
+/**
+ * Fuente única de verdad para el estado financiero del socio (moroso / al día).
+ * Reutiliza la lógica robusta de SocioCuotas.jsx para consistencia.
+ */
+function calcularEstadoFinanciero(mesCubiertoHastaISO, fechaIngresoISO, diaVencimiento = 10) {
+  let fechaBase = parsearISO(mesCubiertoHastaISO);
+
+  if (!fechaBase) {
+    const ingreso = parsearISO(fechaIngresoISO);
+    if (ingreso) {
+      const ultimoDiaMes = new Date(ingreso.getFullYear(), ingreso.getMonth() + 1, 0).getDate();
+      const diaClamp = Math.min(diaVencimiento, ultimoDiaMes);
+      fechaBase = fechaLocal(ingreso.getFullYear(), ingreso.getMonth() + 1, diaClamp);
+    }
+  }
+
+  // Defensivo: sin mes_cubierto_hasta ni fecha_ingreso no hay nada que evaluar.
+  if (!fechaBase) return { moroso: false, mesesAdeudados: 0 };
+
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+
+  if (hoy <= fechaBase) return { moroso: false, mesesAdeudados: 0 };
+
+  let mesesAdeudados =
+    (hoy.getFullYear() - fechaBase.getFullYear()) * 12 +
+    (hoy.getMonth() - fechaBase.getMonth());
+
+  if (hoy.getDate() > fechaBase.getDate()) {
+    mesesAdeudados += 1;
+  }
+
+  return { moroso: true, mesesAdeudados };
+}
+
 // ─── Sub-componentes ──────────────────────────────────────────────────────────
 
 function CardSkeleton({ className = '' }) {
@@ -121,21 +178,13 @@ export default function SocioInicio() {
   };
 
   // --- Datos Derivados ---
-  const esMoroso = (() => {
-    // La fuente de la verdad es si la cobertura está vigente, no la deuda en meses.
-    if (!perfil?.mes_cubierto_hasta) {
-      return true; // Si es NULL, nunca pagó o no tiene cobertura.
-    }
-    const hoy = new Date();
-    // Para evitar problemas de timezone, se compara el string YYYY-MM-DD.
-    // Se construye el string de hoy en el formato correcto.
-    const year = hoy.getFullYear();
-    const month = String(hoy.getMonth() + 1).padStart(2, '0');
-    const day = String(hoy.getDate()).padStart(2, '0');
-    const hoyString = `${year}-${month}-${day}`;
-    
-    return perfil.mes_cubierto_hasta < hoyString;
-  })();
+  const { moroso: esMoroso } = calcularEstadoFinanciero(
+    perfil?.mes_cubierto_hasta,
+    perfil?.fecha_ingreso,
+    // El perfil de /usuarios/me no siempre incluye dia_vencimiento_cuota.
+    // Usamos el default (10) que es consistente con el resto de la app.
+    perfil?.dia_vencimiento_cuota ?? 10
+  );
   const nombreCorto = perfil?.nombre?.split(' ')[0] ?? 'Socio';
 
   if (loading) {

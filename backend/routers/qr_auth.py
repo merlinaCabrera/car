@@ -14,10 +14,12 @@ Ambos endpoints de validación:
   - Nunca exponen datos financieros en pesos ni datos privados del socio.
 
 Decisiones técnicas:
-  - fn_validar_qr: llamada con session.execute(text(...)).mappings().first()
-    porque la función retorna un SETOF TABLE de una sola fila.
-  - El fallback DNI replica la lógica de fn_validar_qr en Python para no
-    depender de una segunda función PL/pgSQL (más fácil de mantener en ORM).
+  - Tanto /validar-token como /validar-dni construyen la respuesta vía ORM con
+    `_construir_respuesta_desde_orm`, que a su vez usa `_calcular_estado_financiero`
+    (puerto 1:1 de `calcularEstadoFinanciero` en SocioCuotas.jsx). Se abandonó
+    la dependencia de fn_validar_qr en PL/pgSQL para esta lógica: mantener la
+    regla de negocio en un solo lugar (Python) evita que backend y frontend
+    diverjan, como ocurría antes.
   - id_evento se recibe en el payload pero NO es obligatorio. Si se omite,
     solo se valida sin registrar asistencia (útil para validación de beneficios
     comerciales desde locales adheridos).
@@ -25,9 +27,25 @@ Decisiones técnicas:
 
 from __future__ import annotations
 
+import calendar
 import uuid
 from datetime import date, datetime, timezone
 from typing import Optional
+from zoneinfo import ZoneInfo
+
+# ─── Timezone de referencia para "hoy" ────────────────────────────────────────
+# CRÍTICO: el frontend calcula `new Date()` en la hora LOCAL del navegador
+# (Argentina). Si acá usáramos datetime.now(timezone.utc).date(), entre las
+# 21:00 y las 00:00 hora ARG el backend ya estaría "un día adelantado"
+# respecto al frontend (ARG = UTC-3), pudiendo marcar como moroso a un socio
+# que el frontend todavía muestra al día. Por eso NUNCA se usa timezone.utc
+# para el cálculo de estado financiero: siempre se usa esta zona horaria.
+_TZ_ARG = ZoneInfo("America/Argentina/Buenos_Aires")
+
+
+def _hoy_local() -> date:
+    """Fecha de 'hoy' en hora local de Argentina (consistente con el frontend)."""
+    return datetime.now(_TZ_ARG).date()
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
@@ -140,12 +158,73 @@ def _extraer_ip(request: Request) -> Optional[str]:
 
 def _calcular_antiguedad_meses(fecha_ingreso) -> int:
     """Calcula los meses de antigüedad desde fecha_ingreso hasta hoy."""
-    hoy = datetime.now(timezone.utc).date()
+    hoy = _hoy_local()
     if fecha_ingreso is None:
         return 0
     delta_years  = hoy.year  - fecha_ingreso.year
     delta_months = hoy.month - fecha_ingreso.month
     return delta_years * 12 + delta_months
+
+
+def _obtener_dia_vencimiento(db: Session) -> int:
+    """
+    Trae `dia_vencimiento_cuota` desde ConfiguracionGlobal (fila única de config).
+    Es la misma fuente que usa `estado.dia_vencimiento_cuota` en el frontend
+    (ver SocioCuotas.jsx, línea ~644: `estado.dia_vencimiento_cuota ?? 10`).
+    Si por algún motivo no hay fila de configuración, cae al default de 10
+    (mismo default que usa el frontend con el `??`).
+    """
+    config = db.query(models.ConfiguracionGlobal).first()
+    if config is None or config.dia_vencimiento_cuota is None:
+        return 10
+    return config.dia_vencimiento_cuota
+
+
+def _calcular_estado_financiero(
+    mes_cubierto_hasta: Optional[date],
+    fecha_ingreso: Optional[date],
+    dia_vencimiento: int = 10,
+) -> tuple[bool, int]:
+    """
+    Puerto 1:1 de `calcularEstadoFinanciero` (SocioCuotas.jsx).
+
+    Reglas (idénticas al frontend):
+      1. fecha_base = mes_cubierto_hasta si NO es None (sin importar si está
+         en el pasado o el futuro).
+      2. Si mes_cubierto_hasta es None → fecha_base = fecha_ingreso, con el
+         día de vencimiento clampeado al último día de ESE mes (socio nuevo:
+         su primer "corte" es el día de vencimiento del mes en que ingresó).
+      3. Si tampoco hay fecha_ingreso → no hay nada que evaluar: al día,
+         0 meses adeudados (mismo comportamiento defensivo que el frontend).
+      4. Moroso SOLO si hoy > fecha_base (periodo de gracia: el mismo día
+         de vencimiento todavía cuenta como al día, igual que en JS con
+         `hoy <= fechaBase`).
+      5. meses_adeudados se calcula por diferencia de año/mes, +1 si ya pasó
+         el día de corte dentro del mes actual — igual que el JS.
+
+    Devuelve (moroso, meses_adeudados).
+    """
+    fecha_base: Optional[date] = mes_cubierto_hasta
+
+    if fecha_base is None and fecha_ingreso is not None:
+        ultimo_dia_mes = calendar.monthrange(fecha_ingreso.year, fecha_ingreso.month)[1]
+        dia_clamp = min(dia_vencimiento, ultimo_dia_mes)
+        fecha_base = date(fecha_ingreso.year, fecha_ingreso.month, dia_clamp)
+
+    # Defensivo: sin mes_cubierto_hasta ni fecha_ingreso no hay nada que evaluar.
+    if fecha_base is None:
+        return False, 0
+
+    hoy = _hoy_local()
+
+    if hoy <= fecha_base:
+        return False, 0
+
+    meses_adeudados = (hoy.year - fecha_base.year) * 12 + (hoy.month - fecha_base.month)
+    if hoy.day > fecha_base.day:
+        meses_adeudados += 1
+
+    return True, meses_adeudados
 
 
 def _roles_activos_list(usuario: models.Usuario) -> list[str]:
@@ -161,10 +240,16 @@ def _roles_activos_list(usuario: models.Usuario) -> list[str]:
     return [r.nombre for r in roles]
 
 
-def _construir_respuesta_desde_orm(usuario: models.Usuario) -> schemas.UsuarioQRValidacionResponse:
+def _construir_respuesta_desde_orm(
+    usuario: models.Usuario,
+    dia_vencimiento: int,
+) -> schemas.UsuarioQRValidacionResponse:
     """
     Construye UsuarioQRValidacionResponse desde un objeto ORM.
-    Replica exactamente la lógica de fn_validar_qr para el fallback por DNI.
+    Usa el mismo motor que el frontend (`_calcular_estado_financiero`,
+    puerto de `calcularEstadoFinanciero` en SocioCuotas.jsx) para que un
+    socio nunca vea un resultado distinto entre su pantalla de cuotas y
+    el escáner de la puerta.
     """
     if usuario.fecha_baja is not None:
         return schemas.UsuarioQRValidacionResponse(
@@ -175,10 +260,16 @@ def _construir_respuesta_desde_orm(usuario: models.Usuario) -> schemas.UsuarioQR
             estado_financiero="inactivo",
             roles_activos=[],
             antiguedad_meses=0,
+            meses_adeudados=0,
             mensaje_display="SOCIO INACTIVO",
         )
 
-    esta_al_dia = usuario.mes_cubierto_hasta is not None and usuario.mes_cubierto_hasta >= date.today()
+    moroso, meses_adeudados = _calcular_estado_financiero(
+        usuario.mes_cubierto_hasta,
+        usuario.fecha_ingreso,
+        dia_vencimiento,
+    )
+    esta_al_dia = not moroso
     estado = "al_dia" if esta_al_dia else "moroso"
     roles  = _roles_activos_list(usuario)
     meses  = _calcular_antiguedad_meses(usuario.fecha_ingreso)
@@ -191,6 +282,7 @@ def _construir_respuesta_desde_orm(usuario: models.Usuario) -> schemas.UsuarioQR
         estado_financiero=estado,
         roles_activos=roles,
         antiguedad_meses=meses,
+        meses_adeudados=meses_adeudados,
         mensaje_display="SOCIO HABILITADO ✓" if esta_al_dia else "SOCIO NO HABILITADO ✗",
     )
 
@@ -237,7 +329,7 @@ def generar_qr_token(
 @router.post(
     "/validar-token",
     response_model=schemas.UsuarioQRValidacionResponse,
-    summary="Validar token QR escaneado — llama a fn_validar_qr en PostgreSQL",
+    summary="Validar token QR escaneado",
 )
 def validar_qr_token(
     payload: ValidarTokenPayload,
@@ -248,14 +340,13 @@ def validar_qr_token(
     """
     Flujo completo:
       1. Parsea el UUID del payload.
-      2. Llama a `fn_validar_qr(UUID)` en PostgreSQL vía session.execute.
-      3. Mapea el resultado a UsuarioQRValidacionResponse.
+      2. Busca el usuario por `qr_token` vía ORM.
+      3. Mapea el resultado a UsuarioQRValidacionResponse usando el mismo
+         motor de estado financiero que el frontend (ver
+         `_calcular_estado_financiero`).
       4. Si se proveyó id_evento, registra la asistencia en la tabla `asistencias`.
       5. Registra en audit_log (tanto los válidos como los fallidos).
       6. Hace commit de todo en una sola transacción.
-
-    Nota de seguridad: la función PL/pgSQL no expone el token al cliente,
-    solo retorna los datos necesarios para la tarjeta de aprobación visual.
     """
     ip = _extraer_ip(request)
 
@@ -289,10 +380,12 @@ def validar_qr_token(
             estado_financiero="desconocido",
             roles_activos=[],
             antiguedad_meses=0,
+            meses_adeudados=0,
             mensaje_display="QR NO RECONOCIDO ✗",
         )
     else:
-        respuesta = _construir_respuesta_desde_orm(usuario)
+        dia_vencimiento = _obtener_dia_vencimiento(db)
+        respuesta = _construir_respuesta_desde_orm(usuario, dia_vencimiento)
 
     # 4 — Registrar asistencia (si hay evento y el usuario fue identificado)
     if payload.id_evento and respuesta.id_usuario is not None:
@@ -346,8 +439,9 @@ def validar_dni(
     operador: models.Usuario = Depends(require_roles(*_ROLES_SCANNER)),
 ) -> schemas.UsuarioQRValidacionResponse:
     """
-    Plan B de contingencia. Replica exactamente la lógica de fn_validar_qr
-    pero busca por DNI en lugar de por token UUID.
+    Plan B de contingencia. Usa el mismo motor de estado financiero que
+    /validar-token (`_calcular_estado_financiero`), pero busca por DNI en
+    lugar de por token UUID.
 
     Retorna la misma estructura UsuarioQRValidacionResponse para que el
     frontend use el mismo componente de tarjeta de aprobación visual.
@@ -391,11 +485,13 @@ def validar_dni(
             estado_financiero="desconocido",
             roles_activos=[],
             antiguedad_meses=0,
+            meses_adeudados=0,
             mensaje_display="DNI NO ENCONTRADO ✗",
         )
 
-    # 3 — Construir respuesta desde el ORM (replica lógica de fn_validar_qr)
-    respuesta = _construir_respuesta_desde_orm(usuario)
+    # 3 — Construir respuesta desde el ORM (mismo motor que el frontend)
+    dia_vencimiento = _obtener_dia_vencimiento(db)
+    respuesta = _construir_respuesta_desde_orm(usuario, dia_vencimiento)
 
     # 4 — Registrar asistencia si se proveyó evento y el usuario fue identificado
     if payload.id_evento:

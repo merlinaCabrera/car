@@ -1,7 +1,7 @@
 {
   "backend/main.py": {
-    "mtime": 1783137745.7112052,
-    "ast_hash": "60254cbaf9ef9657dbc28d28e1ecd1cb",
+    "mtime": 1783346130.1118495,
+    "ast_hash": "90b973894ab5d892ba6c8cc3472e6d5d",
     "semantic_hash": ""
   },
   "frontend/eslint.config.js": {
@@ -20,8 +20,8 @@
     "semantic_hash": "470cfd3ee10fbff840b377e769485f3e"
   },
   "frontend/src/App.jsx": {
-    "mtime": 1783138006.888732,
-    "ast_hash": "1b8a65b6a225218e7ced60d40ef1961c",
+    "mtime": 1783226186.7446773,
+    "ast_hash": "3c135571246a7067b57d10b0b0f74ac3",
     "semantic_hash": ""
   },
   "frontend/src/components/landing/Calendario.jsx": {
@@ -50,8 +50,8 @@
     "semantic_hash": "0f1fa105db3df571faea36d7e0d200de"
   },
   "frontend/src/context/AuthContext.jsx": {
-    "mtime": 1782965473.954928,
-    "ast_hash": "3139b7f2b5ff4c9026f4eb9e612bc039",
+    "mtime": 1783339146.6227326,
+    "ast_hash": "e388205df5c22d3b846ace9ce701ac63",
     "semantic_hash": ""
   },
   "frontend/src/context/CartContext.jsx": {
@@ -60,8 +60,8 @@
     "semantic_hash": ""
   },
   "frontend/src/layouts/MainLayout.jsx": {
-    "mtime": 1783137822.690696,
-    "ast_hash": "e30efcdcc9a529be180906c9bde5ae16",
+    "mtime": 1783221139.687931,
+    "ast_hash": "bf4c57925f5725fbc4d20a0f70ae599f",
     "semantic_hash": ""
   },
   "frontend/src/main.jsx": {
@@ -75,8 +75,8 @@
     "semantic_hash": ""
   },
   "frontend/src/pages/AdminPagos.jsx": {
-    "mtime": 1783118978.6656418,
-    "ast_hash": "65323f1c984a7de89d1a914981ee8887",
+    "mtime": 1783273263.349268,
+    "ast_hash": "152e2053945820596ec005eeb1ca6e6f",
     "semantic_hash": ""
   },
   "frontend/src/pages/AdminQRScanner.jsx": {
@@ -90,18 +90,18 @@
     "semantic_hash": ""
   },
   "frontend/src/pages/JugadorCalendario.jsx": {
-    "mtime": 1781563937.4966145,
-    "ast_hash": "8c653c33f74b1c217c8963ee603e755d",
-    "semantic_hash": "8c653c33f74b1c217c8963ee603e755d"
+    "mtime": 1783226095.8490486,
+    "ast_hash": "4eeaa27d651f76820e1394c62fcb7a8f",
+    "semantic_hash": ""
   },
   "frontend/src/pages/Landing.jsx": {
-    "mtime": 1782875949.1677854,
-    "ast_hash": "3d36a26da3dc5254492393fe4d72203a",
-    "semantic_hash": "3d36a26da3dc5254492393fe4d72203a"
+    "mtime": 1783223831.0797703,
+    "ast_hash": "4bb40c985a126fe3e6d67df7ebc3e522",
+    "semantic_hash": ""
   },
   "frontend/src/pages/Login.jsx": {
-    "mtime": 1782965505.3665078,
-    "ast_hash": "ad605afbddcb61c2d4f38360e865d7be",
+    "mtime": 1783223862.0773742,
+    "ast_hash": "f06e0db3df0cf7329930ff61bbc3825c",
     "semantic_hash": ""
   },
   "frontend/src/pages/RecuperarPassword.jsx": {
@@ -110,8 +110,8 @@
     "semantic_hash": "629c0dd764f8d1cc8def1dabffe4ac18"
   },
   "frontend/src/pages/Registro.jsx": {
-    "mtime": 1782929288.83456,
-    "ast_hash": "0c6f936b10be19cc0203085b04ddb3c8",
+    "mtime": 1783430674.1459749,
+    "ast_hash": "84d6304178a11a9fbd59f04fbaa9f216",
     "semantic_hash": ""
   },
   "frontend/src/pages/SocioAlquileres.jsx": {
@@ -125,13 +125,13 @@
     "semantic_hash": ""
   },
   "frontend/src/pages/SocioCuotas.jsx": {
-    "mtime": 1783136543.8966537,
-    "ast_hash": "b38f7f05c0ddc39c39c2b08f341b1637",
+    "mtime": 1783300315.451919,
+    "ast_hash": "edde80765298a6cacd56202a867bd489",
     "semantic_hash": ""
   },
   "frontend/src/pages/SocioInicio.jsx": {
-    "mtime": 1782933731.444517,
-    "ast_hash": "f73573b35f5c4e64fed60bcce3fbe151",
+    "mtime": 1783427378.54618,
+    "ast_hash": "3328c77a964b9d654e10cc80864787c4",
     "semantic_hash": ""
   },
   "frontend/src/pages/SocioPerfil.jsx": {
@@ -155,8 +155,8 @@
     "semantic_hash": "88439104b3c207f17d33ef3160e3b080"
   },
   "backend/database.py": {
-    "mtime": 1782743376.9479508,
-    "ast_hash": "68d05e412828fb13c881bd509b56f8d8",
+    "mtime": 1783312100.3334262,
+    "ast_hash": "ba4abb2b53ed96c2fe358be75cafe8c0",
     "semantic_hash": ""
   },
   "backend/models.py": {
@@ -165,8 +165,8 @@
     "semantic_hash": ""
   },
   "backend/requirements.txt": {
-    "mtime": 1780686741.6340485,
-    "ast_hash": "97e4275fbd4c6082a79bd9ff985eed37",
+    "mtime": 1783346952.7707725,
+    "ast_hash": "820bbeb8eff20d9af98646ad0ee9cb5b",
     "semantic_hash": ""
   },
   "docker-compose.yml": {
@@ -195,8 +195,8 @@
     "semantic_hash": ""
   },
   "backend/schemas.py": {
-    "mtime": 1783137680.7417583,
-    "ast_hash": "c151dc6ce6b6be7a86a548d75d84957c",
+    "mtime": 1783296977.761743,
+    "ast_hash": "801fdddbc0fec0d236a98f84137d1e2f",
     "semantic_hash": ""
   },
   "init-db-backup/schema.sql": {
@@ -245,8 +245,8 @@
     "semantic_hash": ""
   },
   "backend/security.py": {
-    "mtime": 1782779416.6115785,
-    "ast_hash": "39965ab34be1b6fabe95cb4c67042c55",
+    "mtime": 1783346980.4363694,
+    "ast_hash": "90131b455f75f23663e64f8d14979f69",
     "semantic_hash": ""
   },
   "backend/dependencies.py": {
@@ -255,8 +255,8 @@
     "semantic_hash": ""
   },
   "backend/routers/admin_usuarios.py": {
-    "mtime": 1782949394.3549929,
-    "ast_hash": "6ccd10f92047776d4c084abfe595048a",
+    "mtime": 1783273018.4159763,
+    "ast_hash": "659ee2f786f88740de72bd55af57be62",
     "semantic_hash": ""
   },
   "frontend/src/assets/camoti-azul.PNG": {
@@ -290,8 +290,8 @@
     "semantic_hash": ""
   },
   "backend/routers/qr_auth.py": {
-    "mtime": 1782962831.2342918,
-    "ast_hash": "52914f1d55822092073fb5e3a6a0df5b",
+    "mtime": 1783275815.4687788,
+    "ast_hash": "3d5576f15a7af8f5ee9261a2b3725a5c",
     "semantic_hash": ""
   },
   "frontend/src/pages/AdminComercios.jsx": {
@@ -305,28 +305,23 @@
     "semantic_hash": ""
   },
   "frontend/src/pages/AdminSocios.jsx": {
-    "mtime": 1782966097.90919,
-    "ast_hash": "d3f8ec581e4e733a34ddfe5d4fbd4db4",
-    "semantic_hash": ""
-  },
-  "frontend/src/pages/SocioQR.jsx": {
-    "mtime": 1782931500.130606,
-    "ast_hash": "40f7167e16e36e4008d9426658633d1a",
+    "mtime": 1783297127.2611742,
+    "ast_hash": "13db3b41d16b0fe7b5b3bdf768e12d6f",
     "semantic_hash": ""
   },
   "backend/routers/admin_ordenes.py": {
-    "mtime": 1783131267.1614377,
-    "ast_hash": "842058039affe9e81680a5e92eb2029c",
+    "mtime": 1783342967.834626,
+    "ast_hash": "521524301db2fb453bdb70323fa47277",
     "semantic_hash": ""
   },
   "backend/routers/admin_pagos.py": {
-    "mtime": 1783019889.4016602,
-    "ast_hash": "1a233480c51cf5e0363c3c8223176ca5",
+    "mtime": 1783303454.0842519,
+    "ast_hash": "94ffca4d6a6dc2fa106b0f01a4d2d28b",
     "semantic_hash": ""
   },
   "backend/routers/socio_cuotas.py": {
-    "mtime": 1783136683.3851082,
-    "ast_hash": "d66c15945656c33e9f0334bff5b53638",
+    "mtime": 1783290139.6158032,
+    "ast_hash": "663cef8ce58285559709aaab6dc4d8ac",
     "semantic_hash": ""
   },
   "backend/alembic/versions/c03285f75d23_add_dia_vencimiento_cuota.py": {
@@ -340,8 +335,8 @@
     "semantic_hash": ""
   },
   "backend/routers/admin_productos.py": {
-    "mtime": 1783047752.3935037,
-    "ast_hash": "050053ee03a2c87ba1a7048ae4391a63",
+    "mtime": 1783299221.3486967,
+    "ast_hash": "079f3f50ef864752f6f8e98a5b88a7d3",
     "semantic_hash": ""
   },
   "backend/routers/socio_carrito.py": {
@@ -350,18 +345,18 @@
     "semantic_hash": ""
   },
   "backend/routers/socio_reservas.py": {
-    "mtime": 1783137665.2316468,
-    "ast_hash": "4562d6c072135e1c3cf99d4a9eb91f70",
+    "mtime": 1783215274.0989046,
+    "ast_hash": "bd21feb8497340ff126ada6c36360e9b",
     "semantic_hash": ""
   },
   "frontend/src/components/ReservaCalendar.jsx": {
-    "mtime": 1783137998.634689,
-    "ast_hash": "b022d6be43d694c1564c90a8366385f0",
+    "mtime": 1783215390.9628863,
+    "ast_hash": "9495829670a7607407512b96ee46792d",
     "semantic_hash": ""
   },
   "frontend/src/pages/AdminProductos.jsx": {
-    "mtime": 1783049587.5606003,
-    "ast_hash": "b52f5dc7f7535492c0585b7635d9db03",
+    "mtime": 1783299599.862184,
+    "ast_hash": "908695af2a4873e83795bf575bb32c6e",
     "semantic_hash": ""
   },
   "frontend/src/pages/AdminTienda.jsx": {
@@ -370,8 +365,8 @@
     "semantic_hash": ""
   },
   "frontend/src/pages/Reservas.jsx": {
-    "mtime": 1783138004.4607193,
-    "ast_hash": "96f420b4aba6d91317ee2ae974a310e4",
+    "mtime": 1783215393.375885,
+    "ast_hash": "c97e2b1ef8997da1aa0a639f1e82e2f4",
     "semantic_hash": ""
   },
   "frontend/src/pages/SocioCompras.jsx": {
@@ -477,6 +472,116 @@
   "backend/uploads/comprobantes/f92f7c33d69747ada305503e2105f349.png": {
     "mtime": 1783120534.9039576,
     "ast_hash": "0e4c67e16cdb6d0deadeae09379b49a5",
+    "semantic_hash": ""
+  },
+  "backend/alembic/versions/90885e41b585_sincronizar_base_neon.py": {
+    "mtime": 1783341358.0317688,
+    "ast_hash": "08415a0afd3cb78cfa439ec82e1e0022",
+    "semantic_hash": ""
+  },
+  "backend/routers/admin_reservas.py": {
+    "mtime": 1783215618.657655,
+    "ast_hash": "951d122ba305570ecc470e444895346a",
+    "semantic_hash": ""
+  },
+  "backend/routers/deportivo.py": {
+    "mtime": 1783275772.1188977,
+    "ast_hash": "4004316edf6fa9da57df6e1ddc7385a0",
+    "semantic_hash": ""
+  },
+  "backend/routers/notificaciones.py": {
+    "mtime": 1783215979.3769484,
+    "ast_hash": "aaf89267d9ea2549cbb64dfa1bf214ec",
+    "semantic_hash": ""
+  },
+  "frontend/src/pages/AdminReservas.jsx": {
+    "mtime": 1783219403.691944,
+    "ast_hash": "2793644df3f60fd3141f0967c4d107c2",
+    "semantic_hash": ""
+  },
+  "frontend/src/pages/AdminScannerEvento.jsx": {
+    "mtime": 1783226461.1736975,
+    "ast_hash": "b7a9596250ce3da36190796319f23d5e",
+    "semantic_hash": ""
+  },
+  "frontend/src/pages/JugadorEquipo.jsx": {
+    "mtime": 1783219394.091877,
+    "ast_hash": "8dade8ba0c94f4a1d1b3b62785535d48",
+    "semantic_hash": ""
+  },
+  "frontend/src/pages/SocioNotificaciones.jsx": {
+    "mtime": 1783303757.9957833,
+    "ast_hash": "0d8b4900b8bcf11eed08b627d05a17ba",
+    "semantic_hash": ""
+  },
+  "frontend/src/pages/TecnicoAsistencias.jsx": {
+    "mtime": 1783219400.7359233,
+    "ast_hash": "e75db5395007a59f074124e42faa5e2b",
+    "semantic_hash": ""
+  },
+  "frontend/src/pages/TecnicoPlanteles.jsx": {
+    "mtime": 1783226068.1634538,
+    "ast_hash": "c63b3de55c970cf67f478728d289b0f8",
+    "semantic_hash": ""
+  },
+  "backend/uploads/comprobantes/125846d0f1494ae68777a6405e69e61f.png": {
+    "mtime": 1783216826.0602067,
+    "ast_hash": "01fb3d860c321727b1a45f7dca61a348",
+    "semantic_hash": ""
+  },
+  "backend/uploads/comprobantes/17d6d84c759e47b0a8e9c28cee8df166.png": {
+    "mtime": 1783300351.4152539,
+    "ast_hash": "73921413bdd92472ec2a1c6eac9e4dab",
+    "semantic_hash": ""
+  },
+  "backend/uploads/comprobantes/517ce1dba00e480e8fcfe6d193d222a2.png": {
+    "mtime": 1783212992.41852,
+    "ast_hash": "ddd9d50a2fc5e36005381683fc84442a",
+    "semantic_hash": ""
+  },
+  "backend/uploads/comprobantes/66fbaa2cb45c40679247cc7194166460.png": {
+    "mtime": 1783299645.7812867,
+    "ast_hash": "ef8600ad1d46ce4ed82ac6eb58346ad9",
+    "semantic_hash": ""
+  },
+  "backend/uploads/comprobantes/793d0203c2d14a3ca40e265b3fd29837.png": {
+    "mtime": 1783214570.1799989,
+    "ast_hash": "677d23cf6c7f2e2d73ef04a76a7c2b0a",
+    "semantic_hash": ""
+  },
+  "backend/uploads/comprobantes/87f4a4f602724fa1b9130d014d90dad9.png": {
+    "mtime": 1783214545.1637328,
+    "ast_hash": "aa815f4bdf3d36e7cc90540c5a20eadb",
+    "semantic_hash": ""
+  },
+  "backend/uploads/comprobantes/9c675145caf54f8cb574e55b24f60ac2.jpg": {
+    "mtime": 1783293445.6120682,
+    "ast_hash": "7ee21fb1d457c6a8e596db7ad76c3ebf",
+    "semantic_hash": ""
+  },
+  "backend/uploads/comprobantes/c4943ee588cf43d68dda1864a14ee7dc.png": {
+    "mtime": 1783213590.4004436,
+    "ast_hash": "1d7bd97012efec91fea67b7e4f95ade6",
+    "semantic_hash": ""
+  },
+  "backend/uploads/comprobantes/c91ab2dfd92246e194658ddbd8505dae.png": {
+    "mtime": 1783212609.1931515,
+    "ast_hash": "c1babc48f818a7716bb8defba69c6f51",
+    "semantic_hash": ""
+  },
+  "backend/uploads/comprobantes/e17fdd01e9344c689f5089ffa435384e.png": {
+    "mtime": 1783212645.2163079,
+    "ast_hash": "1d7bd97012efec91fea67b7e4f95ade6",
+    "semantic_hash": ""
+  },
+  "backend/uploads/comprobantes/e447b8c5a9f148328294b731bb3ca6f4.png": {
+    "mtime": 1783302880.101804,
+    "ast_hash": "9fd4edec735dacefd7f741117c6a661e",
+    "semantic_hash": ""
+  },
+  "backend/uploads/comprobantes/fa7c90e96adf4b4a805345fcf6960e22.png": {
+    "mtime": 1783292605.5004995,
+    "ast_hash": "d14995156c710843f2857696d948411d",
     "semantic_hash": ""
   }
 }

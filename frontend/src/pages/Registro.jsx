@@ -44,13 +44,20 @@ export default function Registro() {
 
         setLoading(true);
 
-        try {
-            // Excluimos confirmPassword del payload que se envía al backend
+        try {   
+            // El value de <input type="date"> siempre llega como 'YYYY-MM-DD' desde el browser.
+            // NO usamos new Date(str).toISOString() porque en iOS/Android interpreta la
+            // cadena como medianoche UTC y la conversión a zona local puede retroceder un día.
             const { confirmPassword, ...payload } = formData;
-            const response = await fetch('http://127.0.0.1:8000/usuarios/', {
+            const payloadFinal = {
+                ...payload,
+                fecha_nacimiento: formData.fecha_nacimiento.trim(), // ya es YYYY-MM-DD
+            };
+
+            const response = await fetch(`${import.meta.env.VITE_API_URL ?? 'http://localhost:8000'}/usuarios/`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload),
+                body: JSON.stringify(payloadFinal),
             });
 
             if (!response.ok) {
@@ -62,7 +69,11 @@ export default function Registro() {
             setFormData({ dni: '', nombre: '', apellido: '', email: '', fecha_nacimiento: '', telefono: '', password: '', confirmPassword: '' });
 
         } catch (err) {
-            setError(err.message);
+            // TypeError: Failed to fetch → sin conexión o backend caído
+            const mensaje = (err instanceof TypeError)
+                ? 'No se pudo conectar con el servidor. Verificá tu conexión a internet.'
+                : err.message;
+            setError(mensaje);
         } finally {
             setLoading(false);
         }

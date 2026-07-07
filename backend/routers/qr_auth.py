@@ -264,6 +264,22 @@ def _construir_respuesta_desde_orm(
             mensaje_display="SOCIO INACTIVO",
         )
 
+    roles = _roles_activos_list(usuario)
+    meses = _calcular_antiguedad_meses(usuario.fecha_ingreso)
+
+    if "socio" not in roles:
+        return schemas.UsuarioQRValidacionResponse(
+            es_valido=False,
+            id_usuario=usuario.id_usuario,
+            nombre_completo=f"{usuario.nombre} {usuario.apellido}",
+            foto_perfil_url=usuario.foto_perfil_url,
+            estado_financiero="no_aprobado",
+            roles_activos=roles,
+            antiguedad_meses=meses,
+            meses_adeudados=0,
+            mensaje_display="SOCIO NO APROBADO ✗",
+        )
+
     moroso, meses_adeudados = _calcular_estado_financiero(
         usuario.mes_cubierto_hasta,
         usuario.fecha_ingreso,
@@ -271,8 +287,6 @@ def _construir_respuesta_desde_orm(
     )
     esta_al_dia = not moroso
     estado = "al_dia" if esta_al_dia else "moroso"
-    roles  = _roles_activos_list(usuario)
-    meses  = _calcular_antiguedad_meses(usuario.fecha_ingreso)
 
     return schemas.UsuarioQRValidacionResponse(
         es_valido=esta_al_dia,

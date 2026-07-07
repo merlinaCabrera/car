@@ -172,6 +172,48 @@ def get_usuarios_pendientes(
     return pendientes
 
 
+@router.get(
+    "/activos",
+    response_model=list[schemas.UsuarioListResponse],
+    summary="Listado de socios activos (usuarios con rol 'socio')",
+)
+def get_socios_activos(
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+    _: models.Usuario = Depends(require_roles(*_ADMIN)),
+):
+    """
+    Devuelve una lista paginada de todos los usuarios que tienen el rol 'socio'
+    activo y vigente.
+
+    Utiliza una subconsulta para filtrar eficientemente por el rol 'socio',
+    siguiendo el mismo patrón que el endpoint de listado general.
+    """
+    ahora = datetime.now(timezone.utc)
+
+    # Subquery para obtener los IDs de los usuarios con el rol 'socio' activo.
+    subq_socios_activos = (
+        db.query(models.UsuarioRol.id_usuario)
+        .join(models.Rol, models.UsuarioRol.id_rol == models.Rol.id_rol)
+        .filter(
+            models.Rol.nombre == "socio",
+            models.Rol.es_activo.is_(True),
+            or_(
+                models.UsuarioRol.valido_hasta.is_(None),
+                models.UsuarioRol.valido_hasta > ahora,
+            ),
+        )
+        .subquery()
+    )
+
+    # Query principal que filtra usuarios por los IDs de la subquery.
+    return (
+        db.query(models.Usuario).filter(models.Usuario.id_usuario.in_(subq_socios_activos))
+        .order_by(models.Usuario.apellido, models.Usuario.nombre).offset(skip).limit(limit).all()
+    )
+
+
 @router.post(
     "/{id_usuario}/aprobar",
     status_code=status.HTTP_200_OK,
@@ -370,49 +412,39 @@ def reactivar_socio(
 @router.get(
     "/",
     response_model=list[schemas.UsuarioListResponse],
-    summary="Listado general de todos los usuarios con filtro opcional por rol",
+    summary="Listado general de todos los socios aprobados",
 )
 def listar_todos_los_usuarios(
     skip: int = 0,
     limit: int = 100,
-    rol: Optional[str] = Query(
-        default=None,
-        description=(
-            "Filtrar por nombre de rol activo. "
-            "Ejemplos: 'socio', 'jugador', 'personal_tecnico', 'personal_administrativo'. "
-            "Si se omite, devuelve todos los usuarios sin importar sus roles."
-        ),
-    ),
     db: Session = Depends(get_db),
     _: models.Usuario = Depends(require_roles(*_ADMIN)),
 ):
     """
-    Lista usuarios ordenados por apellido/nombre.
+    Lista todos los socios aprobados (con rol 'socio' activo), ordenados por
+    apellido/nombre.
 
-    Filtro por rol (parámetro opcional `?rol=<nombre>`):
-      Devuelve solo los usuarios que tengan ese rol activo y vigente
-      (es_activo=True, sin expiración o con expiración futura).
-      El filtro usa una subquery EXISTS para una sola query a la BD.
+    Este endpoint alimenta la tabla principal de socios en el panel de
+    administración. Los usuarios pendientes de aprobación (sin rol) se listan
+    en el endpoint /pendientes.
     """
-    query = db.query(models.Usuario)
-
-    if rol:
-        ahora = datetime.now(timezone.utc)
-        # Subquery: usuarios que tienen el rol pedido, activo y no expirado
-        subq = (
-            db.query(models.UsuarioRol.id_usuario)
-            .join(models.Rol, models.UsuarioRol.id_rol == models.Rol.id_rol)
-            .filter(
-                models.Rol.nombre == rol,
-                models.Rol.es_activo.is_(True),
-                or_(
-                    models.UsuarioRol.valido_hasta.is_(None),
-                    models.UsuarioRol.valido_hasta > ahora,
-                ),
-            )
-            .subquery()
+    ahora = datetime.now(timezone.utc)
+    # Subquery: IDs de usuarios que tienen el rol 'socio', activo y no expirado.
+    subq_socios = (
+        db.query(models.UsuarioRol.id_usuario)
+        .join(models.Rol, models.UsuarioRol.id_rol == models.Rol.id_rol)
+        .filter(
+            models.Rol.nombre == "socio",
+            models.Rol.es_activo.is_(True),
+            or_(
+                models.UsuarioRol.valido_hasta.is_(None),
+                models.UsuarioRol.valido_hasta > ahora,
+            ),
         )
-        query = query.filter(models.Usuario.id_usuario.in_(subq))
+        .subquery()
+    )
+
+    query = db.query(models.Usuario).filter(models.Usuario.id_usuario.in_(subq_socios))
 
     return (
         query

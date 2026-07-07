@@ -304,6 +304,11 @@ class UsuarioQRValidacionResponse(BaseModel):
     """
     Respuesta del lector de puerta al escanear un QR.
     Mínima información necesaria: no expone deuda en pesos ni datos privados.
+
+    estado_financiero y es_valido se calculan con el mismo motor que usa el
+    frontend en SocioCuotas.jsx (`calcularEstadoFinanciero`): contempla
+    período de gracia, socios nuevos (fecha_ingreso sin mes_cubierto_hasta
+    aún) y el día de vencimiento configurado en ConfiguracionGlobal.
     """
     es_valido: bool
     id_usuario: Optional[int] = None
@@ -312,6 +317,15 @@ class UsuarioQRValidacionResponse(BaseModel):
     estado_financiero: str  # 'al_dia' | 'moroso' | 'inactivo' | 'desconocido'
     roles_activos: List[str] = []
     antiguedad_meses: int = 0
+    meses_adeudados: int = Field(
+        default=0,
+        description=(
+            "Meses de cuota vencidos sin pagar, calculados igual que "
+            "`mesesAdeudadosReal` en el frontend. 0 si está al día. "
+            "Permite al operador distinguir un atraso leve de uno grave "
+            "sin exponer montos en pesos."
+        ),
+    )
     mensaje_display: str  # 'SOCIO HABILITADO ✓' | 'SOCIO NO HABILITADO ✗' | etc.
 
 

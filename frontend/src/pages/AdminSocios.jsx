@@ -295,26 +295,42 @@ function SocioFormModal({ socio, onClose, onSave, catalogoRoles, token }) {
   useEffect(() => {
     if (!isEditMode || !socio?.id_usuario || !token) return
 
-    const fetchRolesActuales = async () => {
+    const fetchSocioData = async () => {
       setLoadingRoles(true)
       setErrorRoles(false)
       try {
         const res = await fetch(`${API}/admin/usuarios/${socio.id_usuario}`, {
           headers: { Authorization: `Bearer ${token}` },
         })
-        if (!res.ok) throw new Error()
+        if (!res.ok) throw new Error('No se pudo cargar la información completa del socio.')
         const data = await res.json()
+
+        // 1. Actualizar los roles
         const ids = (data.roles_asignados ?? []).map(ur => ur.id_rol)
         setSelectedRoles(ids)
-      } catch {
+
+        // 2. Actualizar el formulario con los datos completos (incluyendo fecha_nacimiento)
+        setFormData(prev => ({
+          ...prev,
+          dni: data.dni ?? '',
+          nombre: data.nombre ?? '',
+          apellido: data.apellido ?? '',
+          email: data.email ?? '',
+          telefono: data.telefono ?? '',
+          direccion: data.direccion ?? '',
+          fecha_nacimiento: data.fecha_nacimiento ? String(data.fecha_nacimiento).split('T')[0] : '',
+          password: '', // El campo de contraseña siempre inicia vacío en modo edición
+        }))
+      } catch (err) {
         setErrorRoles(true)
+        setApiError(err.message)
         setSelectedRoles([])
       } finally {
         setLoadingRoles(false)
       }
     }
 
-    fetchRolesActuales()
+    fetchSocioData()
   }, [socio?.id_usuario, token, isEditMode])
 
   const toggleRol = (id_rol) => {

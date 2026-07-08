@@ -141,9 +141,10 @@ function calcularPrecioFinal(precioCuota, fechaNacimientoISO) {
 
 // ─── Tabs de filtro por rol ───────────────────────────────────────────────────
 
+// "Socio" es el rol base obligatorio de todos los usuarios aprobados,
+// filtrarlo devolvería siempre la lista completa — se omite del selector.
 const TABS_ROLES = [
   { label: 'Todos',             value: ''                    },
-  { label: 'Socios',            value: 'socio'               },
   { label: 'Jugadores',         value: 'jugador'             },
   { label: 'Personal Técnico',  value: 'personal_tecnico'    },
   { label: 'Administrativos',   value: 'personal_administrativo' },
@@ -202,7 +203,8 @@ function RolCheckbox({ rol, checked, onChange, disabled }) {
 // ─── Sub-componente: Sección de roles en el modal de edición ─────────────────
 
 function SeccionRoles({ catalogoRoles, selectedRoles, onToggle, loadingRoles, errorRoles }) {
-  const rolesMostrables = catalogoRoles.filter(rol => rol.nombre !== 'admin_general')
+  const rolesMostrables = catalogoRoles.filter(rol => rol.nombre !== 'admin_general' && rol.nombre !== 'socio')
+  const rolSocio = catalogoRoles.find(rol => rol.nombre === 'socio')
 
   const idInvitado     = catalogoRoles.find(r => r.nombre === 'invitado')?.id_rol
   const invitadoActivo = idInvitado != null && selectedRoles.includes(idInvitado)
@@ -223,6 +225,22 @@ function SeccionRoles({ catalogoRoles, selectedRoles, onToggle, loadingRoles, er
           ℹ️ El rol <strong>Invitado</strong> es exclusivo: no puede combinarse con otros roles.
           Al asignarlo, los demás se desmarcan automáticamente.
         </p>
+      )}
+
+      {/* Rol Socio — base obligatorio, siempre activo, no editable */}
+      {rolSocio && (
+        <div className="flex items-start gap-3 p-3 rounded-xl border-2 border-indigo-400 bg-indigo-50 opacity-70 cursor-not-allowed" title="El rol Socio es obligatorio y no puede quitarse desde aquí.">
+          <div className="mt-0.5 flex-shrink-0 w-5 h-5 rounded-md border-2 flex items-center justify-center bg-indigo-600 border-indigo-600">
+            <svg viewBox="0 0 12 10" fill="none" className="w-3 h-3">
+              <path d="M1 5l3.5 3.5L11 1" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold capitalize text-indigo-900">{rolSocio.nombre}</p>
+            {rolSocio.descripcion && <p className="text-xs text-gray-500 mt-0.5 leading-snug">{rolSocio.descripcion}</p>}
+            <p className="text-xs text-indigo-600 mt-0.5 font-medium">Rol base — no se puede quitar</p>
+          </div>
+        </div>
       )}
 
       {loadingRoles && (
@@ -799,13 +817,19 @@ export default function AdminSocios() {
     }
 
     if (isEdit && selectedRoles !== null) {
+      // Filtrar roles protegidos que el backend preserva automáticamente
+      const rolesProtegidos = catalogoRoles
+        .filter(r => r.nombre === 'socio' || r.nombre === 'admin_general')
+        .map(r => r.id_rol)
+      const idsFiltrados = selectedRoles.filter(id => !rolesProtegidos.includes(id))
+
       const rolesRes = await fetch(`${API}/admin/usuarios/${id}/roles`, {
         method: 'PUT',
         headers: {
           Authorization:  `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ ids_roles: selectedRoles }),
+        body: JSON.stringify({ ids_roles: idsFiltrados }),
       })
 
       if (!rolesRes.ok) {

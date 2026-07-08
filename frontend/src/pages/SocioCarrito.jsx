@@ -329,8 +329,12 @@ const handleCheckout = async () => {
 
     const payload = {
       items: cart.map(item => ({
-        id_producto: Number(item.id),
+        id_producto: Number(item.id_producto ?? item.id),
         cantidad:    parseInt(item.qty, 10),
+        // Alquileres: la franja ya fue bloqueada en /socio/reservas/pre-reserva
+        // (ver Reservas.jsx). El checkout la vincula a la orden nueva; sin
+        // esto el backend rechaza el ítem con 422.
+        ...(item.id_reserva != null ? { id_reserva: Number(item.id_reserva) } : {}),
       })),
     }
 
@@ -371,6 +375,46 @@ const handleCheckout = async () => {
     setModalAbierto(false)
     setOrdenGenerada(null)
     navigate('/socio')  // Redirige al panel del socio tras completar el flujo
+  }
+
+  // ── Quitar ítem: si es un alquiler con pre-reserva, liberarla en el backend ──
+  const handleRemove = async (item) => {
+    removeFromCart(item.id)
+    if (item.categoria === 'alquiler' && item.id_reserva != null) {
+      try {
+        await fetch(`${API}/socio/reservas/${item.id_reserva}/liberar`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+        })
+      } catch {
+        // No bloqueamos la UI por esto: si falla, el job de expiración
+        // (20 min) la libera igual. El ítem ya salió del carrito del socio.
+      }
+    }
+  }
+
+  // ── Vaciar carrito: liberar TODAS las pre-reservas de alquiler antes ────────
+  // (mismo motivo que handleRemove — si no, quedan 'bloqueada' hasta que las
+  // agarre el job de expiración de 20 minutos, ocupando la agenda en vano).
+  const handleVaciarCarrito = async () => {
+    if (!window.confirm('¿Vaciar el carrito?')) return
+
+    const itemsAlquiler = cart.filter(
+      item => item.categoria === 'alquiler' && item.id_reserva != null
+    )
+
+    // Se dispara en paralelo y no bloqueamos el vaciado del carrito si alguna
+    // falla: el job de expiración las limpia igual como red de seguridad.
+    await Promise.allSettled(
+      itemsAlquiler.map(item =>
+        fetch(`${API}/socio/reservas/${item.id_reserva}/liberar`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+        })
+      )
+    )
+
+    clearCart()
   }
 
   // ── Render ──────────────────────────────────────────────────────────────────
@@ -417,7 +461,7 @@ const handleCheckout = async () => {
           <ItemCarrito
             key={`${item.id}-${item.qty}`} // Usamos una combinación única
             item={item}
-            onRemove={removeFromCart}
+            onRemove={() => handleRemove(item)}
           />
         ))}
       </div>
@@ -447,7 +491,7 @@ const handleCheckout = async () => {
         <div className="flex flex-col sm:flex-row gap-3">
           {/* Vaciar carrito */}
           <button
-            onClick={() => { if (window.confirm('¿Vaciar el carrito?')) clearCart() }}
+            onClick={handleVaciarCarrito}
             disabled={isCheckingOut}
             className="flex-1 py-3 rounded-xl border border-gray-200 text-gray-500
                        hover:bg-gray-50 font-semibold text-sm transition-colors

@@ -337,12 +337,18 @@ def editar_socio(
     for campo, valor in update_data.items():
         setattr(usuario, campo, valor)
 
+    # Convertir tipos no serializables (date, datetime) a string para el audit log
+    update_data_serializable = {
+        k: v.isoformat() if hasattr(v, "isoformat") else v
+        for k, v in update_data.items()
+    }
+
     db.add(models.AuditLog(
         usuario_actor=current_admin.id_usuario,
         accion="EDITAR_SOCIO",
         tabla_afectada="usuarios",
         registro_id=id_usuario,
-        detalle={"cambios": update_data, "editado_por_dni": current_admin.dni},
+        detalle={"cambios": update_data_serializable, "editado_por_dni": current_admin.dni},
     ))
     db.commit()
     db.refresh(usuario)
@@ -412,39 +418,47 @@ def reactivar_socio(
 @router.get(
     "/",
     response_model=list[schemas.UsuarioListResponse],
-    summary="Listado general de todos los socios aprobados",
+    summary="Listado general de usuarios aprobados, con filtro opcional por rol",
 )
 def listar_todos_los_usuarios(
     skip: int = 0,
     limit: int = 100,
+    rol: Optional[str] = Query(default=None, description="Nombre del rol para filtrar (ej: 'socio', 'jugador'). Si se omite, devuelve todos los usuarios con al menos un rol activo."),
     db: Session = Depends(get_db),
     _: models.Usuario = Depends(require_roles(*_ADMIN)),
 ):
     """
-    Lista todos los socios aprobados (con rol 'socio' activo), ordenados por
+    Lista usuarios aprobados (con al menos un rol activo), ordenados por
     apellido/nombre.
 
-    Este endpoint alimenta la tabla principal de socios en el panel de
-    administración. Los usuarios pendientes de aprobación (sin rol) se listan
+    - Sin ?rol=       -> todos los usuarios con algún rol activo (excluye pendientes).
+    - Con ?rol=socio  -> solo usuarios que tengan ese rol activo y vigente.
+
+    Los usuarios pendientes de aprobación (sin ningún rol) se listan
     en el endpoint /pendientes.
     """
     ahora = datetime.now(timezone.utc)
-    # Subquery: IDs de usuarios que tienen el rol 'socio', activo y no expirado.
-    subq_socios = (
-        db.query(models.UsuarioRol.id_usuario)
-        .join(models.Rol, models.UsuarioRol.id_rol == models.Rol.id_rol)
-        .filter(
-            models.Rol.nombre == "socio",
-            models.Rol.es_activo.is_(True),
-            or_(
-                models.UsuarioRol.valido_hasta.is_(None),
-                models.UsuarioRol.valido_hasta > ahora,
-            ),
-        )
-        .subquery()
-    )
 
-    query = db.query(models.Usuario).filter(models.Usuario.id_usuario.in_(subq_socios))
+    if rol:
+        # Filtrar por el nombre de rol específico recibido
+        subq = (
+            db.query(models.UsuarioRol.id_usuario)
+            .join(models.Rol, models.UsuarioRol.id_rol == models.Rol.id_rol)
+            .filter(
+                models.Rol.nombre == rol,
+                models.Rol.es_activo.is_(True),
+                or_(
+                    models.UsuarioRol.valido_hasta.is_(None),
+                    models.UsuarioRol.valido_hasta > ahora,
+                ),
+            )
+            .subquery()
+        )
+        query = db.query(models.Usuario).filter(models.Usuario.id_usuario.in_(subq))
+    else:
+        # Sin filtro: todos los que tengan al menos un rol activo (excluye pendientes)
+        subq_con_rol = _subquery_con_roles_activos()
+        query = db.query(models.Usuario).filter(subq_con_rol)
 
     return (
         query
@@ -560,20 +574,27 @@ def actualizar_roles_usuario(
     # (seeds no ejecutados), id_admin_general queda None y las guardas se omiten
     # de forma segura.
     # ─────────────────────────────────────────────────────────────────────────
-    rol_admin_general_obj = (
+    # Cargar los dos roles protegidos de una sola query
+    roles_protegidos_db = (
         db.query(models.Rol)
-        .filter(models.Rol.nombre == "admin_general")
-        .first()
+        .filter(models.Rol.nombre.in_(["admin_general", "socio"]))
+        .all()
     )
-    id_admin_general = rol_admin_general_obj.id_rol if rol_admin_general_obj else None
+    _por_nombre = {r.nombre: r.id_rol for r in roles_protegidos_db}
+    id_admin_general = _por_nombre.get("admin_general")
+    id_socio          = _por_nombre.get("socio")
 
-    if id_admin_general is not None and id_admin_general in set(ids_nuevos):
+    # Ningún rol protegido puede aparecer en el payload (ni asignarse ni quitarse desde la API)
+    ids_protegidos_en_payload = {
+        id_ for id_ in [id_admin_general, id_socio]
+        if id_ is not None and id_ in set(ids_nuevos)
+    }
+    if ids_protegidos_en_payload:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=(
-                "El rol 'Admin General' solo puede modificarse directamente "
-                "en la base de datos. No está permitido asignarlo o quitarlo "
-                "desde esta interfaz."
+                "Los roles 'Admin General' y 'Socio' son protegidos y solo pueden "
+                "modificarse directamente en la base de datos."
             ),
         )
 
@@ -633,14 +654,16 @@ def actualizar_roles_usuario(
     # Usamos sqlalchemy.delete() (Core) en lugar de ORM para hacer la operación
     # en un único round-trip a la BD, sin N+1 queries.
     #
+    # IDs de roles que nunca deben tocarse (admin_general y socio)
+    ids_a_preservar = [id_ for id_ in [id_admin_general, id_socio] if id_ is not None]
+
     stmt_delete = (
         delete(models.UsuarioRol)
         .where(models.UsuarioRol.id_usuario == id_usuario)
     )
-    if id_admin_general is not None:
-        # Excluir la fila de admin_general si existe: así no la tocamos
+    if ids_a_preservar:
         stmt_delete = stmt_delete.where(
-            models.UsuarioRol.id_rol != id_admin_general
+            models.UsuarioRol.id_rol.not_in(ids_a_preservar)
         )
     db.execute(stmt_delete)
 

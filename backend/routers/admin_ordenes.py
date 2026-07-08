@@ -192,6 +192,7 @@ def _obtener_orden_o_404(db: Session, id_orden: int) -> models.Orden:
         db.query(models.Orden)
         .options(
             joinedload(models.Orden.detalles).joinedload(models.DetalleOrden.producto),
+            joinedload(models.Orden.detalles).joinedload(models.DetalleOrden.reserva),
             joinedload(models.Orden.usuario),
             joinedload(models.Orden.pago),
         )
@@ -392,6 +393,23 @@ def aprobar_orden(
                 )
             detalle.producto.stock -= detalle.cantidad
 
+        if detalle.producto.categoria == "alquiler" and detalle.reserva is not None:
+            # ── Alquiler: confirmar la reserva bloqueada ───────────────────────
+            # La franja deja de ser un bloqueo "de carrito" y pasa a ser una
+            # ocupación real y definitiva de la instalación.
+            if detalle.reserva.estado != "bloqueada":
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=(
+                        f"La reserva #{detalle.reserva.id_reserva} de "
+                        f"'{detalle.producto.nombre}' está en estado "
+                        f"'{detalle.reserva.estado}' y no se puede confirmar "
+                        f"(¿venció el bloqueo antes de que se aprobara el pago?). "
+                        f"No se puede aprobar la orden #{orden.id_orden}."
+                    ),
+                )
+            detalle.reserva.estado = "confirmada"
+
     # ── Paso 4: aplicar cambios al estado financiero del socio ─────────────────
     # Se aplica en un bloque separado del bucle para que la lógica de deuda
     # y cobertura quede concentrada y sea fácil de leer, testear y auditar.
@@ -510,6 +528,18 @@ def rechazar_orden(
 
     orden.estado = "rechazada"
     orden.motivo_rechazo = payload.motivo_rechazo
+
+    # ── Liberar reservas de alquiler asociadas ────────────────────────────────
+    # Si la orden tenía turnos bloqueados, hay que devolverlos a la agenda:
+    # el pago no se concretó, así que el horario tiene que volver a ofertarse.
+    for detalle in orden.detalles:
+        if (
+            detalle.producto is not None
+            and detalle.producto.categoria == "alquiler"
+            and detalle.reserva is not None
+            and detalle.reserva.estado == "bloqueada"
+        ):
+            detalle.reserva.estado = "liberada"
 
     # ── Resolver el Pago padre si quedó "huérfano" ────────────────────────────
     # Un Pago puede tener más de una Orden hija (split-order: cuota + tienda).

@@ -940,7 +940,7 @@ export default function AdminSocios() {
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-6">
+    <div className="p-4 sm:p-6 max-w-6xl mx-auto space-y-5 sm:space-y-6">
 
       {/* Modal de edición / creación */}
       {isModalOpen && (
@@ -966,26 +966,27 @@ export default function AdminSocios() {
 
       {/* Header */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
-            <Users size={24} className="text-gray-500" />
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2 sm:gap-3">
+            <Users size={22} className="text-gray-500 flex-shrink-0" />
             Gestión de Socios
           </h1>
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="text-xs sm:text-sm text-gray-500 mt-1">
             Crear, editar, aprobar, cobrar y dar de baja a los socios del club.
           </p>
         </div>
-        <div className="flex items-center gap-3 flex-shrink-0 mt-1">
+        <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0 mt-1">
           <button
             onClick={openModalForCreate}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 transition-colors shadow-sm"
+            className="inline-flex items-center gap-2 px-3.5 py-2 sm:px-4 rounded-xl bg-blue-600 text-white text-sm sm:text-base font-semibold hover:bg-blue-700 transition-colors shadow-sm whitespace-nowrap"
           >
             <PlusCircle size={16} />
-            Nuevo Socio
+            <span className="hidden sm:inline">Nuevo Socio</span>
+            <span className="sm:hidden">Nuevo</span>
           </button>
           <button
             onClick={fetchData} disabled={loading}
-            className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 disabled:opacity-40 transition-colors"
+            className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 disabled:opacity-40 transition-colors flex-shrink-0"
             title="Actualizar lista"
           >
             <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
@@ -994,12 +995,12 @@ export default function AdminSocios() {
       </div>
 
       {/* ── Tabs de filtro por rol ─────────────────────────────────────────── */}
-      <div className="flex gap-1 flex-wrap p-1 bg-gray-100 rounded-xl w-fit">
+      <div className="flex gap-1 overflow-x-auto p-1 bg-gray-100 rounded-xl w-full sm:w-fit [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {TABS_ROLES.map(tab => (
           <button
             key={tab.value}
             onClick={() => { setRolFiltro(tab.value); setSearchTerm('') }}
-            className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-all ${
+            className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-all flex-shrink-0 ${
               rolFiltro === tab.value
                 ? 'bg-white text-gray-900 shadow-sm'
                 : 'text-gray-500 hover:text-gray-700'
@@ -1035,14 +1036,38 @@ export default function AdminSocios() {
 
       {/* Sección de Pendientes (no se filtra por rol) */}
       {!loading && pendientes.length > 0 && (
-        <div className="space-y-4 p-5 rounded-2xl bg-amber-50 border-2 border-amber-200">
-          <div className="flex items-center gap-3">
-            <UserPlus size={20} className="text-amber-700" />
-            <h2 className="text-lg font-bold text-amber-900">
-              Solicitudes Pendientes de Aprobación ({pendientes.length})
+        <div className="space-y-4 p-4 sm:p-5 rounded-2xl bg-amber-50 border-2 border-amber-200">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <UserPlus size={20} className="text-amber-700 flex-shrink-0" />
+            <h2 className="text-base sm:text-lg font-bold text-amber-900">
+              Solicitudes Pendientes ({pendientes.length})
             </h2>
           </div>
-          <div className="overflow-x-auto">
+
+          {/* Vista de tarjetas — mobile */}
+          <div className="md:hidden divide-y divide-amber-200/70 -mx-1">
+            {pendientes.map(p => (
+              <div key={p.id_usuario} className="flex items-center justify-between gap-3 px-1 py-3">
+                <div className="min-w-0">
+                  <div className="font-medium text-gray-800 truncate">{p.apellido}, {p.nombre}</div>
+                  <div className="text-xs text-gray-500 mt-0.5 font-mono">
+                    DNI {p.dni} · {new Date(p.creado_at).toLocaleDateString()}
+                  </div>
+                </div>
+                <button
+                  onClick={() => handleApproveSocio(p.id_usuario)}
+                  disabled={approvingId === p.id_usuario}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-600 text-white text-xs font-semibold hover:bg-green-700 disabled:bg-green-400 transition-colors flex-shrink-0"
+                >
+                  {approvingId === p.id_usuario ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle size={14} />}
+                  <span>{approvingId === p.id_usuario ? 'Aprobando…' : 'Aprobar'}</span>
+                </button>
+              </div>
+            ))}
+          </div>
+
+          {/* Vista de tabla — desktop */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="min-w-full">
               <thead className="border-b border-amber-200">
                 <tr>
@@ -1077,8 +1102,114 @@ export default function AdminSocios() {
         </div>
       )}
 
-      {/* Tabla de Socios */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-x-auto">
+      {/* Tabla de Socios — skeleton de carga en mobile */}
+      {loading && (
+        <div className="md:hidden bg-white rounded-2xl shadow-sm border border-gray-100 divide-y divide-gray-50">
+          {[...Array(5)].map((_, i) => (
+            <div key={i} className="p-4 animate-pulse space-y-2">
+              <div className="h-4 bg-gray-200 rounded-md w-2/3" />
+              <div className="h-3 bg-gray-100 rounded-md w-1/3" />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Vista de tarjetas — mobile */}
+      {!loading && (
+        <div className="md:hidden bg-white rounded-2xl shadow-sm border border-gray-100 divide-y divide-gray-50">
+          {filteredSocios.map(socio => {
+            const { moroso: socioMoroso, mesesAdeudados: socioMesesAdeudados } = calcularEstadoFinanciero(
+              socio.mes_cubierto_hasta,
+              socio.fecha_ingreso,
+              diaVencimiento
+            )
+            const socioPrecioFinal = calcularPrecioFinal(precioCuota, socio.fecha_nacimiento)
+            const socioDeudaPesos = socioMesesAdeudados * socioPrecioFinal
+
+            return (
+              <div key={socio.id_usuario} className="p-4 space-y-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="font-medium text-gray-900 truncate">{socio.apellido}, {socio.nombre}</div>
+                    <div className="text-xs text-gray-500 mt-0.5 font-mono">DNI {socio.dni}</div>
+                    {socio.email && <div className="text-xs text-gray-400 mt-0.5 truncate">{socio.email}</div>}
+                  </div>
+                  {socio.fecha_baja ? (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 flex-shrink-0">
+                      <UserX size={12} /> Inactivo
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 flex-shrink-0">
+                      <UserCheck size={12} /> Activo
+                    </span>
+                  )}
+                </div>
+
+                <div>
+                  {socioMoroso ? (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                      {socioMesesAdeudados} mes{socioMesesAdeudados !== 1 ? 'es' : ''} — {formatoMoneda.format(socioDeudaPesos)}
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                      Al día
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-1 pt-2 border-t border-gray-50 -mx-1">
+                  {!socio.fecha_baja && (
+                    <button
+                      onClick={() => setSocioACobrar(socio)}
+                      className="flex-1 inline-flex items-center justify-center gap-1.5 p-2 text-gray-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors text-xs font-medium"
+                      title="Registrar Pago"
+                    >
+                      <Banknote size={16} /> Cobrar
+                    </button>
+                  )}
+                  <button
+                    onClick={() => openModalForEdit(socio)}
+                    className="flex-1 inline-flex items-center justify-center gap-1.5 p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-100 rounded-lg transition-colors text-xs font-medium"
+                    title="Editar Socio"
+                  >
+                    <Edit size={16} /> Editar
+                  </button>
+                  {socio.fecha_baja ? (
+                    <button
+                      onClick={() => handleReactivateSocio(socio)}
+                      className="flex-1 inline-flex items-center justify-center gap-1.5 p-2 text-gray-500 hover:text-green-600 hover:bg-green-100 rounded-lg transition-colors text-xs font-medium"
+                      title="Reactivar Socio"
+                    >
+                      <Undo2 size={16} /> Reactivar
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => handleDeleteSocio(socio)}
+                      className="flex-1 inline-flex items-center justify-center gap-1.5 p-2 text-gray-500 hover:text-red-600 hover:bg-red-100 rounded-lg transition-colors text-xs font-medium"
+                      title="Dar de baja"
+                    >
+                      <Trash2 size={16} /> Baja
+                    </button>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+
+          {filteredSocios.length === 0 && (
+            <div className="text-center py-12 text-gray-500 text-sm px-4">
+              {searchTerm
+                ? 'No se encontraron socios que coincidan con la búsqueda.'
+                : rolFiltro
+                  ? `No hay usuarios con el rol "${rolFiltro}".`
+                  : 'No hay socios para mostrar.'}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Tabla de Socios — desktop */}
+      <div className="hidden md:block bg-white rounded-2xl shadow-sm border border-gray-100 overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-100">
           <thead className="bg-gray-50">
             <tr>

@@ -358,7 +358,7 @@ export default function AdminPagos() {
 
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-8">
+    <div className="p-4 sm:p-6 max-w-6xl mx-auto space-y-6 sm:space-y-8">
 
       {/* Modal de verificación de transferencias */}
       {ordenSeleccionada && (
@@ -371,13 +371,13 @@ export default function AdminPagos() {
       )}
 
       {/* Header */}
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
-            <Wallet size={24} className="text-gray-500" />
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2 sm:gap-3">
+            <Wallet size={22} className="text-gray-500 flex-shrink-0" />
             Tesorería
           </h1>
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="text-xs sm:text-sm text-gray-500 mt-1">
             Estadísticas financieras y verificación de transferencias entrantes.
             El cobro en ventanilla se registra desde la pantalla de{' '}
             <span className="font-semibold text-gray-700">Gestión de Socios</span>.
@@ -456,7 +456,67 @@ export default function AdminPagos() {
           </div>
         )}
 
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-x-auto">
+        {/* Tarjetas — mobile (skeleton de carga) */}
+        {loadingOrdenes && (
+          <div className="md:hidden bg-white rounded-2xl shadow-sm border border-gray-100 divide-y divide-gray-50">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="p-4 animate-pulse space-y-2">
+                <div className="h-4 bg-gray-200 rounded-md w-2/3" />
+                <div className="h-3 bg-gray-100 rounded-md w-1/3" />
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Tarjetas — mobile */}
+        {!loadingOrdenes && (
+          <div className="md:hidden bg-white rounded-2xl shadow-sm border border-gray-100 divide-y divide-gray-50">
+            {ordenes.map(o => (
+              <div key={o.id_orden} className="p-4 space-y-2">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="font-medium text-gray-900 truncate">
+                      {o.usuario?.apellido}, {o.usuario?.nombre}
+                    </div>
+                    <div className="text-xs text-gray-500 mt-0.5 font-mono">
+                      DNI {o.usuario?.dni} · {new Date(o.fecha_creacion).toLocaleDateString('es-AR')}
+                    </div>
+                  </div>
+                  <span className="text-sm font-semibold text-gray-900 flex-shrink-0">
+                    {formatoMoneda.format(o.monto_total)}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between gap-3 pt-1">
+                  {o.pago?.comprobante_url ? (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                      ✓ Adjunto
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                      Pendiente
+                    </span>
+                  )}
+                  <button
+                    onClick={() => setOrdenSeleccionada(o)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-blue-700 bg-blue-50 hover:bg-blue-100 font-semibold text-sm transition-colors"
+                  >
+                    Verificar
+                  </button>
+                </div>
+              </div>
+            ))}
+
+            {ordenes.length === 0 && (
+              <div className="text-center py-12 text-gray-500 text-sm px-4">
+                ✅ No hay transferencias pendientes de verificación por el momento.
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Tabla — desktop */}
+        <div className="hidden md:block bg-white rounded-2xl shadow-sm border border-gray-100 overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-100">
             <thead className="bg-gray-50">
               <tr>

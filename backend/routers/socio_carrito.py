@@ -173,6 +173,38 @@ def checkout_carrito(
                 ),
             )
 
+        # 2c-bis. Alquileres: la franja tiene que venir de una pre-reserva
+        #         viva (bloqueada, sin orden todavía). Esto es lo que impide
+        #         que el checkout invente una reserva sin pasar por la
+        #         validación de superposición de POST /socio/reservas/pre-reserva.
+        if producto.categoria == "alquiler":
+            if item.id_reserva is None:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail=(
+                        f"Falta la pre-reserva para '{producto.nombre}'. "
+                        "Elegí el turno de nuevo desde el calendario."
+                    ),
+                )
+            reserva = (
+                db.query(models.ReservaInstalacion)
+                .filter(models.ReservaInstalacion.id_reserva == item.id_reserva)
+                .first()
+            )
+            if (
+                reserva is None
+                or reserva.estado != "bloqueada"
+                or reserva.id_orden is not None
+                or reserva.id_producto != producto.id_producto
+            ):
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail=(
+                        f"El turno reservado para '{producto.nombre}' ya no está "
+                        "disponible (expiró o se perdió). Elegilo de nuevo."
+                    ),
+                )
+
         # 2d. Descontar stock ya en el checkout, no al aprobar (evita overselling).
         #     Se restaura si el admin rechaza la orden (ver rechazar_orden).
         #     cuota_social siempre tiene stock=None, así que nunca entra acá.
@@ -239,7 +271,19 @@ def checkout_carrito(
                 cantidad=item.cantidad,
                 precio_unitario_historico=producto.precio_actual,  # ← CONGELADO
                 mes_referencia=item.mes_referencia,                # None para no-cuotas
+                id_reserva=item.id_reserva,                        # None salvo alquileres
             ))
+
+            # Alquileres: la reserva pasa de "bloqueada, sin dueño" a
+            # "bloqueada, atada a esta orden". fn_aprobar_orden() es quien
+            # más adelante la mueve a 'confirmada' cuando el admin aprueba.
+            if producto.categoria == "alquiler" and item.id_reserva is not None:
+                reserva = (
+                    db.query(models.ReservaInstalacion)
+                    .filter(models.ReservaInstalacion.id_reserva == item.id_reserva)
+                    .first()
+                )
+                reserva.id_orden = orden.id_orden
 
         return orden
 

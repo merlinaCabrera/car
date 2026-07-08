@@ -64,7 +64,15 @@ export default function MainLayout({ userRole }) {
   // El usuario puede tener varios roles a la vez (ej: socio + jugador), así
   // que cada bloque del menú se evalúa de forma independiente y pueden
   // aparecer varios apilados para la misma persona.
-  const userRoles = user?.roles_asignados?.map(r => r.rol.nombre) || user?.roles || [];
+  // Soporta dos formatos: array de strings (del JWT) y array de objetos (de la API)
+  const userRoles = (() => {
+    const fromJwt = user?.roles  // string[] directo del token
+    const fromApi = user?.roles_asignados?.map(r => r.rol?.nombre).filter(Boolean)
+    // Preferir el que tenga datos
+    if (fromApi?.length) return fromApi
+    if (fromJwt?.length) return fromJwt
+    return []
+  })()
 
   const esSocio = userRoles.includes('socio');
   const esJugador = userRoles.includes('jugador');

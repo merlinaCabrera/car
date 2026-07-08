@@ -504,7 +504,14 @@ class DetalleOrdenCreate(BaseModel):
         default=None,
         description="Para cuotas: primer día del mes a pagar (ej: 2025-06-01).",
     )
-    # id_reserva se asigna automáticamente en el backend al crear la reserva
+    id_reserva: Optional[int] = Field(
+        default=None,
+        description=(
+            "Para alquileres: id de la ReservaInstalacion ya creada (estado "
+            "'bloqueada') vía POST /socio/reservas/pre-reserva. El checkout "
+            "la vincula a la orden nueva; no crea reservas por su cuenta."
+        ),
+    )
 
 
 class DetalleOrdenResponse(BaseModel):

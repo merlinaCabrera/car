@@ -22,7 +22,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useCart } from '../context/CartContext'
 import {
@@ -37,6 +37,7 @@ import {
   Check,
   RefreshCw,
   Plus,
+  CalendarClock,
 } from 'lucide-react'
 
 const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
@@ -146,10 +147,25 @@ function StockBadge({ stock }) {
 // ─── Tarjeta de producto ──────────────────────────────────────────────────────
 
 function TarjetaProducto({ producto, onAgregar, recienAgregado }) {
-  const sinStock     = producto.stock !== null && producto.stock === 0
-  const colores      = COLORES_CATEGORIA[producto.categoria] ?? COLORES_CATEGORIA.otro
+  const navigate      = useNavigate()
+  const esAlquiler    = producto.categoria === 'alquiler'
+  const sinStock      = !esAlquiler && producto.stock !== null && producto.stock === 0
+  const colores       = COLORES_CATEGORIA[producto.categoria] ?? COLORES_CATEGORIA.otro
   const labelCategoria = CATEGORIAS.find(c => c.key === producto.categoria)?.label
                           ?? producto.categoria
+
+  const handleClick = () => {
+    if (sinStock || recienAgregado) return
+    // Alquileres no se agregan al carrito desde acá: el precio depende del
+    // turno/fecha que elija el socio, y esa franja tiene que quedar
+    // bloqueada en el momento del click (evita doble reserva). Todo eso
+    // vive en /reservas — acá solo lo mandamos para allá.
+    if (esAlquiler) {
+      navigate('/socio/reservas')
+      return
+    }
+    onAgregar(producto)
+  }
 
   return (
     <div
@@ -213,12 +229,14 @@ function TarjetaProducto({ producto, onAgregar, recienAgregado }) {
         {/* Precio */}
         <p className="text-xl font-extrabold text-gray-900 tracking-tight mt-1">
           {formatoMoneda.format(producto.precio_actual)}
-          <span className="text-xs font-normal text-gray-400 ml-1">c/u</span>
+          <span className="text-xs font-normal text-gray-400 ml-1">
+            {esAlquiler ? 'por turno' : 'c/u'}
+          </span>
         </p>
 
         {/* Botón agregar */}
         <button
-          onClick={() => !sinStock && !recienAgregado && onAgregar(producto)}
+          onClick={handleClick}
           disabled={sinStock || recienAgregado}
           className={`
             mt-1 w-full flex items-center justify-center gap-2
@@ -228,6 +246,8 @@ function TarjetaProducto({ producto, onAgregar, recienAgregado }) {
               ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
               : recienAgregado
               ? 'bg-green-500 text-white cursor-default shadow-sm'
+              : esAlquiler
+              ? 'bg-amber-600 hover:bg-amber-700 text-white shadow-sm hover:shadow-md'
               : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm hover:shadow-md'
             }
           `}
@@ -236,6 +256,8 @@ function TarjetaProducto({ producto, onAgregar, recienAgregado }) {
             'Sin Stock'
           ) : recienAgregado ? (
             <><Check size={15} strokeWidth={2.5} /> ¡Agregado!</>
+          ) : esAlquiler ? (
+            <><CalendarClock size={15} strokeWidth={2.5} /> Elegir turno</>
           ) : (
             <><Plus size={15} strokeWidth={2.5} /> Agregar al carrito</>
           )}

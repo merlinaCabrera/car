@@ -454,7 +454,7 @@ export default function AdminProductos() {
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-6">
+    <div className="p-4 sm:p-6 max-w-6xl mx-auto space-y-5 sm:space-y-6">
 
       {isModalOpen && (
         <ProductoFormModal
@@ -466,27 +466,28 @@ export default function AdminProductos() {
       )}
 
       {/* Header */}
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
-            <Package size={24} className="text-gray-500" />
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2 sm:gap-3">
+            <Package size={22} className="text-gray-500 flex-shrink-0" />
             Catálogo de Productos y Servicios
           </h1>
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="text-xs sm:text-sm text-gray-500 mt-1">
             Cuotas, alquileres, indumentaria y demás ítems disponibles para la venta.
           </p>
         </div>
-        <div className="flex items-center gap-3 flex-shrink-0 mt-1">
+        <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0 mt-1">
           <button
             onClick={openModalForCreate}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 transition-colors shadow-sm"
+            className="inline-flex items-center gap-2 px-3.5 py-2 sm:px-4 rounded-xl bg-blue-600 text-white text-sm sm:text-base font-semibold hover:bg-blue-700 transition-colors shadow-sm whitespace-nowrap"
           >
             <PlusCircle size={16} />
-            Nuevo Producto
+            <span className="hidden sm:inline">Nuevo Producto</span>
+            <span className="sm:hidden">Nuevo</span>
           </button>
           <button
             onClick={fetchProductos} disabled={loading}
-            className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 disabled:opacity-40 transition-colors"
+            className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 disabled:opacity-40 transition-colors flex-shrink-0"
             title="Actualizar lista"
           >
             <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
@@ -506,14 +507,14 @@ export default function AdminProductos() {
       )}
 
       {/* Buscador */}
-      <div className="relative max-w-sm">
+      <div className="relative w-full max-w-sm">
         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
         <input
           type="search"
           value={busqueda}
           onChange={e => setBusqueda(e.target.value)}
           placeholder="Buscar por nombre o categoría…"
-          className="form-input pl-9"
+          className="form-input pl-9 w-full"
         />
       </div>
 
@@ -523,21 +524,21 @@ export default function AdminProductos() {
         {loading ? (
           <div className="bg-gray-100 rounded-2xl p-6 h-40 animate-pulse" />
         ) : cuotaSocial ? (
-          <div className="bg-blue-50 border-2 border-blue-200 rounded-2xl p-6 shadow-sm flex items-center justify-between gap-6">
-            <div className="flex items-center gap-5">
-              <div className="p-3 rounded-full bg-blue-100 text-blue-600">
+          <div className="bg-blue-50 border-2 border-blue-200 rounded-2xl p-4 sm:p-6 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-6">
+            <div className="flex items-center gap-4 sm:gap-5">
+              <div className="p-3 rounded-full bg-blue-100 text-blue-600 flex-shrink-0">
                 <Wallet size={28} />
               </div>
-              <div>
-                <h2 className="text-lg font-bold text-blue-900">Cuota Social Base</h2>
-                <p className="text-3xl font-extrabold text-gray-900 tracking-tight mt-1">
+              <div className="min-w-0">
+                <h2 className="text-base sm:text-lg font-bold text-blue-900">Cuota Social Base</h2>
+                <p className="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight mt-1">
                   {formatoMoneda.format(cuotaSocial.precio_actual)}
                 </p>
               </div>
             </div>
             <button
               onClick={() => openModalForEdit(cuotaSocial)}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-gray-300 text-gray-700 font-semibold hover:bg-gray-100 hover:border-gray-400 transition-colors shadow-sm"
+              className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-white border border-gray-300 text-gray-700 font-semibold hover:bg-gray-100 hover:border-gray-400 transition-colors shadow-sm w-full sm:w-auto"
             >
               <Edit size={14} />
               Actualizar Valor
@@ -556,10 +557,10 @@ export default function AdminProductos() {
         {isLoadingDia ? (
           <div className="bg-gray-100 rounded-2xl p-6 h-40 animate-pulse" />
         ) : (
-          <div className="bg-indigo-50 border-2 border-indigo-200 rounded-2xl p-6 shadow-sm">
+          <div className="bg-indigo-50 border-2 border-indigo-200 rounded-2xl p-4 sm:p-6 shadow-sm">
             {isEditingDia ? (
               <Fragment>
-                <h2 className="text-lg font-bold text-indigo-900">Editar Día de Vencimiento</h2>
+                <h2 className="text-base sm:text-lg font-bold text-indigo-900">Editar Día de Vencimiento</h2>
                 <div className="mt-2 flex items-start gap-3">
                   <div className="flex-1">
                     <input
@@ -592,21 +593,21 @@ export default function AdminProductos() {
               </Fragment>
             ) : (
               <Fragment>
-                <div className="flex items-center justify-between gap-6">
-                  <div className="flex items-center gap-5">
-                    <div className="p-3 rounded-full bg-indigo-100 text-indigo-600">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-6">
+                  <div className="flex items-center gap-4 sm:gap-5">
+                    <div className="p-3 rounded-full bg-indigo-100 text-indigo-600 flex-shrink-0">
                       <CalendarDays size={28} />
                     </div>
-                    <div>
-                      <h2 className="text-lg font-bold text-indigo-900">Día de Vencimiento</h2>
-                      <p className="text-3xl font-extrabold text-gray-900 tracking-tight mt-1">
+                    <div className="min-w-0">
+                      <h2 className="text-base sm:text-lg font-bold text-indigo-900">Día de Vencimiento</h2>
+                      <p className="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight mt-1">
                         Día {diaVencimiento}
                       </p>
                     </div>
                   </div>
                   <button
                     onClick={() => { setIsEditingDia(true); setNuevoDia(diaVencimiento); setErrorDia(null); setSuccessDia(null); }}
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-gray-300 text-gray-700 font-semibold hover:bg-gray-100 hover:border-gray-400 transition-colors shadow-sm"
+                    className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-white border border-gray-300 text-gray-700 font-semibold hover:bg-gray-100 hover:border-gray-400 transition-colors shadow-sm w-full sm:w-auto"
                   >
                     <Edit size={14} />
                     Editar
@@ -628,12 +629,87 @@ export default function AdminProductos() {
         )}
       </div>
 
-      <h2 className="text-lg font-bold text-gray-800 pt-2 border-t border-gray-200">
+      <h2 className="text-base sm:text-lg font-bold text-gray-800 pt-2 border-t border-gray-200">
         Otros Productos y Servicios
       </h2>
 
-      {/* Tabla */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-x-auto">
+      {/* Tarjetas — mobile (skeleton de carga) */}
+      {loading && (
+        <div className="md:hidden bg-white rounded-2xl shadow-sm border border-gray-100 divide-y divide-gray-50">
+          {[...Array(5)].map((_, i) => (
+            <div key={i} className="p-4 animate-pulse space-y-2">
+              <div className="h-4 bg-gray-200 rounded-md w-2/3" />
+              <div className="h-3 bg-gray-100 rounded-md w-1/2" />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Tarjetas — mobile */}
+      {!loading && (
+        <div className="md:hidden bg-white rounded-2xl shadow-sm border border-gray-100 divide-y divide-gray-50">
+          {otrosProductos.map(p => (
+            <div key={p.id_producto} className="p-4 space-y-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="font-medium text-gray-900 truncate">{p.nombre}</div>
+                  {p.descripcion && (
+                    <div className="text-xs text-gray-400 mt-0.5 truncate" title={p.descripcion}>
+                      {p.descripcion}
+                    </div>
+                  )}
+                </div>
+                {p.es_activo ? (
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 flex-shrink-0">
+                    Activo
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600 flex-shrink-0">
+                    Inactivo
+                  </span>
+                )}
+              </div>
+
+              <div className="flex items-center flex-wrap gap-2">
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${CATEGORIA_BADGE_CLASSES[p.categoria] ?? 'bg-gray-100 text-gray-700'}`}>
+                  {CATEGORIA_LABELS[p.categoria] ?? p.categoria}
+                </span>
+                <span className="text-sm font-semibold text-gray-900">
+                  {formatoMoneda.format(p.precio_actual)}
+                </span>
+                {p.stock == null ? (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+                    <InfinityIcon size={12} /> Ilimitado
+                  </span>
+                ) : (
+                  <span className="text-sm text-gray-700">Stock: {p.stock}</span>
+                )}
+              </div>
+
+              <div className="pt-2 border-t border-gray-50">
+                <button
+                  onClick={() => openModalForEdit(p)}
+                  className="w-full inline-flex items-center justify-center gap-1.5 p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-100 rounded-lg transition-colors text-xs font-medium"
+                  title="Editar Producto"
+                >
+                  <Edit size={16} /> Editar
+                </button>
+              </div>
+            </div>
+          ))}
+
+          {otrosProductos.length === 0 && (
+            <div className="text-center py-12 text-gray-500 text-sm px-4">
+              {busqueda
+                ? 'No se encontraron otros productos con ese criterio.'
+                : 'No hay otros productos o servicios cargados todavía.'}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Tabla — desktop */}
+      <div className="hidden md:block bg-white rounded-2xl shadow-sm border border-gray-100 overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-100">
           <thead className="bg-gray-50">
             <tr>

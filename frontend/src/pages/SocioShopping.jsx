@@ -305,16 +305,16 @@ function CartFAB({ itemCount }) {
     <Link
       to="/carrito"
       className="
-        fixed bottom-6 right-6 z-30
-        flex items-center gap-3
+        fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-30
+        flex items-center gap-2 sm:gap-3
         bg-indigo-600 hover:bg-indigo-700 active:scale-95
         text-white font-bold text-sm
-        px-5 py-3.5 rounded-2xl shadow-xl shadow-indigo-600/30
+        px-4 py-3 sm:px-5 sm:py-3.5 rounded-2xl shadow-xl shadow-indigo-600/30
         transition-all duration-200
         group
       "
     >
-      <div className="relative">
+      <div className="relative flex-shrink-0">
         <ShoppingCart size={20} strokeWidth={2} />
         <span className="
           absolute -top-2.5 -right-2.5
@@ -327,12 +327,13 @@ function CartFAB({ itemCount }) {
           {itemCount > 99 ? '99+' : itemCount}
         </span>
       </div>
-      <span>
+      <span className="hidden sm:inline">
         Ir al Carrito
         <span className="ml-1.5 font-normal opacity-80 text-xs">
           ({itemCount} {itemCount === 1 ? 'ítem' : 'ítems'})
         </span>
       </span>
+      <span className="sm:hidden">Carrito</span>
     </Link>
   )
 }

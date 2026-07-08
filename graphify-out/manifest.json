@@ -1,7 +1,7 @@
 {
   "backend/main.py": {
-    "mtime": 1783346130.1118495,
-    "ast_hash": "90b973894ab5d892ba6c8cc3472e6d5d",
+    "mtime": 1783468401.579389,
+    "ast_hash": "bc63d784c3a826d770e5212bdddb91c8",
     "semantic_hash": ""
   },
   "frontend/eslint.config.js": {
@@ -60,8 +60,8 @@
     "semantic_hash": ""
   },
   "frontend/src/layouts/MainLayout.jsx": {
-    "mtime": 1783221139.687931,
-    "ast_hash": "bf4c57925f5725fbc4d20a0f70ae599f",
+    "mtime": 1783470657.0024087,
+    "ast_hash": "d7108e1a046df4b738df19c7fb241e8a",
     "semantic_hash": ""
   },
   "frontend/src/main.jsx": {
@@ -75,8 +75,8 @@
     "semantic_hash": ""
   },
   "frontend/src/pages/AdminPagos.jsx": {
-    "mtime": 1783273263.349268,
-    "ast_hash": "152e2053945820596ec005eeb1ca6e6f",
+    "mtime": 1783475587.458265,
+    "ast_hash": "3a6c31286e953a900e7f449fd605d95c",
     "semantic_hash": ""
   },
   "frontend/src/pages/AdminQRScanner.jsx": {
@@ -120,13 +120,13 @@
     "semantic_hash": "d5a01b0bc927993dd0fbb758fa170bfa"
   },
   "frontend/src/pages/SocioCarrito.jsx": {
-    "mtime": 1783136557.535816,
-    "ast_hash": "9f77272df08b911779f1dd6a6f4de8df",
+    "mtime": 1783474396.328468,
+    "ast_hash": "a9807a8e79782cf2b5a74d8ec57f4ae3",
     "semantic_hash": ""
   },
   "frontend/src/pages/SocioCuotas.jsx": {
-    "mtime": 1783300315.451919,
-    "ast_hash": "edde80765298a6cacd56202a867bd489",
+    "mtime": 1783475965.6694686,
+    "ast_hash": "71dc81b41254b3035ee646ef1f2e4327",
     "semantic_hash": ""
   },
   "frontend/src/pages/SocioInicio.jsx": {
@@ -140,8 +140,8 @@
     "semantic_hash": ""
   },
   "frontend/src/pages/SocioShopping.jsx": {
-    "mtime": 1783047013.4754958,
-    "ast_hash": "bba3c9464923e334ea9c0efd693119ae",
+    "mtime": 1783475991.060716,
+    "ast_hash": "59b6e6a4a344843a8268ae9b7dc85fe6",
     "semantic_hash": ""
   },
   "frontend/tailwind.config.js": {
@@ -195,8 +195,8 @@
     "semantic_hash": ""
   },
   "backend/schemas.py": {
-    "mtime": 1783296977.761743,
-    "ast_hash": "801fdddbc0fec0d236a98f84137d1e2f",
+    "mtime": 1783472651.0878432,
+    "ast_hash": "5ac63c725fdd3b48525127b0a40fa805",
     "semantic_hash": ""
   },
   "init-db-backup/schema.sql": {
@@ -255,8 +255,8 @@
     "semantic_hash": ""
   },
   "backend/routers/admin_usuarios.py": {
-    "mtime": 1783273018.4159763,
-    "ast_hash": "659ee2f786f88740de72bd55af57be62",
+    "mtime": 1783469863.3854792,
+    "ast_hash": "8082e1e44a53883ba33c2376a085c203",
     "semantic_hash": ""
   },
   "frontend/src/assets/camoti-azul.PNG": {
@@ -290,13 +290,13 @@
     "semantic_hash": ""
   },
   "backend/routers/qr_auth.py": {
-    "mtime": 1783275815.4687788,
-    "ast_hash": "3d5576f15a7af8f5ee9261a2b3725a5c",
+    "mtime": 1783439832.758006,
+    "ast_hash": "757eecb0621ed3e549b0659bdc31b690",
     "semantic_hash": ""
   },
   "frontend/src/pages/AdminComercios.jsx": {
-    "mtime": 1782963403.163821,
-    "ast_hash": "0f64bfbc24191357dbb8ebd9a1ed78c8",
+    "mtime": 1783475210.513409,
+    "ast_hash": "0485bf3f3b68697b546579b137bdfef8",
     "semantic_hash": ""
   },
   "frontend/src/pages/AdminScanner.jsx": {
@@ -305,13 +305,13 @@
     "semantic_hash": ""
   },
   "frontend/src/pages/AdminSocios.jsx": {
-    "mtime": 1783297127.2611742,
-    "ast_hash": "13db3b41d16b0fe7b5b3bdf768e12d6f",
+    "mtime": 1783474977.389226,
+    "ast_hash": "a9b53fc92be58237ae9642a3c36e768b",
     "semantic_hash": ""
   },
   "backend/routers/admin_ordenes.py": {
-    "mtime": 1783342967.834626,
-    "ast_hash": "521524301db2fb453bdb70323fa47277",
+    "mtime": 1783473119.1618247,
+    "ast_hash": "7f38f5917cf15c9f826a7e191f0a3bca",
     "semantic_hash": ""
   },
   "backend/routers/admin_pagos.py": {
@@ -340,13 +340,13 @@
     "semantic_hash": ""
   },
   "backend/routers/socio_carrito.py": {
-    "mtime": 1783129536.342827,
-    "ast_hash": "11ff015a36f33dccb6607d8b65b214c3",
+    "mtime": 1783472669.6840198,
+    "ast_hash": "29e682517b27fc76421840527048b3a3",
     "semantic_hash": ""
   },
   "backend/routers/socio_reservas.py": {
-    "mtime": 1783215274.0989046,
-    "ast_hash": "bd21feb8497340ff126ada6c36360e9b",
+    "mtime": 1783472683.0298696,
+    "ast_hash": "d96bb762c0f2c3699d042631e8c910a5",
     "semantic_hash": ""
   },
   "frontend/src/components/ReservaCalendar.jsx": {
@@ -355,8 +355,8 @@
     "semantic_hash": ""
   },
   "frontend/src/pages/AdminProductos.jsx": {
-    "mtime": 1783299599.862184,
-    "ast_hash": "908695af2a4873e83795bf575bb32c6e",
+    "mtime": 1783475576.3411222,
+    "ast_hash": "11ea5e07741a08cea371a1d06f748591",
     "semantic_hash": ""
   },
   "frontend/src/pages/AdminTienda.jsx": {
@@ -365,13 +365,13 @@
     "semantic_hash": ""
   },
   "frontend/src/pages/Reservas.jsx": {
-    "mtime": 1783215393.375885,
-    "ast_hash": "c97e2b1ef8997da1aa0a639f1e82e2f4",
+    "mtime": 1783476006.0898604,
+    "ast_hash": "02970497bcc1be1320396d38c493439f",
     "semantic_hash": ""
   },
   "frontend/src/pages/SocioCompras.jsx": {
-    "mtime": 1783128666.010788,
-    "ast_hash": "3aa870f0f09580913206529630946647",
+    "mtime": 1783475929.6281118,
+    "ast_hash": "7bbb4f2fc6528527950af09adbb19776",
     "semantic_hash": ""
   },
   "backend/uploads/comprobantes/01a5fc29859049fe885d443df2f45f92.png": {
@@ -582,6 +582,11 @@
   "backend/uploads/comprobantes/fa7c90e96adf4b4a805345fcf6960e22.png": {
     "mtime": 1783292605.5004995,
     "ast_hash": "d14995156c710843f2857696d948411d",
+    "semantic_hash": ""
+  },
+  "backend/uploads/comprobantes/77d870986609465d86eb3387706cf3b4.png": {
+    "mtime": 1783473320.6711848,
+    "ast_hash": "c4082a11824f8fb86b8432fffb0dbf1c",
     "semantic_hash": ""
   }
 }

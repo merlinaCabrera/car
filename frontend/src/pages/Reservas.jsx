@@ -275,11 +275,11 @@ function CalendarioMensual({ instalacion, token, seleccion, onSeleccionar }) {
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
       {/* Header */}
-      <div className="px-5 pt-5 pb-4 border-b border-gray-100">
-        <div className="flex items-center justify-between gap-3">
-          <div>
+      <div className="px-4 sm:px-5 pt-4 sm:pt-5 pb-4 border-b border-gray-100">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="min-w-0">
             <h2 className="text-base font-bold text-gray-900 flex items-center gap-2">
-              <CalendarClock size={17} className="text-gray-400" />
+              <CalendarClock size={17} className="text-gray-400 flex-shrink-0" />
               Disponibilidad — {instalacion}
             </h2>
             <p className="text-xs text-gray-400 mt-0.5">
@@ -288,21 +288,21 @@ function CalendarioMensual({ instalacion, token, seleccion, onSeleccionar }) {
             </p>
           </div>
 
-          <div className="flex items-center gap-1">
+          <div className="flex items-center justify-between sm:justify-end gap-1 flex-shrink-0">
             <button
               onClick={() => cambiarMes(-1)}
               disabled={noPuedeRetroceder}
-              className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 disabled:opacity-30 transition-colors"
+              className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 disabled:opacity-30 transition-colors flex-shrink-0"
               aria-label="Mes anterior"
             >
               <ChevronLeft size={16} />
             </button>
-            <span className="text-base font-bold text-gray-900 w-32 text-center">
+            <span className="text-sm sm:text-base font-bold text-gray-900 w-28 sm:w-32 text-center">
               {NOMBRES_MES[mesVisto - 1]} {anioVisto}
             </span>
             <button
               onClick={() => cambiarMes(1)}
-              className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors"
+              className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors flex-shrink-0"
               aria-label="Mes siguiente"
             >
               <ChevronRight size={16} />
@@ -311,7 +311,7 @@ function CalendarioMensual({ instalacion, token, seleccion, onSeleccionar }) {
         </div>
 
         {!loading && !error && (
-          <div className="flex flex-wrap gap-3 mt-3">
+          <div className="flex flex-wrap gap-2 sm:gap-3 mt-3">
             <span className="inline-flex items-center gap-1.5 text-xs font-medium text-green-700">
               <span className="w-2 h-2 rounded-full bg-green-500 inline-block" />
               {resumen.libres} turno{resumen.libres !== 1 ? 's' : ''} libre{resumen.libres !== 1 ? 's' : ''}
@@ -325,7 +325,7 @@ function CalendarioMensual({ instalacion, token, seleccion, onSeleccionar }) {
       </div>
 
       {/* Cuerpo */}
-      <div className="p-4">
+      <div className="p-3 sm:p-4">
         {loading && (
           <div className="flex justify-center py-12">
             <Loader2 className="animate-spin text-gray-400" size={28} />
@@ -359,7 +359,7 @@ function CalendarioMensual({ instalacion, token, seleccion, onSeleccionar }) {
       </div>
 
       {/* Leyenda */}
-      <div className="px-5 pb-4 flex flex-wrap gap-x-4 gap-y-1.5">
+      <div className="px-4 sm:px-5 pb-4 flex flex-wrap gap-x-4 gap-y-1.5">
         <span className="inline-flex items-center gap-1.5 text-xs text-gray-500">
           <span className="w-2 h-2 rounded-full inline-block bg-green-500" />
           Disponible
@@ -478,13 +478,13 @@ export default function Reservas() {
   }
 
   return (
-    <div className="p-6 max-w-4xl mx-auto space-y-6">
+    <div className="p-4 sm:p-6 max-w-4xl mx-auto space-y-5 sm:space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
-          <CalendarClock size={24} className="text-gray-500" />
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2 sm:gap-3">
+          <CalendarClock size={22} className="text-gray-500 flex-shrink-0" />
           Reservas
         </h1>
-        <p className="text-sm text-gray-500 mt-1">
+        <p className="text-xs sm:text-sm text-gray-500 mt-1">
           Elegí un turno disponible para el <strong>{instalacion}</strong> y agregalo a tu carrito.
         </p>
       </div>
@@ -512,7 +512,7 @@ export default function Reservas() {
       )}
 
       {seleccion && (
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-2 px-5 bg-blue-50 border border-blue-200 rounded-2xl">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-3 px-4 sm:px-5 bg-blue-50 border border-blue-200 rounded-2xl">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 text-sm text-blue-900">
               <CheckCircle2 size={16} className="text-blue-600 flex-shrink-0" />
@@ -537,7 +537,7 @@ export default function Reservas() {
           <button
             onClick={handleConfirmar}
             disabled={confirmando || faltaProducto}
-            className="flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm transition-colors flex-shrink-0 disabled:opacity-50"
+            className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm transition-colors flex-shrink-0 disabled:opacity-50"
           >
             {confirmando ? <Loader2 size={16} className="animate-spin" /> : <ShoppingCart size={16} />}
             {confirmando ? 'Reservando…' : 'Agregar al carrito'}

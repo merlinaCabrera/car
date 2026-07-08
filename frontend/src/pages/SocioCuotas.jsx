@@ -294,11 +294,11 @@ function CalendarioAnual({ estado }) {
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
       {/* Header del calendario */}
-      <div className="px-5 pt-5 pb-4 border-b border-gray-100">
-        <div className="flex items-center justify-between gap-3">
-          <div>
+      <div className="px-4 sm:px-5 pt-4 sm:pt-5 pb-4 border-b border-gray-100">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="min-w-0">
             <h2 className="text-base font-bold text-gray-900 flex items-center gap-2">
-              <CalendarClock size={17} className="text-gray-400" />
+              <CalendarClock size={17} className="text-gray-400 flex-shrink-0" />
               Calendario de Cuotas
             </h2>
             <p className="text-xs text-gray-400 mt-0.5">
@@ -307,11 +307,11 @@ function CalendarioAnual({ estado }) {
           </div>
 
           {/* Navegación de año */}
-          <div className="flex items-center gap-1">
+          <div className="flex items-center justify-between sm:justify-end gap-1 flex-shrink-0">
             <button
               onClick={() => setAnioVisto(a => Math.max(anioMin, a - 1))}
               disabled={anioVisto <= anioMin}
-              className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 disabled:opacity-30 transition-colors"
+              className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 disabled:opacity-30 transition-colors flex-shrink-0"
               aria-label="Año anterior"
             >
               <ChevronLeft size={16} />
@@ -322,7 +322,7 @@ function CalendarioAnual({ estado }) {
             <button
               onClick={() => setAnioVisto(a => Math.min(anioMax, a + 1))}
               disabled={anioVisto >= anioMax}
-              className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 disabled:opacity-30 transition-colors"
+              className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 disabled:opacity-30 transition-colors flex-shrink-0"
               aria-label="Año siguiente"
             >
               <ChevronRight size={16} />
@@ -331,7 +331,7 @@ function CalendarioAnual({ estado }) {
         </div>
 
         {/* Resumen de estados del año */}
-        <div className="flex flex-wrap gap-3 mt-3">
+        <div className="flex flex-wrap gap-2 sm:gap-3 mt-3">
           {resumen.pagado > 0 && (
             <span className="inline-flex items-center gap-1.5 text-xs font-medium text-green-700">
               <span className="w-2 h-2 rounded-full bg-green-500 inline-block" />
@@ -360,7 +360,7 @@ function CalendarioAnual({ estado }) {
       </div>
 
       {/* Grilla de 12 meses */}
-      <div className="p-4 grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
+      <div className="p-3 sm:p-4 grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-2">
         {meses.map(({ nombre, estado: estadoMes, esHoy }) => (
           <CeldaMes
             key={nombre}
@@ -372,7 +372,7 @@ function CalendarioAnual({ estado }) {
       </div>
 
       {/* Leyenda */}
-      <div className="px-5 pb-4 flex flex-wrap gap-x-4 gap-y-1.5">
+      <div className="px-4 sm:px-5 pb-4 flex flex-wrap gap-x-4 gap-y-1.5">
         {[
           { estado: 'pagado',   label: 'Pagado' },
           { estado: 'adeudado', label: 'Adeudado' },
@@ -434,7 +434,7 @@ function OrdenGeneradaModal({ orden, onClose, token }) {
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex justify-center items-center p-4">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md flex flex-col max-h-[92dvh]">
-        <div className="p-6 border-b flex-shrink-0 flex items-start justify-between">
+        <div className="p-5 sm:p-6 border-b flex-shrink-0 flex items-start justify-between">
           <div>
             <h2 className="text-xl font-bold text-gray-800">Transferencia Bancaria</h2>
             <p className="text-sm text-gray-500 mt-1">Pago #{orden.id_pago} (Orden #{orden.id_orden})</p>
@@ -444,7 +444,7 @@ function OrdenGeneradaModal({ orden, onClose, token }) {
           </button>
         </div>
 
-        <div className="p-6 space-y-4 overflow-y-auto flex-1">
+        <div className="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1">
           {apiError && (
             <div className="flex items-start gap-2 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
               <AlertTriangle size={15} className="flex-shrink-0 mt-0.5" />
@@ -533,14 +533,14 @@ function SeleccionMesesModal({ precioCuota, idProducto, onClose }) {
       onClick={e => { if (e.target === e.currentTarget && !agregado) onClose() }}
     >
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm flex flex-col">
-        <div className="p-6 border-b flex items-center justify-between">
+        <div className="p-5 sm:p-6 border-b flex items-center justify-between">
           <h2 className="text-lg font-bold text-gray-800">Pagar Cuotas</h2>
           <button onClick={onClose} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
             <X size={18} />
           </button>
         </div>
 
-        <div className="p-6 space-y-5">
+        <div className="p-5 sm:p-6 space-y-5">
           {agregado ? (
             <div className="flex flex-col items-center gap-3 py-2 text-center">
               <div className="p-3 rounded-full bg-green-100 text-green-600">
@@ -656,9 +656,9 @@ function EstadoCard({ estado, loading, error, ordenPendiente, onAbrirCarrito }) 
     : { card: 'bg-white border-gray-100',       icon: 'bg-green-100 text-green-700', label: 'text-gray-500',  sub: 'text-gray-600',  aux: 'text-gray-400',  badge: 'bg-green-100 text-green-700 border border-green-200',  btn: '' }
 
   return (
-    <div className={`rounded-2xl shadow-sm border p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-5 ${paleta.card}`}>
-      <div className="flex items-start gap-4">
-        <div className={`p-3 rounded-xl flex-shrink-0 mt-0.5 ${paleta.icon}`}>
+    <div className={`rounded-2xl shadow-sm border p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-5 ${paleta.card}`}>
+      <div className="flex items-start gap-3 sm:gap-4">
+        <div className={`p-2.5 sm:p-3 rounded-xl flex-shrink-0 mt-0.5 ${paleta.icon}`}>
           {moroso ? <ShieldAlert size={22} /> : <ShieldCheck size={22} />}
         </div>
 
@@ -775,7 +775,7 @@ export default function SocioCuotas() {
   const comprobanteUrl = ordenPendiente?.pago?.comprobante_url ?? null
 
   return (
-    <div className="p-6 max-w-4xl mx-auto space-y-8">
+    <div className="p-4 sm:p-6 max-w-4xl mx-auto space-y-6 sm:space-y-8">
 
       {/* Modal: subir/cambiar comprobante de orden pendiente */}
       {mostrarUpload && ordenPendiente && (
@@ -797,11 +797,11 @@ export default function SocioCuotas() {
 
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
-          <Wallet size={24} className="text-gray-500" />
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2 sm:gap-3">
+          <Wallet size={22} className="text-gray-500 flex-shrink-0" />
           Gestión de Cuotas
         </h1>
-        <p className="text-sm text-gray-500 mt-1">Mantené tu cuenta al día para acceder al club.</p>
+        <p className="text-xs sm:text-sm text-gray-500 mt-1">Mantené tu cuenta al día para acceder al club.</p>
       </div>
 
       {error && (
@@ -812,13 +812,13 @@ export default function SocioCuotas() {
 
       {/* Banner de Orden Pendiente */}
       {ordenPendiente && (
-        <div className="bg-blue-50 border border-blue-200 rounded-2xl p-6 shadow-sm space-y-4">
-          <div className="flex items-start gap-4">
+        <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 sm:p-6 shadow-sm space-y-4">
+          <div className="flex items-start gap-3 sm:gap-4">
             <div className="p-3 rounded-xl bg-blue-100 text-blue-700 hidden sm:block flex-shrink-0">
               <Info size={24} />
             </div>
             <div className="flex-1 min-w-0">
-              <h3 className="text-lg font-bold text-blue-900">Tenés un pago en proceso</h3>
+              <h3 className="text-base sm:text-lg font-bold text-blue-900">Tenés un pago en proceso</h3>
               <p className="text-sm text-blue-800 mt-0.5">
                 Orden #{ordenPendiente.id_orden} — Total a transferir:{' '}
                 <span className="font-bold">{formatoMoneda.format(ordenPendiente.monto_total)}</span>
@@ -850,17 +850,17 @@ export default function SocioCuotas() {
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-2 sm:justify-end">
+          <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 sm:justify-end">
             <button
               onClick={() => setMostrarUpload(true)}
-              className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold transition-colors text-sm"
+              className="w-full sm:w-auto px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold transition-colors text-sm"
             >
               {comprobanteUrl ? 'Cambiar Comprobante' : 'Subir Comprobante'}
             </button>
             <button
               onClick={handleCancelarOrden}
               disabled={isCanceling}
-              className="px-4 py-2.5 bg-white border border-red-200 text-red-600 hover:bg-red-50 rounded-xl font-bold transition-colors text-sm disabled:opacity-50"
+              className="w-full sm:w-auto px-4 py-2.5 bg-white border border-red-200 text-red-600 hover:bg-red-50 rounded-xl font-bold transition-colors text-sm disabled:opacity-50"
             >
               {isCanceling ? 'Cancelando...' : 'Cancelar Trámite'}
             </button>
@@ -896,7 +896,7 @@ export default function SocioCuotas() {
           </div>
           <button
             onClick={() => setMostrarSeleccionMeses(true)}
-            className="flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm transition-colors flex-shrink-0"
+            className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm transition-colors flex-shrink-0"
           >
             <ShoppingCart size={16} />
             Pagar Cuotas
@@ -915,13 +915,13 @@ export default function SocioCuotas() {
             // (el backend lo mapea desde pago.comprobante_url al construir la lista)
             const urlComprobante = pago.pago?.comprobante_url ?? pago.comprobante_url ?? null
             return (
-              <div key={pago.id_orden} className="p-5 flex items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
+              <div key={pago.id_orden} className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+                <div className="flex items-center gap-3 min-w-0">
                   <div className="p-2 rounded-lg bg-gray-100 text-gray-500 flex-shrink-0">
                     <Receipt size={16} />
                   </div>
-                  <div>
-                    <p className="font-medium text-gray-900">
+                  <div className="min-w-0">
+                    <p className="font-medium text-gray-900 truncate">
                       {formatoFecha.format(new Date(pago.fecha_pago))}
                     </p>
                     <p className="text-xs text-gray-500">
@@ -934,7 +934,7 @@ export default function SocioCuotas() {
                     href={`${API}${urlComprobante}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-blue-600 hover:bg-blue-50 transition-colors"
+                    className="flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-blue-600 hover:bg-blue-50 transition-colors self-start sm:self-auto"
                   >
                     <ExternalLink size={14} />
                     Ver comprobante

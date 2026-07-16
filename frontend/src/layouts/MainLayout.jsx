@@ -245,7 +245,10 @@ export default function MainLayout({ userRole }) {
           )}
 
           {/* ── Bloque PERSONAL TÉCNICO ──────────────────────────────────── */}
-          {esPersonalTecnico && (
+          {/* El Admin General también administra planteles (autocompletar
+              masivo es exclusivo suyo), así que ve este bloque aunque no
+              tenga el rol de datos 'personal_tecnico'. */}
+          {(esPersonalTecnico || esAdminGeneral) && (
             <div>
               <hr className="border-gray-700 my-4" />
               <p className="px-2 mb-2 text-xs text-gray-400 uppercase tracking-wider font-semibold">

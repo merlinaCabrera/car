@@ -61,6 +61,7 @@ from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import func
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session, joinedload
 
 import models
@@ -76,6 +77,7 @@ router = APIRouter(
 _ROLES_TECNICO = ("tecnico", "admin_general")
 _ROLES_PUERTA = ("admin_temporal", "tecnico", "admin_general", "personal_administrativo")
 _ROLES_JUGADOR = ("socio", "jugador")
+_ROLES_AUTOCOMPLETAR = ("admin_general",)  # Solo el Admin General ve y usa este botón.
 
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -142,6 +144,19 @@ def _temporada_actual() -> str:
     return str(date.today().year)
 
 
+def _tiene_rol_jugador(db: Session, id_usuario: int) -> bool:
+    return (
+        db.query(models.UsuarioRol)
+        .join(models.Rol, models.Rol.id_rol == models.UsuarioRol.id_rol)
+        .filter(
+            models.UsuarioRol.id_usuario == id_usuario,
+            models.Rol.nombre == "jugador",
+        )
+        .first()
+        is not None
+    )
+
+
 # ═════════════════════════════════════════════════════════════════════════════
 # CATEGORÍAS DEPORTIVAS
 # ═════════════════════════════════════════════════════════════════════════════
@@ -192,6 +207,8 @@ def crear_categoria(
         nombre=payload.nombre,
         descripcion=payload.descripcion,
         es_activa=payload.es_activa,
+        fecha_corte_min=payload.fecha_corte_min,
+        fecha_corte_max=payload.fecha_corte_max,
     )
     db.add(nueva)
     db.flush()
@@ -214,26 +231,63 @@ def crear_categoria(
 @router.patch(
     "/categorias/{id_categoria}",
     response_model=schemas.CategoriaDeportivaResponse,
-    summary="Editar una categoría (incluye baja lógica con es_activa=False)",
+    summary="Editar una categoría (incluye baja lógica con es_activa=False y cortes de edad)",
 )
 def editar_categoria(
     id_categoria: int,
-    payload: schemas.CategoriaDeportivaCreate,
+    payload: schemas.CategoriaDeportivaUpdate,
     request: Request,
     db: Session = Depends(get_db),
     tecnico: models.Usuario = Depends(require_roles(*_ROLES_TECNICO)),
 ) -> models.CategoriaDeportiva:
     categoria = _obtener_categoria_o_404(db, id_categoria)
 
+    cambios = payload.model_dump(exclude_unset=True)
+    if not cambios:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No se envió ningún campo para actualizar.",
+        )
+
+    # Validamos el rango de cortes considerando el valor final (viejo + nuevo combinado),
+    # ya que un PATCH puede tocar un solo corte y dejar el otro con el valor ya existente.
+    corte_min_final = cambios.get("fecha_corte_min", categoria.fecha_corte_min)
+    corte_max_final = cambios.get("fecha_corte_max", categoria.fecha_corte_max)
+    if (
+        corte_min_final is not None
+        and corte_max_final is not None
+        and corte_min_final > corte_max_final
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="fecha_corte_min no puede ser posterior a fecha_corte_max.",
+        )
+
+    if "nombre" in cambios:
+        ya_existe = (
+            db.query(models.CategoriaDeportiva.id_categoria)
+            .filter(
+                func.lower(models.CategoriaDeportiva.nombre) == cambios["nombre"].lower(),
+                models.CategoriaDeportiva.id_categoria != id_categoria,
+            )
+            .first()
+        )
+        if ya_existe is not None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Ya existe una categoría llamada '{cambios['nombre']}'.",
+            )
+
     antes = {
         "nombre": categoria.nombre,
         "descripcion": categoria.descripcion,
         "es_activa": categoria.es_activa,
+        "fecha_corte_min": categoria.fecha_corte_min.isoformat() if categoria.fecha_corte_min else None,
+        "fecha_corte_max": categoria.fecha_corte_max.isoformat() if categoria.fecha_corte_max else None,
     }
 
-    categoria.nombre = payload.nombre
-    categoria.descripcion = payload.descripcion
-    categoria.es_activa = payload.es_activa
+    for campo, valor in cambios.items():
+        setattr(categoria, campo, valor)
 
     _registrar_audit(
         db=db,
@@ -241,7 +295,7 @@ def editar_categoria(
         accion="EDITAR_CATEGORIA_DEPORTIVA",
         tabla_afectada="categorias_deportivas",
         registro_id=categoria.id_categoria,
-        detalle={"antes": antes, "despues": payload.model_dump(mode="json")},
+        detalle={"antes": antes, "despues": payload.model_dump(mode="json", exclude_unset=True)},
         ip=_extraer_ip(request),
     )
     db.commit()
@@ -320,6 +374,11 @@ def inscribir_jugador(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="No se puede inscribir a un socio dado de baja.",
+        )
+    if not _tiene_rol_jugador(db, usuario.id_usuario):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Solo se pueden inscribir en un plantel socios con el rol 'jugador'.",
         )
 
     ya_inscripto = (
@@ -423,6 +482,137 @@ def eliminar_jugador(
     db.commit()
 
     return {"mensaje": f"Socio {id_usuario} dado de baja del plantel."}
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# BÚSQUEDA DE JUGADORES (excepciones manuales)
+# ═════════════════════════════════════════════════════════════════════════════
+
+@router.get(
+    "/jugadores/buscar",
+    response_model=List[schemas.JugadorBusquedaResponse],
+    summary="Buscar socios con rol 'jugador' para agregarlos como excepción manual",
+)
+def buscar_jugadores(
+    q: str = Query(min_length=2, description="Busca por nombre, apellido o DNI."),
+    db: Session = Depends(get_db),
+    _tecnico: models.Usuario = Depends(require_roles(*_ROLES_TECNICO)),
+) -> List[models.Usuario]:
+    patron = f"%{q.strip()}%"
+
+    return (
+        db.query(models.Usuario)
+        .join(models.UsuarioRol, models.UsuarioRol.id_usuario == models.Usuario.id_usuario)
+        .join(models.Rol, models.Rol.id_rol == models.UsuarioRol.id_rol)
+        .filter(
+            models.Rol.nombre == "jugador",
+            models.Usuario.fecha_baja.is_(None),
+            (
+                models.Usuario.nombre.ilike(patron)
+                | models.Usuario.apellido.ilike(patron)
+                | models.Usuario.dni.ilike(patron)
+            ),
+        )
+        .distinct()
+        .order_by(models.Usuario.apellido.asc(), models.Usuario.nombre.asc())
+        .limit(20)
+        .all()
+    )
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# AUTOCOMPLETAR PLANTEL (masivo, por fecha_nacimiento — solo admin_general)
+# ═════════════════════════════════════════════════════════════════════════════
+
+@router.post(
+    "/categorias/{id_categoria}/autocompletar",
+    response_model=schemas.AutocompletarPlantelResponse,
+    summary="Autocompletar plantel: inscribe masivamente por fecha_nacimiento (solo Admin General)",
+)
+def autocompletar_plantel(
+    id_categoria: int,
+    payload: schemas.AutocompletarPlantelPayload,
+    request: Request,
+    db: Session = Depends(get_db),
+    admin: models.Usuario = Depends(require_roles(*_ROLES_AUTOCOMPLETAR)),
+) -> schemas.AutocompletarPlantelResponse:
+    categoria = _obtener_categoria_o_404(db, id_categoria)
+
+    if categoria.fecha_corte_min is None or categoria.fecha_corte_max is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                f"La categoría '{categoria.nombre}' no tiene definidos ambos cortes de edad "
+                "(fecha_corte_min / fecha_corte_max). Configuralos desde PATCH "
+                "/deportivo/categorias/{id_categoria} antes de autocompletar."
+            ),
+        )
+
+    # Universo de candidatos: rol 'jugador', activos, con fecha_nacimiento dentro del corte.
+    candidatos = (
+        db.query(models.Usuario.id_usuario)
+        .join(models.UsuarioRol, models.UsuarioRol.id_usuario == models.Usuario.id_usuario)
+        .join(models.Rol, models.Rol.id_rol == models.UsuarioRol.id_rol)
+        .filter(
+            models.Rol.nombre == "jugador",
+            models.Usuario.fecha_baja.is_(None),
+            models.Usuario.fecha_nacimiento.is_not(None),
+            models.Usuario.fecha_nacimiento >= categoria.fecha_corte_min,
+            models.Usuario.fecha_nacimiento <= categoria.fecha_corte_max,
+        )
+        .distinct()
+        .all()
+    )
+    ids_candidatos = [fila.id_usuario for fila in candidatos]
+
+    if not ids_candidatos:
+        return schemas.AutocompletarPlantelResponse(
+            id_categoria=id_categoria,
+            temporada=payload.temporada,
+            candidatos_encontrados=0,
+            inscriptos_nuevos=0,
+        )
+
+    # INSERT ... ON CONFLICT (id_usuario, id_categoria, temporada) DO NOTHING
+    # apoyado en la constraint uq_usuario_categoria_temporada ya aplicada en Postgres.
+    tabla = models.UsuarioCategoria.__table__
+    stmt = pg_insert(tabla).values(
+        [
+            {
+                "id_usuario": id_usuario,
+                "id_categoria": id_categoria,
+                "temporada": payload.temporada,
+                "es_capitan": False,
+            }
+            for id_usuario in ids_candidatos
+        ]
+    ).on_conflict_do_nothing(constraint="uq_usuario_categoria_temporada")
+
+    resultado = db.execute(stmt)
+    inscriptos_nuevos = resultado.rowcount or 0
+
+    _registrar_audit(
+        db=db,
+        actor_id=admin.id_usuario,
+        accion="AUTOCOMPLETAR_PLANTEL",
+        tabla_afectada="usuarios_categorias",
+        registro_id=id_categoria,
+        detalle={
+            "id_categoria": id_categoria,
+            "temporada": payload.temporada,
+            "candidatos_encontrados": len(ids_candidatos),
+            "inscriptos_nuevos": inscriptos_nuevos,
+        },
+        ip=_extraer_ip(request),
+    )
+    db.commit()
+
+    return schemas.AutocompletarPlantelResponse(
+        id_categoria=id_categoria,
+        temporada=payload.temporada,
+        candidatos_encontrados=len(ids_candidatos),
+        inscriptos_nuevos=inscriptos_nuevos,
+    )
 
 
 # ═════════════════════════════════════════════════════════════════════════════

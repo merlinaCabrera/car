@@ -1,24 +1,23 @@
+
+
 // frontend/src/pages/TecnicoEventos.jsx
 /**
- * Panel para que el Personal Técnico gestione las convocatorias a eventos.
+ * Panel para que el Personal Técnico y el Admin General gestionen eventos.
  *
- * Flujo:
- * 1. Se listan los próximos eventos (partidos, entrenamientos).
- * 2. Al hacer clic en "Armar Convocatoria", se abre un modal.
- * 3. El modal carga el plantel completo de la categoría del evento.
- * 4. Los jugadores ya convocados para ese evento aparecen pre-tildados.
- * 5. El técnico puede tildar/destildar jugadores y guardar.
- * 6. Al guardar, se envía la lista completa de IDs de jugadores al backend,
- *    que reemplaza la convocatoria anterior por la nueva.
+ * Vistas: Lista (default) ↔ Calendario mensual — toggle en el header.
+ * Desde el calendario se puede hacer clic en un evento para abrir
+ * directamente el modal de Armar Convocatoria.
  *
  * Backend consumido:
- *   GET /deportivo/eventos
- *   GET /deportivo/categorias/{id_categoria}/jugadores
+ *   GET  /deportivo/eventos
+ *   GET  /deportivo/categorias/{id_categoria}/jugadores
  *   POST /deportivo/eventos/{id_evento}/convocar
+ *   POST /deportivo/eventos
  */
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useAuth } from '../context/AuthContext'
+import CalendarioMensual from '../components/CalendarioMensual'
 import {
   Calendar,
   Users,
@@ -40,18 +39,22 @@ import {
   HelpCircle,
   CheckCircle,
   XCircle,
+  List,
+  LayoutGrid,
+  FileDown,
 } from 'lucide-react'
+import { useExportarConvocatoria } from '../hooks/useExportarConvocatoria'
 
 const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 
-// --- Helpers ---
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const TIPO_CONFIG = {
-  partido:        { label: 'Partido',        icon: Trophy,     classes: 'bg-emerald-100 text-emerald-800' },
-  entrenamiento:  { label: 'Entrenamiento',  icon: Dumbbell,   classes: 'bg-blue-100 text-blue-800' },
-  torneo:         { label: 'Torneo',         icon: Trophy,     classes: 'bg-purple-100 text-purple-800' },
-  institucional:  { label: 'Institucional',  icon: Building2,  classes: 'bg-gray-100 text-gray-700' },
-  otro:           { label: 'Evento',         icon: CalendarDays, classes: 'bg-gray-100 text-gray-700' },
+  partido:       { label: 'Partido',       icon: Trophy,      classes: 'bg-emerald-100 text-emerald-800', chip: 'bg-emerald-500' },
+  entrenamiento: { label: 'Entrenamiento', icon: Dumbbell,    classes: 'bg-blue-100 text-blue-800',      chip: 'bg-blue-500'    },
+  torneo:        { label: 'Torneo',        icon: Trophy,      classes: 'bg-purple-100 text-purple-800',  chip: 'bg-purple-500'  },
+  institucional: { label: 'Institucional', icon: Building2,   classes: 'bg-gray-100 text-gray-700',      chip: 'bg-gray-400'    },
+  otro:          { label: 'Evento',        icon: CalendarDays, classes: 'bg-gray-100 text-gray-700',     chip: 'bg-gray-400'    },
 }
 
 const formatoFecha = (fecha) =>
@@ -75,15 +78,9 @@ function TipoBadge({ tipo }) {
 }
 
 const ESTADO_CONVOCATORIA_CONFIG = {
-  citado: {
-    label: 'Citado', icon: HelpCircle, classes: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-  },
-  confirmado: {
-    label: 'Confirmado', icon: CheckCircle, classes: 'bg-green-100 text-green-800 border-green-200',
-  },
-  rechazado: {
-    label: 'Rechazado', icon: XCircle, classes: 'bg-red-100 text-red-800 border-red-200',
-  },
+  citado:     { label: 'Citado',     icon: HelpCircle,   classes: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
+  confirmado: { label: 'Confirmado', icon: CheckCircle,  classes: 'bg-green-100 text-green-800 border-green-200'   },
+  rechazado:  { label: 'Rechazado',  icon: XCircle,      classes: 'bg-red-100 text-red-800 border-red-200'         },
 }
 
 function EstadoConvocatoriaBadge({ estado }) {
@@ -98,7 +95,7 @@ function EstadoConvocatoriaBadge({ estado }) {
   )
 }
 
-// --- Modal de Convocatoria ---
+// ─── Modal de Convocatoria ─────────────────────────────────────────────────────
 
 function ConvocatoriaModal({ evento, onClose, onSaveSuccess }) {
   const { token } = useAuth()
@@ -107,62 +104,45 @@ function ConvocatoriaModal({ evento, onClose, onSaveSuccess }) {
   const [error, setError] = useState(null)
   const [isSaving, setIsSaving] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
-
-  // Usamos un Set para gestionar los IDs seleccionados por eficiencia
   const [selectedIds, setSelectedIds] = useState(new Set())
 
-  // Fetch del plantel de la categoría
   useEffect(() => {
     if (!evento?.id_categoria) {
       setError('El evento no tiene una categoría deportiva asociada.')
       setLoading(false)
       return
     }
-
     const fetchPlantel = async () => {
       setLoading(true)
       setError(null)
       try {
-        const res = await fetch(`${API}/deportivo/categorias/${evento.id_categoria}/jugadores`, {
-          headers: { Authorization: `Bearer ${token}` },
-        })
+        const res = await fetch(
+          `${API}/deportivo/categorias/${evento.id_categoria}/jugadores`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        )
         if (!res.ok) throw new Error('No se pudo cargar el plantel de la categoría.')
         const data = await res.json()
         setPlantel(data)
-
-        // Pre-seleccionar jugadores ya convocados
-        const convocadosIds = new Set(evento.convocatorias.map(c => c.id_usuario))
-        setSelectedIds(convocadosIds)
+        setSelectedIds(new Set(evento.convocatorias.map(c => c.id_usuario)))
       } catch (err) {
         setError(err.message)
       } finally {
         setLoading(false)
       }
     }
-
     fetchPlantel()
   }, [evento, token])
 
   const handleTogglePlayer = (id) => {
     setSelectedIds(prev => {
-      const newSet = new Set(prev)
-      if (newSet.has(id)) {
-        newSet.delete(id)
-      } else {
-        newSet.add(id)
-      }
-      return newSet
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
     })
   }
 
-  const handleSelectAll = () => {
-    const allIds = new Set(plantel.map(p => p.usuario.id_usuario))
-    setSelectedIds(allIds)
-  }
-
-  const handleDeselectAll = () => {
-    setSelectedIds(new Set())
-  }
+  const handleSelectAll   = () => setSelectedIds(new Set(plantel.map(p => p.usuario.id_usuario)))
+  const handleDeselectAll = () => setSelectedIds(new Set())
 
   const handleSave = async () => {
     setIsSaving(true)
@@ -170,10 +150,7 @@ function ConvocatoriaModal({ evento, onClose, onSaveSuccess }) {
     try {
       const res = await fetch(`${API}/deportivo/eventos/${evento.id_evento}/convocar`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ ids_usuarios: Array.from(selectedIds) }),
       })
       if (!res.ok) {
@@ -240,12 +217,8 @@ function ConvocatoriaModal({ evento, onClose, onSaveSuccess }) {
                   />
                 </div>
                 <div className="flex items-center gap-3 mt-3">
-                  <button onClick={handleSelectAll} className="text-xs font-medium text-blue-600 hover:underline">
-                    Seleccionar todos
-                  </button>
-                  <button onClick={handleDeselectAll} className="text-xs font-medium text-blue-600 hover:underline">
-                    Deseleccionar todos
-                  </button>
+                  <button onClick={handleSelectAll} className="text-xs font-medium text-blue-600 hover:underline">Seleccionar todos</button>
+                  <button onClick={handleDeselectAll} className="text-xs font-medium text-blue-600 hover:underline">Deseleccionar todos</button>
                   <span className="ml-auto text-xs text-gray-500 font-medium">
                     {selectedIds.size} / {plantel.length} seleccionados
                   </span>
@@ -283,58 +256,76 @@ function ConvocatoriaModal({ evento, onClose, onSaveSuccess }) {
           )}
         </div>
 
-        <div className="p-4 bg-gray-50 rounded-b-2xl border-t flex justify-end gap-3 flex-shrink-0">
-          <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg text-gray-600 bg-gray-200 hover:bg-gray-300 font-semibold transition-colors">
-            Cancelar
-          </button>
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={isSaving || loading}
-            className="px-4 py-2 rounded-lg text-white bg-blue-600 hover:bg-blue-700 font-semibold disabled:opacity-50 transition-colors flex items-center gap-2"
-          >
-            {isSaving && <Loader2 size={14} className="animate-spin" />}
-            Guardar Convocatoria
-          </button>
+        <div className="p-4 bg-gray-50 rounded-b-2xl border-t flex items-center justify-between gap-3 flex-shrink-0 flex-wrap">
+          {/* Exportar PDF — accesible también desde el calendario */}
+          <ExportarBotonModal evento={evento} />
+
+          <div className="flex items-center gap-3">
+            <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg text-gray-600 bg-gray-200 hover:bg-gray-300 font-semibold transition-colors">
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={isSaving || loading}
+              className="px-4 py-2 rounded-lg text-white bg-blue-600 hover:bg-blue-700 font-semibold disabled:opacity-50 transition-colors flex items-center gap-2"
+            >
+              {isSaving && <Loader2 size={14} className="animate-spin" />}
+              Guardar Convocatoria
+            </button>
+          </div>
         </div>
       </div>
     </div>
   )
 }
 
-// --- Modal: Nuevo Evento ---
+// ─── Botón de exportar para el footer del modal ────────────────────────────────
+// Componente separado para que tenga su propio estado de exportando
+// sin interferir con el estado del modal de convocatoria.
+function ExportarBotonModal({ evento }) {
+  const { exportar, exportando, errorExport } = useExportarConvocatoria()
+  const tieneConvocados = (evento?.convocatorias?.length ?? 0) > 0
+  return (
+    <div className="flex flex-col gap-1">
+      <button
+        onClick={() => exportar(evento)}
+        disabled={exportando || !tieneConvocados}
+        title={tieneConvocados ? 'Descargar lista en PDF' : 'Guardá la convocatoria primero'}
+        className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 bg-white text-gray-600 font-semibold hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-sm"
+      >
+        {exportando ? <Loader2 size={14} className="animate-spin" /> : <FileDown size={14} />}
+        {exportando ? 'Generando…' : 'Exportar PDF'}
+      </button>
+      {errorExport && (
+        <p className="text-xs text-amber-700">{errorExport}</p>
+      )}
+    </div>
+  )
+}
+
+// ─── Modal: Nuevo Evento ───────────────────────────────────────────────────────
 
 function NuevoEventoModal({ onClose, onSaveSuccess }) {
   const { token } = useAuth()
   const [categorias, setCategorias] = useState([])
   const [loadingCategorias, setLoadingCategorias] = useState(true)
-
   const [formData, setFormData] = useState({
-    titulo: '',
-    tipo: 'partido',
-    id_categoria: '', // Usar string vacío para "Ninguna"
-    descripcion: '',
-    fecha_inicio: '',
-    fecha_fin: '',
-    ubicacion: '',
+    titulo: '', tipo: 'partido', id_categoria: '',
+    descripcion: '', fecha_inicio: '', fecha_fin: '', ubicacion: '',
   })
-
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [apiError, setApiError] = useState(null)
 
-  // Fetch de categorías para el select
   useEffect(() => {
     const fetchCategorias = async () => {
       try {
         const res = await fetch(`${API}/deportivo/categorias`, {
           headers: { Authorization: `Bearer ${token}` },
         })
-        if (!res.ok) throw new Error('No se pudieron cargar las categorías.')
+        if (!res.ok) throw new Error()
         setCategorias(await res.json())
-      } catch (err) {
-        // No es un error fatal, el modal puede funcionar sin categorías
-        console.error(err.message)
-      } finally {
+      } catch { /* no es fatal */ } finally {
         setLoadingCategorias(false)
       }
     }
@@ -348,15 +339,12 @@ function NuevoEventoModal({ onClose, onSaveSuccess }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    setIsSubmitting(true)
-    setApiError(null)
-
     if (!formData.titulo || !formData.fecha_inicio) {
       setApiError('El título y la fecha de inicio son obligatorios.')
-      setIsSubmitting(false)
       return
     }
-
+    setIsSubmitting(true)
+    setApiError(null)
     const payload = {
       ...formData,
       id_categoria: formData.id_categoria ? Number(formData.id_categoria) : null,
@@ -364,14 +352,10 @@ function NuevoEventoModal({ onClose, onSaveSuccess }) {
       descripcion: formData.descripcion || null,
       ubicacion: formData.ubicacion || null,
     }
-
     try {
       const res = await fetch(`${API}/deportivo/eventos`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify(payload),
       })
       if (!res.ok) {
@@ -386,7 +370,7 @@ function NuevoEventoModal({ onClose, onSaveSuccess }) {
     }
   }
 
-  const formLabelClass = "block text-xs font-semibold text-gray-600 mb-1.5"
+  const L = "block text-xs font-semibold text-gray-600 mb-1.5"
 
   return (
     <div
@@ -413,13 +397,13 @@ function NuevoEventoModal({ onClose, onSaveSuccess }) {
           )}
 
           <div>
-            <label className={formLabelClass}>Título del Evento</label>
+            <label className={L}>Título del Evento</label>
             <input type="text" name="titulo" value={formData.titulo} onChange={handleChange} required className="form-input" />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className={formLabelClass}>Tipo de Evento</label>
+              <label className={L}>Tipo de Evento</label>
               <select name="tipo" value={formData.tipo} onChange={handleChange} className="form-input">
                 <option value="partido">Partido</option>
                 <option value="entrenamiento">Entrenamiento</option>
@@ -429,7 +413,7 @@ function NuevoEventoModal({ onClose, onSaveSuccess }) {
               </select>
             </div>
             <div>
-              <label className={formLabelClass}>Categoría (Opcional)</label>
+              <label className={L}>Categoría (Opcional)</label>
               <select name="id_categoria" value={formData.id_categoria} onChange={handleChange} disabled={loadingCategorias} className="form-input disabled:bg-gray-100">
                 <option value="">Ninguna</option>
                 {categorias.map(cat => (
@@ -441,17 +425,17 @@ function NuevoEventoModal({ onClose, onSaveSuccess }) {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className={formLabelClass}>Fecha y Hora de Inicio</label>
+              <label className={L}>Fecha y Hora de Inicio</label>
               <input type="datetime-local" name="fecha_inicio" value={formData.fecha_inicio} onChange={handleChange} required className="form-input" />
             </div>
             <div>
-              <label className={formLabelClass}>Fecha y Hora de Fin (Opcional)</label>
+              <label className={L}>Fecha y Hora de Fin (Opcional)</label>
               <input type="datetime-local" name="fecha_fin" value={formData.fecha_fin} onChange={handleChange} className="form-input" />
             </div>
           </div>
 
           <div>
-            <label className={formLabelClass}>Ubicación (Opcional)</label>
+            <label className={L}>Ubicación (Opcional)</label>
             <input type="text" name="ubicacion" value={formData.ubicacion} onChange={handleChange} className="form-input" />
           </div>
         </div>
@@ -470,7 +454,38 @@ function NuevoEventoModal({ onClose, onSaveSuccess }) {
   )
 }
 
-// --- Componente Principal ---
+// ─── Toggle Lista / Calendario ─────────────────────────────────────────────────
+
+function VistaToggle({ vista, onChange }) {
+  return (
+    <div className="flex items-center bg-gray-100 rounded-xl p-1 gap-1">
+      <button
+        onClick={() => onChange('lista')}
+        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${
+          vista === 'lista'
+            ? 'bg-white text-gray-900 shadow-sm'
+            : 'text-gray-500 hover:text-gray-700'
+        }`}
+      >
+        <List size={15} />
+        Lista
+      </button>
+      <button
+        onClick={() => onChange('calendario')}
+        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${
+          vista === 'calendario'
+            ? 'bg-white text-gray-900 shadow-sm'
+            : 'text-gray-500 hover:text-gray-700'
+        }`}
+      >
+        <LayoutGrid size={15} />
+        Calendario
+      </button>
+    </div>
+  )
+}
+
+// ─── Componente Principal ──────────────────────────────────────────────────────
 
 export default function TecnicoEventos() {
   const { token } = useAuth()
@@ -480,13 +495,15 @@ export default function TecnicoEventos() {
   const [selectedEvent, setSelectedEvent] = useState(null)
   const [modalNuevoEventoAbierto, setModalNuevoEventoAbierto] = useState(false)
   const [expandedEventId, setExpandedEventId] = useState(null)
+  const [vista, setVista] = useState('lista')
+  const [mesCalendario, setMesCalendario] = useState(new Date())
+  const { exportar, exportando, errorExport } = useExportarConvocatoria()
 
   const fetchEventos = useCallback(async () => {
     if (!token) return
     setLoading(true)
     setError(null)
     try {
-      // Traemos solo los eventos futuros o en curso
       const params = new URLSearchParams({
         desde: new Date().toISOString(),
         estado: 'programado',
@@ -507,7 +524,7 @@ export default function TecnicoEventos() {
 
   const handleSaveSuccess = () => {
     setSelectedEvent(null)
-    fetchEventos() // Recargar para ver los cambios
+    fetchEventos()
   }
 
   const handleNuevoEventoSuccess = () => {
@@ -516,8 +533,22 @@ export default function TecnicoEventos() {
   }
 
   const handleToggleExpand = (id) => {
-    setExpandedEventId(prevId => (prevId === id ? null : id))
+    setExpandedEventId(prev => (prev === id ? null : id))
   }
+
+  // ── Render chip para el calendario mensual ─────────────────────────────────
+  const renderEventoCalendario = useCallback((evento) => {
+    const config = TIPO_CONFIG[evento.tipo] ?? TIPO_CONFIG.otro
+    return (
+      <button
+        onClick={() => setSelectedEvent(evento)}
+        title={evento.titulo}
+        className={`w-full text-left px-1.5 py-0.5 rounded text-[10px] font-semibold text-white truncate transition-opacity hover:opacity-80 ${config.chip}`}
+      >
+        {formatoHora(evento.fecha_inicio)} {evento.titulo}
+      </button>
+    )
+  }, [])
 
   return (
     <div className="p-6 max-w-4xl mx-auto space-y-6">
@@ -535,15 +566,19 @@ export default function TecnicoEventos() {
         />
       )}
 
-      <div className="flex items-start justify-between gap-4">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
             <Calendar size={24} className="text-gray-500" />
             Gestión de Eventos
           </h1>
-          <p className="text-sm text-gray-500 mt-1">Armá las convocatorias para los próximos partidos y entrenamientos.</p>
+          <p className="text-sm text-gray-500 mt-1">
+            Armá las convocatorias para los próximos partidos y entrenamientos.
+          </p>
         </div>
-        <div className="flex items-center gap-3 flex-shrink-0">
+        <div className="flex items-center gap-3 flex-shrink-0 flex-wrap">
+          <VistaToggle vista={vista} onChange={setVista} />
           <button
             onClick={() => setModalNuevoEventoAbierto(true)}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-green-600 text-white font-semibold hover:bg-green-700 transition-colors shadow-sm text-sm"
@@ -572,86 +607,145 @@ export default function TecnicoEventos() {
         </div>
       )}
 
-      <div className="space-y-3">
-        {loading && [...Array(3)].map((_, i) => (
-          <div key={i} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 h-24 animate-pulse" />
-        ))}
+      {errorExport && (
+        <div className="flex items-center gap-3 p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-sm">
+          <AlertCircle size={18} className="flex-shrink-0" />
+          <span className="flex-1">{errorExport}</span>
+        </div>
+      )}
 
-        {!loading && eventos.length === 0 && (
-          <div className="text-center py-12 text-gray-500">
-            No hay eventos programados.
-          </div>
-        )}
-
-        {!loading && eventos.map(evento => {
-          const isExpanded = expandedEventId === evento.id_evento
-          const convocatoriasOrdenadas = [...evento.convocatorias].sort((a, b) =>
-            (a.usuario?.apellido ?? '').localeCompare(b.usuario?.apellido ?? '')
-          )
-          return (<div key={evento.id_evento} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <TipoBadge tipo={evento.tipo} />
-                <h3 className="font-bold text-gray-900 text-lg mt-2">{evento.titulo}</h3>
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-500 mt-2">
-                  <span className="flex items-center gap-1.5">
-                    <Clock size={13} />
-                    {formatoFecha(evento.fecha_inicio)} - {formatoHora(evento.fecha_inicio)}
+      {/* ── Vista Calendario ─────────────────────────────────────────────── */}
+      {vista === 'calendario' && (
+        <div className="space-y-3">
+          {loading ? (
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm h-96 animate-pulse" />
+          ) : (
+            <>
+              <CalendarioMensual
+                eventos={eventos}
+                mes={mesCalendario}
+                onMesChange={setMesCalendario}
+                renderEvento={renderEventoCalendario}
+              />
+              {/* Leyenda de tipos */}
+              <div className="flex flex-wrap items-center gap-3 px-1">
+                {Object.entries(TIPO_CONFIG).map(([key, cfg]) => (
+                  <span key={key} className="flex items-center gap-1.5 text-xs text-gray-500">
+                    <span className={`w-2.5 h-2.5 rounded-sm ${cfg.chip}`} />
+                    {cfg.label}
                   </span>
-                  {evento.ubicacion && (
-                    <span className="flex items-center gap-1.5">
-                      <MapPin size={13} />
-                      {evento.ubicacion}
-                    </span>
-                  )}
-                </div>
+                ))}
               </div>
-              <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex-shrink-0 mt-1">
-                {evento.categoria?.nombre ?? 'General'}
-              </span>
-            </div>
-            <div className="flex items-center justify-between gap-3 pt-4 border-t border-gray-100 flex-wrap">
-              <button
-                onClick={() => handleToggleExpand(evento.id_evento)}
-                disabled={evento.convocatorias.length === 0}
-                className="flex items-center gap-1.5 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Users size={15} className="text-gray-400" />
-                <span className="font-medium text-gray-600">
-                  {evento.convocatorias.length} convocado{evento.convocatorias.length !== 1 ? 's' : ''}
-                </span>
-                {evento.convocatorias.length > 0 && (isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />)}
-              </button>
-              <button
-                onClick={() => setSelectedEvent(evento)}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 transition-colors shadow-sm text-sm"
-              >
-                <ListPlus size={15} />
-                Armar Convocatoria
-              </button>
-            </div>
+            </>
+          )}
+        </div>
+      )}
 
-            {isExpanded && (
-              <div className="pt-4 border-t border-gray-100 space-y-2">
-                <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Lista de Convocados</h4>
-                {convocatoriasOrdenadas.length > 0 ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2">
-                    {convocatoriasOrdenadas.map(conv => (
-                      <div key={conv.id_usuario} className="flex items-center justify-between gap-2 p-2 rounded-lg bg-gray-50/50">
-                        <span className="font-medium text-sm text-gray-800">
-                          {conv.usuario?.apellido}, {conv.usuario?.nombre}
+      {/* ── Vista Lista ──────────────────────────────────────────────────── */}
+      {vista === 'lista' && (
+        <div className="space-y-3">
+          {loading && [...Array(3)].map((_, i) => (
+            <div key={i} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 h-24 animate-pulse" />
+          ))}
+
+          {!loading && eventos.length === 0 && (
+            <div className="text-center py-12 text-gray-500">
+              No hay eventos programados.
+            </div>
+          )}
+
+          {!loading && eventos.map(evento => {
+            const isExpanded = expandedEventId === evento.id_evento
+            const convocatoriasOrdenadas = [...evento.convocatorias].sort((a, b) =>
+              (a.usuario?.apellido ?? '').localeCompare(b.usuario?.apellido ?? '')
+            )
+            return (
+              <div key={evento.id_evento} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <TipoBadge tipo={evento.tipo} />
+                    <h3 className="font-bold text-gray-900 text-lg mt-2">{evento.titulo}</h3>
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-500 mt-2">
+                      <span className="flex items-center gap-1.5">
+                        <Clock size={13} />
+                        {formatoFecha(evento.fecha_inicio)} - {formatoHora(evento.fecha_inicio)}
+                      </span>
+                      {evento.ubicacion && (
+                        <span className="flex items-center gap-1.5">
+                          <MapPin size={13} />
+                          {evento.ubicacion}
                         </span>
-                        <EstadoConvocatoriaBadge estado={conv.estado} />
-                      </div>
-                    ))}
+                      )}
+                    </div>
                   </div>
-                ) : null}
-              </div>
-            )}
+                  <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex-shrink-0 mt-1">
+                    {evento.categoria?.nombre ?? 'General'}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between gap-3 pt-4 border-t border-gray-100 flex-wrap">
+                  {/* Izquierda: contador expandible */}
+                  <button
+                    onClick={() => handleToggleExpand(evento.id_evento)}
+                    disabled={evento.convocatorias.length === 0}
+                    className="flex items-center gap-1.5 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Users size={15} className="text-gray-400" />
+                    <span className="font-medium text-gray-600">
+                      {evento.convocatorias.length} convocado{evento.convocatorias.length !== 1 ? 's' : ''}
+                    </span>
+                    {evento.convocatorias.length > 0 && (isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />)}
+                  </button>
 
-          </div>)
-        })}
-      </div>
+                  {/* Derecha: acciones */}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {/* Exportar PDF — visible solo si hay convocados */}
+                    {evento.convocatorias.length > 0 && (
+                      <button
+                        onClick={() => exportar(evento)}
+                        disabled={exportando}
+                        title="Descargar lista de convocados en PDF"
+                        className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-200 bg-white text-gray-600 font-semibold hover:bg-gray-50 hover:border-gray-300 disabled:opacity-50 disabled:cursor-wait transition-colors text-sm"
+                      >
+                        {exportando
+                          ? <Loader2 size={14} className="animate-spin" />
+                          : <FileDown size={14} />
+                        }
+                        {exportando ? 'Generando…' : 'Exportar PDF'}
+                      </button>
+                    )}
+
+                    <button
+                      onClick={() => setSelectedEvent(evento)}
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 transition-colors shadow-sm text-sm"
+                    >
+                      <ListPlus size={15} />
+                      Armar Convocatoria
+                    </button>
+                  </div>
+                </div>
+
+                {isExpanded && (
+                  <div className="pt-4 border-t border-gray-100 space-y-2">
+                    <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Lista de Convocados</h4>
+                    {convocatoriasOrdenadas.length > 0 ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2">
+                        {convocatoriasOrdenadas.map(conv => (
+                          <div key={conv.id_usuario} className="flex items-center justify-between gap-2 p-2 rounded-lg bg-gray-50/50">
+                            <span className="font-medium text-sm text-gray-800">
+                              {conv.usuario?.apellido}, {conv.usuario?.nombre}
+                            </span>
+                            <EstadoConvocatoriaBadge estado={conv.estado} />
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }

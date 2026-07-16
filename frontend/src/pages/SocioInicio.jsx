@@ -178,13 +178,19 @@ export default function SocioInicio() {
   };
 
   // --- Datos Derivados ---
-  const { moroso: esMoroso } = calcularEstadoFinanciero(
+  // Bypass de beca: si es_becado está activo hoy, nunca es moroso
+  const hoyISO = new Date().toISOString().split('T')[0]
+  const becaActiva = perfil?.es_becado && (
+    !perfil?.becado_hasta || perfil.becado_hasta >= hoyISO
+  )
+  const { moroso: esMorosoReal } = calcularEstadoFinanciero(
     perfil?.mes_cubierto_hasta,
     perfil?.fecha_ingreso,
     // El perfil de /usuarios/me no siempre incluye dia_vencimiento_cuota.
     // Usamos el default (10) que es consistente con el resto de la app.
     perfil?.dia_vencimiento_cuota ?? 10
-  );
+  )
+  const esMoroso = becaActiva ? false : esMorosoReal;
   const nombreCorto = perfil?.nombre?.split(' ')[0] ?? 'Socio';
 
   if (loading) {
@@ -243,7 +249,7 @@ export default function SocioInicio() {
                            }`}>
             <span className="flex items-center gap-2">
               {esMoroso ? <AlertTriangle size={15} /> : <ShieldCheck size={15} />}
-              {esMoroso ? 'CUENTA CON DEUDA' : 'HABILITADO ✓'}
+              {esMoroso ? 'CUENTA CON DEUDA' : becaActiva ? 'SOCIO BECADO ✓' : 'HABILITADO ✓'}
             </span>
             <span className="font-normal text-xs opacity-70">{nombreCorto}</span>
           </div>

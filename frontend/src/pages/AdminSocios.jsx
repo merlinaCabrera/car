@@ -298,6 +298,8 @@ function SocioFormModal({ socio, onClose, onSave, catalogoRoles, token }) {
     direccion: socio?.direccion ?? '',
     fecha_nacimiento: socio?.fecha_nacimiento ?? '',
     password:  '',
+    es_becado:    false,
+    becado_hasta: '',
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [apiError,     setApiError]     = useState(null)
@@ -338,6 +340,8 @@ function SocioFormModal({ socio, onClose, onSave, catalogoRoles, token }) {
           direccion: data.direccion ?? '',
           fecha_nacimiento: data.fecha_nacimiento ? String(data.fecha_nacimiento).split('T')[0] : '',
           password: '', // El campo de contraseña siempre inicia vacío en modo edición
+          es_becado:    data.es_becado    ?? false,
+          becado_hasta: data.becado_hasta ? String(data.becado_hasta).split('T')[0] : '',
         }))
       } catch (err) {
         setErrorRoles(true)
@@ -405,10 +409,17 @@ function SocioFormModal({ socio, onClose, onSave, catalogoRoles, token }) {
     setApiError(null)
 
     const payload = isEditMode
-      ? Object.fromEntries(Object.entries(formData).filter(([, v]) => v !== ''))
+      ? Object.fromEntries(Object.entries(formData).filter(([k, v]) => {
+          // Siempre incluir booleanos y la clave es_becado/becado_hasta
+          if (k === 'es_becado') return true
+          if (k === 'becado_hasta') return true  // null/'' → backend lo acepta como null
+          return v !== ''
+        }))
       : { ...formData }
 
     if (isEditMode && !payload.password) delete payload.password
+    // Si becado_hasta está vacío, mandarlo como null (beca indefinida)
+    if (payload.becado_hasta === '') payload.becado_hasta = null
 
     try {
       await onSave(payload, socio?.id_usuario ?? null, isEditMode ? selectedRoles : null)
@@ -532,6 +543,51 @@ function SocioFormModal({ socio, onClose, onSave, catalogoRoles, token }) {
               </button>
               {formErrors.password && <p className="text-red-600 text-xs mt-1">{formErrors.password}</p>}
             </div>
+
+            {/* ── Sección Beca (solo en modo edición) ─────────────────────── */}
+            {isEditMode && (
+              <div className="space-y-3 p-4 rounded-xl border-2 border-teal-200 bg-teal-50">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-bold text-teal-900">Socio Becado</p>
+                    <p className="text-xs text-teal-700 mt-0.5">
+                      El socio no paga cuota y nunca aparece como moroso mientras la beca esté activa.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setFormData(prev => ({
+                      ...prev,
+                      es_becado: !prev.es_becado,
+                      becado_hasta: !prev.es_becado ? prev.becado_hasta : '',
+                    }))}
+                    className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none ${
+                      formData.es_becado ? 'bg-teal-600' : 'bg-gray-300'
+                    }`}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow-lg transform transition duration-200 ${
+                        formData.es_becado ? 'translate-x-5' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                {formData.es_becado && (
+                  <div>
+                    <label className="text-xs font-semibold text-teal-800 uppercase tracking-wider">
+                      Vencimiento de beca <span className="font-normal normal-case text-teal-600">(opcional — dejar vacío si es indefinida)</span>
+                    </label>
+                    <input
+                      type="date"
+                      value={formData.becado_hasta}
+                      onChange={e => setFormData(prev => ({ ...prev, becado_hasta: e.target.value }))}
+                      className="form-input mt-1.5 border-teal-300 focus:ring-teal-500 focus:border-teal-500"
+                    />
+                  </div>
+                )}
+              </div>
+            )}
 
             {isEditMode && (
               <SeccionRoles
@@ -1118,11 +1174,15 @@ export default function AdminSocios() {
       {!loading && (
         <div className="md:hidden bg-white rounded-2xl shadow-sm border border-gray-100 divide-y divide-gray-50">
           {filteredSocios.map(socio => {
-            const { moroso: socioMoroso, mesesAdeudados: socioMesesAdeudados } = calcularEstadoFinanciero(
+            const hoyISO = new Date().toISOString().split('T')[0]
+            const socioBecaActiva = socio.es_becado && (!socio.becado_hasta || socio.becado_hasta >= hoyISO)
+            const { moroso: socioMorosoReal, mesesAdeudados: socioMesesAdeudadosReal } = calcularEstadoFinanciero(
               socio.mes_cubierto_hasta,
               socio.fecha_ingreso,
               diaVencimiento
             )
+            const socioMoroso = socioBecaActiva ? false : socioMorosoReal
+            const socioMesesAdeudados = socioBecaActiva ? 0 : socioMesesAdeudadosReal
             const socioPrecioFinal = calcularPrecioFinal(precioCuota, socio.fecha_nacimiento)
             const socioDeudaPesos = socioMesesAdeudados * socioPrecioFinal
 
@@ -1130,7 +1190,14 @@ export default function AdminSocios() {
               <div key={socio.id_usuario} className="p-4 space-y-3">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <div className="font-medium text-gray-900 truncate">{socio.apellido}, {socio.nombre}</div>
+                    <div className="font-medium text-gray-900 flex items-center gap-1.5 flex-wrap">
+                      {socio.apellido}, {socio.nombre}
+                      {socio.es_becado && (
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-teal-100 text-teal-700 border border-teal-200 flex-shrink-0">
+                          🎓 Becado
+                        </span>
+                      )}
+                    </div>
                     <div className="text-xs text-gray-500 mt-0.5 font-mono">DNI {socio.dni}</div>
                     {socio.email && <div className="text-xs text-gray-400 mt-0.5 truncate">{socio.email}</div>}
                   </div>
@@ -1230,18 +1297,29 @@ export default function AdminSocios() {
             ))}
 
             {!loading && filteredSocios.map(socio => {
-              const { moroso: socioMoroso, mesesAdeudados: socioMesesAdeudados } = calcularEstadoFinanciero(
+              const hoyISO2 = new Date().toISOString().split('T')[0]
+              const socioBecaActiva2 = socio.es_becado && (!socio.becado_hasta || socio.becado_hasta >= hoyISO2)
+              const { moroso: socioMorosoReal2, mesesAdeudados: socioMesesAdeudadosReal2 } = calcularEstadoFinanciero(
                 socio.mes_cubierto_hasta,
                 socio.fecha_ingreso,
                 diaVencimiento
               )
+              const socioMoroso = socioBecaActiva2 ? false : socioMorosoReal2
+              const socioMesesAdeudados = socioBecaActiva2 ? 0 : socioMesesAdeudadosReal2
               const socioPrecioFinal = calcularPrecioFinal(precioCuota, socio.fecha_nacimiento)
               const socioDeudaPesos = socioMesesAdeudados * socioPrecioFinal
 
               return (
               <tr key={socio.id_usuario} className="hover:bg-gray-50/70 transition-colors">
                 <td className="px-6 py-4">
-                  <div className="font-medium text-gray-900">{socio.apellido}, {socio.nombre}</div>
+                  <div className="font-medium text-gray-900 flex items-center gap-2 flex-wrap">
+                    {socio.apellido}, {socio.nombre}
+                    {socio.es_becado && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-teal-100 text-teal-700 border border-teal-200 flex-shrink-0">
+                        🎓 Becado
+                      </span>
+                    )}
+                  </div>
                   {socio.email && <div className="text-xs text-gray-400 mt-0.5">{socio.email}</div>}
                 </td>
                 <td className="px-6 py-4 font-mono text-sm text-gray-600">{socio.dni}</td>

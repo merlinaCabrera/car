@@ -265,6 +265,24 @@ class Usuario(Base):
     is_directivo: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default=text("false"),
     )
+    es_becado: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false"),
+        comment=(
+            "TRUE = el socio está becado. El motor financiero ignora mes_cubierto_hasta "
+            "y devuelve deuda = 0 mientras la beca esté activa. "
+            "La deuda real queda congelada en mes_cubierto_hasta: cuando la beca "
+            "expire, el sistema retoma el estado financiero desde donde estaba."
+        ),
+    )
+    becado_hasta: Mapped[Optional[date]] = mapped_column(
+        Date,
+        nullable=True,
+        comment=(
+            "NULL = beca indefinida (no expira). "
+            "Si tiene fecha: la beca es válida hasta ese día inclusive. "
+            "Condición activa: es_becado IS TRUE AND (becado_hasta IS NULL OR becado_hasta >= HOY)."
+        ),
+    )
 
     # Full-text search — gestionado por trigger trg_usuarios_search
     nombre_completo_search: Mapped[Optional[str]] = mapped_column(

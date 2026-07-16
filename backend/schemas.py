@@ -930,6 +930,20 @@ class UsuarioCategoriaCreate(BaseModel):
     es_capitan: bool = False
 
 
+class CapitanUpdate(BaseModel):
+    """
+    Payload del PATCH /categorias/{id_categoria}/jugadores/{id_usuario}.
+    Permite alternar la capitanía de un jugador en una temporada específica.
+    """
+    temporada: str = Field(
+        max_length=10,
+        description="Año de la temporada a modificar. Ej: '2026'.",
+    )
+    es_capitan: bool = Field(
+        description="True para nombrar capitán, False para quitar la capitanía.",
+    )
+
+
 class JugadorBusquedaResponse(BaseModel):
     """Resultado del buscador de jugadores para excepciones manuales (alta/baja de plantel)."""
     model_config = ConfigDict(from_attributes=True)
@@ -943,6 +957,13 @@ class JugadorBusquedaResponse(BaseModel):
 
 
 class UsuarioCategoriaResponse(BaseModel):
+    """
+    Respuesta de un jugador inscripto en un plantel.
+
+    - `es_capitan`: bool — indica si es el capitán de la categoría en esa temporada.
+    - `usuario.fecha_nacimiento`: date — el frontend extrae el año con
+      new Date(usuario.fecha_nacimiento).getFullYear() para mostrar la columna "Año".
+    """
     model_config = ConfigDict(from_attributes=True)
 
     id_usuario: int
@@ -973,6 +994,36 @@ class AutocompletarPlantelResponse(BaseModel):
             "los que ya estaban inscriptos en esa temporada)."
         )
     )
+
+
+ESTADOS_CONVOCATORIA = ("citado", "confirmado", "rechazado")
+
+
+class ConvocatoriaBase(BaseModel):
+    id_evento: int
+    id_usuario: int
+
+
+class ConvocatoriaCreate(ConvocatoriaBase):
+    pass
+
+
+class ConvocatoriaUpdate(BaseModel):
+    estado: str = Field(description=f"Nuevo estado de la convocatoria. Opciones: {ESTADOS_CONVOCATORIA}")
+
+    @field_validator("estado")
+    @classmethod
+    def estado_valido(cls, v: str) -> str:
+        if v not in ESTADOS_CONVOCATORIA:
+            raise ValueError(f"Estado inválido. Opciones: {ESTADOS_CONVOCATORIA}")
+        return v
+
+
+class ConvocatoriaResponse(ConvocatoriaBase):
+    model_config = ConfigDict(from_attributes=True)
+
+    estado: str
+    usuario: Optional[JugadorBusquedaResponse] = None
 
 
 class EventoBase(BaseModel):
@@ -1019,6 +1070,7 @@ class EventoResponse(EventoBase):
     estado: str
     creado_por: Optional[int] = None
     creado_at: datetime
+    convocatorias: List[ConvocatoriaResponse] = []
 
 
 class AsistenciaCreate(BaseModel):

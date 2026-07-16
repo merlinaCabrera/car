@@ -20,8 +20,8 @@
     "semantic_hash": "470cfd3ee10fbff840b377e769485f3e"
   },
   "frontend/src/App.jsx": {
-    "mtime": 1783226186.7446773,
-    "ast_hash": "3c135571246a7067b57d10b0b0f74ac3",
+    "mtime": 1784221491.8402588,
+    "ast_hash": "71df9d6b7c02277e492d08fad901643b",
     "semantic_hash": ""
   },
   "frontend/src/components/landing/Calendario.jsx": {
@@ -60,8 +60,8 @@
     "semantic_hash": ""
   },
   "frontend/src/layouts/MainLayout.jsx": {
-    "mtime": 1783470657.0024087,
-    "ast_hash": "d7108e1a046df4b738df19c7fb241e8a",
+    "mtime": 1784222470.337098,
+    "ast_hash": "def33c62fc8d1bb6f0be65730ff81058",
     "semantic_hash": ""
   },
   "frontend/src/main.jsx": {
@@ -90,8 +90,8 @@
     "semantic_hash": ""
   },
   "frontend/src/pages/JugadorCalendario.jsx": {
-    "mtime": 1783226095.8490486,
-    "ast_hash": "4eeaa27d651f76820e1394c62fcb7a8f",
+    "mtime": 1784221263.1903143,
+    "ast_hash": "6bbc67ca3bbe175eff07a68545059f00",
     "semantic_hash": ""
   },
   "frontend/src/pages/Landing.jsx": {
@@ -160,8 +160,8 @@
     "semantic_hash": ""
   },
   "backend/models.py": {
-    "mtime": 1784178588.0269964,
-    "ast_hash": "907e302fd2976a6e58986abb033f22b6",
+    "mtime": 1784217920.6446636,
+    "ast_hash": "76aefa604f72850e68943f46b4537fbb",
     "semantic_hash": ""
   },
   "backend/requirements.txt": {
@@ -195,8 +195,8 @@
     "semantic_hash": ""
   },
   "backend/schemas.py": {
-    "mtime": 1784178601.0775793,
-    "ast_hash": "54049bec305511f987a989eaccf13352",
+    "mtime": 1784217923.1006474,
+    "ast_hash": "26e6eb5facbdcb1243b639f870076423",
     "semantic_hash": ""
   },
   "init-db-backup/schema.sql": {
@@ -485,8 +485,8 @@
     "semantic_hash": ""
   },
   "backend/routers/deportivo.py": {
-    "mtime": 1783275772.1188977,
-    "ast_hash": "4004316edf6fa9da57df6e1ddc7385a0",
+    "mtime": 1784223662.1717994,
+    "ast_hash": "0f4e862bd1466262ca8880a1f772589b",
     "semantic_hash": ""
   },
   "backend/routers/notificaciones.py": {
@@ -520,8 +520,8 @@
     "semantic_hash": ""
   },
   "frontend/src/pages/TecnicoPlanteles.jsx": {
-    "mtime": 1783226068.1634538,
-    "ast_hash": "c63b3de55c970cf67f478728d289b0f8",
+    "mtime": 1784216443.3935494,
+    "ast_hash": "0a87bc2cc2a1f704ae73c3b0107ec5c4",
     "semantic_hash": ""
   },
   "backend/uploads/comprobantes/125846d0f1494ae68777a6405e69e61f.png": {
@@ -587,6 +587,11 @@
   "backend/uploads/comprobantes/77d870986609465d86eb3387706cf3b4.png": {
     "mtime": 1783473320.6711848,
     "ast_hash": "c4082a11824f8fb86b8432fffb0dbf1c",
+    "semantic_hash": ""
+  },
+  "frontend/src/pages/TecnicoEventos.jsx": {
+    "mtime": 1784223954.6909585,
+    "ast_hash": "5fc8024c634166437641cf79cf3382e0",
     "semantic_hash": ""
   }
 }

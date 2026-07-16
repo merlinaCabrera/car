@@ -2,24 +2,34 @@
 /**
  * Gestión de Planteles — ruta `/gestion-planteles`.
  *
- * Flujo: el Personal Técnico (y el Admin General) ven sus categorías
- * deportivas como tarjetas, crean nuevas desde un modal (incluyendo los
- * cortes de edad para el autocompletado), y al entrar a una ven el plantel
- * de la temporada seleccionada con:
+ * Flujo: el Personal Técnico y el Admin General ven sus categorías
+ * deportivas como tarjetas y, al entrar a una, ven el plantel de la
+ * temporada seleccionada con:
  *   - Un buscador de socios con rol 'jugador' para inscribir excepciones manuales.
+ *   - Una tabla de jugadores donde se puede tildar/destildar la capitanía
+ *     y ver el año de nacimiento de cada uno.
  *   - El botón "Autocompletar" (visible SOLO para admin_general) que inscribe
  *     masivamente a todos los jugadores cuya fecha_nacimiento entra en el
  *     corte de la categoría.
  *
+ * Reparto de permisos (alineado con dependencies.require_roles del backend):
+ *   - "Nueva Categoría" y "Editar Categoría" (nombre, estado, cortes de edad)
+ *     son EXCLUSIVOS de admin_general — el Personal Técnico solo administra
+ *     jugadores dentro de las categorías que el admin ya creó.
+ *   - Inscribir/dar de baja jugadores y tildar capitanes están disponibles
+ *     para ambos roles (el backend acepta "tecnico" y "admin_general" por
+ *     igual en esos endpoints).
+ *
  * Backend consumido:
  *   GET    /deportivo/categorias?incluir_inactivas=true
- *   POST   /deportivo/categorias
- *   PATCH  /deportivo/categorias/{id}                (cortes de edad, nombre, etc.)
+ *   POST   /deportivo/categorias                      (solo admin_general)
+ *   PATCH  /deportivo/categorias/{id}                  (solo admin_general — cortes de edad, nombre, etc.)
  *   GET    /deportivo/categorias/{id}/jugadores?temporada=YYYY
  *   POST   /deportivo/categorias/{id}/jugadores
  *   DELETE /deportivo/categorias/{id}/jugadores/{id_usuario}?temporada=YYYY
- *   POST   /deportivo/categorias/{id}/autocompletar   (solo admin_general)
- *   GET    /deportivo/jugadores/buscar?q=...          (buscador de excepciones)
+ *   PATCH  /deportivo/categorias/{id}/jugadores/{id_usuario}  (tildar/destildar capitán)
+ *   POST   /deportivo/categorias/{id}/autocompletar    (solo admin_general)
+ *   GET    /deportivo/jugadores/buscar?q=...           (buscador de excepciones)
  */
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
@@ -577,6 +587,7 @@ function VistaPlantel({ categoria, onVolver, onCategoriaActualizada }) {
   const [modalAutocompletarAbierto, setModalAutocompletarAbierto] = useState(false)
   const [modalEditarAbierto, setModalEditarAbierto] = useState(false)
   const [resultadoAutocompletar, setResultadoAutocompletar] = useState(null)
+  const [capitanEnCurso, setCapitanEnCurso] = useState(null) // id_usuario cuya capitanía se está actualizando
 
   const tieneCortesConfigurados = Boolean(categoria.fecha_corte_min && categoria.fecha_corte_max)
 
@@ -650,6 +661,32 @@ function VistaPlantel({ categoria, onVolver, onCategoriaActualizada }) {
     return actualizada
   }
 
+  const handleToggleCapitan = async (idUsuario, esCapitanActual) => {
+    setCapitanEnCurso(idUsuario)
+    try {
+      const res = await fetch(
+        `${API}/deportivo/categorias/${categoria.id_categoria}/jugadores/${idUsuario}`,
+        {
+          method: 'PATCH',
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ temporada, es_capitan: !esCapitanActual }),
+        }
+      )
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.detail ?? 'Error al actualizar la capitanía.')
+      }
+      const actualizado = await res.json()
+      setJugadores(prev =>
+        prev.map(j => (j.id_usuario === idUsuario ? { ...j, es_capitan: actualizado.es_capitan } : j))
+      )
+    } catch (err) {
+      window.alert(`Error: ${err.message}`)
+    } finally {
+      setCapitanEnCurso(null)
+    }
+  }
+
   return (
     <div className="space-y-6">
       {modalInscribirAbierto && (
@@ -668,7 +705,7 @@ function VistaPlantel({ categoria, onVolver, onCategoriaActualizada }) {
           onConfirm={handleAutocompletar}
         />
       )}
-      {modalEditarAbierto && (
+      {esAdminGeneral && modalEditarAbierto && (
         <EditarCategoriaModal
           categoria={categoria}
           onClose={() => setModalEditarAbierto(false)}
@@ -683,13 +720,15 @@ function VistaPlantel({ categoria, onVolver, onCategoriaActualizada }) {
         <div className="flex-1 min-w-[160px]">
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
             {categoria.nombre}
-            <button
-              onClick={() => setModalEditarAbierto(true)}
-              className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
-              title="Editar categoría"
-            >
-              <Pencil size={15} />
-            </button>
+            {esAdminGeneral && (
+              <button
+                onClick={() => setModalEditarAbierto(true)}
+                className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+                title="Editar categoría"
+              >
+                <Pencil size={15} />
+              </button>
+            )}
           </h1>
           <p className="text-sm text-gray-500">Plantel · Temporada {temporada}</p>
         </div>
@@ -775,7 +814,7 @@ function VistaPlantel({ categoria, onVolver, onCategoriaActualizada }) {
         <table className="min-w-full divide-y divide-gray-100">
           <thead className="bg-gray-50">
             <tr>
-              {['Jugador', 'DNI', 'Capitán', 'Acciones'].map(h => (
+              {['Jugador', 'DNI', 'Año', 'Capitán', 'Acciones'].map(h => (
                 <th key={h} className="px-6 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">
                   {h}
                 </th>
@@ -785,7 +824,7 @@ function VistaPlantel({ categoria, onVolver, onCategoriaActualizada }) {
           <tbody className="divide-y divide-gray-50">
             {loading && [...Array(4)].map((_, i) => (
               <tr key={i} className="animate-pulse">
-                <td colSpan="4" className="px-6 py-4"><div className="h-4 bg-gray-200 rounded-md" /></td>
+                <td colSpan="5" className="px-6 py-4"><div className="h-4 bg-gray-200 rounded-md" /></td>
               </tr>
             ))}
 
@@ -795,14 +834,29 @@ function VistaPlantel({ categoria, onVolver, onCategoriaActualizada }) {
                   {j.usuario ? `${j.usuario.apellido}, ${j.usuario.nombre}` : `Usuario #${j.id_usuario}`}
                 </td>
                 <td className="px-6 py-4 text-sm font-mono text-gray-600">{j.usuario?.dni ?? '—'}</td>
+                <td className="px-6 py-4 text-sm text-gray-600">
+                  {j.usuario?.fecha_nacimiento
+                    ? new Date(j.usuario.fecha_nacimiento).getFullYear()
+                    : '—'}
+                </td>
                 <td className="px-6 py-4">
-                  {j.es_capitan ? (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
-                      <Star size={11} /> Capitán
-                    </span>
-                  ) : (
-                    <span className="text-gray-400 text-sm">—</span>
-                  )}
+                  <button
+                    onClick={() => handleToggleCapitan(j.id_usuario, j.es_capitan)}
+                    disabled={capitanEnCurso === j.id_usuario}
+                    title={j.es_capitan ? 'Quitar capitanía' : 'Nombrar capitán'}
+                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-colors disabled:opacity-50 ${
+                      j.es_capitan
+                        ? 'bg-amber-100 text-amber-800 hover:bg-amber-200'
+                        : 'bg-gray-100 text-gray-400 hover:bg-gray-200 hover:text-gray-600'
+                    }`}
+                  >
+                    {capitanEnCurso === j.id_usuario ? (
+                      <Loader2 size={11} className="animate-spin" />
+                    ) : (
+                      <Star size={11} className={j.es_capitan ? 'fill-amber-500 text-amber-500' : ''} />
+                    )}
+                    {j.es_capitan ? 'Capitán' : 'Nombrar'}
+                  </button>
                 </td>
                 <td className="px-6 py-4 text-right">
                   <button
@@ -818,7 +872,7 @@ function VistaPlantel({ categoria, onVolver, onCategoriaActualizada }) {
 
             {!loading && jugadores.length === 0 && (
               <tr>
-                <td colSpan="4" className="text-center py-12 text-gray-500">
+                <td colSpan="5" className="text-center py-12 text-gray-500">
                   Todavía no hay jugadores inscriptos en esta categoría para la temporada {temporada}.
                 </td>
               </tr>
@@ -834,6 +888,8 @@ function VistaPlantel({ categoria, onVolver, onCategoriaActualizada }) {
 
 export default function TecnicoPlanteles() {
   const { token } = useAuth()
+  const userRoles = useRolesDeUsuario()
+  const esAdminGeneral = userRoles.includes('admin_general')
 
   const [categorias, setCategorias] = useState([])
   const [loading, setLoading] = useState(true)
@@ -904,7 +960,7 @@ export default function TecnicoPlanteles() {
 
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-6">
-      {modalCategoriaAbierto && (
+      {esAdminGeneral && modalCategoriaAbierto && (
         <NuevaCategoriaModal onClose={() => setModalCategoriaAbierto(false)} onSave={handleCrearCategoria} />
       )}
 
@@ -912,18 +968,23 @@ export default function TecnicoPlanteles() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
             <Shield size={24} className="text-gray-500" />
-            Gestión de Planteles
+            {esAdminGeneral ? 'Planteles' : 'Gestión de Planteles'}
           </h1>
           <p className="text-sm text-gray-500 mt-1">Categorías deportivas, jugadores y capitanes.</p>
         </div>
         <div className="flex items-center gap-3 flex-shrink-0 mt-1">
-          <button
-            onClick={() => setModalCategoriaAbierto(true)}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 transition-colors shadow-sm"
-          >
-            <PlusCircle size={16} />
-            Nueva Categoría
-          </button>
+          {/* Solo el Admin General crea/elimina categorías y edita sus años rango.
+              El Personal Técnico solo administra jugadores dentro de las
+              categorías que el admin ya dio de alta. */}
+          {esAdminGeneral && (
+            <button
+              onClick={() => setModalCategoriaAbierto(true)}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 transition-colors shadow-sm"
+            >
+              <PlusCircle size={16} />
+              Nueva Categoría
+            </button>
+          )}
           <button onClick={fetchCategorias} disabled={loading} className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 disabled:opacity-40 transition-colors" title="Actualizar">
             <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
           </button>

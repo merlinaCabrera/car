@@ -57,12 +57,13 @@ Decisiones técnicas:
 from __future__ import annotations
 
 from datetime import date, datetime, timezone
-from typing import List, Optional
+from typing import List, Optional, Set
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import func
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session, joinedload
+from pydantic import BaseModel, Field
 
 import models
 import schemas
@@ -74,8 +75,8 @@ router = APIRouter(
     tags=["Deportivo — Categorías, Eventos y Asistencias"],
 )
 
-_ROLES_TECNICO = ("tecnico", "admin_general")
-_ROLES_PUERTA = ("admin_temporal", "tecnico", "admin_general", "personal_administrativo")
+_ROLES_TECNICO = ("personal_tecnico", "admin_general")
+_ROLES_PUERTA = ("admin_temporal", "personal_tecnico", "admin_general", "personal_administrativo")
 _ROLES_JUGADOR = ("socio", "jugador")
 _ROLES_AUTOCOMPLETAR = ("admin_general",)  # Solo el Admin General ve y usa este botón.
 
@@ -320,7 +321,12 @@ def listar_jugadores_categoria(
         description="Año de temporada. Si se omite, usa la temporada actual.",
     ),
     db: Session = Depends(get_db),
-    _tecnico: models.Usuario = Depends(require_roles(*_ROLES_TECNICO)),
+    # NOTA: se usa nombre explícito (sin guión bajo) para garantizar que FastAPI
+    # resuelva la dependencia require_roles correctamente en todos los entornos.
+    # El 403 previo ocurría porque el prefijo /deportivo no estaba registrado en
+    # el router principal o el token JWT no incluía el rol "tecnico" exactamente
+    # así (verificar tabla `roles` y la función require_roles en dependencies.py).
+    tecnico: models.Usuario = Depends(require_roles(*_ROLES_TECNICO)),
 ) -> List[models.UsuarioCategoria]:
     _obtener_categoria_o_404(db, id_categoria)
     temporada_filtro = temporada or _temporada_actual()
@@ -484,6 +490,71 @@ def eliminar_jugador(
     return {"mensaje": f"Socio {id_usuario} dado de baja del plantel."}
 
 
+@router.patch(
+    "/categorias/{id_categoria}/jugadores/{id_usuario}",
+    response_model=schemas.UsuarioCategoriaResponse,
+    summary="Alternar la capitanía de un jugador en una temporada",
+)
+def actualizar_capitan(
+    id_categoria: int,
+    id_usuario: int,
+    payload: schemas.CapitanUpdate,
+    request: Request,
+    db: Session = Depends(get_db),
+    tecnico: models.Usuario = Depends(require_roles(*_ROLES_TECNICO)),
+) -> models.UsuarioCategoria:
+    """
+    Recibe {"temporada": "2026", "es_capitan": true/false} y actualiza
+    el campo es_capitan de la inscripción correspondiente.
+
+    Solo un técnico o admin_general puede ejecutar esta acción.
+    """
+    inscripcion = (
+        db.query(models.UsuarioCategoria)
+        .options(
+            joinedload(models.UsuarioCategoria.usuario),
+            joinedload(models.UsuarioCategoria.categoria),
+        )
+        .filter(
+            models.UsuarioCategoria.id_categoria == id_categoria,
+            models.UsuarioCategoria.id_usuario == id_usuario,
+            models.UsuarioCategoria.temporada == payload.temporada,
+        )
+        .first()
+    )
+    if inscripcion is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=(
+                f"El socio {id_usuario} no está inscripto en la categoría "
+                f"{id_categoria} para la temporada {payload.temporada}."
+            ),
+        )
+
+    antes_capitan = inscripcion.es_capitan
+    inscripcion.es_capitan = payload.es_capitan
+
+    _registrar_audit(
+        db=db,
+        actor_id=tecnico.id_usuario,
+        accion="ACTUALIZAR_CAPITAN",
+        tabla_afectada="usuarios_categorias",
+        registro_id=id_usuario,
+        detalle={
+            "id_categoria": id_categoria,
+            "id_usuario": id_usuario,
+            "temporada": payload.temporada,
+            "antes": {"es_capitan": antes_capitan},
+            "despues": {"es_capitan": payload.es_capitan},
+        },
+        ip=_extraer_ip(request),
+    )
+    db.commit()
+    db.refresh(inscripcion)
+
+    return inscripcion
+
+
 # ═════════════════════════════════════════════════════════════════════════════
 # BÚSQUEDA DE JUGADORES (excepciones manuales)
 # ═════════════════════════════════════════════════════════════════════════════
@@ -638,7 +709,10 @@ def listar_eventos(
             detail=f"Estado inválido. Opciones: {schemas.ESTADOS_EVENTO}",
         )
 
-    query = db.query(models.Evento).options(joinedload(models.Evento.categoria))
+    query = db.query(models.Evento).options(
+        joinedload(models.Evento.categoria),
+        joinedload(models.Evento.convocatorias).joinedload(models.Convocatoria.usuario),
+    )
 
     if id_categoria is not None:
         query = query.filter(models.Evento.id_categoria == id_categoria)
@@ -825,6 +899,161 @@ def editar_evento(
     db.refresh(evento)
 
     return evento
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# CONVOCATORIAS
+# ═════════════════════════════════════════════════════════════════════════════
+
+class ConvocatoriaMasivaPayload(BaseModel):
+    ids_usuarios: List[int] = Field(
+        min_length=1, description="Lista de IDs de usuarios a convocar."
+    )
+
+
+@router.post(
+    "/eventos/{id_evento}/convocar",
+    response_model=List[schemas.ConvocatoriaResponse],
+    status_code=status.HTTP_201_CREATED,
+    summary="Convocar jugadores a un evento (reemplaza la lista anterior)",
+)
+def convocar_jugadores_evento(
+    id_evento: int,
+    payload: ConvocatoriaMasivaPayload,
+    request: Request,
+    db: Session = Depends(get_db),
+    tecnico: models.Usuario = Depends(require_roles(*_ROLES_TECNICO)),
+) -> List[models.Convocatoria]:
+    evento = _obtener_evento_o_404(db, id_evento)
+    if evento.estado not in ("programado",):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Solo se pueden gestionar convocatorias de eventos en estado 'programado'. Estado actual: '{evento.estado}'.",
+        )
+
+    # Validar que todos los usuarios existan, estén activos y sean jugadores
+    ids_a_validar = set(payload.ids_usuarios)
+    usuarios_validos = db.query(models.Usuario.id_usuario).filter(
+        models.Usuario.id_usuario.in_(ids_a_validar),
+        models.Usuario.fecha_baja.is_(None),
+        models.Usuario.roles_asignados.any(
+            models.UsuarioRol.rol.has(nombre="jugador")
+        )
+    ).all()
+
+    ids_encontrados = {u.id_usuario for u in usuarios_validos}
+    ids_invalidos = ids_a_validar - ids_encontrados
+    if ids_invalidos:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Los siguientes IDs de usuario son inválidos, no son jugadores o están inactivos: {sorted(list(ids_invalidos))}",
+        )
+
+    # Borrar convocatorias anteriores para este evento
+    db.query(models.Convocatoria).filter(
+        models.Convocatoria.id_evento == id_evento
+    ).delete(synchronize_session=False)
+
+    # Crear las nuevas convocatorias (estado por defecto: 'citado')
+    nuevas_convocatorias = [
+        models.Convocatoria(id_evento=id_evento, id_usuario=id_usr)
+        for id_usr in payload.ids_usuarios
+    ]
+    if nuevas_convocatorias:
+        db.add_all(nuevas_convocatorias)
+
+    _registrar_audit(
+        db=db,
+        actor_id=tecnico.id_usuario,
+        accion="CONVOCAR_JUGADORES",
+        tabla_afectada="convocatorias",
+        registro_id=id_evento,
+        detalle={
+            "id_evento": id_evento,
+            "titulo_evento": evento.titulo,
+            "total_convocados": len(payload.ids_usuarios),
+            "ids_convocados": payload.ids_usuarios,
+        },
+        ip=_extraer_ip(request),
+    )
+
+    db.commit()
+
+    # Devolver la lista de convocatorias recién creadas, con los datos del jugador
+    if not nuevas_convocatorias:
+        return []
+
+    return (
+        db.query(models.Convocatoria)
+        .options(joinedload(models.Convocatoria.usuario))
+        .filter(
+            models.Convocatoria.id_evento == id_evento,
+            models.Convocatoria.id_usuario.in_(payload.ids_usuarios),
+        )
+        .all()
+    )
+
+
+@router.patch(
+    "/mis-eventos/{id_evento}/confirmar",
+    response_model=schemas.ConvocatoriaResponse,
+    summary="Confirmar o rechazar asistencia a una convocatoria",
+)
+def confirmar_asistencia_convocatoria(
+    id_evento: int,
+    payload: schemas.ConvocatoriaUpdate,
+    request: Request,
+    db: Session = Depends(get_db),
+    jugador: models.Usuario = Depends(require_roles(*_ROLES_JUGADOR)),
+) -> models.Convocatoria:
+    # Validar que el evento exista y esté en un estado válido para confirmar
+    evento = _obtener_evento_o_404(db, id_evento)
+    if evento.estado not in ("programado", "en_curso"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"No se puede confirmar asistencia a un evento '{evento.estado}'.",
+        )
+
+    # Buscar la convocatoria específica para el jugador y el evento
+    convocatoria = (
+        db.query(models.Convocatoria)
+        .options(joinedload(models.Convocatoria.usuario))
+        .filter(
+            models.Convocatoria.id_evento == id_evento,
+            models.Convocatoria.id_usuario == jugador.id_usuario,
+        )
+        .first()
+    )
+
+    if convocatoria is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No estás convocado a este evento.",
+        )
+
+    # El schema ConvocatoriaUpdate ya valida que el estado sea 'confirmado' o 'rechazado'
+    estado_anterior = convocatoria.estado
+    convocatoria.estado = payload.estado
+
+    _registrar_audit(
+        db=db,
+        actor_id=jugador.id_usuario,
+        accion="CONFIRMAR_CONVOCATORIA",
+        tabla_afectada="convocatorias",
+        registro_id=id_evento,
+        detalle={
+            "id_evento": id_evento,
+            "id_usuario": jugador.id_usuario,
+            "estado_anterior": estado_anterior,
+            "estado_nuevo": payload.estado,
+        },
+        ip=_extraer_ip(request),
+    )
+
+    db.commit()
+    db.refresh(convocatoria)
+
+    return convocatoria
 
 
 # ═════════════════════════════════════════════════════════════════════════════

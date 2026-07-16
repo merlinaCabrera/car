@@ -22,6 +22,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Lock,
+  Gift,
 } from 'lucide-react'
 
 const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
@@ -144,10 +145,8 @@ function calcularEstadoFinanciero(mesCubiertoHastaISO, fechaIngresoISO, diaVenci
  *   3. adeudado  — fechaRep <= hoy  (mes ya venció sin pagar)
  *   4. futuro    — fechaRep > hoy   (mes por venir, sin cobertura)
  */
-function estadoDeMes(anio, mes1based, diaVencimiento, fechaIngreso, mesCubiertoHasta) {
+function estadoDeMes(anio, mes1based, diaVencimiento, fechaIngreso, mesCubiertoHasta, becadoHasta = null) {
   // Clamp del día al último día del mes para robustez
-  // (diaVencimiento ≤ 28 por constraint del backend, así que en la práctica
-  //  no se necesita clamp, pero lo dejamos defensive)
   const ultimoDia = new Date(anio, mes1based, 0).getDate()
   const dia = Math.min(diaVencimiento, ultimoDia)
   const fechaRep = fechaLocal(anio, mes1based, dia)
@@ -161,10 +160,21 @@ function estadoDeMes(anio, mes1based, diaVencimiento, fechaIngreso, mesCubiertoH
   // Regla 2: pagado
   if (mesCubiertoHasta && fechaRep < mesCubiertoHasta) return 'pagado'
 
-  // Regla 3: adeudado (venció sin pagar)
+  // Regla 3: becado
+  // Si hay beca activa, los meses desde mes_cubierto_hasta hasta becado_hasta
+  // (o hasta el futuro si beca indefinida) se marcan como 'becado'.
+  if (becadoHasta !== null) {
+    // becadoHasta = Date o 'indefinida'
+    const esBecado = becadoHasta === 'indefinida' ? fechaRep >= hoy : fechaRep <= becadoHasta
+    if (esBecado && fechaRep >= hoy) return 'becado'
+    // Meses pasados sin pago pero cubiertos por beca activa: también becado
+    if (esBecado && fechaRep <= hoy) return 'becado'
+  }
+
+  // Regla 4: adeudado (venció sin pagar y sin beca)
   if (fechaRep <= hoy) return 'adeudado'
 
-  // Regla 4: futuro
+  // Regla 5: futuro
   return 'futuro'
 }
 
@@ -199,6 +209,13 @@ const ESTADO_CONFIG = {
     texto: 'Futuro',
     textoClase: 'text-blue-400',
   },
+  becado: {
+    card: 'bg-teal-50 border-teal-300',
+    label: 'text-teal-900',
+    dot: 'bg-teal-400',
+    texto: 'Becado',
+    textoClase: 'text-teal-700',
+  },
 }
 
 function CeldaMes({ nombreMes, estado, esHoy }) {
@@ -226,6 +243,7 @@ function CeldaMes({ nombreMes, estado, esHoy }) {
         {estado === 'pagado'   && <CheckCircle2 size={14} className="text-green-600" />}
         {estado === 'adeudado' && <AlertTriangle size={14} className="text-red-500" />}
         {estado === 'futuro'   && <div className="w-3 h-3 rounded-full border-2 border-blue-300" />}
+        {estado === 'becado'   && <Gift size={14} className="text-teal-600" />}
       </div>
 
       {/* Nombre del mes */}
@@ -273,20 +291,27 @@ function CalendarioAnual({ estado }) {
     return anioSiguiente
   }, [anioHoy, mesCubiertoHasta])
 
+  // Calcular el límite de beca para pasarlo al motor de meses
+  const becadoHastaDate = useMemo(() => {
+    if (!estado.es_becado) return null
+    if (!estado.becado_hasta) return 'indefinida'
+    return parsearISO(estado.becado_hasta)
+  }, [estado.es_becado, estado.becado_hasta])
+
   const meses = useMemo(() => {
     return NOMBRES_MES.map((nombre, idx) => {
       const mes1based = idx + 1
       const estado_mes = estadoDeMes(
-        anioVisto, mes1based, diaVenc, fechaIngreso, mesCubiertoHasta
+        anioVisto, mes1based, diaVenc, fechaIngreso, mesCubiertoHasta, becadoHastaDate
       )
       const esHoy = anioVisto === anioHoy && mes1based === mesHoy
       return { nombre, estado: estado_mes, esHoy }
     })
-  }, [anioVisto, diaVenc, fechaIngreso, mesCubiertoHasta, anioHoy, mesHoy])
+  }, [anioVisto, diaVenc, fechaIngreso, mesCubiertoHasta, becadoHastaDate, anioHoy, mesHoy])
 
   // Resumen del año visible
   const resumen = useMemo(() => {
-    const conteo = { pagado: 0, adeudado: 0, futuro: 0, inactivo: 0 }
+    const conteo = { pagado: 0, adeudado: 0, futuro: 0, inactivo: 0, becado: 0 }
     meses.forEach(m => { conteo[m.estado]++ })
     return conteo
   }, [meses])
@@ -344,6 +369,12 @@ function CalendarioAnual({ estado }) {
               {resumen.adeudado} adeudado{resumen.adeudado !== 1 ? 's' : ''}
             </span>
           )}
+          {resumen.becado > 0 && (
+            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-teal-700">
+              <span className="w-2 h-2 rounded-full bg-teal-400 inline-block" />
+              {resumen.becado} becado{resumen.becado !== 1 ? 's' : ''}
+            </span>
+          )}
           {resumen.futuro > 0 && (
             <span className="inline-flex items-center gap-1.5 text-xs font-medium text-blue-500">
               <span className="w-2 h-2 rounded-full bg-blue-300 inline-block" />
@@ -377,6 +408,7 @@ function CalendarioAnual({ estado }) {
           { estado: 'pagado',   label: 'Pagado' },
           { estado: 'adeudado', label: 'Adeudado' },
           { estado: 'futuro',   label: 'Futuro' },
+          { estado: 'becado',   label: 'Becado' },
           { estado: 'inactivo', label: 'No era socio' },
         ].map(({ estado: e, label }) => {
           const cfg = ESTADO_CONFIG[e]
@@ -638,6 +670,26 @@ function EstadoCard({ estado, loading, error, ordenPendiente, onAbrirCarrito }) 
 
   if (error || !estado) return null
 
+  // Bypass: si es becado, el estado siempre es "al día" independientemente de mes_cubierto_hasta
+  if (estado.es_becado) {
+    return (
+      <div className="rounded-2xl shadow-sm border p-4 sm:p-6 bg-teal-50 border-teal-200 flex items-center gap-3 sm:gap-4">
+        <div className="p-2.5 sm:p-3 rounded-xl flex-shrink-0 bg-teal-100 text-teal-700">
+          <ShieldCheck size={22} />
+        </div>
+        <div className="space-y-1">
+          <p className="text-xs font-semibold uppercase tracking-wide text-teal-700">Estado de Cuenta</p>
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-teal-100 text-teal-800 border border-teal-200">
+            <CheckCircle2 size={11} /> Acceso activo — Becado
+          </span>
+          <p className="text-sm font-medium text-teal-800 leading-snug">
+            Tu membresía está cubierta por una beca. No generás deuda de cuotas.
+          </p>
+        </div>
+      </div>
+    )
+  }
+
   const { moroso, mesesAdeudados: mesesAdeudadosReal } = calcularEstadoFinanciero(
     estado.mes_cubierto_hasta,
     estado.fecha_ingreso,
@@ -883,8 +935,26 @@ export default function SocioCuotas() {
         <CalendarioAnual estado={estado} />
       )}
 
-      {/* Botón "Pagar Cuotas" → SeleccionMesesModal (oculto si hay orden pendiente) */}
-      {!ordenPendiente && (
+      {/* Botón "Pagar Cuotas" → SeleccionMesesModal (oculto si becado o hay orden pendiente) */}
+      {estado?.es_becado ? (
+        <div className="flex items-start gap-4 p-5 rounded-2xl bg-teal-50 border-2 border-teal-200">
+          <div className="p-3 rounded-xl bg-teal-100 text-teal-700 flex-shrink-0">
+            <Gift size={22} />
+          </div>
+          <div className="min-w-0">
+            <p className="font-bold text-teal-900 text-base">Acceso Bonificado</p>
+            <p className="text-sm text-teal-700 mt-0.5 leading-snug">
+              Tu membresía está cubierta por una beca.{' '}
+              {estado.becado_hasta
+                ? <>La beca está activa hasta el <strong>{new Date(estado.becado_hasta + 'T00:00:00').toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' })}</strong>.</>
+                : 'Tu beca es indefinida.'}
+            </p>
+            <p className="text-xs text-teal-600 mt-1.5">
+              No necesitás abonar cuotas por el momento. Ante cualquier consulta, contactá a la administración del club.
+            </p>
+          </div>
+        </div>
+      ) : !ordenPendiente && (
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-2">
           <div>
             <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wide">

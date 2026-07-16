@@ -158,6 +158,18 @@ class UsuarioBase(BaseModel):
         description="ID del socio titular (para adherentes/familia).",
     )
     push_token: Optional[str] = Field(default=None, max_length=255)
+    es_becado: bool = Field(
+        default=False,
+        description="TRUE si el socio está becado (exento de cuota).",
+    )
+    becado_hasta: Optional[date] = Field(
+        default=None,
+        description=(
+            "Fecha de vencimiento de la beca (inclusive). "
+            "NULL = beca indefinida. "
+            "La beca está activa si es_becado=True AND (becado_hasta IS NULL OR becado_hasta >= hoy)."
+        ),
+    )
 
 
 class UsuarioCreate(UsuarioBase):
@@ -205,6 +217,11 @@ class UsuarioUpdate(BaseModel):
     fecha_nacimiento: Optional[date] = None
     push_token: Optional[str] = Field(default=None, max_length=255)
     is_directivo: Optional[bool] = None   # Solo Admin General; backend valida antigüedad
+    es_becado: Optional[bool] = None
+    becado_hasta: Optional[date] = Field(
+        default=None,
+        description="NULL = beca indefinida. Fecha de vencimiento inclusive.",
+    )
 
 
 class UsuarioCambiarPassword(BaseModel):
@@ -280,6 +297,8 @@ class UsuarioResponse(UsuarioBase):
     requiere_cambio_password: bool
     ultimo_login_at: Optional[datetime] = None
     creado_at: datetime
+    es_becado: bool = False
+    becado_hasta: Optional[date] = None
     roles_asignados: List[UsuarioRolResponse] = []
 
 
@@ -326,7 +345,11 @@ class UsuarioQRValidacionResponse(BaseModel):
             "sin exponer montos en pesos."
         ),
     )
-    mensaje_display: str  # 'SOCIO HABILITADO ✓' | 'SOCIO NO HABILITADO ✗' | etc.
+    mensaje_display: str  # 'SOCIO HABILITADO ✓' | 'SOCIO NO HABILITADO ✗' | 'SOCIO BECADO ✓' | etc.
+    es_becado: bool = Field(
+        default=False,
+        description="TRUE si el acceso fue habilitado por beca activa (no por pago de cuota).",
+    )
 
 
 # ── Asignación de roles ───────────────────────────────────────────────────────
@@ -792,6 +815,18 @@ class EstadoCuotaSocioResponse(BaseModel):
             "El frontend la usa para el Calendario Anual: cualquier mes anterior "
             "a esta fecha se muestra como 'Inactivo / No era socio'."
         ),
+    )
+    es_becado: bool = Field(
+        default=False,
+        description=(
+            "TRUE si la respuesta fue generada con beca activa. "
+            "El frontend debe usar este campo para ocultar el botón de pago "
+            "y mostrar el aviso de bonificación total."
+        ),
+    )
+    becado_hasta: Optional[date] = Field(
+        default=None,
+        description="Fecha de vencimiento de la beca. NULL = indefinida.",
     )
 
 

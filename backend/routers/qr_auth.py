@@ -240,6 +240,18 @@ def _roles_activos_list(usuario: models.Usuario) -> list[str]:
     return [r.nombre for r in roles]
 
 
+def _es_beca_activa(usuario: models.Usuario) -> bool:
+    """
+    Devuelve True si el socio tiene una beca vigente HOY.
+    Condicion: es_becado=True AND (becado_hasta IS NULL OR becado_hasta >= hoy).
+    """
+    if not usuario.es_becado:
+        return False
+    if usuario.becado_hasta is None:
+        return True
+    return _hoy_local() <= usuario.becado_hasta
+
+
 def _construir_respuesta_desde_orm(
     usuario: models.Usuario,
     dia_vencimiento: int,
@@ -280,6 +292,21 @@ def _construir_respuesta_desde_orm(
             mensaje_display="SOCIO NO APROBADO ✗",
         )
 
+        # ── Bypass de beca (antes del calculo de morosidad) ──────────────────
+    if _es_beca_activa(usuario):
+        return schemas.UsuarioQRValidacionResponse(
+            es_valido=True,
+            id_usuario=usuario.id_usuario,
+            nombre_completo=f"{usuario.nombre} {usuario.apellido}",
+            foto_perfil_url=usuario.foto_perfil_url,
+            estado_financiero="al_dia",
+            roles_activos=roles,
+            antiguedad_meses=meses,
+            meses_adeudados=0,
+            mensaje_display="SOCIO BECADO ✓",
+            es_becado=True,
+        )
+
     moroso, meses_adeudados = _calcular_estado_financiero(
         usuario.mes_cubierto_hasta,
         usuario.fecha_ingreso,
@@ -298,6 +325,7 @@ def _construir_respuesta_desde_orm(
         antiguedad_meses=meses,
         meses_adeudados=meses_adeudados,
         mensaje_display="SOCIO HABILITADO ✓" if esta_al_dia else "SOCIO NO HABILITADO ✗",
+        es_becado=False,
     )
 
 

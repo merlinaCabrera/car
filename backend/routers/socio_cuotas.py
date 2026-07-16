@@ -175,6 +175,28 @@ def obtener_estado_cuota(
     config = db.query(models.ConfiguracionGlobal).first()
     dia_vencimiento = config.dia_vencimiento_cuota if config else 10
 
+    # ── Bypass de beca ─────────────────────────────────────────────────────────────────
+    # Si la beca está activa hoy, devolvemos deuda = 0 sin importar mes_cubierto_hasta.
+    # La deuda real queda "congelada" en el campo: cuando expire la beca, el motor
+    # financiero retomará desde ese punto automáticamente.
+    hoy = date.today()
+    beca_activa = (
+        socio.es_becado
+        and (socio.becado_hasta is None or socio.becado_hasta >= hoy)
+    )
+    if beca_activa:
+        return schemas.EstadoCuotaSocioResponse(
+            id_producto=producto_cuota.id_producto,
+            deuda_historica_meses=0,
+            mes_cubierto_hasta=socio.mes_cubierto_hasta,  # se expone para transparencia
+            precio_cuota_actual=precio_real_socio,
+            deuda_total_pesos=Decimal("0"),
+            dia_vencimiento_cuota=dia_vencimiento,
+            fecha_ingreso=socio.fecha_ingreso,
+            es_becado=True,
+            becado_hasta=socio.becado_hasta,
+        )
+
     return schemas.EstadoCuotaSocioResponse(
         id_producto=producto_cuota.id_producto,
         deuda_historica_meses=socio.deuda_historica_meses,
@@ -183,6 +205,8 @@ def obtener_estado_cuota(
         deuda_total_pesos=Decimal(socio.deuda_historica_meses) * precio_real_socio,
         dia_vencimiento_cuota=dia_vencimiento,
         fecha_ingreso=socio.fecha_ingreso,
+        es_becado=False,
+        becado_hasta=None,
     )
 
 

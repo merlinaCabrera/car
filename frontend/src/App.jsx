@@ -29,6 +29,7 @@ import JugadorEquipo from './pages/JugadorEquipo';
 import TecnicoPlanteles from './pages/TecnicoPlanteles';
 import TecnicoAsistencias from './pages/TecnicoAsistencias';
 import AdminScannerEvento from './pages/AdminScannerEvento';
+import TecnicoEventos from './pages/TecnicoEventos';
 
 function App() {
   return (
@@ -63,6 +64,7 @@ function App() {
               {/* Técnico */}
               <Route path="/gestion-planteles" element={<TecnicoPlanteles />} />
               <Route path="/asistencias" element={<TecnicoAsistencias />} />
+              <Route path="/gestion-eventos" element={<TecnicoEventos />} />
 
               {/* Admin */}
               <Route path="/admin" element={<AdminInicio />} />

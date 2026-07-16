@@ -368,6 +368,11 @@ class Usuario(Base):
         "Evento", foreign_keys="Evento.creado_por", back_populates="creador",
     )
 
+    # Convocatorias
+    convocatorias: Mapped[List["Convocatoria"]] = relationship(
+        "Convocatoria", back_populates="usuario", cascade="all, delete-orphan",
+    )
+
     # ── Índices y constraints ──────────────────────────────────────────────
     __table_args__ = (
         Index("idx_usuarios_dni",        "dni"),
@@ -947,6 +952,9 @@ class Evento(Base):
     asistencias: Mapped[List["Asistencia"]] = relationship(
         "Asistencia", back_populates="evento",
     )
+    convocatorias: Mapped[List["Convocatoria"]] = relationship(
+        "Convocatoria", back_populates="evento", cascade="all, delete-orphan",
+    )
 
     __table_args__ = (
         CheckConstraint(
@@ -967,6 +975,39 @@ class Evento(Base):
 
     def __repr__(self) -> str:
         return f"<Evento '{self.titulo}' [{self.estado}] {self.fecha_inicio:%Y-%m-%d}>"
+
+
+class Convocatoria(Base):
+    """
+    Registro de jugadores convocados a un evento específico.
+    La PK compuesta (id_evento, id_usuario) previene duplicados.
+    """
+    __tablename__ = "convocatorias"
+
+    id_evento: Mapped[int] = mapped_column(
+        ForeignKey("eventos.id_evento", ondelete="CASCADE"), primary_key=True
+    )
+    id_usuario: Mapped[int] = mapped_column(
+        ForeignKey("usuarios.id_usuario", ondelete="CASCADE"), primary_key=True
+    )
+    estado: Mapped[str] = mapped_column(
+        String(30), nullable=False, server_default=text("'citado'"),
+        comment="Estado de la convocatoria: 'citado', 'confirmado', 'rechazado'."
+    )
+
+    # Relaciones
+    evento: Mapped["Evento"] = relationship("Evento", back_populates="convocatorias")
+    usuario: Mapped["Usuario"] = relationship("Usuario", back_populates="convocatorias")
+
+    __table_args__ = (
+        CheckConstraint(
+            "estado IN ('citado', 'confirmado', 'rechazado')",
+            name="chk_convocatoria_estado",
+        ),
+    )
+
+    def __repr__(self) -> str:
+        return f"<Convocatoria evento={self.id_evento} usuario={self.id_usuario} estado='{self.estado}'>"
 
 
 class Asistencia(Base):

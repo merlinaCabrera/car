@@ -48,6 +48,7 @@ const NAV_JUGADOR = [
 
 const NAV_PERSONAL_TECNICO = [
   { name: 'Gestión de Planteles', path: '/gestion-planteles', icon: ClipboardList },
+  { name: 'Eventos y Convocatorias', path: '/gestion-eventos', icon: CalendarDays },
   { name: 'Asistencias', path: '/asistencias', icon: UserCheck },
 ];
 
@@ -245,10 +246,12 @@ export default function MainLayout({ userRole }) {
           )}
 
           {/* ── Bloque PERSONAL TÉCNICO ──────────────────────────────────── */}
-          {/* El Admin General también administra planteles (autocompletar
-              masivo es exclusivo suyo), así que ve este bloque aunque no
-              tenga el rol de datos 'personal_tecnico'. */}
-          {(esPersonalTecnico || esAdminGeneral) && (
+          {/* El Admin General NO ve este bloque: para él, "Planteles" vive
+              directamente debajo de "Socios" en Cuerpo Administrativo (ver
+              más abajo), para no duplicar el mismo destino en dos lugares
+              del menú. Este bloque es exclusivo del rol de datos
+              'personal_tecnico' (cuerpo técnico real, sin ser admin). */}
+          {esPersonalTecnico && !esAdminGeneral && (
             <div>
               <hr className="border-gray-700 my-4" />
               <p className="px-2 mb-2 text-xs text-gray-400 uppercase tracking-wider font-semibold">
@@ -309,6 +312,33 @@ export default function MainLayout({ userRole }) {
                 >
                   <Users size={18} />
                   <span>Socios</span>
+                </Link>
+              )}
+
+              {/* Planteles (solo Admin General — administra categorías,
+                  cortes de edad y autocompletado masivo). El Personal
+                  Técnico accede a la misma pantalla desde su propio bloque
+                  "Cuerpo Técnico", más arriba. */}
+              {esAdminGeneral && (
+                <Link
+                  to="/gestion-planteles"
+                  onClick={closeMenu}
+                  className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors"
+                >
+                  <ClipboardList size={18} />
+                  <span>Planteles</span>
+                </Link>
+              )}
+
+              {/* Eventos y Convocatorias (solo Admin General) */}
+              {esAdminGeneral && (
+                <Link
+                  to="/gestion-eventos"
+                  onClick={closeMenu}
+                  className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors"
+                >
+                  <CalendarDays size={18} />
+                  <span>Eventos y Convocatorias</span>
                 </Link>
               )}
 

@@ -20,6 +20,19 @@ Endpoints:
     POST   /deportivo/eventos                                    → Alta de evento
     PATCH  /deportivo/eventos/{id_evento}                        → Edición (incluye cambio de estado)
 
+  Convocatorias (citación previa al evento, la arma el técnico)
+    GET    /deportivo/eventos/{id_evento}/convocatorias          → Listado (técnico/admin)
+    POST   /deportivo/eventos/{id_evento}/convocar                → Fija la lista de convocados
+                                                                     (upsert: agrega los nuevos,
+                                                                     quita los que ya no están,
+                                                                     NO pisa el estado de los que
+                                                                     se mantienen — ver nota abajo)
+    DELETE /deportivo/eventos/{id_evento}/convocatorias/{id_usuario} → Sacar un convocado puntual
+    PATCH  /deportivo/mis-eventos/{id_evento}/confirmar          → El jugador confirma/rechaza
+    POST   /deportivo/eventos/{id_evento}/convocatorias/cerrar   → Cierre: cruza convocatorias
+                                                                     contra asistencias reales y
+                                                                     marca presente/ausente
+
   Asistencias (control de puerta)
     POST   /deportivo/eventos/{id_evento}/asistencias            → Registrar ingreso (QR o DNI)
     GET    /deportivo/eventos/{id_evento}/asistencias            → Planilla de presentismo
@@ -52,6 +65,16 @@ Decisiones técnicas:
     actual), porque la PK de UsuarioCategoria es compuesta
     (id_usuario, id_categoria, temporada) — el mismo socio puede repetirse
     en distintas temporadas.
+  - `convocar_jugadores_evento` hace UPSERT, no reemplazo destructivo: si el
+    técnico corrige la lista y vuelve a enviarla, los jugadores que ya habían
+    confirmado/rechazado NO pierden ese estado solo por seguir en la lista.
+    Se borran únicamente los que quedaron afuera, y se agregan (en 'citado')
+    los que son nuevos. Antes esto hacía DELETE+INSERT total, lo que reseteaba
+    a 'citado' cualquier confirmación ya hecha — se corrige acá.
+  - El cierre de convocatorias (`/convocatorias/cerrar`) NO depende de que el
+    técnico marque nada a mano: cruza automáticamente contra `asistencias`
+    (quien escaneó QR/DNI en la puerta de ESE evento) y decide presente/ausente.
+    Es idempotente — correrlo dos veces da el mismo resultado.
 """
 
 from __future__ import annotations
@@ -756,7 +779,10 @@ def listar_mis_eventos(
 
     return (
         db.query(models.Evento)
-        .options(joinedload(models.Evento.categoria))
+        .options(
+            joinedload(models.Evento.categoria),
+            joinedload(models.Evento.convocatorias).joinedload(models.Convocatoria.usuario),
+        )
         .filter(
             models.Evento.id_categoria.in_(categorias_ids),
             models.Evento.fecha_inicio >= ahora,
@@ -911,11 +937,33 @@ class ConvocatoriaMasivaPayload(BaseModel):
     )
 
 
+@router.get(
+    "/eventos/{id_evento}/convocatorias",
+    response_model=List[schemas.ConvocatoriaResponse],
+    summary="Listar la convocatoria de un evento",
+)
+def listar_convocatorias_evento(
+    id_evento: int,
+    db: Session = Depends(get_db),
+    _tecnico: models.Usuario = Depends(require_roles(*_ROLES_TECNICO)),
+) -> List[models.Convocatoria]:
+    _obtener_evento_o_404(db, id_evento)
+
+    return (
+        db.query(models.Convocatoria)
+        .options(joinedload(models.Convocatoria.usuario))
+        .filter(models.Convocatoria.id_evento == id_evento)
+        .join(models.Usuario, models.Usuario.id_usuario == models.Convocatoria.id_usuario)
+        .order_by(models.Usuario.apellido.asc(), models.Usuario.nombre.asc())
+        .all()
+    )
+
+
 @router.post(
     "/eventos/{id_evento}/convocar",
     response_model=List[schemas.ConvocatoriaResponse],
-    status_code=status.HTTP_201_CREATED,
-    summary="Convocar jugadores a un evento (reemplaza la lista anterior)",
+    status_code=status.HTTP_200_OK,
+    summary="Fijar la lista de convocados a un evento (upsert, no destructivo)",
 )
 def convocar_jugadores_evento(
     id_evento: int,
@@ -924,6 +972,15 @@ def convocar_jugadores_evento(
     db: Session = Depends(get_db),
     tecnico: models.Usuario = Depends(require_roles(*_ROLES_TECNICO)),
 ) -> List[models.Convocatoria]:
+    """
+    Sincroniza la lista de convocados contra `payload.ids_usuarios`:
+      - a los NUEVOS (no estaban convocados) los agrega en estado 'citado'.
+      - a los que YA NO están en la lista los elimina.
+      - a los que se MANTIENEN no los toca — si un jugador ya había
+        confirmado o rechazado, ese estado se conserva. Reenviar la lista
+        completa (p. ej. tras agregar un jugador desde la búsqueda) no
+        resetea las respuestas que ya dio el resto del plantel.
+    """
     evento = _obtener_evento_o_404(db, id_evento)
     if evento.estado not in ("programado",):
         raise HTTPException(
@@ -931,10 +988,11 @@ def convocar_jugadores_evento(
             detail=f"Solo se pueden gestionar convocatorias de eventos en estado 'programado'. Estado actual: '{evento.estado}'.",
         )
 
+    ids_deseados = set(payload.ids_usuarios)
+
     # Validar que todos los usuarios existan, estén activos y sean jugadores
-    ids_a_validar = set(payload.ids_usuarios)
     usuarios_validos = db.query(models.Usuario.id_usuario).filter(
-        models.Usuario.id_usuario.in_(ids_a_validar),
+        models.Usuario.id_usuario.in_(ids_deseados),
         models.Usuario.fecha_baja.is_(None),
         models.Usuario.roles_asignados.any(
             models.UsuarioRol.rol.has(nombre="jugador")
@@ -942,25 +1000,34 @@ def convocar_jugadores_evento(
     ).all()
 
     ids_encontrados = {u.id_usuario for u in usuarios_validos}
-    ids_invalidos = ids_a_validar - ids_encontrados
+    ids_invalidos = ids_deseados - ids_encontrados
     if ids_invalidos:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=f"Los siguientes IDs de usuario son inválidos, no son jugadores o están inactivos: {sorted(list(ids_invalidos))}",
         )
 
-    # Borrar convocatorias anteriores para este evento
-    db.query(models.Convocatoria).filter(
-        models.Convocatoria.id_evento == id_evento
-    ).delete(synchronize_session=False)
+    ids_actuales = {
+        fila.id_usuario
+        for fila in db.query(models.Convocatoria.id_usuario).filter(
+            models.Convocatoria.id_evento == id_evento
+        ).all()
+    }
 
-    # Crear las nuevas convocatorias (estado por defecto: 'citado')
-    nuevas_convocatorias = [
-        models.Convocatoria(id_evento=id_evento, id_usuario=id_usr)
-        for id_usr in payload.ids_usuarios
-    ]
-    if nuevas_convocatorias:
-        db.add_all(nuevas_convocatorias)
+    ids_a_quitar   = ids_actuales - ids_deseados
+    ids_a_agregar  = ids_deseados - ids_actuales
+
+    if ids_a_quitar:
+        db.query(models.Convocatoria).filter(
+            models.Convocatoria.id_evento == id_evento,
+            models.Convocatoria.id_usuario.in_(ids_a_quitar),
+        ).delete(synchronize_session=False)
+
+    if ids_a_agregar:
+        db.add_all(
+            models.Convocatoria(id_evento=id_evento, id_usuario=id_usr, citado_por=tecnico.id_usuario)
+            for id_usr in ids_a_agregar
+        )
 
     _registrar_audit(
         db=db,
@@ -971,27 +1038,63 @@ def convocar_jugadores_evento(
         detalle={
             "id_evento": id_evento,
             "titulo_evento": evento.titulo,
-            "total_convocados": len(payload.ids_usuarios),
-            "ids_convocados": payload.ids_usuarios,
+            "total_convocados": len(ids_deseados),
+            "agregados": sorted(ids_a_agregar),
+            "quitados": sorted(ids_a_quitar),
         },
         ip=_extraer_ip(request),
     )
 
     db.commit()
 
-    # Devolver la lista de convocatorias recién creadas, con los datos del jugador
-    if not nuevas_convocatorias:
-        return []
-
     return (
         db.query(models.Convocatoria)
         .options(joinedload(models.Convocatoria.usuario))
-        .filter(
-            models.Convocatoria.id_evento == id_evento,
-            models.Convocatoria.id_usuario.in_(payload.ids_usuarios),
-        )
+        .filter(models.Convocatoria.id_evento == id_evento)
         .all()
     )
+
+
+@router.delete(
+    "/eventos/{id_evento}/convocatorias/{id_usuario}",
+    status_code=status.HTTP_200_OK,
+    summary="Sacar a un jugador puntual de la convocatoria",
+)
+def eliminar_convocatoria(
+    id_evento: int,
+    id_usuario: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    tecnico: models.Usuario = Depends(require_roles(*_ROLES_TECNICO)),
+) -> dict:
+    convocatoria = (
+        db.query(models.Convocatoria)
+        .filter(
+            models.Convocatoria.id_evento == id_evento,
+            models.Convocatoria.id_usuario == id_usuario,
+        )
+        .first()
+    )
+    if convocatoria is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"El usuario {id_usuario} no está convocado al evento {id_evento}.",
+        )
+
+    db.delete(convocatoria)
+
+    _registrar_audit(
+        db=db,
+        actor_id=tecnico.id_usuario,
+        accion="ELIMINAR_CONVOCATORIA",
+        tabla_afectada="convocatorias",
+        registro_id=id_evento,
+        detalle={"id_evento": id_evento, "id_usuario": id_usuario},
+        ip=_extraer_ip(request),
+    )
+    db.commit()
+
+    return {"mensaje": f"Usuario {id_usuario} sacado de la convocatoria."}
 
 
 @router.patch(
@@ -1031,9 +1134,21 @@ def confirmar_asistencia_convocatoria(
             detail="No estás convocado a este evento.",
         )
 
-    # El schema ConvocatoriaUpdate ya valida que el estado sea 'confirmado' o 'rechazado'
+    # El schema ConvocatoriaUpdate acepta los 5 estados (también los usa el
+    # técnico en el cierre), pero un jugador respondiendo su propia
+    # convocatoria SOLO puede confirmar o rechazar — nunca marcarse
+    # 'presente'/'ausente'/'citado' a sí mismo.
+    if payload.estado not in ("confirmado", "rechazado"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Solo podés responder 'confirmado' o 'rechazado'.",
+        )
+
     estado_anterior = convocatoria.estado
     convocatoria.estado = payload.estado
+    convocatoria.respondido_at = datetime.now(timezone.utc)
+    if payload.notas is not None:
+        convocatoria.notas = payload.notas
 
     _registrar_audit(
         db=db,
@@ -1054,6 +1169,75 @@ def confirmar_asistencia_convocatoria(
     db.refresh(convocatoria)
 
     return convocatoria
+
+
+@router.post(
+    "/eventos/{id_evento}/convocatorias/cerrar",
+    response_model=schemas.ConvocatoriaCierreResponse,
+    summary="Cerrar la convocatoria: cruza contra asistencias reales y marca presente/ausente",
+)
+def cerrar_convocatoria_evento(
+    id_evento: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    tecnico: models.Usuario = Depends(require_roles(*_ROLES_TECNICO)),
+) -> schemas.ConvocatoriaCierreResponse:
+    """
+    No depende de que nadie marque nada a mano: un convocado queda
+    'presente' si tiene una fila en `asistencias` para este evento
+    (entró por la puerta, con QR o DNI), y 'ausente' si no la tiene.
+    Se puede correr las veces que haga falta (ej. si alguien entró tarde
+    y volvés a cerrar) — es idempotente, siempre refleja el estado actual
+    de `asistencias`.
+    """
+    evento = _obtener_evento_o_404(db, id_evento)
+
+    convocatorias = (
+        db.query(models.Convocatoria)
+        .filter(models.Convocatoria.id_evento == id_evento)
+        .all()
+    )
+    if not convocatorias:
+        return schemas.ConvocatoriaCierreResponse(
+            id_evento=id_evento, presentes=0, ausentes=0, total=0,
+        )
+
+    ids_presentes = {
+        fila.id_usuario
+        for fila in db.query(models.Asistencia.id_usuario).filter(
+            models.Asistencia.id_evento == id_evento,
+            models.Asistencia.id_usuario.in_([c.id_usuario for c in convocatorias]),
+        ).all()
+    }
+
+    presentes = ausentes = 0
+    for c in convocatorias:
+        c.estado = "presente" if c.id_usuario in ids_presentes else "ausente"
+        presentes += c.id_usuario in ids_presentes
+        ausentes += c.id_usuario not in ids_presentes
+
+    _registrar_audit(
+        db=db,
+        actor_id=tecnico.id_usuario,
+        accion="CERRAR_CONVOCATORIA",
+        tabla_afectada="convocatorias",
+        registro_id=id_evento,
+        detalle={
+            "id_evento": id_evento,
+            "titulo_evento": evento.titulo,
+            "presentes": presentes,
+            "ausentes": ausentes,
+        },
+        ip=_extraer_ip(request),
+    )
+    db.commit()
+
+    return schemas.ConvocatoriaCierreResponse(
+        id_evento=id_evento,
+        presentes=presentes,
+        ausentes=ausentes,
+        total=len(convocatorias),
+    )
 
 
 # ═════════════════════════════════════════════════════════════════════════════

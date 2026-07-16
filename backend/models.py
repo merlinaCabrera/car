@@ -821,12 +821,38 @@ class CategoriaDeportiva(Base):
         Boolean, nullable=False, server_default=text("true"),
     )
 
+    # Cortes de edad para el autocompletado de plantel por fecha_nacimiento.
+    # NULL en cualquiera de los dos => la categoría no admite autocompletar
+    # (por ejemplo Primera División, sin límite etario).
+    fecha_corte_min: Mapped[Optional[date]] = mapped_column(
+        Date,
+        comment=(
+            "Fecha de nacimiento mínima (inclusive) admitida en la categoría. "
+            "Se usa junto a fecha_corte_max para el autocompletado masivo del plantel."
+        ),
+    )
+    fecha_corte_max: Mapped[Optional[date]] = mapped_column(
+        Date,
+        comment=(
+            "Fecha de nacimiento máxima (inclusive) admitida en la categoría. "
+            "NULL en cualquiera de los dos cortes desactiva el botón Autocompletar "
+            "para esta categoría en el frontend."
+        ),
+    )
+
     # Relaciones
     usuarios: Mapped[List["UsuarioCategoria"]] = relationship(
         "UsuarioCategoria", back_populates="categoria",
     )
     eventos: Mapped[List["Evento"]] = relationship(
         "Evento", back_populates="categoria",
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            "fecha_corte_min IS NULL OR fecha_corte_max IS NULL OR fecha_corte_min <= fecha_corte_max",
+            name="chk_categoria_cortes_orden",
+        ),
     )
 
     def __repr__(self) -> str:
@@ -861,6 +887,19 @@ class UsuarioCategoria(Base):
     usuario: Mapped["Usuario"] = relationship("Usuario", back_populates="categorias")
     categoria: Mapped["CategoriaDeportiva"] = relationship(
         "CategoriaDeportiva", back_populates="usuarios",
+    )
+
+    # La PK compuesta (id_usuario, id_categoria, temporada) ya garantiza
+    # unicidad a nivel de índice, pero se declara también la constraint
+    # explícita para que coincida 1:1 con la ya aplicada en Postgres
+    # (uq_usuario_categoria_temporada) — es la que usa el
+    # INSERT ... ON CONFLICT (id_usuario, id_categoria, temporada) DO NOTHING
+    # del autocompletado masivo.
+    __table_args__ = (
+        UniqueConstraint(
+            "id_usuario", "id_categoria", "temporada",
+            name="uq_usuario_categoria_temporada",
+        ),
     )
 
     def __repr__(self) -> str:

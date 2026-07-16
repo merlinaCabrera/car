@@ -868,10 +868,53 @@ class CategoriaDeportivaBase(BaseModel):
     nombre: str = Field(min_length=1, max_length=100)
     descripcion: Optional[str] = None
     es_activa: bool = True
+    fecha_corte_min: Optional[date] = Field(
+        default=None,
+        description=(
+            "Fecha de nacimiento mínima (inclusive) admitida en la categoría. "
+            "Junto a fecha_corte_max define el rango que usa el autocompletado masivo."
+        ),
+    )
+    fecha_corte_max: Optional[date] = Field(
+        default=None,
+        description=(
+            "Fecha de nacimiento máxima (inclusive) admitida en la categoría. "
+            "Si falta cualquiera de los dos cortes, la categoría no admite Autocompletar."
+        ),
+    )
+
+    @model_validator(mode="after")
+    def cortes_en_orden(self) -> "CategoriaDeportivaBase":
+        if (
+            self.fecha_corte_min is not None
+            and self.fecha_corte_max is not None
+            and self.fecha_corte_min > self.fecha_corte_max
+        ):
+            raise ValueError("fecha_corte_min no puede ser posterior a fecha_corte_max.")
+        return self
 
 
 class CategoriaDeportivaCreate(CategoriaDeportivaBase):
     pass
+
+
+class CategoriaDeportivaUpdate(BaseModel):
+    """Todos los campos opcionales — PATCH parcial."""
+    nombre: Optional[str] = Field(default=None, min_length=1, max_length=100)
+    descripcion: Optional[str] = None
+    es_activa: Optional[bool] = None
+    fecha_corte_min: Optional[date] = None
+    fecha_corte_max: Optional[date] = None
+
+    @model_validator(mode="after")
+    def cortes_en_orden(self) -> "CategoriaDeportivaUpdate":
+        if (
+            self.fecha_corte_min is not None
+            and self.fecha_corte_max is not None
+            and self.fecha_corte_min > self.fecha_corte_max
+        ):
+            raise ValueError("fecha_corte_min no puede ser posterior a fecha_corte_max.")
+        return self
 
 
 class CategoriaDeportivaResponse(CategoriaDeportivaBase):
@@ -887,6 +930,18 @@ class UsuarioCategoriaCreate(BaseModel):
     es_capitan: bool = False
 
 
+class JugadorBusquedaResponse(BaseModel):
+    """Resultado del buscador de jugadores para excepciones manuales (alta/baja de plantel)."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id_usuario: int
+    dni: str
+    nombre: str
+    apellido: str
+    fecha_nacimiento: Optional[date] = None
+    email: Optional[str] = None
+
+
 class UsuarioCategoriaResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -895,6 +950,29 @@ class UsuarioCategoriaResponse(BaseModel):
     temporada: str
     es_capitan: bool
     categoria: Optional[CategoriaDeportivaResponse] = None
+    usuario: Optional[JugadorBusquedaResponse] = None
+
+
+class AutocompletarPlantelPayload(BaseModel):
+    """Payload del botón 'Autocompletar' — solo admin_general."""
+    temporada: str = Field(
+        max_length=10,
+        description="Temporada a inscribir. Ej: '2026'.",
+    )
+
+
+class AutocompletarPlantelResponse(BaseModel):
+    id_categoria: int
+    temporada: str
+    candidatos_encontrados: int = Field(
+        description="Jugadores cuya fecha_nacimiento entra en el corte de la categoría."
+    )
+    inscriptos_nuevos: int = Field(
+        description=(
+            "Filas efectivamente insertadas (ON CONFLICT DO NOTHING descarta "
+            "los que ya estaban inscriptos en esa temporada)."
+        )
+    )
 
 
 class EventoBase(BaseModel):

@@ -368,9 +368,19 @@ class Usuario(Base):
         "Evento", foreign_keys="Evento.creado_por", back_populates="creador",
     )
 
-    # Convocatorias
+    # Convocatorias recibidas (como jugador citado)
     convocatorias: Mapped[List["Convocatoria"]] = relationship(
-        "Convocatoria", back_populates="usuario", cascade="all, delete-orphan",
+        "Convocatoria",
+        foreign_keys="Convocatoria.id_usuario",
+        back_populates="usuario",
+        cascade="all, delete-orphan",
+    )
+
+    # Convocatorias armadas por este usuario (como técnico/admin)
+    convocatorias_citadas: Mapped[List["Convocatoria"]] = relationship(
+        "Convocatoria",
+        foreign_keys="Convocatoria.citado_por",
+        back_populates="citador",
     )
 
     # ── Índices y constraints ──────────────────────────────────────────────
@@ -979,8 +989,13 @@ class Evento(Base):
 
 class Convocatoria(Base):
     """
-    Registro de jugadores convocados a un evento específico.
-    La PK compuesta (id_evento, id_usuario) previene duplicados.
+    Citación de un jugador a un evento (partido/entrenamiento/torneo),
+    armada por el técnico ANTES del evento. Es un concepto separado de
+    Asistencia: convocatoria = planificación, asistencia = registro de
+    ingreso físico en puerta al momento del evento.
+
+    Un jugador puede estar convocado y no asistir, o asistir sin estar
+    convocado (el escáner de puerta no bloquea el ingreso por esto).
     """
     __tablename__ = "convocatorias"
 
@@ -991,23 +1006,47 @@ class Convocatoria(Base):
         ForeignKey("usuarios.id_usuario", ondelete="CASCADE"), primary_key=True
     )
     estado: Mapped[str] = mapped_column(
-        String(30), nullable=False, server_default=text("'citado'"),
-        comment="Estado de la convocatoria: 'citado', 'confirmado', 'rechazado'."
+        String(20), nullable=False, server_default=text("'citado'"),
+        comment="'citado' | 'confirmado' | 'rechazado' | 'ausente' | 'presente'.",
     )
+    citado_por: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("usuarios.id_usuario", ondelete="SET NULL"),
+        comment="Técnico/admin que arma la convocatoria.",
+    )
+    citado_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now(),
+    )
+    respondido_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True),
+        comment="Cuándo el jugador confirmó/rechazó. NULL mientras sigue en 'citado'.",
+    )
+    notas: Mapped[Optional[str]] = mapped_column(Text)
 
     # Relaciones
     evento: Mapped["Evento"] = relationship("Evento", back_populates="convocatorias")
-    usuario: Mapped["Usuario"] = relationship("Usuario", back_populates="convocatorias")
+    usuario: Mapped["Usuario"] = relationship(
+        "Usuario",
+        foreign_keys=[id_usuario],
+        back_populates="convocatorias",
+    )
+    citador: Mapped[Optional["Usuario"]] = relationship(
+        "Usuario",
+        foreign_keys=[citado_por],
+        back_populates="convocatorias_citadas",
+    )
 
     __table_args__ = (
         CheckConstraint(
-            "estado IN ('citado', 'confirmado', 'rechazado')",
+            "estado IN ('citado', 'confirmado', 'rechazado', 'ausente', 'presente')",
             name="chk_convocatoria_estado",
         ),
+        Index("idx_convocatorias_evento",  "id_evento"),
+        Index("idx_convocatorias_usuario", "id_usuario"),
+        Index("idx_convocatorias_estado",  "estado"),
     )
 
     def __repr__(self) -> str:
-        return f"<Convocatoria evento={self.id_evento} usuario={self.id_usuario} estado='{self.estado}'>"
+        return f"<Convocatoria evento={self.id_evento} user={self.id_usuario} [{self.estado}]>"
 
 
 class Asistencia(Base):

@@ -996,34 +996,70 @@ class AutocompletarPlantelResponse(BaseModel):
     )
 
 
-ESTADOS_CONVOCATORIA = ("citado", "confirmado", "rechazado")
+ESTADOS_CONVOCATORIA = ("citado", "confirmado", "rechazado", "ausente", "presente")
 
 
-class ConvocatoriaBase(BaseModel):
-    id_evento: int
+class ConvocatoriaCreate(BaseModel):
+    """Cita a UN jugador puntual a un evento (alta manual desde el buscador)."""
     id_usuario: int
+    notas: Optional[str] = None
 
 
-class ConvocatoriaCreate(ConvocatoriaBase):
-    pass
+class ConvocatoriaCitarCategoriaPayload(BaseModel):
+    """
+    Payload del botón 'Convocar a toda la categoría' — cita de una sola vez
+    a todos los jugadores inscriptos (usuarios_categorias) en la categoría
+    del evento para la temporada indicada. Los que ya estén convocados
+    se ignoran (no duplica ni pisa su estado actual).
+    """
+    temporada: str = Field(
+        max_length=10,
+        description="Temporada de la que se toma el plantel. Ej: '2026'.",
+    )
 
 
 class ConvocatoriaUpdate(BaseModel):
-    estado: str = Field(description=f"Nuevo estado de la convocatoria. Opciones: {ESTADOS_CONVOCATORIA}")
+    """
+    PATCH del jugador (confirmar/rechazar) o del técnico (marcar
+    presente/ausente en el cierre, editar notas).
+    """
+    estado: Optional[str] = None
+    notas: Optional[str] = None
 
     @field_validator("estado")
     @classmethod
-    def estado_valido(cls, v: str) -> str:
-        if v not in ESTADOS_CONVOCATORIA:
+    def estado_valido(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and v not in ESTADOS_CONVOCATORIA:
             raise ValueError(f"Estado inválido. Opciones: {ESTADOS_CONVOCATORIA}")
         return v
 
 
-class ConvocatoriaResponse(ConvocatoriaBase):
+class ConvocatoriaResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
+    id_evento: int
+    id_usuario: int
     estado: str
+    citado_por: Optional[int] = None
+    citado_at: datetime
+    respondido_at: Optional[datetime] = None
+    notas: Optional[str] = None
     usuario: Optional[JugadorBusquedaResponse] = None
+
+
+class ConvocatoriaCitarCategoriaResponse(BaseModel):
+    id_evento: int
+    citados_nuevos: int = Field(
+        description="Convocatorias efectivamente creadas (se ignoran los que ya estaban citados)."
+    )
+
+
+class ConvocatoriaCierreResponse(BaseModel):
+    """Resumen del cierre de convocatoria (POST /convocatorias/cerrar)."""
+    id_evento: int
+    presentes: int
+    ausentes: int
+    total: int
 
 
 class EventoBase(BaseModel):
@@ -1070,7 +1106,8 @@ class EventoResponse(EventoBase):
     estado: str
     creado_por: Optional[int] = None
     creado_at: datetime
-    convocatorias: List[ConvocatoriaResponse] = []
+    categoria: Optional[CategoriaDeportivaResponse] = None
+    convocatorias: List["ConvocatoriaResponse"] = Field(default_factory=list)
 
 
 class AsistenciaCreate(BaseModel):

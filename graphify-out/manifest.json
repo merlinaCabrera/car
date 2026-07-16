@@ -125,13 +125,13 @@
     "semantic_hash": ""
   },
   "frontend/src/pages/SocioCuotas.jsx": {
-    "mtime": 1783475965.6694686,
-    "ast_hash": "71dc81b41254b3035ee646ef1f2e4327",
+    "mtime": 1784179659.9068298,
+    "ast_hash": "9d4e200b94c184971a0c9a8550c313de",
     "semantic_hash": ""
   },
   "frontend/src/pages/SocioInicio.jsx": {
-    "mtime": 1783427378.54618,
-    "ast_hash": "3328c77a964b9d654e10cc80864787c4",
+    "mtime": 1784179686.2334046,
+    "ast_hash": "8ca6d8eab4d2773113d1ef8135140f4f",
     "semantic_hash": ""
   },
   "frontend/src/pages/SocioPerfil.jsx": {
@@ -160,8 +160,8 @@
     "semantic_hash": ""
   },
   "backend/models.py": {
-    "mtime": 1783130581.9106302,
-    "ast_hash": "2ee00912dce4d4a7e141b9f7c67d3b76",
+    "mtime": 1784178588.0269964,
+    "ast_hash": "907e302fd2976a6e58986abb033f22b6",
     "semantic_hash": ""
   },
   "backend/requirements.txt": {
@@ -195,8 +195,8 @@
     "semantic_hash": ""
   },
   "backend/schemas.py": {
-    "mtime": 1783472651.0878432,
-    "ast_hash": "5ac63c725fdd3b48525127b0a40fa805",
+    "mtime": 1784178601.0775793,
+    "ast_hash": "54049bec305511f987a989eaccf13352",
     "semantic_hash": ""
   },
   "init-db-backup/schema.sql": {
@@ -290,8 +290,8 @@
     "semantic_hash": ""
   },
   "backend/routers/qr_auth.py": {
-    "mtime": 1783439832.758006,
-    "ast_hash": "757eecb0621ed3e549b0659bdc31b690",
+    "mtime": 1784178614.797183,
+    "ast_hash": "a8756e8e3703de0a85b9a57dcd289fcb",
     "semantic_hash": ""
   },
   "frontend/src/pages/AdminComercios.jsx": {
@@ -305,8 +305,8 @@
     "semantic_hash": ""
   },
   "frontend/src/pages/AdminSocios.jsx": {
-    "mtime": 1783474977.389226,
-    "ast_hash": "a9b53fc92be58237ae9642a3c36e768b",
+    "mtime": 1784179670.517062,
+    "ast_hash": "b36c433464ab1af75d686f3962f6cd43",
     "semantic_hash": ""
   },
   "backend/routers/admin_ordenes.py": {
@@ -320,8 +320,8 @@
     "semantic_hash": ""
   },
   "backend/routers/socio_cuotas.py": {
-    "mtime": 1783290139.6158032,
-    "ast_hash": "663cef8ce58285559709aaab6dc4d8ac",
+    "mtime": 1784178626.3026822,
+    "ast_hash": "abaa69cbf35158d0824de8b4e0723a7e",
     "semantic_hash": ""
   },
   "backend/alembic/versions/c03285f75d23_add_dia_vencimiento_cuota.py": {

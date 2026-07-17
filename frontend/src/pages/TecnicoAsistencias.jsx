@@ -21,7 +21,6 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useAuth } from '../context/AuthContext'
 import {
   ClipboardCheck,
-  Users,
   CheckCircle2,
   XCircle,
   HelpCircle,
@@ -191,9 +190,6 @@ function PlanillaEvento({ evento, token, onVolver }) {
   const [asistencias, setAsistencias]         = useState([])
   const [loadingAsist, setLoadingAsist]       = useState(true)
   const [errorAsist, setErrorAsist]           = useState(null)
-  const [cerrando, setCerrando]               = useState(false)
-  const [errorCierre, setErrorCierre]         = useState(null)
-  const [resultadoCierre, setResultadoCierre] = useState(null)
   const [modalIngresoAbierto, setModalIngresoAbierto] = useState(false)
 
   const fetchAsistencias = useCallback(async () => {
@@ -214,32 +210,6 @@ function PlanillaEvento({ evento, token, onVolver }) {
 
   useEffect(() => { fetchAsistencias() }, [fetchAsistencias])
 
-  const handleCerrar = async () => {
-    if (!window.confirm(
-      '¿Cerrar la convocatoria?\n\nEsto va a marcar automáticamente a cada convocado como "Presente" o "Ausente" según quién haya entrado. Podés volver a correrlo si alguien llegó tarde.'
-    )) return
-
-    setCerrando(true)
-    setErrorCierre(null)
-    try {
-      const res = await fetch(
-        `${API}/deportivo/eventos/${evento.id_evento}/convocatorias/cerrar`,
-        { method: 'POST', headers: { Authorization: `Bearer ${token}` } }
-      )
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        throw new Error(err.detail ?? `Error ${res.status}`)
-      }
-      setResultadoCierre(await res.json())
-      // Refrescar asistencias por si el técnico quiere ver el estado actualizado
-      fetchAsistencias()
-    } catch (err) {
-      setErrorCierre(err.message)
-    } finally {
-      setCerrando(false)
-    }
-  }
-
   // Cruzar convocados con asistencias reales
   const convocados = useMemo(() => {
     const idsConAsistencia = new Set(asistencias.map(a => a.id_usuario))
@@ -255,6 +225,14 @@ function PlanillaEvento({ evento, token, onVolver }) {
   const totalConAsistencia = convocados.filter(c => c.entraReal).length
 
   const eventoCerrado = evento.estado === 'finalizado'
+
+  // Hora de cierre automático estimada (mismo cálculo que el scheduler)
+  const horaCierreEstimada = useMemo(() => {
+    const base = evento.fecha_fin
+      ? new Date(evento.fecha_fin)
+      : new Date(new Date(evento.fecha_inicio).getTime() + 3 * 60 * 60 * 1000)
+    return new Date(base.getTime() + 30 * 60 * 1000) // + 30 min
+  }, [evento.fecha_fin, evento.fecha_inicio])
 
   return (
     <div className="space-y-4">
@@ -290,54 +268,56 @@ function PlanillaEvento({ evento, token, onVolver }) {
         </div>
 
         {/* Acciones */}
-        <div className="flex flex-wrap gap-3 mt-4 pt-4 border-t border-gray-100">
-          {!eventoCerrado && (
-            <button
-              onClick={() => setModalIngresoAbierto(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 transition-colors text-sm"
-            >
-              <UserCheck size={15} />
-              Registrar ingreso manual
-            </button>
+        <div className="flex flex-wrap gap-3 mt-4 pt-4 border-t border-gray-100 items-center">
+          {!eventoCerrado ? (
+            <>
+              <button
+                onClick={() => setModalIngresoAbierto(true)}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 transition-colors text-sm"
+              >
+                <UserCheck size={15} />
+                Registrar ingreso manual
+              </button>
+              <button
+                onClick={fetchAsistencias}
+                disabled={loadingAsist}
+                className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 disabled:opacity-40 transition-colors"
+                title="Actualizar"
+              >
+                <RefreshCw size={15} className={loadingAsist ? 'animate-spin' : ''} />
+              </button>
+              {/* Info de cierre automático */}
+              <div className="ml-auto flex items-center gap-2 px-3 py-2 rounded-xl bg-gray-50 border border-gray-200 text-xs text-gray-500">
+                <Lock size={13} className="text-gray-400 flex-shrink-0" />
+                <span>
+                  Cierre automático:{' '}
+                  <span className="font-semibold text-gray-700">
+                    {horaCierreEstimada.toLocaleTimeString('es-AR', {
+                      hour: '2-digit', minute: '2-digit',
+                    })}
+                    {' '}hs
+                  </span>
+                </span>
+              </div>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={fetchAsistencias}
+                disabled={loadingAsist}
+                className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 disabled:opacity-40 transition-colors"
+                title="Actualizar"
+              >
+                <RefreshCw size={15} className={loadingAsist ? 'animate-spin' : ''} />
+              </button>
+              <div className="ml-auto flex items-center gap-2 px-3 py-2 rounded-xl bg-green-50 border border-green-200 text-xs text-green-700 font-semibold">
+                <CheckCircle2 size={14} className="flex-shrink-0" />
+                Evento cerrado — planilla definitiva
+              </div>
+            </>
           )}
-          <button
-            onClick={fetchAsistencias}
-            disabled={loadingAsist}
-            className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 disabled:opacity-40 transition-colors"
-            title="Actualizar"
-          >
-            <RefreshCw size={15} className={loadingAsist ? 'animate-spin' : ''} />
-          </button>
-          <button
-            onClick={handleCerrar}
-            disabled={cerrando || eventoCerrado}
-            className="ml-auto inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-800 text-white font-semibold hover:bg-slate-900 disabled:opacity-50 transition-colors text-sm"
-            title={eventoCerrado ? 'El evento ya fue cerrado' : 'Cruzar asistencias y marcar presentes/ausentes'}
-          >
-            {cerrando
-              ? <Loader2 size={15} className="animate-spin" />
-              : <Lock size={15} />
-            }
-            {eventoCerrado ? 'Evento finalizado' : 'Cerrar y marcar presentes/ausentes'}
-          </button>
         </div>
 
-        {/* Resultado del cierre */}
-        {resultadoCierre && (
-          <div className="mt-3 flex items-center gap-2 p-3 rounded-xl bg-green-50 border border-green-200 text-green-800 text-sm">
-            <CheckCircle2 size={16} className="flex-shrink-0" />
-            <span>
-              Convocatoria cerrada: <strong>{resultadoCierre.presentes} presentes</strong> y{' '}
-              <strong>{resultadoCierre.ausentes} ausentes</strong> sobre {resultadoCierre.total} convocados.
-            </span>
-          </div>
-        )}
-        {errorCierre && (
-          <div className="mt-3 flex items-center gap-2 p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm">
-            <AlertCircle size={16} className="flex-shrink-0" />
-            <span>{errorCierre}</span>
-          </div>
-        )}
       </div>
 
       {errorAsist && (

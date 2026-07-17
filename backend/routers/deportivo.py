@@ -16,6 +16,7 @@ Endpoints:
   Eventos
     GET    /deportivo/eventos                                   → Listado con filtros
     GET    /deportivo/mis-eventos                                → Atajo: eventos del jugador logueado
+    GET    /deportivo/mi-equipo                                  → Plantel(es) + presentismo del jugador logueado
     GET    /deportivo/eventos/hoy                                → Eventos de hoy (selector del Admin Temporal)
     POST   /deportivo/eventos                                    → Alta de evento
     PATCH  /deportivo/eventos/{id_evento}                        → Edición (incluye cambio de estado)
@@ -791,6 +792,112 @@ def listar_mis_eventos(
         .order_by(models.Evento.fecha_inicio.asc())
         .all()
     )
+
+
+@router.get(
+    "/mi-equipo",
+    response_model=List[schemas.MiEquipoResponse],
+    summary="Plantel y estadísticas de las categorías del jugador logueado",
+)
+def listar_mi_equipo(
+    db: Session = Depends(get_db),
+    jugador: models.Usuario = Depends(require_roles(*_ROLES_JUGADOR)),
+) -> List[schemas.MiEquipoResponse]:
+    """
+    Alimenta la página "Mi Equipo" del jugador: para cada categoría en la que
+    está inscripto en la temporada actual, arma el plantel completo y sus
+    propias estadísticas de asistencia en esa categoría.
+
+    Deliberadamente NO repite el detalle de citaciones por evento — eso ya lo
+    resuelve /deportivo/mis-eventos (calendario). Acá solo va un resumen del
+    próximo evento, más plantel y presentismo agregado.
+    """
+    temporada_actual = _temporada_actual()
+
+    mis_inscripciones = (
+        db.query(models.UsuarioCategoria)
+        .options(joinedload(models.UsuarioCategoria.categoria))
+        .filter(
+            models.UsuarioCategoria.id_usuario == jugador.id_usuario,
+            models.UsuarioCategoria.temporada == temporada_actual,
+        )
+        .join(models.CategoriaDeportiva)
+        .order_by(models.CategoriaDeportiva.nombre.asc())
+        .all()
+    )
+
+    if not mis_inscripciones:
+        return []
+
+    ahora = datetime.now(timezone.utc)
+    resultado: List[schemas.MiEquipoResponse] = []
+
+    for inscripcion in mis_inscripciones:
+        id_categoria = inscripcion.id_categoria
+
+        companeros = (
+            db.query(models.UsuarioCategoria)
+            .options(
+                joinedload(models.UsuarioCategoria.usuario),
+                joinedload(models.UsuarioCategoria.categoria),
+            )
+            .join(models.Usuario, models.Usuario.id_usuario == models.UsuarioCategoria.id_usuario)
+            .filter(
+                models.UsuarioCategoria.id_categoria == id_categoria,
+                models.UsuarioCategoria.temporada == temporada_actual,
+                models.Usuario.fecha_baja.is_(None),
+            )
+            .order_by(models.Usuario.apellido.asc(), models.Usuario.nombre.asc())
+            .all()
+        )
+
+        # Presentismo del jugador en ESTA categoría: solo convocatorias ya
+        # cerradas ('presente'/'ausente') — ver docstring de la función.
+        conteo_estados = dict(
+            db.query(models.Convocatoria.estado, func.count())
+            .join(models.Evento, models.Evento.id_evento == models.Convocatoria.id_evento)
+            .filter(
+                models.Convocatoria.id_usuario == jugador.id_usuario,
+                models.Evento.id_categoria == id_categoria,
+                models.Convocatoria.estado.in_(("presente", "ausente")),
+            )
+            .group_by(models.Convocatoria.estado)
+            .all()
+        )
+        presentes = conteo_estados.get("presente", 0)
+        ausentes = conteo_estados.get("ausente", 0)
+        total = presentes + ausentes
+        porcentaje = round((presentes / total) * 100, 1) if total else None
+
+        proxima = (
+            db.query(models.Evento)
+            .options(joinedload(models.Evento.categoria))
+            .filter(
+                models.Evento.id_categoria == id_categoria,
+                models.Evento.fecha_inicio >= ahora,
+                models.Evento.estado.in_(("programado", "en_curso")),
+            )
+            .order_by(models.Evento.fecha_inicio.asc())
+            .first()
+        )
+
+        resultado.append(
+            schemas.MiEquipoResponse(
+                id_categoria=id_categoria,
+                temporada=temporada_actual,
+                es_capitan=inscripcion.es_capitan,
+                categoria=inscripcion.categoria,
+                companeros=companeros,
+                total_jugadores=len(companeros),
+                asistencia_presentes=presentes,
+                asistencia_ausentes=ausentes,
+                asistencia_total=total,
+                asistencia_porcentaje=porcentaje,
+                proxima_convocatoria=proxima,
+            )
+        )
+
+    return resultado
 
 
 @router.get(

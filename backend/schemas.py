@@ -317,6 +317,20 @@ class UsuarioListResponse(BaseModel):
         default=None,
         description="Fecha de cobertura vigente (ISO 8601). NULL = sin cobertura activa.",
     )
+    es_becado: bool = Field(
+        default=False,
+        description=(
+            "TRUE = el socio está becado. El frontend debe ignorar deuda/mes_cubierto_hasta "
+            "y mostrar 'Becado' mientras la beca esté activa (ver becado_hasta)."
+        ),
+    )
+    becado_hasta: Optional[date] = Field(
+        default=None,
+        description=(
+            "NULL = beca indefinida (si es_becado=True). Si tiene fecha: la beca es válida "
+            "hasta ese día inclusive. Activa si es_becado AND (becado_hasta IS NULL OR becado_hasta >= hoy)."
+        ),
+    )
 
 
 class UsuarioQRValidacionResponse(BaseModel):
@@ -945,7 +959,9 @@ class CapitanUpdate(BaseModel):
 
 
 class JugadorBusquedaResponse(BaseModel):
-    """Resultado del buscador de jugadores para excepciones manuales (alta/baja de plantel)."""
+    """Resultado del buscador de jugadores para excepciones manuales (alta/baja de plantel).
+    También se reutiliza como tipo `usuario` dentro de UsuarioCategoriaResponse
+    (plantel de una categoría), por eso incluye foto_perfil_url."""
     model_config = ConfigDict(from_attributes=True)
 
     id_usuario: int
@@ -954,6 +970,7 @@ class JugadorBusquedaResponse(BaseModel):
     apellido: str
     fecha_nacimiento: Optional[date] = None
     email: Optional[str] = None
+    foto_perfil_url: Optional[str] = None
 
 
 class UsuarioCategoriaResponse(BaseModel):
@@ -1108,6 +1125,38 @@ class EventoResponse(EventoBase):
     creado_at: datetime
     categoria: Optional[CategoriaDeportivaResponse] = None
     convocatorias: List["ConvocatoriaResponse"] = Field(default_factory=list)
+
+
+class MiEquipoResponse(BaseModel):
+    """
+    Respuesta de GET /deportivo/mi-equipo — una entrada por cada categoría en la
+    que el jugador logueado está inscripto en la temporada actual.
+
+    - `companeros`: plantel completo de la categoría (incluye al propio jugador,
+      así el frontend puede resaltarlo con un badge "vos" sin pedir otro endpoint).
+    - `asistencia_*`: se calculan sobre `Convocatoria.estado` ya cerrado
+      ('presente'/'ausente'), es decir, solo eventos de ESTA categoría cuyo
+      cierre de convocatoria ya corrió. Eventos futuros o sin cerrar no suman.
+    - `proxima_convocatoria`: próximo evento programado/en_curso de la categoría,
+      si existe. Es un resumen rápido — el detalle completo de citaciones vive
+      en el calendario (GET /deportivo/mis-eventos), no se duplica acá.
+    """
+    model_config = ConfigDict(from_attributes=True)
+
+    id_categoria: int
+    temporada: str
+    es_capitan: bool
+    categoria: CategoriaDeportivaResponse
+    companeros: List[UsuarioCategoriaResponse]
+    total_jugadores: int
+    asistencia_presentes: int
+    asistencia_ausentes: int
+    asistencia_total: int
+    asistencia_porcentaje: Optional[float] = Field(
+        default=None,
+        description="Redondeado a 1 decimal. NULL si todavía no hay convocatorias cerradas.",
+    )
+    proxima_convocatoria: Optional[EventoResponse] = None
 
 
 class AsistenciaCreate(BaseModel):

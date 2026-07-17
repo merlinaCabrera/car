@@ -1213,7 +1213,11 @@ export default function AdminSocios() {
                 </div>
 
                 <div>
-                  {socioMoroso ? (
+                  {socioBecaActiva ? (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-teal-100 text-teal-800">
+                      🎓 Becado
+                    </span>
+                  ) : socioMoroso ? (
                     <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
                       {socioMesesAdeudados} mes{socioMesesAdeudados !== 1 ? 'es' : ''} — {formatoMoneda.format(socioDeudaPesos)}
                     </span>
@@ -1325,7 +1329,11 @@ export default function AdminSocios() {
                 <td className="px-6 py-4 font-mono text-sm text-gray-600">{socio.dni}</td>
                 <td className="px-6 py-4 text-sm text-gray-500">{socio.email ?? '—'}</td>
                 <td className="px-6 py-4">
-                  {socioMoroso ? (
+                  {socioBecaActiva2 ? (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-teal-100 text-teal-800">
+                      🎓 Becado
+                    </span>
+                  ) : socioMoroso ? (
                     <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
                       {socioMesesAdeudados} mes{socioMesesAdeudados !== 1 ? 'es' : ''} — {formatoMoneda.format(socioDeudaPesos)}
                     </span>

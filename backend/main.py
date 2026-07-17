@@ -41,6 +41,7 @@ from routers import deportivo
 
 import scheduler
 
+
 UPLOAD_DIR = "uploads/comprobantes"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 

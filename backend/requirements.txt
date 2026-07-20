@@ -7,3 +7,4 @@ pydantic[email]
 python-jose[cryptography]
 python-multipart
 python-dotenv
+APScheduler==3.10.4

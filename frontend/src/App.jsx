@@ -30,6 +30,7 @@ import TecnicoPlanteles from './pages/TecnicoPlanteles';
 import TecnicoAsistencias from './pages/TecnicoAsistencias';
 import AdminScannerEvento from './pages/AdminScannerEvento';
 import TecnicoEventos from './pages/TecnicoEventos';
+import SocioCancha from './pages/SocioCancha';
 
 function App() {
   return (
@@ -55,6 +56,7 @@ function App() {
               <Route path="/perfil" element={<SocioPerfil />} />
               <Route path="/mis-compras" element={<SocioCompras />} />
               <Route path="/socio/reservas" element={<Reservas />} />
+              <Route path="/socio/cancha" element={<SocioCancha />} />
               <Route path="/notificaciones" element={<SocioNotificaciones />} />
 
               {/* Jugador */}

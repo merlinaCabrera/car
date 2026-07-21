@@ -510,6 +510,12 @@ class ReservaAdminListResponse(BaseModel):
     monto_reintegro_unitario: Optional[Decimal] = None
     escaneos_realizados: int = 0
 
+class ConfigurarRepartoPayload(BaseModel):
+    num_socios_esperados: int = Field(gt=0)
+    monto_reintegro_unitario: Optional[Decimal] = Field(
+        default=None,
+        description="Si no se manda, se calcula como precio_total × 20% / num_socios_esperados.",
+    )
 
 class SuspenderReservaPayload(BaseModel):
     motivo: str = Field(min_length=3, max_length=300, description="Ej: 'Lluvia', 'Cancha en mantenimiento'.")
@@ -536,6 +542,12 @@ class ReintegroQRResponse(BaseModel):
     monto: Decimal
     forma: str
     escaneado_at: datetime
+    
+
+
+class BilleteraResponse(BaseModel):
+    saldo_a_favor: Decimal
+    historial: List[ReintegroQRResponse]
     
 
 class ReintegrosReservaResponse(BaseModel):

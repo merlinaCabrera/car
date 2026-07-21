@@ -22,6 +22,7 @@ import {
   LayoutDashboard,
   Wallet,
   Store,
+  Trophy,
 } from 'lucide-react'
 
 // Importación del asset real
@@ -36,6 +37,7 @@ const NAV_SOCIO = [
   { name: 'Inicio', path: '/socio', icon: Home },
   { name: 'Gestión de Cuotas', path: '/socio/cuotas', icon: CreditCard },
   { name: 'Reservas', path: '/socio/reservas', icon: Calendar },
+  { name: 'Reserva de Cancha', path: '/socio/cancha', icon: Trophy }, 
   { name: 'Tienda', path: '/shopping', icon: ShoppingBag },
   { name: 'Mis Compras', path: '/mis-compras', icon: Package },
   { name: 'Configuración', path: '/perfil', icon: Settings },

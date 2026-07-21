@@ -1,16 +1,16 @@
-# Graph Report - car  (2026-07-16)
+# Graph Report - car  (2026-07-21)
 
 ## Corpus Check
-- 77 files · ~385,230 words
+- 82 files · ~397,526 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 746 nodes · 1512 edges · 79 communities (42 shown, 37 thin omitted)
-- Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 7 edges (avg confidence: 0.8)
+- 823 nodes · 1658 edges · 104 communities (53 shown, 51 thin omitted)
+- Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 10 edges (avg confidence: 0.8)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `1d27456c`
+- Built from commit: `58bf516c`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -82,31 +82,53 @@
 - [[_COMMUNITY_Community 75|Community 75]]
 - [[_COMMUNITY_Community 77|Community 77]]
 - [[_COMMUNITY_Community 78|Community 78]]
+- [[_COMMUNITY_Community 79|Community 79]]
+- [[_COMMUNITY_Community 82|Community 82]]
 - [[_COMMUNITY_Community 83|Community 83]]
+- [[_COMMUNITY_Community 84|Community 84]]
+- [[_COMMUNITY_Community 85|Community 85]]
+- [[_COMMUNITY_Community 86|Community 86]]
+- [[_COMMUNITY_Community 87|Community 87]]
+- [[_COMMUNITY_Community 88|Community 88]]
+- [[_COMMUNITY_Community 89|Community 89]]
+- [[_COMMUNITY_Community 90|Community 90]]
+- [[_COMMUNITY_Community 91|Community 91]]
+- [[_COMMUNITY_Community 92|Community 92]]
+- [[_COMMUNITY_Community 93|Community 93]]
+- [[_COMMUNITY_Community 94|Community 94]]
+- [[_COMMUNITY_Community 95|Community 95]]
+- [[_COMMUNITY_Community 96|Community 96]]
+- [[_COMMUNITY_Community 97|Community 97]]
+- [[_COMMUNITY_Community 98|Community 98]]
+- [[_COMMUNITY_Community 99|Community 99]]
+- [[_COMMUNITY_Community 100|Community 100]]
+- [[_COMMUNITY_Community 101|Community 101]]
+- [[_COMMUNITY_Community 102|Community 102]]
+- [[_COMMUNITY_Community 103|Community 103]]
 
 ## God Nodes (most connected - your core abstractions)
-1. `Usuario` - 81 edges
-2. `useAuth()` - 55 edges
-3. `React` - 29 edges
+1. `Usuario` - 87 edges
+2. `useAuth()` - 61 edges
+3. `React` - 34 edges
 4. `Base` - 20 edges
 5. `FastAPI` - 17 edges
-6. `useCart()` - 15 edges
-7. `registrar_pago_manual()` - 14 edges
-8. `_extraer_ip()` - 13 edges
-9. `_registrar_audit()` - 13 edges
+6. `_extraer_ip()` - 15 edges
+7. `_registrar_audit()` - 15 edges
+8. `useCart()` - 15 edges
+9. `registrar_pago_manual()` - 14 edges
 10. `aprobar_orden()` - 12 edges
 
 ## Surprising Connections (you probably didn't know these)
-- `login_for_access_token()` --calls--> `verify_password()`  [INFERRED]
-  backend/routers/auth.py → backend/security.py
+- `crear_socio_manual()` --calls--> `get_password_hash()`  [INFERRED]
+  backend/routers/admin_usuarios.py → backend/security.py
+- `cambiar_password()` --calls--> `verify_password()`  [INFERRED]
+  backend/routers/usuarios.py → backend/security.py
 - `ConvocatoriaModal()` --calls--> `useAuth()`  [EXTRACTED]
   frontend/src/pages/TecnicoEventos.jsx → frontend/src/context/AuthContext.jsx
 - `NuevoEventoModal()` --calls--> `useAuth()`  [EXTRACTED]
   frontend/src/pages/TecnicoEventos.jsx → frontend/src/context/AuthContext.jsx
-- `Frontend Index HTML` --references--> `Vite Logo`  [EXTRACTED]
-  frontend/index.html → frontend/public/vite.svg
-- `actualizar_dia_vencimiento()` --references--> `ConfiguracionGlobal`  [EXTRACTED]
-  backend/routers/admin_productos.py → backend/models.py
+- `SeleccionMesesModal()` --calls--> `useCart()`  [EXTRACTED]
+  frontend/src/pages/SocioCuotas.jsx → frontend/src/context/CartContext.jsx
 
 ## Import Cycles
 - None detected.
@@ -114,11 +136,11 @@
 ## Hyperedges (group relationships)
 - **Web Application Stack** — fastapi, vite, react [INFERRED 0.90]
 
-## Communities (79 total, 37 thin omitted)
+## Communities (104 total, 51 thin omitted)
 
 ### Community 0 - "Community 0"
-Cohesion: 0.13
-Nodes (14): useAuth(), AdminScannerEvento(), SelectorEvento(), AdminTienda(), formatoMoneda, ANIO_ACTUAL, AutocompletarModal(), formatearFecha() (+6 more)
+Cohesion: 0.17
+Nodes (12): useAuth(), AdminScannerEvento(), SelectorEvento(), ANIO_ACTUAL, AutocompletarModal(), formatearFecha(), InscribirJugadorModal(), TecnicoPlanteles() (+4 more)
 
 ### Community 1 - "Community 1"
 Cohesion: 0.06
@@ -130,27 +152,27 @@ Nodes (24): Orden, Cabecera del movimiento contable. Una orden puede contener m�
 
 ### Community 3 - "Community 3"
 Cohesion: 0.07
-Nodes (29): AsignarRolPayload, AsistenciaResponse, AutocompletarPlantelResponse, CapitanUpdate, ConvocatoriaUpdate, DetalleOrdenResponse, DNIValidationPayload, GenerarOrdenCuotaResponse (+21 more)
+Nodes (27): AsistenciaResponse, AutocompletarPlantelResponse, ComprobanteUploadResponse, ConvocatoriaCitarCategoriaResponse, DetalleOrdenResponse, DNIValidationPayload, EventoUpdate, GenerarOrdenCuotaResponse (+19 more)
 
 ### Community 4 - "Community 4"
-Cohesion: 0.12
-Nodes (22): ComercioAsociadoBase, ComercioAsociadoCreate, ComercioAsociadoResponse, ConfiguracionGlobalBase, ConfiguracionGlobalResponse, ConvocatoriaBase, ConvocatoriaCreate, ConvocatoriaResponse (+14 more)
+Cohesion: 0.11
+Nodes (22): ComercioAsociadoBase, ComercioAsociadoCreate, ComercioAsociadoResponse, ConfiguracionGlobalBase, ConfiguracionGlobalResponse, ConvocatoriaResponse, EventoBase, EventoCreate (+14 more)
 
 ### Community 5 - "Community 5"
 Cohesion: 0.24
 Nodes (6): Calendario(), Footer(), Galeria(), Hero(), Historia(), Landing()
 
 ### Community 6 - "Community 6"
-Cohesion: 0.06
-Nodes (27): AuditLog, Base, ConfiguracionGlobal, DetalleOrden, Notificacion, Pago, Centro de mensajes internos. El campo referencia_id + referencia_tabla     permi, Catálogo maestro de roles del sistema. Tabla estática; no la modifica el ORM. (+19 more)
+Cohesion: 0.17
+Nodes (12): Pago, Cabecera de cobro — patrón "Split-Order bajo un único Pago".      Un Pago agrupa, checkout_carrito(), _extraer_ip(), listar_mis_compras(), listar_productos_tienda(), Request, Session (+4 more)
 
 ### Community 7 - "Community 7"
-Cohesion: 0.11
-Nodes (19): Agenda de instalaciones. Previene conflictos de doble reserva.     Ciclo de vida, ReservaInstalacion, listar_reservas_admin(), Session, Devuelve un listado completo de todas las reservas de instalaciones,     enrique, login_for_access_token(), Session, crear_pre_reserva() (+11 more)
+Cohesion: 0.16
+Nodes (14): login_for_access_token(), Session, liberar_pre_reserva(), liberar_pre_reservas_expiradas(), listar_disponibilidad(), date, Session, Libera una reserva 'bloqueada' sin orden asociada, típicamente porque el     soc (+6 more)
 
 ### Community 12 - "Community 12"
-Cohesion: 0.05
-Nodes (55): get_current_user(), Session, Decodifica el JWT y retorna el Usuario ORM completo con roles cargados.     Lanz, Devuelve el conjunto de nombres de roles vigentes (sin expirar)., _roles_activos(), Núcleo del sistema. Un registro por persona física.     La clave de negocio inmu, Usuario, actualizar_roles_usuario() (+47 more)
+Cohesion: 0.08
+Nodes (32): actualizar_roles_usuario(), ActualizarRolesPayload, ActualizarRolesResponse, aprobar_usuario(), crear_socio_manual(), dar_baja_socio(), editar_socio(), get_socios_activos() (+24 more)
 
 ### Community 13 - "Community 13"
 Cohesion: 0.40
@@ -169,20 +191,24 @@ Cohesion: 0.19
 Nodes (22): _calcular_edad(), _calcular_precio_cuota(), cancelar_orden_pendiente(), _extraer_ip(), generar_orden_cuota(), obtener_estado_cuota(), obtener_historial_pagos(), obtener_orden_pendiente() (+14 more)
 
 ### Community 23 - "Community 23"
-Cohesion: 0.20
-Nodes (5): ConvocatoriaModal(), ESTADO_CONVOCATORIA_CONFIG, NuevoEventoModal(), TecnicoEventos(), TIPO_CONFIG
+Cohesion: 0.07
+Nodes (24): CalendarioMensual(), claveLocal(), DIAS_SEMANA, MESES, COLORES, construirPDF(), ESTADOS_LABEL, formatFechaCorta() (+16 more)
 
 ### Community 26 - "Community 26"
 Cohesion: 0.50
 Nodes (3): CategoriaDeportivaBase, CategoriaDeportivaCreate, CategoriaDeportivaResponse
 
+### Community 29 - "Community 29"
+Cohesion: 0.28
+Nodes (3): models.py — SQLAlchemy 2.0 Declarative Models Club Atlético — Sistema de Gestión, datetime, FastAPI
+
 ### Community 30 - "Community 30"
-Cohesion: 0.06
-Nodes (60): Dependencia de autorización por rol.      Uso en un endpoint:         @router.ge, require_roles(), ComercioAsociado, ProductoServicio, models.py — SQLAlchemy 2.0 Declarative Models Club Atlético — Sistema de Gestión, Catálogo unificado: cuotas, alquileres e indumentaria.     stock = NULL para ser, Backend Requirements, crear_comercio() (+52 more)
+Cohesion: 0.20
+Nodes (21): _calcular_edad(), _calcular_nuevo_mes_cubierto(), _calcular_precio_cuota(), _extraer_ip(), listar_morosos(), _obtener_dia_vencimiento(), obtener_estadisticas(), _obtener_producto_cuota_social() (+13 more)
 
 ### Community 32 - "Community 32"
 Cohesion: 0.25
-Nodes (3): ESTADO_CONVOCATORIA_CONFIG, JugadorCalendario(), TIPO_CONFIG
+Nodes (16): ProductoServicio, Catálogo unificado: cuotas, alquileres e indumentaria.     stock = NULL para ser, actualizar_dia_vencimiento(), crear_producto(), DiaVencimientoResponse, DiaVencimientoUpdatePayload, editar_producto(), _extraer_ip() (+8 more)
 
 ### Community 36 - "Community 36"
 Cohesion: 0.60
@@ -192,25 +218,37 @@ Nodes (4): calcularEstadoFinanciero(), fechaLocal(), parsearISO(), SocioInicio()
 Cohesion: 0.40
 Nodes (4): formatRelativeTime(), NOTIFICATION_ICONS, NotificationCard(), SocioNotificaciones()
 
+### Community 38 - "Community 38"
+Cohesion: 0.43
+Nodes (13): ComercioAsociado, crear_comercio(), editar_comercio(), eliminar_comercio(), _extraer_ip(), listar_comercios(), obtener_comercio(), _obtener_comercio_o_404() (+5 more)
+
 ### Community 39 - "Community 39"
 Cohesion: 0.11
 Nodes (34): _calcular_antiguedad_meses(), _calcular_estado_financiero(), _construir_respuesta_desde_orm(), _es_beca_activa(), _extraer_ip(), generar_qr_token(), _hoy_local(), _obtener_dia_vencimiento() (+26 more)
 
 ### Community 43 - "Community 43"
-Cohesion: 0.15
-Nodes (10): Frontend Index HTML, Vite Logo, App(), AdminReservas(), JugadorEquipo(), Login(), RecuperarPassword(), Registro() (+2 more)
+Cohesion: 0.18
+Nodes (10): colorAvatar(), COLORES_AVATAR, CompaneroCard(), formatoFechaLarga(), formatoHora(), iniciales(), JugadorEquipo(), ProximoEventoCard() (+2 more)
 
 ### Community 45 - "Community 45"
-Cohesion: 0.11
-Nodes (15): locales, localizer, PRODUCTO_ALQUILER_QUINCHO, ReservaCalendar(), CartContext, CartProvider(), useCart(), MainLayout() (+7 more)
+Cohesion: 0.12
+Nodes (14): locales, localizer, PRODUCTO_ALQUILER_QUINCHO, ReservaCalendar(), CartContext, CartProvider(), useCart(), MainLayout() (+6 more)
 
 ### Community 46 - "Community 46"
 Cohesion: 0.16
 Nodes (8): CeldaDia(), fechaLocal(), formatoMoneda, isoDeFechaLocal(), NOMBRES_DIA_SEMANA, NOMBRES_MES, Reservas(), TURNOS
 
+### Community 48 - "Community 48"
+Cohesion: 0.22
+Nodes (9): AvatarUploader(), formatoFechaLarga(), FORTALEZA_CONFIG, fortalezaPassword(), IndicadorFortaleza(), iniciales(), resolverFotoUrl(), SocioPerfil() (+1 more)
+
 ### Community 51 - "Community 51"
-Cohesion: 0.11
-Nodes (8): AuthContext, AuthProvider(), AdminComercios(), AdminInicio(), AdminPagos(), formatoMoneda, AdminSolicitudes(), React
+Cohesion: 0.08
+Nodes (17): Frontend Index HTML, Vite Logo, App(), AuthContext, AuthProvider(), AdminComercios(), AdminInicio(), AdminPagos() (+9 more)
+
+### Community 53 - "Community 53"
+Cohesion: 0.18
+Nodes (12): actualizar_perfil(), cambiar_password(), crear_usuario(), listar_usuarios(), Session, UploadFile, Un socio solo puede editar su propio perfil.     El admin_general puede editar c, Guarda la imagen en `uploads/fotos_perfil/` con un nombre único (uuid4) y     ac (+4 more)
 
 ### Community 54 - "Community 54"
 Cohesion: 0.23
@@ -221,8 +259,8 @@ Cohesion: 0.17
 Nodes (4): CATEGORIAS, COLORES_CATEGORIA, formatoMoneda, SocioShopping()
 
 ### Community 56 - "Community 56"
-Cohesion: 0.20
-Nodes (11): calcularEstadoFinanciero(), ESTADO_CONFIG, EstadoCard(), estadoDeMes(), fechaLocal(), formatearFechaCobertura(), formatoFecha, formatoMoneda (+3 more)
+Cohesion: 0.18
+Nodes (12): calcularEstadoFinanciero(), ESTADO_CONFIG, EstadoCard(), estadoDeMes(), fechaLocal(), formatearFechaCobertura(), formatoFecha, formatoMoneda (+4 more)
 
 ### Community 57 - "Community 57"
 Cohesion: 0.29
@@ -237,28 +275,44 @@ Cohesion: 0.22
 Nodes (8): AdminSocios(), calcularEdad(), calcularEstadoFinanciero(), calcularPrecioFinal(), fechaLocal(), formatoMoneda, parsearISO(), TABS_ROLES
 
 ### Community 66 - "Community 66"
-Cohesion: 0.13
-Nodes (38): Asistencia, CategoriaDeportiva, Convocatoria, Evento, Registro inmutable de cada ingreso en puerta, vinculado a un evento.     El camp, Divisiones del club: Sub-12, Sub-15, Primera División, etc., Tabla puente: jugador ↔ categoría deportiva.     PK compuesta: (id_usuario, id_c, Partidos, torneos, entrenamientos u otros eventos institucionales.     El contro (+30 more)
+Cohesion: 0.09
+Nodes (57): Asistencia, Base, CategoriaDeportiva, Convocatoria, Evento, Notificacion, Registro inmutable de cada ingreso en puerta, vinculado a un evento.     El camp, Centro de mensajes internos. El campo referencia_id + referencia_tabla     permi (+49 more)
+
+### Community 68 - "Community 68"
+Cohesion: 0.25
+Nodes (7): Agenda de instalaciones. Previene conflictos de doble reserva.     Ciclo de vida, ReservaInstalacion, listar_reservas_admin(), Session, Devuelve un listado completo de todas las reservas de instalaciones,     enrique, crear_pre_reserva(), Crea una `ReservaInstalacion` en estado 'bloqueada' (sin orden asociada     toda
+
+### Community 72 - "Community 72"
+Cohesion: 0.33
+Nodes (4): Asistencias(), ESTADO_CONFIG, formatoFechaCorta(), PlanillaEvento()
+
+### Community 79 - "Community 79"
+Cohesion: 0.50
+Nodes (4): get_current_user(), Session, Decodifica el JWT y retorna el Usuario ORM completo con roles cargados.     Lanz, HTTPAuthorizationCredentials
+
+### Community 88 - "Community 88"
+Cohesion: 0.67
+Nodes (3): Backend Requirements, Pydantic, Uvicorn
 
 ## Knowledge Gaps
-- **68 isolated node(s):** `name`, `private`, `version`, `type`, `dev` (+63 more)
+- **78 isolated node(s):** `name`, `private`, `version`, `type`, `dev` (+73 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **37 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **51 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `Usuario` connect `Community 12` to `Community 2`, `Community 66`, `Community 6`, `Community 7`, `Community 39`, `Community 16`, `Community 30`?**
-  _High betweenness centrality (0.108) - this node is a cross-community bridge._
-- **Why does `React` connect `Community 51` to `Community 0`, `Community 1`, `Community 32`, `Community 36`, `Community 37`, `Community 43`, `Community 45`, `Community 46`, `Community 23`, `Community 54`, `Community 55`, `Community 56`, `Community 57`, `Community 58`, `Community 61`?**
-  _High betweenness centrality (0.038) - this node is a cross-community bridge._
+- **Why does `Usuario` connect `Community 66` to `Community 32`, `Community 2`, `Community 68`, `Community 38`, `Community 39`, `Community 6`, `Community 7`, `Community 12`, `Community 79`, `Community 16`, `Community 53`, `Community 90`, `Community 92`, `Community 29`, `Community 30`?**
+  _High betweenness centrality (0.101) - this node is a cross-community bridge._
+- **Why does `React` connect `Community 51` to `Community 0`, `Community 1`, `Community 36`, `Community 37`, `Community 72`, `Community 43`, `Community 45`, `Community 46`, `Community 48`, `Community 55`, `Community 54`, `Community 23`, `Community 56`, `Community 57`, `Community 58`, `Community 61`?**
+  _High betweenness centrality (0.048) - this node is a cross-community bridge._
+- **Why does `useAuth()` connect `Community 0` to `Community 36`, `Community 5`, `Community 37`, `Community 72`, `Community 43`, `Community 45`, `Community 46`, `Community 48`, `Community 51`, `Community 55`, `Community 54`, `Community 23`, `Community 56`, `Community 57`, `Community 58`, `Community 61`?**
+  _High betweenness centrality (0.026) - this node is a cross-community bridge._
 - **What connects `Inyecta en la base de datos:       1. fn_actualizar_search_usuario()  + trigger`, `Elimina en orden inverso: primero triggers (dependen de funciones),     luego la`, `Decodifica el JWT y retorna el Usuario ORM completo con roles cargados.     Lanz` to the rest of the system?**
-  _198 weakly-connected nodes found - possible documentation gaps or missing edges._
-- **Should `Community 0` be split into smaller, more focused modules?**
-  _Cohesion score 0.12648221343873517 - nodes in this community are weakly interconnected._
+  _219 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `Community 1` be split into smaller, more focused modules?**
   _Cohesion score 0.05714285714285714 - nodes in this community are weakly interconnected._
 - **Should `Community 3` be split into smaller, more focused modules?**
-  _Cohesion score 0.06666666666666667 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.07142857142857142 - nodes in this community are weakly interconnected._
 - **Should `Community 4` be split into smaller, more focused modules?**
-  _Cohesion score 0.11956521739130435 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.11333333333333333 - nodes in this community are weakly interconnected._

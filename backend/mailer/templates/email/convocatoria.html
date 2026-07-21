@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block content %}
+  <p style="font-size:16px; color:#222;">Hola {{ nombre_socio }},</p>
+  <p style="font-size:15px; color:#333;">
+    Fuiste convocado para <strong>{{ titulo_evento }}</strong>, el día <strong>{{ fecha_evento }}</strong>.
+  </p>
+  <p style="font-size:14px; color:#555;">Por favor confirmá tu asistencia desde la app.</p>
+{% endblock %}

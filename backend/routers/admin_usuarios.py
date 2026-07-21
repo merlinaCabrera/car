@@ -26,6 +26,8 @@ import schemas
 from database import get_db
 from dependencies import get_current_user, require_roles
 from security import get_password_hash
+from fastapi import BackgroundTasks 
+from mailer.services.email_tasks import task_cuenta_aprobada
 
 router = APIRouter(
     prefix="/admin/usuarios",
@@ -221,6 +223,7 @@ def get_socios_activos(
 )
 def aprobar_usuario(
     id_usuario: int,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_admin: models.Usuario = Depends(require_roles(*_ADMIN)),
 ):
@@ -267,6 +270,15 @@ def aprobar_usuario(
         },
     ))
     db.commit()
+
+    # ── NUEVO: mail de bienvenida en background, no bloquea la respuesta ──
+    if usuario.email:
+        background_tasks.add_task(
+            task_cuenta_aprobada,
+            email_destino=usuario.email,
+            nombre_socio=f"{usuario.nombre} {usuario.apellido}",
+        )
+
     return {
         "ok": True,
         "mensaje": f"{usuario.nombre} {usuario.apellido} fue aprobado como socio.",

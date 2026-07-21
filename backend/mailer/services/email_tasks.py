@@ -54,3 +54,20 @@ async def task_convocatoria(email_destino: str, nombre_socio: str, titulo_evento
         logger.info(f"Mail 'convocatoria' enviado a {email_destino} ({titulo_evento})")
     except Exception:
         logger.exception(f"Fallo al enviar mail 'convocatoria' a {email_destino} ({titulo_evento})")
+
+# Pegar al FINAL de mailer/services/email_tasks.py (después de task_convocatoria)
+
+async def task_cuenta_aprobada(email_destino: str, nombre_socio: str) -> None:
+    try:
+        await email_service.enviar_cuenta_aprobada(email_destino, nombre_socio)
+        logger.info(f"Mail 'cuenta_aprobada' enviado a {email_destino}")
+    except Exception:
+        logger.exception(f"Fallo al enviar mail 'cuenta_aprobada' a {email_destino}")
+
+
+async def task_recuperar_password(email_destino: str, nombre_socio: str, link_reset: str) -> None:
+    try:
+        await email_service.enviar_recuperar_password(email_destino, nombre_socio, link_reset)
+        logger.info(f"Mail 'recuperar_password' enviado a {email_destino}")
+    except Exception:
+        logger.exception(f"Fallo al enviar mail 'recuperar_password' a {email_destino}")

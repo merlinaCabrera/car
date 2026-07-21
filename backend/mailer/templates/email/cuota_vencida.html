@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+{% block content %}
+  <p style="font-size:16px; color:#222;">Hola {{ nombre_socio }},</p>
+  <p style="font-size:15px; color:#333;">
+    Tu cuota social venció el <strong>{{ fecha_vencimiento }}</strong>. Para mantener tu acceso habilitado, regularizá el pago a la brevedad.
+  </p>
+{% endblock %}

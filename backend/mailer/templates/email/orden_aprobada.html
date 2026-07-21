@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block content %}
+  <p style="font-size:16px; color:#222;">Hola {{ nombre_socio }},</p>
+  <p style="font-size:15px; color:#333;">
+    Tu orden <strong>#{{ numero_orden }}</strong> fue <strong style="color:#1b5e20;">aprobada</strong>.
+  </p>
+  <p style="font-size:15px; color:#333;">Monto: <strong>${{ monto }}</strong></p>
+  <p style="font-size:14px; color:#555;">Gracias por ser parte del club.</p>
+{% endblock %}

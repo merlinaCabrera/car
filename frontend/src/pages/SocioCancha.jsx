@@ -6,16 +6,17 @@
  * Acá la cancha se reserva por turno horario (bloques de 1.5 hs, configurable
  * más abajo en `DURACION_TURNO_HORAS`), y se agrega la calculadora visual del
  * "reintegro QR": el grupo paga el turno completo por transferencia (dividido
- * entre ellos como quieran), y cada socio que se presenta con su QR en la
- * puerta de la cancha recibe un 20% de reintegro sobre SU parte individual.
+ * entre TODOS los que juegan, sean socios o no), y solo los que SON socios y
+ * se presentan con su QR en la puerta de la cancha reciben un 20% de
+ * reintegro sobre SU parte individual.
  *
- * IMPORTANTE: `numSocios` es solo una calculadora visual para que el socio
- * vea cuánto le tocaría y cuánto reintegro le corresponde. Hoy el backend
- * (`ReservaInstalacionCreate`) no recibe ese número al crear la pre-reserva:
- * el admin es quien carga `num_socios_esperados` después, desde el panel de
- * Agenda de Reservas. Si más adelante querés que el socio lo cargue en el
- * momento de reservar, hay que sumar el campo al schema del backend y acá
- * mandarlo en el body del POST (ver `handleConfirmar`).
+ * IMPORTANTE: `totalParticipantes` / `numSocios` son solo una calculadora
+ * visual para que el que reserva vea cuánto le tocaría a cada uno y cuánto
+ * reintegro total se va a repartir. Hoy el backend (`ReservaInstalacionCreate`)
+ * no recibe estos números al crear la pre-reserva: el admin es quien carga
+ * `num_socios_esperados` después, desde el panel de Agenda de Reservas, y el
+ * reintegro real se dispara individualmente cuando cada socio escanea su QR
+ * físico en la cancha — no hay nada acá que se guarde automáticamente.
  */
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
@@ -23,8 +24,6 @@ import { useAuth } from '../context/AuthContext'
 import { useCart } from '../context/CartContext'
 import {
   CalendarClock,
-  ChevronLeft,
-  ChevronRight,
   Loader2,
   Lock,
   CheckCircle2,
@@ -53,15 +52,12 @@ const CANCHAS = [
 ]
 
 // ─── Configuración de turnos horarios ──────────────────────────────────────
+// TODO: esto va a pasar a configurarse desde el admin (tabla
+// ConfiguracionInstalacion) en una próxima iteración. Por ahora queda fijo acá.
 const HORA_INICIO = 9   // primer turno arranca 9:00
 const HORA_FIN = 23      // último turno posible arranca a más tardar 21:30 (con duración 1.5)
 const DURACION_TURNO_HORAS = 1.5
 const PORCENTAJE_REINTEGRO = 0.20 // 20%, matchea el default sugerido en el backend
-
-const NOMBRES_MES = [
-  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
-]
 
 // ─── Helpers de fecha (sin desfase UTC) ───────────────────────────────────
 
@@ -108,7 +104,7 @@ function turnoOcupado(reservas, inicio, fin) {
 
 const TURNOS_DEL_DIA = generarTurnosDelDia()
 
-// ─── Componente: selector de fecha (7 días desde hoy + navegación) ────────
+// ─── Componente: selector de fecha (14 días desde hoy) ────────────────────
 
 function SelectorFecha({ fecha, onCambiarFecha }) {
   const hoy = new Date()
@@ -192,10 +188,19 @@ function GrillaTurnos({ reservas, fecha, seleccion, onSeleccionar }) {
 }
 
 // ─── Tarjeta: calculadora de reparto + reintegro QR ───────────────────────
+// El costo se reparte entre TODOS los que juegan (socios y no socios). El
+// reintegro del 20% solo aplica a la porción de esos que efectivamente son
+// socios y escanean su QR — por eso son dos números independientes.
 
-function CalculadoraReintegro({ precioTotal, numSocios, onCambiarNumSocios }) {
-  const parte = precioTotal / numSocios
-  const reintegro = parte * PORCENTAJE_REINTEGRO
+function CalculadoraReintegro({ precioTotal, totalParticipantes, numSocios, onCambiarTotal, onCambiarSocios }) {
+  const parte = precioTotal / totalParticipantes
+  const reintegroPorSocio = parte * PORCENTAJE_REINTEGRO
+  const reintegroTotal = reintegroPorSocio * numSocios
+
+  // numSocios no puede superar totalParticipantes
+  const handleCambiarSocios = (v) => {
+    onCambiarSocios(Math.min(v, totalParticipantes))
+  }
 
   return (
     <div className="bg-emerald-900/40 border border-emerald-500/50 rounded-2xl p-5 relative overflow-hidden">
@@ -207,35 +212,57 @@ function CalculadoraReintegro({ precioTotal, numSocios, onCambiarNumSocios }) {
         <Percent size={18} /> Reintegro por escaneo QR
       </h3>
       <p className="text-sm text-slate-300 leading-relaxed mb-4">
-        La reserva se paga completa por transferencia y se reparte entre el grupo.
-        Cada socio que se presenta con su QR en la cancha recibe un <strong className="text-white">20% de reintegro sobre su parte</strong>.
+        La reserva se paga completa por transferencia y se reparte entre TODOS los que juegan
+        (sean socios o no). Pero el <strong className="text-white">20% de reintegro</strong> solo
+        aplica a los que son socios y se presentan con su QR en la cancha.
       </p>
 
-      <div className="flex items-center gap-3 mb-4">
-        <Users size={16} className="text-emerald-300 flex-shrink-0" />
-        <label className="text-sm text-slate-300 flex-1">¿Cuántos socios van a jugar?</label>
-        <input
-          type="number"
-          min={1}
-          max={30}
-          value={numSocios}
-          onChange={(e) => onCambiarNumSocios(Math.max(1, Number(e.target.value) || 1))}
-          className="w-16 p-2 text-center bg-slate-900 border border-slate-700 rounded-lg text-white font-bold"
-        />
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+        <div className="flex items-center gap-3">
+          <Users size={16} className="text-slate-300 flex-shrink-0" />
+          <label className="text-sm text-slate-300 flex-1">Juegan en total</label>
+          <input
+            type="number"
+            min={1}
+            max={40}
+            value={totalParticipantes}
+            onChange={(e) => onCambiarTotal(Math.max(1, Number(e.target.value) || 1))}
+            className="w-16 p-2 text-center bg-slate-900 border border-slate-700 rounded-lg text-white font-bold"
+          />
+        </div>
+        <div className="flex items-center gap-3">
+          <QrCode size={16} className="text-emerald-300 flex-shrink-0" />
+          <label className="text-sm text-slate-300 flex-1">De esos, son socios</label>
+          <input
+            type="number"
+            min={0}
+            max={totalParticipantes}
+            value={numSocios}
+            onChange={(e) => handleCambiarSocios(Math.max(0, Number(e.target.value) || 0))}
+            className="w-16 p-2 text-center bg-slate-900 border border-slate-700 rounded-lg text-white font-bold"
+          />
+        </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-2 text-center">
+      <div className="grid grid-cols-2 gap-2 text-center mb-2">
         <div className="bg-slate-900/60 rounded-xl p-3">
           <p className="text-[10px] text-slate-400 uppercase mb-1">Total cancha</p>
           <p className="font-bold text-white text-sm">{formatoMoneda.format(precioTotal || 0)}</p>
         </div>
         <div className="bg-slate-900/60 rounded-xl p-3">
-          <p className="text-[10px] text-slate-400 uppercase mb-1">Parte c/u</p>
+          <p className="text-[10px] text-slate-400 uppercase mb-1">Parte c/u ({totalParticipantes})</p>
           <p className="font-bold text-white text-sm">{formatoMoneda.format(parte || 0)}</p>
         </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2 text-center">
         <div className="bg-emerald-950/60 border border-emerald-500/30 rounded-xl p-3">
-          <p className="text-[10px] text-emerald-300 uppercase mb-1">Reintegro c/u</p>
-          <p className="font-bold text-emerald-300 text-sm">{formatoMoneda.format(reintegro || 0)}</p>
+          <p className="text-[10px] text-emerald-300 uppercase mb-1">Reintegro por socio</p>
+          <p className="font-bold text-emerald-300 text-sm">{formatoMoneda.format(reintegroPorSocio || 0)}</p>
+        </div>
+        <div className="bg-emerald-950/60 border border-emerald-500/30 rounded-xl p-3">
+          <p className="text-[10px] text-emerald-300 uppercase mb-1">Reintegro total ({numSocios} socios)</p>
+          <p className="font-bold text-emerald-300 text-sm">{formatoMoneda.format(reintegroTotal || 0)}</p>
         </div>
       </div>
 
@@ -266,7 +293,8 @@ export default function SocioCancha() {
   const [producto, setProducto] = useState(null)
   const [productoError, setProductoError] = useState(null)
 
-  const [numSocios, setNumSocios] = useState(10)
+  const [totalParticipantes, setTotalParticipantes] = useState(10)
+  const [numSocios, setNumSocios] = useState(10) // subconjunto de totalParticipantes que son socios
 
   const [seleccion, setSeleccion] = useState(null) // { fecha, horaInicio, inicio, fin }
   const [confirmando, setConfirmando] = useState(false)
@@ -341,7 +369,7 @@ export default function SocioCancha() {
           instalacion: canchaKey,
           fecha_inicio: seleccion.inicio.toISOString(),
           fecha_fin: seleccion.fin.toISOString(),
-          notas: `Grupo de ${numSocios} socios (aprox.)`,
+          notas: `Grupo de ${totalParticipantes} (aprox. ${numSocios} socios)`,
         }),
       })
       if (!res.ok) {
@@ -465,8 +493,10 @@ export default function SocioCancha() {
       {producto && (
         <CalculadoraReintegro
           precioTotal={Number(producto.precio_actual)}
+          totalParticipantes={totalParticipantes}
           numSocios={numSocios}
-          onCambiarNumSocios={setNumSocios}
+          onCambiarTotal={setTotalParticipantes}
+          onCambiarSocios={setNumSocios}
         />
       )}
 

@@ -58,6 +58,7 @@ import models
 import schemas
 from database import get_db
 from dependencies import get_current_user, require_roles
+from utils.audit import registrar_audit as _registrar_audit, extraer_ip as _extraer_ip
 
 router = APIRouter(
     prefix="/admin/ordenes",

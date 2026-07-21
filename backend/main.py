@@ -36,6 +36,8 @@ from routers import admin_ordenes
 from routers import socio_carrito
 from routers import admin_productos
 from routers import socio_reservas
+from routers import admin_reservas
+from routers import socio_billetera
 from routers import notificaciones
 from routers import deportivo
 
@@ -81,6 +83,8 @@ app.include_router(admin_ordenes.router)
 app.include_router(socio_carrito.router)
 app.include_router(admin_productos.router)
 app.include_router(socio_reservas.router)
+app.include_router(admin_reservas.router)
+app.include_router(socio_billetera.router)
 app.include_router(notificaciones.router)
 app.include_router(deportivo.router)
 

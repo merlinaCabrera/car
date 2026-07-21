@@ -35,17 +35,22 @@ Decisiones técnicas:
     el lugar antes de pagar" que ya usan para stock en el checkout, pero acá
     ocurre ANTES del checkout porque la franja tiene que dejar de ofertarse
     apenas alguien la elige, no recién al confirmar la compra.
+  - id_usuario / notas (NUEVO): la pre-reserva ahora guarda quién la generó
+    (`id_usuario=socio.id_usuario`) y una nota libre opcional del socio.
+    Sirve para: (a) que el admin sepa a quién acreditar en /suspender,
+    (b) mostrar "mis reservas" a futuro, (c) contexto humano en la agenda
+    maestra del admin. No se usa para autorizar /liberar (ver más abajo).
   - EXPIRACIÓN DE PRE-RESERVAS "HUÉRFANAS": una `bloqueada` con `id_orden`
     NULL y `creado_at` más viejo que `_MINUTOS_EXPIRACION_PRE_RESERVA` se
     considera abandonada (el socio la agregó al carrito y nunca pagó). El
     job programado que ya limpia `Orden.expira_at` debería correr también
     esta limpieza — ver `liberar_pre_reservas_expiradas()` al final del
     archivo, pensado para reusar en ese mismo job.
-  - No hace falta chequear "es mía" en /liberar contra `id_usuario`, porque
-    `ReservaInstalacion` no tiene ese campo (a propósito: la disponibilidad
-    es anónima). Por eso solo se puede liberar una reserva `bloqueada` sin
-    `id_orden` — una vez que tiene orden, ya no es "mía en el carrito", es
-    parte de una compra y se cancela por el flujo de órdenes, no por acá.
+  - No hace falta chequear "es mía" en /liberar contra `id_usuario`, aunque
+    el campo ya exista: se mantiene el criterio original (cualquier
+    'bloqueada' sin id_orden se puede liberar) porque agregar el chequeo
+    ahora es un cambio de comportamiento aparte, no atado a este feature.
+    Si querés que /liberar valide dueño, avisame y lo sumo en un paso propio.
 """
 
 from __future__ import annotations
@@ -132,7 +137,7 @@ def listar_disponibilidad(
 def crear_pre_reserva(
     payload: schemas.ReservaInstalacionCreate,
     db: Session = Depends(get_db),
-    _socio: models.Usuario = Depends(require_roles(*_ROLES_COMPRADORES)),
+    socio: models.Usuario = Depends(require_roles(*_ROLES_COMPRADORES)),
 ) -> models.ReservaInstalacion:
     """
     Crea una `ReservaInstalacion` en estado 'bloqueada' (sin orden asociada
@@ -185,7 +190,8 @@ def crear_pre_reserva(
         fecha_inicio=payload.fecha_inicio,
         fecha_fin=payload.fecha_fin,
         estado="bloqueada",
-        # id_orden queda NULL hasta el checkout
+        id_usuario=socio.id_usuario,
+        notas=payload.notas,
     )
     db.add(nueva_reserva)
     db.commit()
@@ -203,7 +209,7 @@ def crear_pre_reserva(
 def liberar_pre_reserva(
     id_reserva: int,
     db: Session = Depends(get_db),
-    _socio: models.Usuario = Depends(require_roles(*_ROLES_COMPRADORES)),
+    socio: models.Usuario = Depends(require_roles(*_ROLES_COMPRADORES)),
 ) -> None:
     """
     Libera una reserva 'bloqueada' sin orden asociada, típicamente porque el

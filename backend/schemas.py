@@ -464,11 +464,13 @@ class ProductoServicioResponse(ProductoServicioBase):
 ESTADOS_RESERVA = ("bloqueada", "confirmada", "liberada", "expirada")
 
 
+
 class ReservaInstalacionCreate(BaseModel):
     id_producto: int
-    instalacion: str = Field(max_length=100, description="'quincho', 'cancha_1', etc.")
+    instalacion: str = Field(max_length=100)
     fecha_inicio: datetime
     fecha_fin: datetime
+    notas: Optional[str] = None
 
     @model_validator(mode="after")
     def fechas_coherentes(self) -> "ReservaInstalacionCreate":
@@ -487,7 +489,69 @@ class ReservaInstalacionResponse(BaseModel):
     fecha_fin: datetime
     estado: str
     id_orden: Optional[int] = None
+    id_usuario: Optional[int] = None
+    notas: Optional[str] = None
+    num_socios_esperados: Optional[int] = None
+    monto_reintegro_unitario: Optional[Decimal] = None
     creado_at: datetime
+    
+class ReservaAdminListResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id_reserva: int
+    instalacion: str
+    fecha_inicio: datetime
+    fecha_fin: datetime
+    estado: str
+    id_usuario: Optional[int] = None
+    nombre_responsable: Optional[str] = None
+    notas: Optional[str] = None
+    num_socios_esperados: Optional[int] = None
+    monto_reintegro_unitario: Optional[Decimal] = None
+    escaneos_realizados: int = 0
+
+
+class SuspenderReservaPayload(BaseModel):
+    motivo: str = Field(min_length=3, max_length=300, description="Ej: 'Lluvia', 'Cancha en mantenimiento'.")
+
+
+class SuspenderReservaResponse(BaseModel):
+    id_reserva: int
+    estado: str
+    monto_acreditado: Decimal
+    id_usuario_acreditado: int
+    nuevo_saldo: Decimal
+
+class EscanearQRPayload(BaseModel):
+    qr_token: str = Field(description="qr_token del socio, leído del QR físico.")
+
+
+class ReintegroQRResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id_reintegro: int
+    id_reserva: int
+    id_usuario: int
+    nombre_socio: str
+    monto: Decimal
+    forma: str
+    escaneado_at: datetime
+    
+
+class ReintegrosReservaResponse(BaseModel):
+    id_reserva: int
+    num_socios_esperados: Optional[int]
+    escaneados: int
+    monto_total: Decimal
+    reintegros: List[ReintegroQRResponse]
+
+class ReintegrosReservaResponse(BaseModel):
+    id_reserva: int
+    num_socios_esperados: Optional[int]
+    escaneados: int
+    monto_total: Decimal
+    reintegros: List[ReintegroQRResponse]
+
 
 
 class DisponibilidadReservaResponse(BaseModel):

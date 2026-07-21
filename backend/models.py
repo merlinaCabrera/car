@@ -44,6 +44,27 @@ Notas de arquitectura:
         "dia_vencimiento_cuota BETWEEN 1 AND 28",
     )
     # Límite superior = 28 para evitar problemas con febrero en años no bisiestos.
+
+── Cambios (módulo canchas + reintegro QR) ────────────────────────────────────
+  Usuario:
+    + saldo_a_favor (Numeric(10,2), default=0)
+      Crédito interno del socio (reintegros QR, suspensiones por lluvia, etc).
+      Se descuenta en el checkout antes de pedir comprobante (lógica de router,
+      no de este archivo).
+
+  ReservaInstalacion:
+    + id_usuario (FK Usuario, nullable) — socio que generó la pre-reserva.
+    + notas (Text, nullable) — nombre del grupo/evento, aclaración libre del admin.
+    + num_socios_esperados (Integer, nullable)
+    + monto_reintegro_unitario (Numeric(10,2), nullable) — reintegro fijo por
+      socio que escanea QR en el turno. Se fija a mano por el admin (no se
+      recalcula solo en cada escaneo).
+
+  + Nueva tabla ReintegroQR: un registro por cada socio que escanea su QR en
+    la puerta de la cancha durante una reserva confirmada.
+
+  ── Migración Alembic requerida ────────────────────────────────────────────────
+    Ver comandos y bloque upgrade()/downgrade() completos entregados en el chat.
 """
 
 from __future__ import annotations
@@ -249,6 +270,18 @@ class Usuario(Base):
     deuda_historica_meses: Mapped[int] = mapped_column(
         Integer, nullable=False, server_default=text("0"),
         comment="Meses adeudados en cantidad, NUNCA en pesos.",
+    )
+
+    # Billetera interna (reintegros QR, suspensiones por lluvia, etc.)
+    saldo_a_favor: Mapped[Decimal] = mapped_column(
+        Numeric(10, 2), nullable=False, server_default=text("0"),
+        comment=(
+            "Crédito interno del socio. Se acredita automáticamente por "
+            "ReintegroQR.forma='saldo_a_favor' o por suspensión de una reserva "
+            "confirmada (lluvia, etc). Se descuenta en el checkout antes de "
+            "pedir comprobante — esa resta la hace el router de carrito, no "
+            "un trigger de este modelo."
+        ),
     )
 
     # Ciclo de vida
@@ -587,6 +620,30 @@ class ReservaInstalacion(Base):
             name="fk_reservas_orden",
         ),
     )
+
+    # Módulo canchas + reintegro QR
+    id_usuario: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("usuarios.id_usuario", ondelete="SET NULL"),
+        nullable=True,
+        comment="Socio que generó la pre-reserva (dueño del turno en el carrito). NULL en franjas viejas o si el usuario se dio de baja.",
+    )
+    notas: Mapped[Optional[str]] = mapped_column(
+        Text, nullable=True,
+        comment="Nombre del grupo/evento, aclaración libre del admin.",
+    )
+    num_socios_esperados: Mapped[Optional[int]] = mapped_column(
+        Integer, nullable=True,
+        comment="Cuántos socios se esperan en el turno. Base para calcular monto_reintegro_unitario.",
+    )
+    monto_reintegro_unitario: Mapped[Optional[Decimal]] = mapped_column(
+        Numeric(10, 2), nullable=True,
+        comment=(
+            "Reintegro fijo por socio que escanea QR en este turno. Lo fija el "
+            "admin (default sugerido = precio_reserva × 0.20 / num_socios_esperados) "
+            "y queda congelado: el escaneo simplemente lo copia, no lo recalcula."
+        ),
+    )
+
     creado_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now(),
     )
@@ -602,6 +659,12 @@ class ReservaInstalacion(Base):
     )
     detalles: Mapped[List["DetalleOrden"]] = relationship(
         "DetalleOrden", back_populates="reserva",
+    )
+    usuario_responsable: Mapped[Optional["Usuario"]] = relationship(
+        "Usuario", foreign_keys=[id_usuario],
+    )
+    reintegros: Mapped[List["ReintegroQR"]] = relationship(
+        "ReintegroQR", back_populates="reserva", cascade="all, delete-orphan",
     )
 
     __table_args__ = (
@@ -619,6 +682,58 @@ class ReservaInstalacion(Base):
 
     def __repr__(self) -> str:
         return f"<ReservaInstalacion {self.instalacion} {self.fecha_inicio:%Y-%m-%d %H:%M} [{self.estado}]>"
+
+
+class ReintegroQR(Base):
+    """
+    Registro de cada socio que escaneó su QR en la puerta de la cancha
+    durante una reserva confirmada. Dispara el reintegro del 20%.
+    Un socio no puede escanear dos veces en la misma reserva (unique).
+    """
+    __tablename__ = "reintegros_qr"
+
+    id_reintegro: Mapped[int] = mapped_column(Integer, primary_key=True)
+    id_reserva: Mapped[int] = mapped_column(
+        ForeignKey("reservas_instalaciones.id_reserva", ondelete="CASCADE"), nullable=False,
+    )
+    id_usuario: Mapped[int] = mapped_column(
+        ForeignKey("usuarios.id_usuario", ondelete="RESTRICT"), nullable=False,
+    )
+    monto: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
+    forma: Mapped[str] = mapped_column(
+        String(20), nullable=False, server_default=text("'pendiente'"),
+        comment="'pendiente' | 'saldo_a_favor' | 'efectivo' | 'transferencia'",
+    )
+    escaneado_por: Mapped[int] = mapped_column(
+        ForeignKey("usuarios.id_usuario"), nullable=False,
+        comment="Operador (portero_cancha) que hizo el escaneo.",
+    )
+    escaneado_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now(),
+    )
+
+    # Relaciones
+    reserva: Mapped["ReservaInstalacion"] = relationship(
+        "ReservaInstalacion", back_populates="reintegros",
+    )
+    usuario: Mapped["Usuario"] = relationship(
+        "Usuario", foreign_keys=[id_usuario],
+    )
+    operador: Mapped["Usuario"] = relationship(
+        "Usuario", foreign_keys=[escaneado_por],
+    )
+
+    __table_args__ = (
+        UniqueConstraint("id_reserva", "id_usuario", name="uq_reintegro_reserva_usuario"),
+        CheckConstraint(
+            "forma IN ('pendiente', 'saldo_a_favor', 'efectivo', 'transferencia')",
+            name="chk_reintegro_forma",
+        ),
+        Index("idx_reintegros_reserva", "id_reserva"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<ReintegroQR reserva={self.id_reserva} user={self.id_usuario} [{self.forma}]>"
 
 
 class Pago(Base):

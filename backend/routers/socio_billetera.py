@@ -7,6 +7,7 @@ import schemas
 from database import get_db
 from dependencies import get_current_user
 
+
 router = APIRouter(prefix="/socio/billetera", tags=["Socio — Billetera"])
 
 

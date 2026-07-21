@@ -1,15 +1,11 @@
 """agregar_presente_ausente_convocatoria
-
 Revision ID: 5e5c11d73200
 Revises: 7d7c6bc4933e
 Create Date: 2026-07-16 20:27:01.568676
-
 """
 from typing import Sequence, Union
-
 from alembic import op
 import sqlalchemy as sa
-
 
 # revision identifiers, used by Alembic.
 revision: str = '5e5c11d73200'
@@ -30,15 +26,15 @@ def upgrade() -> None:
     op.drop_index(op.f('idx_notificaciones_usuario_no_leidas'), table_name='notificaciones', postgresql_where='(leida = false)')
     op.create_index('idx_notificaciones_usuario_no_leidas', 'notificaciones', ['id_usuario', 'created_at'], unique=False, postgresql_where=sa.text('leida = FALSE'), postgresql_ops={'created_at': 'DESC'})
     # ### end Alembic commands ###
-    
-op.execute("""
-    ALTER TABLE convocatorias
-    DROP CONSTRAINT chk_estado_convocatoria;
-    
-    ALTER TABLE convocatorias
-    ADD CONSTRAINT chk_estado_convocatoria
-    CHECK (estado IN ('citado', 'confirmado', 'rechazado', 'presente', 'ausente'));
-""")
+
+    op.execute("""
+        ALTER TABLE convocatorias
+        DROP CONSTRAINT chk_estado_convocatoria;
+
+        ALTER TABLE convocatorias
+        ADD CONSTRAINT chk_estado_convocatoria
+        CHECK (estado IN ('citado', 'confirmado', 'rechazado', 'presente', 'ausente'));
+    """)
 
 
 def downgrade() -> None:

@@ -238,6 +238,14 @@ class Usuario(Base):
         Boolean, nullable=False, server_default=text("true"),
         comment="TRUE en primer ingreso. El frontend bloquea hasta que el socio cambie la clave.",
     )
+    token_recuperacion: Mapped[Optional[str]] = mapped_column(
+        String(255), nullable=True,
+        comment="Token opaco temporal para reset de password. NULL si no hay pedido activo.",
+    )
+    token_recuperacion_expira: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True,
+        comment="El token deja de ser válido después de esta fecha (1 hora de vida).",
+    )
     ultimo_login_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
 
     # QR dinámico — gestionado por trigger trg_rotar_qr

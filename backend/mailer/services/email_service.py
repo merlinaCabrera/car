@@ -86,3 +86,23 @@ async def enviar_convocatoria(email_destino: str, nombre_socio: str, titulo_even
         template_name="convocatoria.html",
         body={"nombre_socio": nombre_socio, "titulo_evento": titulo_evento, "fecha_evento": fecha_evento},
     )
+
+
+# Pegar al FINAL de mailer/services/email_service.py (después de enviar_convocatoria)
+
+async def enviar_cuenta_aprobada(email_destino: str, nombre_socio: str) -> None:
+    await _enviar(
+        destinatarios=[email_destino],
+        asunto="¡Tu cuenta fue aprobada! 🎉",
+        template_name="cuenta_aprobada.html",
+        body={"nombre_socio": nombre_socio},
+    )
+
+
+async def enviar_recuperar_password(email_destino: str, nombre_socio: str, link_reset: str, minutos_validez: int = 60) -> None:
+    await _enviar(
+        destinatarios=[email_destino],
+        asunto="Recuperar tu contraseña",
+        template_name="recuperar_password.html",
+        body={"nombre_socio": nombre_socio, "link_reset": link_reset, "minutos_validez": minutos_validez},
+    )

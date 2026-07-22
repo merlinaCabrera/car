@@ -605,8 +605,24 @@ class PagoResponse(BaseModel):
     id_usuario: int
     monto_total: Decimal
     comprobante_url: Optional[str] = None
+    metodo_pago: str = Field(
+        description="'efectivo' | 'transferencia' | 'mercado_pago'.",
+    )
+    mp_preference_id: Optional[str] = Field(
+        default=None,
+        description="ID de la Preference de Mercado Pago, si metodo_pago='mercado_pago'.",
+    )
     estado: str
     fecha_creacion: datetime
+    init_point: Optional[str] = Field(
+        default=None,
+        description=(
+            "Link de pago de Mercado Pago (Checkout Pro), para que el frontend "
+            "redirija al socio. Solo viene completo en la respuesta del checkout "
+            "cuando metodo_pago='mercado_pago' — no es una columna de la base, "
+            "se arma al vuelo en el router en el momento de crear la Preference."
+        ),
+    )
 
 
 class DetalleOrdenCreate(BaseModel):
@@ -644,28 +660,29 @@ METODOS_PAGO = ("transferencia", "efectivo", "mercadopago")
 
 class OrdenCreate(BaseModel):
     """
-    El socio envía los ítems y el método de pago elegido.
-    El backend calcula monto_total y bloquea stock/reservas.
+    El socio envía los ítems; el backend calcula monto_total y bloquea stock/reservas.
     El frontend NUNCA envía monto_total para evitar manipulación.
     """
     items: List[DetalleOrdenCreate] = Field(min_length=1)
     metodo_pago: str = Field(
         default="transferencia",
-        description=f"Método de pago elegido por el socio. Opciones: {METODOS_PAGO}.",
+        description="'efectivo' | 'transferencia' | 'mercado_pago'.",
     )
-
-    @field_validator("metodo_pago")
-    @classmethod
-    def metodo_pago_valido(cls, v: str) -> str:
-        if v not in METODOS_PAGO:
-            raise ValueError(f"Método de pago inválido. Opciones: {METODOS_PAGO}")
-        return v
 
     @field_validator("items")
     @classmethod
     def items_no_vacio(cls, v: List[DetalleOrdenCreate]) -> List[DetalleOrdenCreate]:
         if not v:
             raise ValueError("Una orden debe tener al menos un ítem.")
+        return v
+
+    @field_validator("metodo_pago")
+    @classmethod
+    def metodo_pago_valido(cls, v: str) -> str:
+        if v not in ("efectivo", "transferencia", "mercado_pago"):
+            raise ValueError(
+                "metodo_pago debe ser 'efectivo', 'transferencia' o 'mercado_pago'."
+            )
         return v
 
 

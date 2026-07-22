@@ -20,9 +20,42 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Upgrade schema."""
-    pass
+    op.add_column(
+        "pagos",
+        sa.Column(
+            "metodo_pago",
+            sa.String(length=20),
+            nullable=False,
+            server_default=sa.text("'transferencia'"),
+        ),
+    )
+    op.add_column(
+        "pagos",
+        sa.Column("mp_preference_id", sa.String(length=80), nullable=True),
+    )
+    op.add_column(
+        "pagos",
+        sa.Column("mp_payment_id", sa.String(length=80), nullable=True),
+    )
+
+    op.create_unique_constraint(
+        "uq_pagos_mp_preference_id", "pagos", ["mp_preference_id"]
+    )
+    op.create_unique_constraint(
+        "uq_pagos_mp_payment_id", "pagos", ["mp_payment_id"]
+    )
+    op.create_check_constraint(
+        "chk_pago_metodo",
+        "pagos",
+        "metodo_pago IN ('efectivo', 'transferencia', 'mercado_pago')",
+    )
 
 
 def downgrade() -> None:
     """Downgrade schema."""
-    pass
+    op.drop_constraint("chk_pago_metodo", "pagos", type_="check")
+    op.drop_constraint("uq_pagos_mp_payment_id", "pagos", type_="unique")
+    op.drop_constraint("uq_pagos_mp_preference_id", "pagos", type_="unique")
+    op.drop_column("pagos", "mp_payment_id")
+    op.drop_column("pagos", "mp_preference_id")
+    op.drop_column("pagos", "metodo_pago")

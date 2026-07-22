@@ -400,7 +400,12 @@ export default function SocioCompras() {
       {!cargando && !error && ordenes.length > 0 && (
         <div className="space-y-4">
           {ordenes.map((orden) => (
-            <TarjetaOrden key={orden.id_orden} orden={orden} />
+            <TarjetaOrden
+              key={orden.id_orden}
+              orden={orden}
+              token={token}
+              onComprobanteCargado={() => setRecargarTick((t) => t + 1)}
+            />
           ))}
         </div>
       )}

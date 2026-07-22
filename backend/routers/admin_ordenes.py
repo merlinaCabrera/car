@@ -51,7 +51,7 @@ import calendar
 from datetime import date, datetime, timezone
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request, status
 from sqlalchemy.orm import Session, joinedload
 
 import models
@@ -59,6 +59,7 @@ import schemas
 from database import get_db
 from dependencies import get_current_user, require_roles
 from utils.audit import registrar_audit as _registrar_audit, extraer_ip as _extraer_ip
+from mailer.services import email_tasks
 
 router = APIRouter(
     prefix="/admin/ordenes",
@@ -321,6 +322,7 @@ def aprobar_orden(
     id_orden: int,
     payload: schemas.OrdenAprobar,
     request: Request,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     admin: models.Usuario = Depends(require_roles(*_ROLES_ADMIN)),
 ) -> schemas.OrdenAprobarResponse:
@@ -496,6 +498,46 @@ def aprobar_orden(
     )
     
 
+    # ── Paso 9: mail al socio (background) ───────────────────────────────────
+    # Diferenciamos cuota social vs tienda/alquiler para dar contexto útil.
+    if socio.email:
+        tiene_cuota = meses_cuota_descontados > 0
+        tiene_tienda = any(
+            d.producto is not None and d.producto.categoria != "cuota_social"
+            for d in orden.detalles
+        )
+
+        if tiene_cuota:
+            background_tasks.add_task(
+                email_tasks.task_orden_aprobada_cuota,
+                email_destino=socio.email,
+                nombre_socio=socio.nombre,
+                numero_orden=orden.id_orden,
+                meses_pagados=meses_cuota_descontados,
+                cubierto_hasta=socio.mes_cubierto_hasta.strftime("%d/%m/%Y") if socio.mes_cubierto_hasta else "-",
+            )
+
+        if tiene_tienda:
+            background_tasks.add_task(
+                email_tasks.task_orden_aprobada_tienda,
+                email_destino=socio.email,
+                nombre_socio=socio.nombre,
+                numero_orden=orden.id_orden,
+                monto=str(orden.monto_total),
+            )
+
+        # Mail al club avisando que llegó un pago
+        background_tasks.add_task(
+            email_tasks.task_aviso_club_pago_recibido,
+            nombre_socio=f"{socio.nombre} {socio.apellido}",
+            dni_socio=socio.dni,
+            numero_orden=orden.id_orden,
+            monto=str(orden.monto_total),
+            tipo="cuota social" if tiene_cuota and not tiene_tienda
+                 else "tienda/alquiler" if tiene_tienda and not tiene_cuota
+                 else "mixta (cuota + tienda)",
+        )
+
     db.commit()
     db.refresh(orden)
 
@@ -521,6 +563,7 @@ def rechazar_orden(
     id_orden: int,
     payload: schemas.OrdenRechazar,
     request: Request,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     admin: models.Usuario = Depends(require_roles(*_ROLES_ADMIN)),
 ) -> schemas.OrdenRechazarResponse:
@@ -591,6 +634,17 @@ def rechazar_orden(
             referencia_tabla="ordenes",
         )
     )
+
+    # ── Mail al socio avisando el rechazo (background) ───────────────────────
+    socio_rechazo = orden.usuario
+    if socio_rechazo and socio_rechazo.email:
+        background_tasks.add_task(
+            email_tasks.task_orden_rechazada,
+            email_destino=socio_rechazo.email,
+            nombre_socio=socio_rechazo.nombre,
+            numero_orden=orden.id_orden,
+            motivo=payload.motivo_rechazo,
+        )
 
     db.commit()
     db.refresh(orden)

@@ -23,6 +23,7 @@ import {
   Wallet,
   Store,
   Trophy,
+  CalendarClock,
 } from 'lucide-react'
 
 // Importación del asset real
@@ -390,14 +391,34 @@ export default function MainLayout({ userRole }) {
                 Control de Acceso
               </p>
 
-              {/* Escáner QR */}
+              {/* Escáner General — verificación de socio al día (cuotas) */}
               <Link
                 to="/admin/escaner"
                 onClick={closeMenu}
                 className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors"
               >
                 <ScanLine size={18} />
-                <span>Escáner QR</span>
+                <span>Escáner General</span>
+              </Link>
+
+              {/* Escáner Eventos — asocia el escaneo a un partido/evento activo */}
+              <Link
+                to="/admin/escaner-evento"
+                onClick={closeMenu}
+                className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors"
+              >
+                <CalendarDays size={18} />
+                <span>Escáner Eventos</span>
+              </Link>
+
+              {/* Escáner Canchas — asocia el escaneo a una reserva/turno activo */}
+              <Link
+                to="/admin/escaner-canchas"
+                onClick={closeMenu}
+                className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors"
+              >
+                <CalendarClock size={18} />
+                <span>Escáner Canchas</span>
               </Link>
             </div>
           )}

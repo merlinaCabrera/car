@@ -56,13 +56,14 @@ from __future__ import annotations
 from decimal import Decimal
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status, Query
 from sqlalchemy.orm import Session, joinedload
 
 import models
 import schemas
 from database import get_db
 from dependencies import require_roles
+from mailer.services import email_tasks
 
 router = APIRouter(
     prefix="/socio/carrito",
@@ -96,6 +97,7 @@ def _extraer_ip(request: Request) -> Optional[str]:
 def checkout_carrito(
     payload: schemas.OrdenCreate,
     request: Request,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: models.Usuario = Depends(require_roles(*_ROLES_COMPRADORES)),
 ) -> models.Pago:
@@ -338,6 +340,28 @@ def checkout_carrito(
     # 8 ── Commit único — Pago + Orden(es) + DetalleOrden(es) + AuditLog ────
     db.commit()
     db.refresh(nuevo_pago)
+
+    # 9 ── Mails en background ────────────────────────────────────────────────
+    metodo = getattr(payload, "metodo_pago", "transferencia") or "transferencia"
+
+    if current_user.email:
+        background_tasks.add_task(
+            email_tasks.task_orden_generada,
+            email_destino=current_user.email,
+            nombre_socio=current_user.nombre,
+            numero_pago=nuevo_pago.id_pago,
+            monto=str(nuevo_pago.monto_total),
+            metodo=metodo,
+        )
+
+    if metodo == "efectivo":
+        background_tasks.add_task(
+            email_tasks.task_aviso_club_efectivo,
+            nombre_socio=f"{current_user.nombre} {current_user.apellido}",
+            dni_socio=current_user.dni,
+            numero_pago=nuevo_pago.id_pago,
+            monto=str(nuevo_pago.monto_total),
+        )
 
     return nuevo_pago
 

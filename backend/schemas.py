@@ -639,12 +639,27 @@ class DetalleOrdenResponse(BaseModel):
     producto: Optional[ProductoServicioResponse] = None
 
 
+METODOS_PAGO = ("transferencia", "efectivo", "mercadopago")
+
+
 class OrdenCreate(BaseModel):
     """
-    El socio envía los ítems; el backend calcula monto_total y bloquea stock/reservas.
+    El socio envía los ítems y el método de pago elegido.
+    El backend calcula monto_total y bloquea stock/reservas.
     El frontend NUNCA envía monto_total para evitar manipulación.
     """
     items: List[DetalleOrdenCreate] = Field(min_length=1)
+    metodo_pago: str = Field(
+        default="transferencia",
+        description=f"Método de pago elegido por el socio. Opciones: {METODOS_PAGO}.",
+    )
+
+    @field_validator("metodo_pago")
+    @classmethod
+    def metodo_pago_valido(cls, v: str) -> str:
+        if v not in METODOS_PAGO:
+            raise ValueError(f"Método de pago inválido. Opciones: {METODOS_PAGO}")
+        return v
 
     @field_validator("items")
     @classmethod
@@ -1310,6 +1325,12 @@ class LoginPayload(BaseModel):
     dni: DNI
     password: str
 
+class RecuperarPasswordRequest(BaseModel):
+    identificador: str = Field(min_length=1, description="DNI o email del usuario")
+
+class ResetPasswordRequest(BaseModel):
+    token: str = Field(min_length=1)
+    password: str = Field(min_length=8)
 
 class TokenResponse(BaseModel):
     access_token: str

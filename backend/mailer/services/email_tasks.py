@@ -71,3 +71,76 @@ async def task_recuperar_password(email_destino: str, nombre_socio: str, link_re
         logger.info(f"Mail 'recuperar_password' enviado a {email_destino}")
     except Exception:
         logger.exception(f"Fallo al enviar mail 'recuperar_password' a {email_destino}")
+
+
+async def task_orden_aprobada_cuota(
+    email_destino: str,
+    nombre_socio: str,
+    numero_orden: int,
+    meses_pagados: int,
+    cubierto_hasta: str,
+) -> None:
+    try:
+        await email_service.enviar_orden_aprobada_cuota(
+            email_destino, nombre_socio, numero_orden, meses_pagados, cubierto_hasta
+        )
+        logger.info(f"Mail 'orden_aprobada_cuota' enviado a {email_destino} (orden #{numero_orden})")
+    except Exception:
+        logger.exception(f"Fallo al enviar mail 'orden_aprobada_cuota' a {email_destino} (orden #{numero_orden})")
+
+
+async def task_orden_aprobada_tienda(
+    email_destino: str,
+    nombre_socio: str,
+    numero_orden: int,
+    monto: str,
+) -> None:
+    try:
+        await email_service.enviar_orden_aprobada_tienda(
+            email_destino, nombre_socio, numero_orden, monto
+        )
+        logger.info(f"Mail 'orden_aprobada_tienda' enviado a {email_destino} (orden #{numero_orden})")
+    except Exception:
+        logger.exception(f"Fallo al enviar mail 'orden_aprobada_tienda' a {email_destino} (orden #{numero_orden})")
+
+
+async def task_aviso_club_pago_recibido(
+    nombre_socio: str,
+    dni_socio: str,
+    numero_orden: int,
+    monto: str,
+    tipo: str,
+) -> None:
+    try:
+        await email_service.enviar_aviso_club_pago_recibido(
+            nombre_socio, dni_socio, numero_orden, monto, tipo
+        )
+        logger.info(f"Mail 'aviso_club_pago' enviado al club (orden #{numero_orden}, socio {dni_socio})")
+    except Exception:
+        logger.exception(f"Fallo al enviar mail 'aviso_club_pago' al club (orden #{numero_orden})")
+
+async def task_orden_generada(
+    email_destino: str,
+    nombre_socio: str,
+    numero_pago: int,
+    monto: str,
+    metodo: str,
+) -> None:
+    try:
+        await email_service.enviar_orden_generada(email_destino, nombre_socio, numero_pago, monto, metodo)
+        logger.info(f"Mail 'orden_generada' ({metodo}) enviado a {email_destino} (pago #{numero_pago})")
+    except Exception:
+        logger.exception(f"Fallo al enviar mail 'orden_generada' a {email_destino} (pago #{numero_pago})")
+
+
+async def task_aviso_club_efectivo(
+    nombre_socio: str,
+    dni_socio: str,
+    numero_pago: int,
+    monto: str,
+) -> None:
+    try:
+        await email_service.enviar_aviso_club_efectivo(nombre_socio, dni_socio, numero_pago, monto)
+        logger.info(f"Mail 'aviso_club_efectivo' enviado al club (pago #{numero_pago})")
+    except Exception:
+        logger.exception(f"Fallo al enviar mail 'aviso_club_efectivo' al club (pago #{numero_pago})")

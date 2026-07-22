@@ -56,53 +56,78 @@ const formatoMoneda = new Intl.NumberFormat('es-AR', {
 // Actualizado para el patrón Split-Order: el backend devuelve un PagoResponse.
 // El upload se hace sobre /pagos/{id_pago}/comprobante.
 //
-function OrdenGeneradaModal({ orden, token, onClose }) {
+// ─── Modal de checkout — 3 pasos: método → confirmar → comprobante/resultado ──
+//
+// PASO 0 (selección): el socio elige cómo va a pagar ANTES de que se llame
+//   al backend. El checkout real ocurre recién al confirmar en este paso,
+//   evitando generar una Orden si el socio cierra el modal sin intención de pagar.
+//
+// PASO 1a (transferencia): datos bancarios con botón "copiar alias" + upload
+//   de comprobante al endpoint /socio/cuotas/pagos/{id_pago}/comprobante.
+//
+// PASO 1b (efectivo): mensaje de confirmación, el admin se contacta.
+//
+// PASO 1c (mercado pago): deshabilitado, placeholder para futura integración.
+
+function OrdenGeneradaModal({ cartTotal, cartPayload, token, onClose, onCheckout }) {
+  // Paso: 'metodo' | 'transferencia' | 'efectivo' | 'mercadopago'
+  const [paso,        setPaso]        = useState('metodo')
+  const [isConfirming, setIsConfirming] = useState(false)
+  const [confirmError, setConfirmError] = useState(null)
+  const [orden,       setOrden]       = useState(null)   // PagoResponse del backend
+
+  // Upload
   const [file,        setFile]        = useState(null)
   const [isUploading, setIsUploading] = useState(false)
-  const [apiError,    setApiError]    = useState(null)
-  const [success,     setSuccess]     = useState(false)
+  const [uploadError, setUploadError] = useState(null)
+  const [uploadOk,    setUploadOk]    = useState(false)
 
-  const handleFileChange = (e) => {
-    const selectedFile = e.target.files[0]
-    if (selectedFile) {
-      setFile(selectedFile)
-      setApiError(null)
+  // ── Confirmar compra con el método elegido ─────────────────────────────────
+  const handleConfirmar = async (metodo) => {
+    setIsConfirming(true)
+    setConfirmError(null)
+    try {
+      const data = await onCheckout(metodo)  // llama al checkout en el padre
+      setOrden(data)
+      setPaso(metodo)
+    } catch (err) {
+      setConfirmError(err.message)
+    } finally {
+      setIsConfirming(false)
     }
   }
 
+  // ── Upload de comprobante ──────────────────────────────────────────────────
   const handleUpload = async () => {
-    if (!file) {
-      setApiError('Por favor, seleccioná un archivo antes de continuar.')
-      return
-    }
+    if (!file) { setUploadError('Seleccioná un archivo primero.'); return }
     setIsUploading(true)
-    setApiError(null)
-    setSuccess(false)
-
+    setUploadError(null)
     const formData = new FormData()
     formData.append('file', file)
-
     try {
-      // NUEVA URL: Apunta a /pagos/ y usa orden.id_pago
       const res = await fetch(
         `${API}/socio/cuotas/pagos/${orden.id_pago}/comprobante`,
-        {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${token}` },
-          body: formData,
-        }
+        { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: formData }
       )
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
         throw new Error(err.detail ?? 'Error al subir el comprobante.')
       }
-      setSuccess(true)
+      setUploadOk(true)
       setTimeout(() => onClose(), 2500)
     } catch (err) {
-      setApiError(err.message)
+      setUploadError(err.message)
     } finally {
       setIsUploading(false)
     }
+  }
+
+  // ── Copiar alias al portapapeles ───────────────────────────────────────────
+  const [copiado, setCopiado] = useState(false)
+  const copiarAlias = () => {
+    navigator.clipboard.writeText('CLUB.ROBERTS')
+    setCopiado(true)
+    setTimeout(() => setCopiado(false), 2000)
   }
 
   return (
@@ -112,111 +137,222 @@ function OrdenGeneradaModal({ orden, token, onClose }) {
         {/* Header */}
         <div className="p-6 border-b flex-shrink-0 flex items-start justify-between">
           <div>
-            <h2 className="text-xl font-bold text-gray-800">¡Compra generada!</h2>
-            <p className="text-sm text-gray-500 mt-1">
-              Pago #{orden.id_pago} · {formatoMoneda.format(orden.monto_total)}
-            </p>
+            <h2 className="text-xl font-bold text-gray-800">
+              {paso === 'metodo'       && 'Finalizar compra'}
+              {paso === 'transferencia' && (orden ? '¡Compra generada!' : 'Confirmar compra')}
+              {paso === 'efectivo'      && (orden ? '¡Compra registrada!' : 'Confirmar compra')}
+            </h2>
+            {orden && (
+              <p className="text-sm text-gray-500 mt-1">
+                Pago #{orden.id_pago} · {formatoMoneda.format(orden.monto_total)}
+              </p>
+            )}
+            {!orden && (
+              <p className="text-sm text-gray-500 mt-1">
+                Total: {formatoMoneda.format(cartTotal)}
+              </p>
+            )}
           </div>
           <button
             onClick={onClose}
-            disabled={isUploading}
+            disabled={isConfirming || isUploading}
             className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
           >
             <X size={18} />
           </button>
         </div>
 
-        {/* Cuerpo */}
-        <div className="p-6 space-y-4 overflow-y-auto flex-1">
+        {/* ── PASO 0: elegir método de pago ── */}
+        {paso === 'metodo' && (
+          <div className="p-6 space-y-4 overflow-y-auto flex-1">
+            {confirmError && (
+              <div className="flex items-start gap-2 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
+                <AlertTriangle size={15} className="flex-shrink-0 mt-0.5" />
+                <span>{confirmError}</span>
+              </div>
+            )}
 
-          {/* Errores y éxito */}
-          {apiError && (
-            <div className="flex items-start gap-2 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
-              <AlertTriangle size={15} className="flex-shrink-0 mt-0.5" />
-              <span>{apiError}</span>
+            <div className="text-center p-4 rounded-xl bg-indigo-50 border border-indigo-200">
+              <p className="text-sm font-semibold text-indigo-900">Total a abonar</p>
+              <p className="text-3xl font-bold text-indigo-900 mt-1">{formatoMoneda.format(cartTotal)}</p>
             </div>
-          )}
-          {success && (
-            <div className="flex items-center gap-2 p-3 rounded-lg bg-green-50 border border-green-200 text-green-700 text-sm font-medium">
-              <CheckCircle size={15} />
-              ¡Comprobante enviado! Un administrador verificará tu pago.
-            </div>
-          )}
 
-          {/* Total destacado */}
-          <div className="text-center p-4 rounded-xl bg-indigo-50 border border-indigo-200">
-            <p className="text-sm font-semibold text-indigo-900">Total a transferir</p>
-            <p className="text-3xl font-bold text-indigo-900 mt-1">
-              {formatoMoneda.format(orden.monto_total)}
-            </p>
+            <p className="text-sm text-gray-500 text-center">¿Cómo vas a pagar?</p>
+
+            <div className="space-y-3">
+              {/* Transferencia */}
+              <button
+                onClick={() => handleConfirmar('transferencia')}
+                disabled={isConfirming}
+                className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-indigo-200
+                           bg-indigo-50 hover:bg-indigo-100 transition-colors text-left
+                           disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <span className="text-2xl">🏦</span>
+                <div>
+                  <p className="font-bold text-indigo-900 text-sm">Transferencia bancaria</p>
+                  <p className="text-xs text-indigo-600 mt-0.5">Alias CLUB.ROBERTS · Requiere comprobante</p>
+                </div>
+                {isConfirming && <Loader2 size={16} className="animate-spin ml-auto text-indigo-500" />}
+              </button>
+
+              {/* Efectivo */}
+              <button
+                onClick={() => handleConfirmar('efectivo')}
+                disabled={isConfirming}
+                className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-gray-200
+                           bg-gray-50 hover:bg-gray-100 transition-colors text-left
+                           disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <span className="text-2xl">💵</span>
+                <div>
+                  <p className="font-bold text-gray-800 text-sm">Efectivo</p>
+                  <p className="text-xs text-gray-500 mt-0.5">Un administrativo se contactará con vos</p>
+                </div>
+              </button>
+
+              {/* Mercado Pago — próximamente */}
+              <button
+                disabled
+                className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-dashed
+                           border-gray-200 bg-white opacity-50 cursor-not-allowed text-left"
+              >
+                <span className="text-2xl">💳</span>
+                <div>
+                  <p className="font-bold text-gray-400 text-sm">Mercado Pago</p>
+                  <p className="text-xs text-gray-400 mt-0.5">Próximamente disponible</p>
+                </div>
+                <span className="ml-auto text-xs font-semibold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
+                  Pronto
+                </span>
+              </button>
+            </div>
           </div>
+        )}
 
-          {/* Instrucciones */}
-          <p className="text-sm text-gray-600 text-center">
-            Transferí al alias <strong className="text-gray-900">CLUB.ROBERTS</strong> y subí
-            el comprobante para que podamos verificar tu pago.
-          </p>
+        {/* ── PASO 1a: transferencia — datos bancarios + upload ── */}
+        {paso === 'transferencia' && orden && (
+          <div className="p-6 space-y-4 overflow-y-auto flex-1">
+            {uploadError && (
+              <div className="flex items-start gap-2 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
+                <AlertTriangle size={15} className="flex-shrink-0 mt-0.5" />
+                <span>{uploadError}</span>
+              </div>
+            )}
+            {uploadOk && (
+              <div className="flex items-center gap-2 p-3 rounded-lg bg-green-50 border border-green-200 text-green-700 text-sm font-medium">
+                <CheckCircle size={15} />
+                ¡Comprobante enviado! Un administrador verificará tu pago.
+              </div>
+            )}
 
-          {/* Upload de comprobante */}
-          <div>
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              Adjuntar comprobante
-            </label>
-            <div className="mt-1.5">
+            {/* Datos bancarios */}
+            <div className="rounded-xl border border-gray-200 overflow-hidden">
+              <div className="bg-gray-50 px-4 py-2 border-b">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Datos para transferir</p>
+              </div>
+              <div className="divide-y divide-gray-100">
+                <div className="flex items-center justify-between px-4 py-3">
+                  <div>
+                    <p className="text-xs text-gray-400">Alias</p>
+                    <p className="font-bold text-indigo-700 tracking-widest">CLUB.ROBERTS</p>
+                  </div>
+                  <button
+                    onClick={copiarAlias}
+                    className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-600 transition-colors"
+                  >
+                    {copiado ? '✓ Copiado' : 'Copiar'}
+                  </button>
+                </div>
+                <div className="px-4 py-3">
+                  <p className="text-xs text-gray-400">Titular</p>
+                  <p className="font-semibold text-gray-700">Club Atlético Roberts</p>
+                </div>
+                <div className="px-4 py-3">
+                  <p className="text-xs text-gray-400">Banco</p>
+                  <p className="font-semibold text-gray-700">Banco Nación</p>
+                </div>
+                <div className="px-4 py-3 bg-indigo-50">
+                  <p className="text-xs text-gray-400">Total a transferir</p>
+                  <p className="font-bold text-indigo-900 text-lg">{formatoMoneda.format(orden.monto_total)}</p>
+                </div>
+              </div>
+            </div>
+
+            <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-center">
+              ⚠️ Tenés <strong>48 horas</strong> para subir el comprobante. Revisá también tu mail.
+            </p>
+
+            {/* Upload */}
+            <div>
+              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                Adjuntar comprobante
+              </label>
               <label
-                className={`
-                  relative flex justify-center w-full px-6 py-8 border-2 border-dashed
+                className={`mt-1.5 relative flex justify-center w-full px-6 py-7 border-2 border-dashed
                   rounded-xl cursor-pointer transition-colors
-                  ${file
-                    ? 'border-green-300 bg-green-50'
-                    : 'border-gray-300 bg-white hover:border-gray-400 hover:bg-gray-50'
-                  }
-                  ${(isUploading || success) ? 'opacity-60 cursor-not-allowed' : ''}
+                  ${file ? 'border-green-300 bg-green-50' : 'border-gray-300 bg-white hover:border-indigo-400 hover:bg-indigo-50'}
+                  ${(isUploading || uploadOk) ? 'opacity-60 cursor-not-allowed' : ''}
                 `}
               >
                 <div className="text-center pointer-events-none">
-                  <UploadCloud
-                    className={`mx-auto h-10 w-10 ${file ? 'text-green-500' : 'text-gray-400'}`}
-                  />
+                  <UploadCloud className={`mx-auto h-9 w-9 ${file ? 'text-green-500' : 'text-gray-400'}`} />
                   <span className={`mt-2 block text-sm font-semibold ${file ? 'text-green-800' : 'text-gray-600'}`}>
                     {file ? file.name : 'Seleccionar archivo'}
                   </span>
-                  <span className="mt-1 block text-xs text-gray-500">
-                    PNG, JPG, PDF (Máx. 10 MB)
-                  </span>
+                  <span className="mt-1 block text-xs text-gray-400">PNG, JPG, PDF (Máx. 10 MB)</span>
                 </div>
-                <input
-                  type="file"
-                  className="sr-only"
-                  accept="image/*,.pdf"
-                  onChange={handleFileChange}
-                  disabled={isUploading || success}
+                <input type="file" className="sr-only" accept="image/*,.pdf"
+                  onChange={e => { if (e.target.files[0]) { setFile(e.target.files[0]); setUploadError(null) } }}
+                  disabled={isUploading || uploadOk}
                 />
               </label>
             </div>
           </div>
-        </div>
+        )}
+
+        {/* ── PASO 1b: efectivo ── */}
+        {paso === 'efectivo' && orden && (
+          <div className="p-6 space-y-4 overflow-y-auto flex-1">
+            <div className="text-center py-4">
+              <span className="text-5xl">✅</span>
+              <h3 className="mt-4 font-bold text-gray-800 text-lg">¡Orden registrada!</h3>
+              <p className="text-sm text-gray-500 mt-2 leading-relaxed">
+                Tu orden <strong>#{orden.id_pago}</strong> por{' '}
+                <strong>{formatoMoneda.format(orden.monto_total)}</strong> fue generada.
+                Un administrativo del club se va a comunicar con vos para coordinar el pago en efectivo.
+              </p>
+            </div>
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-800 leading-relaxed">
+              También podés ver el estado de tu orden en{' '}
+              <a href="/mis-compras" className="font-bold underline">Mis Compras</a>.
+            </div>
+          </div>
+        )}
 
         {/* Footer */}
         <div className="p-4 bg-gray-50 rounded-b-2xl border-t flex justify-end gap-3 flex-shrink-0">
           <button
             type="button"
             onClick={onClose}
-            disabled={isUploading}
+            disabled={isConfirming || isUploading}
             className="px-4 py-2 rounded-lg text-gray-600 bg-gray-200 hover:bg-gray-300 font-semibold transition-colors"
           >
-            Cerrar
+            {(paso === 'efectivo' && orden) || uploadOk ? 'Listo' : 'Cerrar'}
           </button>
-          <button
-            type="button"
-            onClick={handleUpload}
-            disabled={!file || isUploading || success}
-            className="px-4 py-2 rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 font-semibold disabled:opacity-50 transition-colors flex items-center gap-2"
-          >
-            {isUploading && <Loader2 size={14} className="animate-spin" />}
-            {isUploading ? 'Subiendo…' : 'Subir Comprobante'}
-          </button>
+          {paso === 'transferencia' && orden && (
+            <button
+              type="button"
+              onClick={handleUpload}
+              disabled={!file || isUploading || uploadOk}
+              className="px-4 py-2 rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 font-semibold disabled:opacity-50 transition-colors flex items-center gap-2"
+            >
+              {isUploading && <Loader2 size={14} className="animate-spin" />}
+              {isUploading ? 'Subiendo…' : 'Subir Comprobante'}
+            </button>
+          )}
         </div>
+
       </div>
     </div>
   )
@@ -308,13 +444,9 @@ export default function SocioCarrito() {
   const [ordenGenerada, setOrdenGenerada] = useState(null)   // OrdenResponse del backend
   const [modalAbierto, setModalAbierto]   = useState(false)
 
-  // ── Checkout ────────────────────────────────────────────────────────────────
-const handleCheckout = async () => {
+  // ── Abrir modal de checkout (aún NO llama al backend) ────────────────────
+  const handleAbrirCheckout = () => {
     if (!cart.length) return
-
-    // Validación defensiva: si algún ítem quedó sin id numérico válido
-    // (carritos viejos guardados en localStorage antes de este fix), avisamos
-    // en vez de mandarlo al backend y recibir un 422 críptico.
     const itemInvalido = cart.find(item => !Number.isInteger(Number(item.id)))
     if (itemInvalido) {
       setCheckoutError(
@@ -323,48 +455,38 @@ const handleCheckout = async () => {
       )
       return
     }
-
-    setIsCheckingOut(true)
     setCheckoutError(null)
+    setModalAbierto(true)
+  }
 
+  // ── Checkout real — llamado desde el modal al confirmar método de pago ────
+  // Devuelve el PagoResponse o lanza un Error (el modal lo captura).
+  const handleCheckout = async (metodo) => {
+    setIsCheckingOut(true)
     const payload = {
+      metodo_pago: metodo,
       items: cart.map(item => ({
         id_producto: Number(item.id_producto ?? item.id),
         cantidad:    parseInt(item.qty, 10),
-        // Alquileres: la franja ya fue bloqueada en /socio/reservas/pre-reserva
-        // (ver Reservas.jsx). El checkout la vincula a la orden nueva; sin
-        // esto el backend rechaza el ítem con 422.
         ...(item.id_reserva != null ? { id_reserva: Number(item.id_reserva) } : {}),
       })),
     }
-
     try {
       const res = await fetch(`${API}/socio/carrito/checkout`, {
         method:  'POST',
-        headers: {
-          Authorization:  `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       })
-
       const data = await res.json()
-
       if (!res.ok) {
-        // data.detail puede ser un string o una lista (errores de validación Pydantic)
         const mensaje = Array.isArray(data.detail)
           ? data.detail.map(e => e.msg ?? e).join(' · ')
           : (data.detail ?? `Error ${res.status} al procesar la compra.`)
         throw new Error(mensaje)
       }
-
-      // Éxito: vaciar el carrito y abrir el modal de comprobante
-      clearCart()
+      clearCart()   // vaciar recién acá, cuando el backend confirmó
       setOrdenGenerada(data)
-      setModalAbierto(true)
-
-    } catch (err) {
-      setCheckoutError(err.message)
+      return data
     } finally {
       setIsCheckingOut(false)
     }
@@ -427,11 +549,14 @@ const handleCheckout = async () => {
     <div className="p-4 sm:p-6 max-w-2xl mx-auto space-y-6">
 
       {/* Modal de comprobante */}
-      {modalAbierto && ordenGenerada && (
+      {modalAbierto && (
         <OrdenGeneradaModal
+          cartTotal={cartTotal}
+          cartPayload={cart}
           orden={ordenGenerada}
           token={token}
           onClose={handleCloseModal}
+          onCheckout={handleCheckout}
         />
       )}
 
@@ -502,7 +627,7 @@ const handleCheckout = async () => {
 
           {/* Finalizar compra */}
           <button
-            onClick={handleCheckout}
+            onClick={handleAbrirCheckout}
             disabled={isCheckingOut || !cart.length}
             className="flex-1 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700
                        text-white font-bold text-sm transition-colors

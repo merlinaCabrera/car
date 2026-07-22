@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2 style="margin:0 0 16px; color:#1b5e20; font-size:20px; font-weight:700;">
+  📋 Tu compra fue generada
+</h2>
+
+<p style="margin:0 0 12px; color:#333; font-size:15px; line-height:1.6;">
+  Hola <strong>{{ nombre_socio }}</strong>,
+</p>
+
+<p style="margin:0 0 20px; color:#333; font-size:15px; line-height:1.6;">
+  Tu orden <strong>#{{ numero_pago }}</strong> fue registrada correctamente.
+  {% if metodo == 'transferencia' %}
+  Para confirmarla, realizá la transferencia y subí el comprobante desde el portal.
+  {% elif metodo == 'efectivo' %}
+  Elegiste pagar en efectivo. Un administrativo del club se comunicará con vos a la brevedad.
+  {% endif %}
+</p>
+
+<!-- Resumen del monto -->
+<table width="100%" cellpadding="0" cellspacing="0"
+       style="background-color:#f1f8f1; border-left:4px solid #1b5e20;
+              border-radius:4px; margin-bottom:20px;">
+  <tr>
+    <td style="padding:14px 16px;">
+      <p style="margin:0 0 4px; color:#555; font-size:13px;">Total a abonar</p>
+      <p style="margin:0; color:#1b5e20; font-size:22px; font-weight:700;">${{ monto }}</p>
+    </td>
+  </tr>
+</table>
+
+{% if metodo == 'transferencia' %}
+<p style="margin:0 0 8px; color:#333; font-size:14px; font-weight:700;">Datos para la transferencia:</p>
+<table width="100%" cellpadding="0" cellspacing="0"
+       style="background-color:#f8f8f8; border:1px solid #ddd; border-radius:6px; margin-bottom:20px;">
+  <tr>
+    <td style="padding:10px 16px; border-bottom:1px solid #eee;">
+      <span style="color:#777; font-size:12px;">Alias</span><br/>
+      <strong style="color:#1b5e20; font-size:16px; letter-spacing:1px;">CLUB.ROBERTS</strong>
+    </td>
+  </tr>
+  <tr>
+    <td style="padding:10px 16px; border-bottom:1px solid #eee;">
+      <span style="color:#777; font-size:12px;">Titular</span><br/>
+      <strong style="color:#333; font-size:14px;">Club Atlético Roberts</strong>
+    </td>
+  </tr>
+  <tr>
+    <td style="padding:10px 16px;">
+      <span style="color:#777; font-size:12px;">Banco</span><br/>
+      <strong style="color:#333; font-size:14px;">Banco Nación</strong>
+    </td>
+  </tr>
+</table>
+
+<table cellpadding="0" cellspacing="0" width="100%" style="margin-bottom:16px;">
+  <tr>
+    <td align="center">
+      <a href="{{ frontend_url }}/mis-compras"
+         style="display:inline-block; background-color:#1b5e20; color:#ffffff;
+                text-decoration:none; font-size:15px; font-weight:700;
+                padding:12px 32px; border-radius:6px;">
+        Subir comprobante →
+      </a>
+    </td>
+  </tr>
+</table>
+
+<p style="margin:0; color:#e65100; font-size:13px; line-height:1.6; text-align:center;">
+  ⚠️ La orden expira en <strong>48 horas</strong>. Subí el comprobante antes de ese plazo.
+</p>
+{% endif %}
+
+{% if metodo == 'efectivo' %}
+<p style="margin:0; color:#666; font-size:13px; line-height:1.6;">
+  Podés ver el estado de tu orden desde
+  <a href="{{ frontend_url }}/mis-compras" style="color:#1b5e20;">Mis Compras</a>.
+</p>
+{% endif %}
+{% endblock %}

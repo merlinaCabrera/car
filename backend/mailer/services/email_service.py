@@ -52,6 +52,17 @@ async def _enviar(destinatarios: list[str], asunto: str, template_name: str, bod
     await fm.send_message(message, template_name=template_name)
 
 
+async def send_recuperar_password(email: str, nombre: str, token: str):
+    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
+    link = f"{frontend_url}/recuperar-password?token={token}"
+    html = render_template("recuperar_password.html", {
+        "nombre": nombre,
+        "link": link,
+        "expiracion": "1 hora",
+    })
+    await _send(to=email, subject="Recuperá tu contraseña — Club Atlético", html=html)
+    
+    
 async def enviar_orden_aprobada(email_destino: str, nombre_socio: str, numero_orden: int, monto: str) -> None:
     await _enviar(
         destinatarios=[email_destino],
@@ -105,4 +116,109 @@ async def enviar_recuperar_password(email_destino: str, nombre_socio: str, link_
         asunto="Recuperar tu contraseña",
         template_name="recuperar_password.html",
         body={"nombre_socio": nombre_socio, "link_reset": link_reset, "minutos_validez": minutos_validez},
+    )
+
+
+async def enviar_orden_aprobada_cuota(
+    email_destino: str,
+    nombre_socio: str,
+    numero_orden: int,
+    meses_pagados: int,
+    cubierto_hasta: str,
+) -> None:
+    await _enviar(
+        destinatarios=[email_destino],
+        asunto=f"✅ Tu pago de cuota #{numero_orden} fue aprobado",
+        template_name="orden_aprobada_cuota.html",
+        body={
+            "nombre_socio": nombre_socio,
+            "numero_orden": numero_orden,
+            "meses_pagados": meses_pagados,
+            "cubierto_hasta": cubierto_hasta,
+        },
+    )
+
+
+async def enviar_orden_aprobada_tienda(
+    email_destino: str,
+    nombre_socio: str,
+    numero_orden: int,
+    monto: str,
+) -> None:
+    await _enviar(
+        destinatarios=[email_destino],
+        asunto=f"✅ Tu compra #{numero_orden} fue aprobada",
+        template_name="orden_aprobada_tienda.html",
+        body={
+            "nombre_socio": nombre_socio,
+            "numero_orden": numero_orden,
+            "monto": monto,
+        },
+    )
+
+
+async def enviar_aviso_club_pago_recibido(
+    nombre_socio: str,
+    dni_socio: str,
+    numero_orden: int,
+    monto: str,
+    tipo: str,
+) -> None:
+    import os
+    club_email = os.getenv("CLUB_EMAIL", "clubatleticoroberts1@gmail.com")
+    await _enviar(
+        destinatarios=[club_email],
+        asunto=f"💰 Pago aprobado — Orden #{numero_orden} ({tipo})",
+        template_name="aviso_club_pago.html",
+        body={
+            "nombre_socio": nombre_socio,
+            "dni_socio": dni_socio,
+            "numero_orden": numero_orden,
+            "monto": monto,
+            "tipo": tipo,
+        },
+    )
+
+async def enviar_orden_generada(
+    email_destino: str,
+    nombre_socio: str,
+    numero_pago: int,
+    monto: str,
+    metodo: str,
+) -> None:
+    import os
+    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
+    await _enviar(
+        destinatarios=[email_destino],
+        asunto=f"📋 Orden #{numero_pago} generada — Club Atlético Roberts",
+        template_name="orden_generada.html",
+        body={
+            "nombre_socio": nombre_socio,
+            "numero_pago": numero_pago,
+            "monto": monto,
+            "metodo": metodo,
+            "frontend_url": frontend_url,
+        },
+    )
+
+
+async def enviar_aviso_club_efectivo(
+    nombre_socio: str,
+    dni_socio: str,
+    numero_pago: int,
+    monto: str,
+) -> None:
+    import os
+    club_email = os.getenv("CLUB_EMAIL", "clubatleticoroberts1@gmail.com")
+    await _enviar(
+        destinatarios=[club_email],
+        asunto=f"💵 Pago en efectivo pendiente — Orden #{numero_pago}",
+        template_name="aviso_club_pago.html",
+        body={
+            "nombre_socio": nombre_socio,
+            "dni_socio": dni_socio,
+            "numero_orden": numero_pago,
+            "monto": monto,
+            "tipo": "efectivo (pendiente de cobro presencial)",
+        },
     )

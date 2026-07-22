@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2 style="margin:0 0 16px; color:#1b5e20; font-size:20px; font-weight:700;">
+  ✅ ¡Tu compra fue aprobada!
+</h2>
+
+<p style="margin:0 0 12px; color:#333; font-size:15px; line-height:1.6;">
+  Hola <strong>{{ nombre_socio }}</strong>,
+</p>
+
+<p style="margin:0 0 20px; color:#333; font-size:15px; line-height:1.6;">
+  Tu pago correspondiente a la orden <strong>#{{ numero_orden }}</strong>
+  por un total de <strong>${{ monto }}</strong> fue verificado y aprobado.
+</p>
+
+<!-- Resumen -->
+<table width="100%" cellpadding="0" cellspacing="0"
+       style="background-color:#f1f8f1; border-left:4px solid #1b5e20;
+              border-radius:4px; padding:16px; margin-bottom:20px;">
+  <tr>
+    <td style="padding:6px 16px;">
+      <p style="margin:0 0 6px; color:#555; font-size:13px;">Orden</p>
+      <p style="margin:0; color:#1b5e20; font-size:16px; font-weight:700;">#{{ numero_orden }}</p>
+    </td>
+    <td style="padding:6px 16px;">
+      <p style="margin:0 0 6px; color:#555; font-size:13px;">Total</p>
+      <p style="margin:0; color:#1b5e20; font-size:16px; font-weight:700;">${{ monto }}</p>
+    </td>
+  </tr>
+</table>
+
+<p style="margin:0 0 12px; color:#333; font-size:15px; line-height:1.6;">
+  En caso de que tu compra incluya <strong>indumentaria o alquiler de instalaciones</strong>,
+  nos estaremos comunicando a la brevedad para coordinar la entrega o confirmar los detalles.
+</p>
+
+<p style="margin:0; color:#666; font-size:13px; line-height:1.6;">
+  Si tenés alguna consulta, comunicate con la administración del club.
+</p>
+{% endblock %}

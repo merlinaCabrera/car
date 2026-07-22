@@ -4,6 +4,7 @@ Router de administración de reservas de instalaciones.
 
 Cubre:
   - Listado/detalle de reservas para la Agenda de Reservas del admin.
+  - Reservas activas AHORA (para el selector del Escáner de Canchas).
   - Configuración de reparto (num_socios_esperados / monto_reintegro_unitario).
   - Escaneo de QR en la puerta de la cancha → dispara el ReintegroQR.
   - Consulta de reintegros ya realizados sobre una reserva.
@@ -14,7 +15,7 @@ from __future__ import annotations
 
 from decimal import Decimal
 from typing import List, Optional
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.orm import Session, joinedload
@@ -33,8 +34,10 @@ _ROLES_ADMIN = ("admin_general", "personal_administrativo")
 # Roles habilitados para escanear QR en la puerta de la cancha. Incluye
 # admin_temporal porque ese rol es justamente el del control de acceso físico
 # (ver bloque "Control de Acceso" del menú, que ya lo habilita para el
-# Escáner QR general de socios).
-_ROLES_ESCANEO = ("admin_general", "personal_administrativo", "admin_temporal")
+# Escáner QR general de socios). portero_cancha queda listo para el día que
+# se siembre en la tabla `roles` y se quiera separar operadores por escáner
+# sin tocar código.
+_ROLES_ESCANEO = ("admin_general", "personal_administrativo", "admin_temporal", "portero_cancha")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -69,6 +72,74 @@ def listar_reservas(
         query = query.filter(models.ReservaInstalacion.fecha_inicio <= hasta)
 
     reservas = query.order_by(models.ReservaInstalacion.fecha_inicio.asc()).all()
+
+    resultado: List[schemas.ReservaAdminListResponse] = []
+    for r in reservas:
+        nombre_responsable = None
+        if r.usuario_responsable is not None:
+            nombre_responsable = f"{r.usuario_responsable.nombre} {r.usuario_responsable.apellido}"
+
+        resultado.append(
+            schemas.ReservaAdminListResponse(
+                id_reserva=r.id_reserva,
+                instalacion=r.instalacion,
+                fecha_inicio=r.fecha_inicio,
+                fecha_fin=r.fecha_fin,
+                estado=r.estado,
+                id_usuario=r.id_usuario,
+                nombre_responsable=nombre_responsable,
+                notas=r.notas,
+                num_socios_esperados=r.num_socios_esperados,
+                monto_reintegro_unitario=r.monto_reintegro_unitario,
+                escaneos_realizados=len(r.reintegros),
+            )
+        )
+    return resultado
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Reservas activas AHORA — selector del Escáner de Canchas
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# CRÍTICO: esta ruta debe declararse ANTES de "/admin/reservas/{id_reserva}".
+# FastAPI/Starlette no hace fallback automático a la siguiente ruta cuando
+# falla la validación de tipo del path param (int(id_reserva) fallaría con
+# "activas") — devuelve 422 directo si "{id_reserva}" quedó registrada
+# primero. Declarando "activas" antes, matchea como ruta literal exacta.
+
+@router.get(
+    "/admin/reservas/activas",
+    response_model=List[schemas.ReservaAdminListResponse],
+    summary="Reservas confirmadas cuya franja horaria está vigente ahora (selector del Escáner de Canchas)",
+)
+def listar_reservas_activas(
+    db: Session = Depends(get_db),
+    _operador: models.Usuario = Depends(require_roles(*_ROLES_ESCANEO)),
+) -> List[schemas.ReservaAdminListResponse]:
+    """
+    Análogo a GET /deportivo/eventos/hoy, pero acotado a la ventana horaria
+    real de la reserva (no al día completo): un turno de cancha dura 1-2hs,
+    no 3-10hs como un evento, así que "activa ahora" = fecha_inicio <= ahora
+    <= fecha_fin. Margen de 15 min antes del inicio para que el portero
+    pueda abrir la reserva un rato antes de que lleguen los socios.
+    """
+    ahora = datetime.now(timezone.utc)
+    margen = timedelta(minutes=15)
+
+    reservas = (
+        db.query(models.ReservaInstalacion)
+        .options(
+            joinedload(models.ReservaInstalacion.usuario_responsable),
+            joinedload(models.ReservaInstalacion.reintegros),
+        )
+        .filter(
+            models.ReservaInstalacion.estado == "confirmada",
+            models.ReservaInstalacion.fecha_inicio <= ahora + margen,
+            models.ReservaInstalacion.fecha_fin >= ahora,
+        )
+        .order_by(models.ReservaInstalacion.fecha_inicio.asc())
+        .all()
+    )
 
     resultado: List[schemas.ReservaAdminListResponse] = []
     for r in reservas:

@@ -759,6 +759,12 @@ class Pago(Base):
     aplicación (en el router que arma el "carrito"), no con un CHECK de DB,
     porque calcular una suma de filas relacionadas en un CHECK constraint
     no es soportado por PostgreSQL de forma nativa.
+
+    metodo_pago = 'mercado_pago': el Pago nace en estado 'pendiente' igual
+    que transferencia, pero en vez de esperar que el socio suba un
+    comprobante y un admin lo verifique a mano, el propio webhook de
+    Mercado Pago (ver routers/webhooks_mercadopago.py) marca 'verificado'
+    y dispara la misma lógica de aprobación, sin admin humano de por medio.
     """
     __tablename__ = "pagos"
 
@@ -768,6 +774,23 @@ class Pago(Base):
     )
     monto_total: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
     comprobante_url: Mapped[Optional[str]] = mapped_column(Text)
+    metodo_pago: Mapped[str] = mapped_column(
+        String(20), nullable=False, server_default=text("'transferencia'"),
+        comment="efectivo | transferencia | mercado_pago",
+    )
+    mp_preference_id: Mapped[Optional[str]] = mapped_column(
+        String(80), unique=True,
+        comment="ID de la Preference creada en Mercado Pago (Checkout Pro). NULL si no es MP.",
+    )
+    mp_payment_id: Mapped[Optional[str]] = mapped_column(
+        String(80), unique=True,
+        comment=(
+            "ID del pago real que confirma Mercado Pago (via webhook). "
+            "Se completa recién cuando MP notifica 'approved'. Sirve para "
+            "detectar webhooks duplicados (idempotencia) sin volver a "
+            "aprobar el mismo Pago dos veces."
+        ),
+    )
     estado: Mapped[str] = mapped_column(
         String(40), nullable=False, server_default=text("'pendiente'"),
         comment="pendiente | verificado | rechazado",
@@ -791,6 +814,10 @@ class Pago(Base):
         CheckConstraint(
             "estado IN ('pendiente', 'verificado', 'rechazado')",
             name="chk_pago_estado",
+        ),
+        CheckConstraint(
+            "metodo_pago IN ('efectivo', 'transferencia', 'mercado_pago')",
+            name="chk_pago_metodo",
         ),
         Index("idx_pagos_usuario", "id_usuario"),
         Index(

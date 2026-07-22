@@ -13,6 +13,9 @@ import {
   XCircle,
   AlertTriangle,
   ArrowRight,
+  UploadCloud,
+  Loader2,
+  CheckCircle,
 } from "lucide-react";
 
 // Ajustá esta base según tu configuración (proxy de Vite, .env, etc.)
@@ -173,10 +176,85 @@ function EstadoError({ mensaje, onReintentar }) {
   );
 }
 
+// ─── Upload de comprobante inline ──────────────────────────────────────────
+
+function UploadComprobante({ idPago, token, onExito }) {
+  const [file,        setFile]        = useState(null)
+  const [isUploading, setIsUploading] = useState(false)
+  const [error,       setError]       = useState(null)
+  const [success,     setSuccess]     = useState(false)
+
+  const handleUpload = async () => {
+    if (!file) { setError('Seleccioná un archivo primero.'); return }
+    setIsUploading(true)
+    setError(null)
+    const formData = new FormData()
+    formData.append('file', file)
+    try {
+      const res = await fetch(
+        `${API_BASE_URL}/socio/cuotas/pagos/${idPago}/comprobante`,
+        { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: formData }
+      )
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.detail ?? 'Error al subir el comprobante.')
+      }
+      setSuccess(true)
+      setTimeout(() => onExito(), 1500)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setIsUploading(false)
+    }
+  }
+
+  if (success) {
+    return (
+      <div className="mt-3 flex items-center gap-2 rounded-xl bg-green-50 border border-green-200 px-3 py-2 text-sm text-green-700 font-medium">
+        <CheckCircle className="h-4 w-4 flex-shrink-0" />
+        ¡Comprobante enviado! Un administrador verificará tu pago.
+      </div>
+    )
+  }
+
+  return (
+    <div className="mt-3 space-y-2">
+      {error && (
+        <p className="text-xs text-red-600 flex items-center gap-1">
+          <AlertTriangle className="h-3.5 w-3.5" /> {error}
+        </p>
+      )}
+      <label className={`flex items-center gap-3 w-full px-3 py-2.5 border-2 border-dashed rounded-xl cursor-pointer transition-colors
+        ${file ? 'border-green-300 bg-green-50' : 'border-gray-300 bg-gray-50 hover:border-indigo-400 hover:bg-indigo-50'}
+        ${isUploading ? 'opacity-60 cursor-not-allowed' : ''}`}
+      >
+        <UploadCloud className={`h-5 w-5 flex-shrink-0 ${file ? 'text-green-500' : 'text-gray-400'}`} />
+        <span className={`text-sm ${file ? 'text-green-800 font-medium' : 'text-gray-500'}`}>
+          {file ? file.name : 'Adjuntar comprobante (PNG, JPG, PDF)'}
+        </span>
+        <input type="file" className="sr-only" accept="image/*,.pdf"
+          onChange={e => { if (e.target.files[0]) { setFile(e.target.files[0]); setError(null) } }}
+          disabled={isUploading}
+        />
+      </label>
+      <button
+        onClick={handleUpload}
+        disabled={!file || isUploading}
+        className="w-full flex items-center justify-center gap-2 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+      >
+        {isUploading && <Loader2 className="h-4 w-4 animate-spin" />}
+        {isUploading ? 'Subiendo…' : 'Subir comprobante'}
+      </button>
+    </div>
+  )
+}
+
 // ─── Tarjeta de orden ───────────────────────────────────────────────────────
 
-function TarjetaOrden({ orden }) {
-  const comprobanteUrl = resolverUrlArchivo(orden.pago?.comprobante_url);
+function TarjetaOrden({ orden, token, onComprobanteCargado }) {
+  const comprobanteUrl = resolverUrlArchivo(orden.pago?.comprobante_url)
+  const puedeSubirComprobante =
+    orden.estado === 'pendiente_verificacion' && !comprobanteUrl
 
   return (
     <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition hover:shadow-md">
@@ -226,8 +304,16 @@ function TarjetaOrden({ orden }) {
           Ver comprobante adjunto
         </a>
       )}
+
+      {puedeSubirComprobante && (
+        <UploadComprobante
+          idPago={orden.id_pago}
+          token={token}
+          onExito={onComprobanteCargado}
+        />
+      )}
     </div>
-  );
+  )
 }
 
 // ─── Página principal ───────────────────────────────────────────────────────

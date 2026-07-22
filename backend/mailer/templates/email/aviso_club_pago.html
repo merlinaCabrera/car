@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2 style="margin:0 0 16px; color:#1b5e20; font-size:20px; font-weight:700;">
+  💰 Pago aprobado — Orden #{{ numero_orden }}
+</h2>
+
+<p style="margin:0 0 16px; color:#333; font-size:15px; line-height:1.6;">
+  Se acaba de aprobar un pago en el sistema. Detalle:
+</p>
+
+<table width="100%" cellpadding="0" cellspacing="0"
+       style="background-color:#f1f8f1; border-left:4px solid #1b5e20;
+              border-radius:4px; padding:16px; margin-bottom:20px;">
+  <tr>
+    <td style="padding:8px 16px; border-bottom:1px solid #ddeedd;">
+      <span style="color:#555; font-size:13px;">Socio</span><br/>
+      <strong style="color:#1b5e20; font-size:15px;">{{ nombre_socio }}</strong>
+    </td>
+  </tr>
+  <tr>
+    <td style="padding:8px 16px; border-bottom:1px solid #ddeedd;">
+      <span style="color:#555; font-size:13px;">DNI</span><br/>
+      <strong style="color:#333; font-size:15px;">{{ dni_socio }}</strong>
+    </td>
+  </tr>
+  <tr>
+    <td style="padding:8px 16px; border-bottom:1px solid #ddeedd;">
+      <span style="color:#555; font-size:13px;">Orden #</span><br/>
+      <strong style="color:#333; font-size:15px;">{{ numero_orden }}</strong>
+    </td>
+  </tr>
+  <tr>
+    <td style="padding:8px 16px; border-bottom:1px solid #ddeedd;">
+      <span style="color:#555; font-size:13px;">Monto</span><br/>
+      <strong style="color:#333; font-size:15px;">${{ monto }}</strong>
+    </td>
+  </tr>
+  <tr>
+    <td style="padding:8px 16px;">
+      <span style="color:#555; font-size:13px;">Tipo</span><br/>
+      <strong style="color:#333; font-size:15px;">{{ tipo }}</strong>
+    </td>
+  </tr>
+</table>
+
+<p style="margin:0; color:#666; font-size:13px; line-height:1.6;">
+  Este es un aviso automático del sistema de gestión del Club Atlético Roberts.
+</p>
+{% endblock %}

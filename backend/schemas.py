@@ -1291,6 +1291,7 @@ class AsistenciaResponse(BaseModel):
     metodo: str
     registrado_por: int
     estado_financiero_snapshot: str
+    usuario: Optional[JugadorBusquedaResponse] = None  
 
 
 class ReporteEventoResponse(BaseModel):

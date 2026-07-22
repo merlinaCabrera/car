@@ -49,6 +49,17 @@ Decisiones técnicas (se mantienen del router anterior):
   ─ RETORNO: PagoResponse (no OrdenResponse). El frontend necesita el
     id_pago para saber dónde adjuntar el comprobante — ya no existe un solo
     "id_orden" representativo del checkout, puede haber hasta dos órdenes.
+
+── Mercado Pago (metodo_pago='mercado_pago') ───────────────────────────────────
+  El Pago se crea igual que con transferencia (estado='pendiente'), pero en
+  vez de esperar que el socio suba un comprobante, se crea además una
+  Preference en Mercado Pago (Checkout Pro) y se le devuelve al frontend el
+  init_point (link de pago) para redirigirlo.
+
+  external_reference de la Preference = id_pago: es la clave que usa
+  routers/webhooks_mercadopago.py para encontrar este Pago cuando Mercado
+  Pago notifique el resultado y disparar la aprobación automática (sin
+  admin humano de por medio, a diferencia del flujo de comprobante manual).
 """
 
 from __future__ import annotations
@@ -56,11 +67,13 @@ from __future__ import annotations
 from decimal import Decimal
 from typing import List, Optional
 
+import mercadopago
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status, Query
 from sqlalchemy.orm import Session, joinedload
 
 import models
 import schemas
+from config import settings
 from database import get_db
 from dependencies import require_roles
 from mailer.services import email_tasks
@@ -86,6 +99,72 @@ def _extraer_ip(request: Request) -> Optional[str]:
     return getattr(request.client, "host", None)
 
 
+def _crear_preferencia_mercado_pago(
+    *,
+    pago: models.Pago,
+    items_resueltos: list[tuple[models.ProductoServicio, schemas.DetalleOrdenCreate]],
+    current_user: models.Usuario,
+) -> str:
+    """
+    Crea la Preference en Mercado Pago (Checkout Pro) para el Pago recién
+    creado y devuelve el init_point (URL del link de pago al que se
+    redirige al socio).
+
+    Guarda pago.mp_preference_id (todavía sin commitear — lo hace el
+    llamador). No hace falta guardar nada más acá: el webhook resuelve todo
+    lo demás cuando Mercado Pago notifique el resultado real del pago.
+    """
+    sdk = mercadopago.SDK(settings.mp_access_token)
+
+    preference_data = {
+        "items": [
+            {
+                "title": producto.nombre[:256],
+                "quantity": item.cantidad,
+                "unit_price": float(producto.precio_actual),
+                "currency_id": "ARS",
+            }
+            for producto, item in items_resueltos
+        ],
+        "external_reference": str(pago.id_pago),
+        "notification_url": f"{settings.backend_url}/webhooks/mercadopago",
+        "back_urls": {
+            "success": f"{settings.frontend_url}/socio/compras",
+            "failure": f"{settings.frontend_url}/socio/compras",
+            "pending": f"{settings.frontend_url}/socio/compras",
+        },
+    }
+            # auto_return se omite en desarrollo: Mercado Pago exige que back_urls.success
+            # sea una URL con dominio público real (no localhost) para poder auto-redirigir
+            # tras el pago. Cuando el club tenga un dominio real en producción, se puede
+            # agregar de vuelta: preference_data["auto_return"] = "approved"
+    if not settings.frontend_url.startswith("http://localhost"):
+        preference_data["auto_return"] = "approved"
+    
+    # Payer opcional: si el socio no cargó email, se omite (MP no lo exige).
+    if current_user.email:
+        preference_data["payer"] = {"email": current_user.email}
+
+    try:
+        resultado = sdk.preference().create(preference_data)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="No se pudo generar el link de pago de Mercado Pago. Intentá de nuevo en unos minutos.",
+        ) from exc
+
+    if resultado.get("status") not in (200, 201):
+        detalle_error = resultado.get("response", {}).get("message", "error desconocido")
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Mercado Pago rechazó la creación del link de pago: {detalle_error}",
+        )
+
+    preference = resultado["response"]
+    pago.mp_preference_id = preference["id"]
+    return preference["init_point"]
+
+
 # ─── POST /socio/carrito/checkout ─────────────────────────────────────────────
 
 @router.post(
@@ -100,7 +179,7 @@ def checkout_carrito(
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: models.Usuario = Depends(require_roles(*_ROLES_COMPRADORES)),
-) -> models.Pago:
+) -> schemas.PagoResponse:
     """
     Convierte el carrito del frontend en un Pago con 1 o 2 Órdenes hijas
     (split-order: cuota_social separada de tienda).
@@ -114,15 +193,18 @@ def checkout_carrito(
          d. Descuenta stock ya en este paso (excepto cuota_social, que no tiene).
          e. Congela precio_actual como precio_unitario_historico.
       3. Calcula monto_total GLOBAL = Σ(precio_congelado × cantidad) de todo el carrito.
-      4. Crea el Pago (estado='pendiente', monto_total=global) y hace flush
-         para obtener id_pago.
+      4. Crea el Pago (estado='pendiente', monto_total=global, metodo_pago=payload)
+         y hace flush para obtener id_pago.
       5. Separa los ítems resueltos en dos dominios: cuota_social vs. tienda.
       6. Por cada dominio no vacío, crea UNA Orden (id_pago=el recién creado,
          monto_total=subtotal de ese dominio) y sus DetalleOrden.
       7. Registra CHECKOUT_PAGO en audit_log, referenciado a "pagos"/id_pago.
       8. Commit único.
-      9. Retorna el Pago (PagoResponse). El frontend usa pago.id_pago para
-         adjuntar el comprobante único de la operación.
+      9. Si metodo_pago='mercado_pago': crea la Preference, guarda
+         mp_preference_id, segundo commit chico, y arma init_point.
+     10. Retorna el Pago (PagoResponse). El frontend usa pago.id_pago para
+         adjuntar el comprobante único de la operación (o pago.init_point
+         para redirigir a Mercado Pago).
     """
 
     # 1 ── Usuario activo ───────────────────────────────────────────────────
@@ -226,7 +308,8 @@ def checkout_carrito(
         id_usuario=current_user.id_usuario,
         monto_total=monto_total_global,
         estado="pendiente",
-        # comprobante_url queda NULL hasta que el socio lo suba.
+        metodo_pago=payload.metodo_pago,
+        # comprobante_url queda NULL hasta que el socio lo suba (no aplica a MP).
     )
     db.add(nuevo_pago)
     db.flush()  # obtenemos nuevo_pago.id_pago sin hacer commit aún
@@ -313,6 +396,7 @@ def checkout_carrito(
         registro_id=nuevo_pago.id_pago,
         detalle={
             "monto_total": str(monto_total_global),
+            "metodo_pago": payload.metodo_pago,
             "cantidad_items": len(items_resueltos),
             "ordenes_generadas": [
                 {
@@ -342,7 +426,7 @@ def checkout_carrito(
     db.refresh(nuevo_pago)
 
     # 9 ── Mails en background ────────────────────────────────────────────────
-    metodo = getattr(payload, "metodo_pago", "transferencia") or "transferencia"
+    metodo = payload.metodo_pago
 
     if current_user.email:
         background_tasks.add_task(
@@ -363,7 +447,20 @@ def checkout_carrito(
             monto=str(nuevo_pago.monto_total),
         )
 
-    return nuevo_pago
+    # 10 ── Mercado Pago: crear Preference y devolver init_point ────────────
+    init_point: Optional[str] = None
+    if metodo == "mercado_pago":
+        init_point = _crear_preferencia_mercado_pago(
+            pago=nuevo_pago,
+            items_resueltos=items_resueltos,
+            current_user=current_user,
+        )
+        db.commit()  # persiste mp_preference_id (único campo que cambió)
+        db.refresh(nuevo_pago)
+
+    respuesta = schemas.PagoResponse.model_validate(nuevo_pago)
+    respuesta.init_point = init_point
+    return respuesta
 
 
 # ─── GET /socio/carrito/productos ─────────────────────────────────────────────

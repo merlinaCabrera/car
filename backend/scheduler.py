@@ -308,6 +308,13 @@ def notificar_cuotas_vencidas():
 
 scheduler = BackgroundScheduler(timezone="UTC")
 
+# NOTA (Neon free tier + pool chico): se agrega `jitter` a cada job para que
+# no arranquen todos en el segundo exacto de su intervalo. Sin esto, si un
+# admin entra al dashboard (5-6 requests en paralelo) justo cuando el
+# scheduler dispara un job, se juntan todas las peticiones de conexión al
+# mismo instante y se agota el pool. El jitter desincroniza esos picos sin
+# cambiar la frecuencia real de cada tarea.
+
 scheduler.add_job(
     cerrar_eventos_vencidos,
     trigger="interval",
@@ -315,6 +322,7 @@ scheduler.add_job(
     id="cerrar_eventos_vencidos",
     replace_existing=True,
     misfire_grace_time=60,
+    jitter=30,
 )
 
 scheduler.add_job(
@@ -324,6 +332,7 @@ scheduler.add_job(
     id="expirar_ordenes_vencidas",
     replace_existing=True,
     misfire_grace_time=300,
+    jitter=60,
 )
 
 scheduler.add_job(
@@ -333,6 +342,7 @@ scheduler.add_job(
     id="recordatorio_comprobante_pendiente",
     replace_existing=True,
     misfire_grace_time=300,
+    jitter=60,
 )
 
 scheduler.add_job(
@@ -343,6 +353,7 @@ scheduler.add_job(
     id="notificar_cuotas_vencidas",
     replace_existing=True,
     misfire_grace_time=3600,
+    jitter=120,
 )
 
 scheduler.start()

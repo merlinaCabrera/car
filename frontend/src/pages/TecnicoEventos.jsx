@@ -9,10 +9,11 @@
  * directamente el modal de Armar Convocatoria.
  *
  * Backend consumido:
- *   GET  /deportivo/eventos
- *   GET  /deportivo/categorias/{id_categoria}/jugadores
- *   POST /deportivo/eventos/{id_evento}/convocar
- *   POST /deportivo/eventos
+ *   GET   /deportivo/eventos
+ *   GET   /deportivo/categorias/{id_categoria}/jugadores
+ *   POST  /deportivo/eventos/{id_evento}/convocar
+ *   POST  /deportivo/eventos
+ *   PATCH /deportivo/eventos/{id_evento}
  */
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
@@ -42,8 +43,11 @@ import {
   List,
   LayoutGrid,
   FileDown,
+  History,
+  Pencil,
 } from 'lucide-react'
 import { useExportarConvocatoria } from '../hooks/useExportarConvocatoria'
+import { useExportarAsistencias } from '../hooks/useExportarAsistencias'
 
 const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 
@@ -66,6 +70,38 @@ const formatoHora = (fecha) =>
   new Date(fecha).toLocaleTimeString('es-AR', {
     hour: '2-digit', minute: '2-digit',
   })
+
+/**
+ * <input type="datetime-local"> devuelve un string naive tipo
+ * "2026-07-22T23:27", sin timezone — representa la hora LOCAL que el
+ * usuario tipeó/eligió. `new Date(...)` de JS interpreta ese string naive
+ * usando la zona horaria del navegador (Argentina, UTC-3) y `.toISOString()`
+ * lo convierte correctamente a UTC real. Sin este paso, mandar el string
+ * crudo al backend hace que se guarde 3hs adelantado/atrasado (se pierde
+ * la conversión de zona horaria por completo).
+ */
+function datetimeLocalToISO(value) {
+  if (!value) return null
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return null
+  return date.toISOString()
+}
+
+/**
+ * Inverso de datetimeLocalToISO: toma un ISO en UTC (lo que devuelve el
+ * backend, ej "2026-07-23T02:27:00.000Z") y arma el string naive que espera
+ * un <input type="datetime-local">. `new Date(iso)` ya lo interpreta en la
+ * zona horaria del navegador (Argentina), así que getFullYear/getHours/etc.
+ * devuelven directamente los componentes en hora local — no hace falta
+ * restar el offset a mano.
+ */
+function isoToDatetimeLocal(iso) {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
 
 function TipoBadge({ tipo }) {
   const config = TIPO_CONFIG[tipo] ?? TIPO_CONFIG.otro
@@ -284,36 +320,74 @@ function ConvocatoriaModal({ evento, onClose, onSaveSuccess }) {
 // Componente separado para que tenga su propio estado de exportando
 // sin interferir con el estado del modal de convocatoria.
 function ExportarBotonModal({ evento }) {
+  const { token } = useAuth()
   const { exportar, exportando, errorExport } = useExportarConvocatoria()
+  const {
+    exportar: exportarAsistencias,
+    exportando: exportandoAsistencias,
+    errorExport: errorAsistencias,
+  } = useExportarAsistencias(token)
   const tieneConvocados = (evento?.convocatorias?.length ?? 0) > 0
+  const esFinalizado = evento?.estado === 'finalizado'
+
   return (
     <div className="flex flex-col gap-1">
-      <button
-        onClick={() => exportar(evento)}
-        disabled={exportando || !tieneConvocados}
-        title={tieneConvocados ? 'Descargar lista en PDF' : 'Guardá la convocatoria primero'}
-        className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 bg-white text-gray-600 font-semibold hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-sm"
-      >
-        {exportando ? <Loader2 size={14} className="animate-spin" /> : <FileDown size={14} />}
-        {exportando ? 'Generando…' : 'Exportar PDF'}
-      </button>
-      {errorExport && (
-        <p className="text-xs text-amber-700">{errorExport}</p>
-      )}
+      <div className="flex items-center gap-2 flex-wrap">
+        <button
+          onClick={() => exportar(evento)}
+          disabled={exportando || !tieneConvocados}
+          title={tieneConvocados ? 'Descargar lista en PDF' : 'Guardá la convocatoria primero'}
+          className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 bg-white text-gray-600 font-semibold hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-sm"
+        >
+          {exportando ? <Loader2 size={14} className="animate-spin" /> : <FileDown size={14} />}
+          {exportando ? 'Generando…' : 'Exportar convocatoria'}
+        </button>
+
+        {esFinalizado && (
+          <button
+            onClick={() => exportarAsistencias(evento)}
+            disabled={exportandoAsistencias}
+            title="Descargar planilla de asistencia real (quién ingresó por la puerta)"
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 bg-white text-gray-600 font-semibold hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-sm"
+          >
+            {exportandoAsistencias ? <Loader2 size={14} className="animate-spin" /> : <FileDown size={14} />}
+            {exportandoAsistencias ? 'Generando…' : 'Exportar asistencia'}
+          </button>
+        )}
+      </div>
+      {errorExport && <p className="text-xs text-amber-700">{errorExport}</p>}
+      {errorAsistencias && <p className="text-xs text-amber-700">{errorAsistencias}</p>}
     </div>
   )
 }
 
 // ─── Modal: Nuevo Evento ───────────────────────────────────────────────────────
 
-function NuevoEventoModal({ onClose, onSaveSuccess }) {
+/**
+ * Modal de alta/edición de evento.
+ *
+ * Sin `evento` → modo creación (POST /deportivo/eventos), igual que el
+ * NuevoEventoModal original.
+ * Con `evento` → modo edición (PATCH /deportivo/eventos/{id}), formulario
+ * precargado y con el campo "Estado" habilitado (crear siempre arranca en
+ * 'programado', pero editar es justamente donde tiene sentido poder pasarlo
+ * a 'en_curso'/'finalizado'/'cancelado' a mano si hace falta).
+ */
+function EventoFormModal({ evento, onClose, onSaveSuccess }) {
+  const esEdicion = !!evento
   const { token } = useAuth()
   const [categorias, setCategorias] = useState([])
   const [loadingCategorias, setLoadingCategorias] = useState(true)
-  const [formData, setFormData] = useState({
-    titulo: '', tipo: 'partido', id_categoria: '',
-    descripcion: '', fecha_inicio: '', fecha_fin: '', ubicacion: '',
-  })
+  const [formData, setFormData] = useState(() => ({
+    titulo: evento?.titulo ?? '',
+    tipo: evento?.tipo ?? 'partido',
+    id_categoria: evento?.id_categoria ?? '',
+    descripcion: evento?.descripcion ?? '',
+    fecha_inicio: isoToDatetimeLocal(evento?.fecha_inicio),
+    fecha_fin: isoToDatetimeLocal(evento?.fecha_fin),
+    ubicacion: evento?.ubicacion ?? '',
+    estado: evento?.estado ?? 'programado',
+  }))
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [apiError, setApiError] = useState(null)
 
@@ -345,22 +419,30 @@ function NuevoEventoModal({ onClose, onSaveSuccess }) {
     }
     setIsSubmitting(true)
     setApiError(null)
-    const payload = {
-      ...formData,
+
+    const base = {
+      titulo: formData.titulo,
+      tipo: formData.tipo,
       id_categoria: formData.id_categoria ? Number(formData.id_categoria) : null,
-      fecha_fin: formData.fecha_fin || null,
+      fecha_inicio: datetimeLocalToISO(formData.fecha_inicio),
+      fecha_fin: datetimeLocalToISO(formData.fecha_fin),
       descripcion: formData.descripcion || null,
       ubicacion: formData.ubicacion || null,
     }
+    const payload = esEdicion ? { ...base, estado: formData.estado } : base
+
     try {
-      const res = await fetch(`${API}/deportivo/eventos`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify(payload),
-      })
+      const res = await fetch(
+        esEdicion ? `${API}/deportivo/eventos/${evento.id_evento}` : `${API}/deportivo/eventos`,
+        {
+          method: esEdicion ? 'PATCH' : 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify(payload),
+        }
+      )
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}))
-        throw new Error(errData.detail ?? 'Error al crear el evento.')
+        throw new Error(errData.detail ?? `Error al ${esEdicion ? 'editar' : 'crear'} el evento.`)
       }
       onSaveSuccess()
     } catch (err) {
@@ -380,8 +462,10 @@ function NuevoEventoModal({ onClose, onSaveSuccess }) {
       <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-xl w-full max-w-lg flex flex-col max-h-[90dvh]">
         <div className="p-6 border-b flex-shrink-0 flex items-start justify-between">
           <div>
-            <h2 className="text-xl font-bold text-gray-800">Nuevo Evento</h2>
-            <p className="text-sm text-gray-500 mt-1">Crear un partido, entrenamiento u otro.</p>
+            <h2 className="text-xl font-bold text-gray-800">{esEdicion ? 'Editar Evento' : 'Nuevo Evento'}</h2>
+            <p className="text-sm text-gray-500 mt-1">
+              {esEdicion ? 'Modificá los datos del evento.' : 'Crear un partido, entrenamiento u otro.'}
+            </p>
           </div>
           <button type="button" onClick={onClose} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
             <X size={18} />
@@ -438,6 +522,31 @@ function NuevoEventoModal({ onClose, onSaveSuccess }) {
             <label className={L}>Ubicación (Opcional)</label>
             <input type="text" name="ubicacion" value={formData.ubicacion} onChange={handleChange} className="form-input" />
           </div>
+
+          <div>
+            <label className={L}>Descripción (Opcional)</label>
+            <textarea
+              name="descripcion"
+              value={formData.descripcion}
+              onChange={handleChange}
+              rows={2}
+              className="form-input resize-none"
+            />
+          </div>
+
+          {/* Estado — solo tiene sentido tocarlo al editar. Al crear siempre
+              arranca en 'programado' (default del backend). */}
+          {esEdicion && (
+            <div>
+              <label className={L}>Estado</label>
+              <select name="estado" value={formData.estado} onChange={handleChange} className="form-input">
+                <option value="programado">Programado</option>
+                <option value="en_curso">En curso</option>
+                <option value="finalizado">Finalizado</option>
+                <option value="cancelado">Cancelado</option>
+              </select>
+            </div>
+          )}
         </div>
 
         <div className="p-4 bg-gray-50 rounded-b-2xl border-t flex justify-end gap-3 flex-shrink-0">
@@ -446,7 +555,7 @@ function NuevoEventoModal({ onClose, onSaveSuccess }) {
           </button>
           <button type="submit" disabled={isSubmitting} className="px-4 py-2 rounded-lg text-white bg-blue-600 hover:bg-blue-700 font-semibold disabled:opacity-50 transition-colors flex items-center gap-2">
             {isSubmitting && <Loader2 size={14} className="animate-spin" />}
-            Crear Evento
+            {esEdicion ? 'Guardar Cambios' : 'Crear Evento'}
           </button>
         </div>
       </form>
@@ -494,31 +603,75 @@ export default function TecnicoEventos() {
   const [error, setError] = useState(null)
   const [selectedEvent, setSelectedEvent] = useState(null)
   const [modalNuevoEventoAbierto, setModalNuevoEventoAbierto] = useState(false)
+  const [eventoEditando, setEventoEditando] = useState(null)
   const [expandedEventId, setExpandedEventId] = useState(null)
   const [vista, setVista] = useState('lista')
   const [mesCalendario, setMesCalendario] = useState(new Date())
+  const [mostrarFinalizados, setMostrarFinalizados] = useState(false)
   const { exportar, exportando, errorExport } = useExportarConvocatoria()
+  const {
+    exportar: exportarAsistencias,
+    exportando: exportandoAsistencias,
+    errorExport: errorAsistencias,
+  } = useExportarAsistencias(token)
 
   const fetchEventos = useCallback(async () => {
     if (!token) return
     setLoading(true)
     setError(null)
     try {
-      const params = new URLSearchParams({
-        desde: new Date().toISOString(),
-        estado: 'programado',
-      })
-      const res = await fetch(`${API}/deportivo/eventos?${params.toString()}`, {
+      const ahora = new Date().toISOString()
+      // Sin 'desde': un evento 'programado' sigue siendo relevante aunque su
+      // fecha_inicio ya haya pasado — nadie lo pasó a 'en_curso'/'finalizado'
+      // todavía, así que sigue siendo trabajo pendiente del técnico, no algo
+      // que deba desaparecer de la lista solo porque el reloj avanzó.
+      const paramsProgramados = new URLSearchParams({ estado: 'programado' })
+
+      const fetchProgramados = fetch(`${API}/deportivo/eventos?${paramsProgramados.toString()}`, {
         headers: { Authorization: `Bearer ${token}` },
       })
-      if (!res.ok) throw new Error('No se pudieron cargar los eventos.')
-      setEventos(await res.json())
+
+      // 'desde' filtra fecha_inicio >= desde: un evento 'finalizado' ya pasó,
+      // así que para traerlo hay que pedir explícitamente 'hasta=ahora' y
+      // NO mandar 'desde=ahora' (o directamente no mandar 'desde'). Se acota
+      // a los últimos 60 días para no traer todo el historial del club.
+      const hace60Dias = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString()
+      const paramsFinalizados = new URLSearchParams({
+        desde: hace60Dias, hasta: ahora, estado: 'finalizado',
+      })
+      const fetchFinalizados = mostrarFinalizados
+        ? fetch(`${API}/deportivo/eventos?${paramsFinalizados.toString()}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          })
+        : null
+
+      const [resProgramados, resFinalizados] = await Promise.all([
+        fetchProgramados,
+        fetchFinalizados,
+      ])
+
+      if (!resProgramados.ok) throw new Error('No se pudieron cargar los eventos.')
+      const programados = await resProgramados.json()
+
+      let finalizados = []
+      if (resFinalizados) {
+        if (!resFinalizados.ok) throw new Error('No se pudieron cargar los eventos finalizados.')
+        finalizados = await resFinalizados.json()
+      }
+
+      // Más recientes primero para finalizados (exportar el último jugado
+      // suele ser lo más buscado), programados en orden cronológico normal.
+      const combinados = [
+        ...programados,
+        ...[...finalizados].sort((a, b) => new Date(b.fecha_inicio) - new Date(a.fecha_inicio)),
+      ]
+      setEventos(combinados)
     } catch (err) {
       setError(err.message)
     } finally {
       setLoading(false)
     }
-  }, [token])
+  }, [token, mostrarFinalizados])
 
   useEffect(() => { fetchEventos() }, [fetchEventos])
 
@@ -529,6 +682,11 @@ export default function TecnicoEventos() {
 
   const handleNuevoEventoSuccess = () => {
     setModalNuevoEventoAbierto(false)
+    fetchEventos()
+  }
+
+  const handleEditarEventoSuccess = () => {
+    setEventoEditando(null)
     fetchEventos()
   }
 
@@ -560,9 +718,16 @@ export default function TecnicoEventos() {
         />
       )}
       {modalNuevoEventoAbierto && (
-        <NuevoEventoModal
+        <EventoFormModal
           onClose={() => setModalNuevoEventoAbierto(false)}
           onSaveSuccess={handleNuevoEventoSuccess}
+        />
+      )}
+      {eventoEditando && (
+        <EventoFormModal
+          evento={eventoEditando}
+          onClose={() => setEventoEditando(null)}
+          onSaveSuccess={handleEditarEventoSuccess}
         />
       )}
 
@@ -579,6 +744,18 @@ export default function TecnicoEventos() {
         </div>
         <div className="flex items-center gap-3 flex-shrink-0 flex-wrap">
           <VistaToggle vista={vista} onChange={setVista} />
+          <button
+            onClick={() => setMostrarFinalizados(prev => !prev)}
+            className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl font-semibold text-sm transition-colors ${
+              mostrarFinalizados
+                ? 'bg-slate-800 text-white hover:bg-slate-900'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+            title="Incluir eventos ya finalizados (para exportar su planilla de asistencia)"
+          >
+            <History size={15} />
+            {mostrarFinalizados ? 'Viendo finalizados' : 'Ver finalizados'}
+          </button>
           <button
             onClick={() => setModalNuevoEventoAbierto(true)}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-green-600 text-white font-semibold hover:bg-green-700 transition-colors shadow-sm text-sm"
@@ -611,6 +788,13 @@ export default function TecnicoEventos() {
         <div className="flex items-center gap-3 p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-sm">
           <AlertCircle size={18} className="flex-shrink-0" />
           <span className="flex-1">{errorExport}</span>
+        </div>
+      )}
+
+      {errorAsistencias && (
+        <div className="flex items-center gap-3 p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-sm">
+          <AlertCircle size={18} className="flex-shrink-0" />
+          <span className="flex-1">{errorAsistencias}</span>
         </div>
       )}
 
@@ -663,7 +847,14 @@ export default function TecnicoEventos() {
               <div key={evento.id_evento} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <TipoBadge tipo={evento.tipo} />
+                    <div className="inline-flex items-center gap-2 flex-wrap">
+                      <TipoBadge tipo={evento.tipo} />
+                      {evento.estado === 'finalizado' && (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-200 text-slate-700">
+                          <History size={12} /> Finalizado
+                        </span>
+                      )}
+                    </div>
                     <h3 className="font-bold text-gray-900 text-lg mt-2">{evento.titulo}</h3>
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-500 mt-2">
                       <span className="flex items-center gap-1.5">
@@ -698,7 +889,7 @@ export default function TecnicoEventos() {
 
                   {/* Derecha: acciones */}
                   <div className="flex items-center gap-2 flex-wrap">
-                    {/* Exportar PDF — visible solo si hay convocados */}
+                    {/* Exportar convocatoria — visible solo si hay convocados */}
                     {evento.convocatorias.length > 0 && (
                       <button
                         onClick={() => exportar(evento)}
@@ -710,9 +901,34 @@ export default function TecnicoEventos() {
                           ? <Loader2 size={14} className="animate-spin" />
                           : <FileDown size={14} />
                         }
-                        {exportando ? 'Generando…' : 'Exportar PDF'}
+                        {exportando ? 'Generando…' : 'Exportar convocatoria'}
                       </button>
                     )}
+
+                    {/* Exportar asistencia real — solo eventos ya finalizados */}
+                    {evento.estado === 'finalizado' && (
+                      <button
+                        onClick={() => exportarAsistencias(evento)}
+                        disabled={exportandoAsistencias}
+                        title="Descargar planilla de asistencia real (quién ingresó por la puerta)"
+                        className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-200 bg-white text-gray-600 font-semibold hover:bg-gray-50 hover:border-gray-300 disabled:opacity-50 disabled:cursor-wait transition-colors text-sm"
+                      >
+                        {exportandoAsistencias
+                          ? <Loader2 size={14} className="animate-spin" />
+                          : <FileDown size={14} />
+                        }
+                        {exportandoAsistencias ? 'Generando…' : 'Exportar asistencia'}
+                      </button>
+                    )}
+
+                    <button
+                      onClick={() => setEventoEditando(evento)}
+                      title="Editar título, fechas, ubicación, categoría o estado"
+                      className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-200 bg-white text-gray-600 font-semibold hover:bg-gray-50 hover:border-gray-300 transition-colors text-sm"
+                    >
+                      <Pencil size={14} />
+                      Editar
+                    </button>
 
                     <button
                       onClick={() => setSelectedEvent(evento)}

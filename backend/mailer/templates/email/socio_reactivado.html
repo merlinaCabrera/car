@@ -1,16 +1,16 @@
 {% extends "base.html" %}
 {% block content %}
 <h2 style="margin:0 0 16px; color:#1b5e20; font-size:20px; font-weight:700;">
-  ¡Bienvenido al Club! 🎉
+  ✅ Tu cuenta fue reactivada
 </h2>
 <p style="margin:0 0 12px; color:#333; font-size:15px; line-height:1.6;">
   Hola <strong>{{ nombre_socio }}</strong>,
 </p>
 <p style="margin:0 0 20px; color:#333; font-size:15px; line-height:1.6;">
-  Tu solicitud de alta fue <strong>aprobada</strong>. Ya sos parte del
-  <strong>Club Atlético Roberts</strong> y podés acceder a tu panel de socio.
+  Tu cuenta en el <strong>Club Atlético Roberts</strong> fue reactivada por la
+  administración. Ya podés volver a acceder al portal con tus credenciales habituales.
 </p>
-<table cellpadding="0" cellspacing="0" width="100%" style="margin-bottom:20px;">
+<table cellpadding="0" cellspacing="0" width="100%" style="margin-bottom:16px;">
   <tr>
     <td align="center">
       <a href="{{ frontend_url }}/login"
@@ -23,6 +23,6 @@
   </tr>
 </table>
 <p style="margin:0; color:#666; font-size:13px; line-height:1.6;">
-  Si tenés alguna duda, comunicate con la administración del club.
+  Si tenés alguna consulta, comunicate con la administración del club.
 </p>
 {% endblock %}

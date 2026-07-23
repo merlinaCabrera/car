@@ -144,3 +144,93 @@ async def task_aviso_club_efectivo(
         logger.info(f"Mail 'aviso_club_efectivo' enviado al club (pago #{numero_pago})")
     except Exception:
         logger.exception(f"Fallo al enviar mail 'aviso_club_efectivo' al club (pago #{numero_pago})")
+
+
+async def task_aviso_club_comprobante_recibido(
+    nombre_socio: str,
+    dni_socio: str,
+    numero_pago: int,
+    monto: str,
+    comprobante_url: str,
+) -> None:
+    try:
+        await email_service.enviar_aviso_club_comprobante_recibido(
+            nombre_socio, dni_socio, numero_pago, monto, comprobante_url
+        )
+        logger.info(f"Mail 'comprobante_recibido' enviado al club (pago #{numero_pago}, socio {dni_socio})")
+    except Exception:
+        logger.exception(f"Fallo al enviar mail 'comprobante_recibido' al club (pago #{numero_pago})")
+
+
+async def task_orden_expirada(
+    email_destino: str,
+    nombre_socio: str,
+    numero_orden: int,
+    monto: str,
+) -> None:
+    try:
+        await email_service.enviar_orden_expirada(email_destino, nombre_socio, numero_orden, monto)
+        logger.info(f"Mail 'orden_expirada' enviado a {email_destino} (orden #{numero_orden})")
+    except Exception:
+        logger.exception(f"Fallo al enviar mail 'orden_expirada' a {email_destino} (orden #{numero_orden})")
+
+
+async def task_recordatorio_comprobante(
+    email_destino: str,
+    nombre_socio: str,
+    numero_orden: int,
+    monto: str,
+    horas_restantes: int,
+) -> None:
+    try:
+        await email_service.enviar_recordatorio_comprobante(
+            email_destino, nombre_socio, numero_orden, monto, horas_restantes
+        )
+        logger.info(f"Mail 'recordatorio_comprobante' enviado a {email_destino} (orden #{numero_orden})")
+    except Exception:
+        logger.exception(f"Fallo al enviar mail 'recordatorio_comprobante' a {email_destino} (orden #{numero_orden})")
+
+
+async def task_aviso_admin_nuevo_socio(
+    nombre_socio: str,
+    dni_socio: str,
+    email_socio: str,
+) -> None:
+    try:
+        await email_service.enviar_aviso_admin_nuevo_socio(nombre_socio, dni_socio, email_socio)
+        logger.info(f"Mail 'aviso_admin_nuevo_socio' enviado al club (DNI {dni_socio})")
+    except Exception:
+        logger.exception(f"Fallo al enviar mail 'aviso_admin_nuevo_socio' al club (DNI {dni_socio})")
+
+
+async def task_reserva_suspendida(
+    email_destino: str,
+    nombre_socio: str,
+    instalacion: str,
+    fecha_reserva: str,
+    monto_acreditado: str,
+    motivo: str,
+) -> None:
+    try:
+        await email_service.enviar_reserva_suspendida(
+            email_destino, nombre_socio, instalacion, fecha_reserva, monto_acreditado, motivo
+        )
+        logger.info(f"Mail 'reserva_suspendida' enviado a {email_destino} ({instalacion})")
+    except Exception:
+        logger.exception(f"Fallo al enviar mail 'reserva_suspendida' a {email_destino} ({instalacion})")
+
+
+async def task_socio_dado_de_baja(email_destino: str, nombre_socio: str) -> None:
+    try:
+        await email_service.enviar_socio_dado_de_baja(email_destino, nombre_socio)
+        logger.info(f"Mail 'socio_dado_de_baja' enviado a {email_destino}")
+    except Exception:
+        logger.exception(f"Fallo al enviar mail 'socio_dado_de_baja' a {email_destino}")
+
+
+async def task_socio_reactivado(email_destino: str, nombre_socio: str) -> None:
+    try:
+        await email_service.enviar_socio_reactivado(email_destino, nombre_socio)
+        logger.info(f"Mail 'socio_reactivado' enviado a {email_destino}")
+    except Exception:
+        logger.exception(f"Fallo al enviar mail 'socio_reactivado' a {email_destino}")

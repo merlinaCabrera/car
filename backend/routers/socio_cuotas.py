@@ -39,6 +39,7 @@ from typing import List, Optional
 
 from fastapi import (
     APIRouter,
+    BackgroundTasks,
     Depends,
     File,
     HTTPException,
@@ -52,6 +53,7 @@ import models
 import schemas
 from database import get_db
 from dependencies import get_current_user, require_roles
+from mailer.services import email_tasks
 
 router = APIRouter(
     prefix="/socio/cuotas",
@@ -512,6 +514,7 @@ def cancelar_orden_pendiente(
 async def subir_comprobante(
     id_pago: int,
     request: Request,
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
     socio: models.Usuario = Depends(require_roles(*_ROLES_SOCIO)),
@@ -623,6 +626,16 @@ async def subir_comprobante(
 
     db.commit()
     db.refresh(pago)
+
+    # ── Avisar al club que llegó un comprobante para verificar ────────────────
+    background_tasks.add_task(
+        email_tasks.task_aviso_club_comprobante_recibido,
+        nombre_socio=f"{socio.nombre} {socio.apellido}",
+        dni_socio=socio.dni,
+        numero_pago=pago.id_pago,
+        monto=str(pago.monto_total),
+        comprobante_url=comprobante_url,
+    )
 
     return schemas.ComprobanteUploadResponse(
         id_pago=pago.id_pago,

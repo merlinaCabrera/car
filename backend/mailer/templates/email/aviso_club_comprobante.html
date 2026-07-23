@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2 style="margin:0 0 16px; color:#1b5e20; font-size:20px; font-weight:700;">
+  📎 Nuevo comprobante para verificar
+</h2>
+
+<p style="margin:0 0 16px; color:#333; font-size:15px; line-height:1.6;">
+  El socio <strong>{{ nombre_socio }}</strong> (DNI: {{ dni_socio }}) subió el comprobante
+  del pago <strong>#{{ numero_pago }}</strong> por <strong>${{ monto }}</strong>.
+</p>
+
+<table width="100%" cellpadding="0" cellspacing="0"
+       style="background-color:#f1f8f1; border-left:4px solid #1b5e20;
+              border-radius:4px; margin-bottom:20px;">
+  <tr><td style="padding:10px 16px; border-bottom:1px solid #ddeedd;">
+    <span style="color:#555; font-size:13px;">Socio</span><br/>
+    <strong style="color:#1b5e20;">{{ nombre_socio }}</strong>
+  </td></tr>
+  <tr><td style="padding:10px 16px; border-bottom:1px solid #ddeedd;">
+    <span style="color:#555; font-size:13px;">DNI</span><br/>
+    <strong style="color:#333;">{{ dni_socio }}</strong>
+  </td></tr>
+  <tr><td style="padding:10px 16px; border-bottom:1px solid #ddeedd;">
+    <span style="color:#555; font-size:13px;">Pago #</span><br/>
+    <strong style="color:#333;">{{ numero_pago }}</strong>
+  </td></tr>
+  <tr><td style="padding:10px 16px;">
+    <span style="color:#555; font-size:13px;">Monto</span><br/>
+    <strong style="color:#333;">${{ monto }}</strong>
+  </td></tr>
+</table>
+
+<table cellpadding="0" cellspacing="0" width="100%" style="margin-bottom:12px;">
+  <tr>
+    <td align="center">
+      <a href="{{ admin_url }}"
+         style="display:inline-block; background-color:#1b5e20; color:#ffffff;
+                text-decoration:none; font-size:15px; font-weight:700;
+                padding:12px 32px; border-radius:6px;">
+        Revisar en el panel de admin →
+      </a>
+    </td>
+  </tr>
+</table>
+
+<p style="margin:8px 0 0; color:#94a3b8; font-size:12px; text-align:center;">
+  También podés ver el comprobante directamente:
+  <a href="{{ comprobante_url }}" style="color:#1b5e20;">ver archivo</a>
+</p>
+{% endblock %}

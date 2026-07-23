@@ -1,7 +1,29 @@
 {% extends "base.html" %}
 {% block content %}
-  <p style="font-size:16px; color:#222;">Hola {{ nombre_socio }},</p>
-  <p style="font-size:15px; color:#333;">
-    Tu cuota social venció el <strong>{{ fecha_vencimiento }}</strong>. Para mantener tu acceso habilitado, regularizá el pago a la brevedad.
-  </p>
+<h2 style="margin:0 0 16px; color:#1b5e20; font-size:20px; font-weight:700;">
+  📅 Tu cuota social está vencida
+</h2>
+<p style="margin:0 0 12px; color:#333; font-size:15px; line-height:1.6;">
+  Hola <strong>{{ nombre_socio }}</strong>,
+</p>
+<p style="margin:0 0 20px; color:#333; font-size:15px; line-height:1.6;">
+  Te recordamos que tu cuota social venció el <strong>{{ fecha_vencimiento }}</strong>
+  y tu acceso al club puede estar limitado hasta que regularices el pago.
+</p>
+<table cellpadding="0" cellspacing="0" width="100%" style="margin-bottom:16px;">
+  <tr>
+    <td align="center">
+      <a href="{{ frontend_url }}/socio/cuotas"
+         style="display:inline-block; background-color:#1b5e20; color:#ffffff;
+                text-decoration:none; font-size:15px; font-weight:700;
+                padding:12px 32px; border-radius:6px;">
+        Pagar mi cuota →
+      </a>
+    </td>
+  </tr>
+</table>
+<p style="margin:0; color:#666; font-size:13px; line-height:1.6;">
+  Si ya realizaste el pago y está pendiente de verificación, podés ignorar este mensaje.
+  Ante cualquier consulta, comunicate con la administración.
+</p>
 {% endblock %}

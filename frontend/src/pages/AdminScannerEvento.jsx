@@ -43,12 +43,25 @@ import {
   XCircle,
   Search,
   Loader2,
+  Info,
 } from 'lucide-react'
 
 const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 
 const formatoHora = (fecha) =>
   fecha.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
+
+const formatoFechaHora = (fecha) =>
+  fecha.toLocaleString('es-AR', {
+    weekday: 'long', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit',
+  })
+
+const ESTADO_LABEL = {
+  programado: 'programado',
+  en_curso: 'en curso',
+  finalizado: 'finalizado',
+  cancelado: 'cancelado',
+}
 
 // ─── Selector de evento ────────────────────────────────────────────────────────
 
@@ -60,21 +73,50 @@ function SelectorEvento({ onSeleccionar }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
+  // Diagnóstico: si /eventos/hoy vuelve vacío, buscamos el próximo evento
+  // programado (sin filtrar por día) para poder explicar POR QUÉ no aparece
+  // nada acá — en vez de dejar un cartel mudo que obliga a ir a mirar la
+  // base de datos. GET /deportivo/eventos no tiene restricción de rol más
+  // allá de estar logueado, así que admin_temporal puede pedirlo también.
+  const [proximoEvento, setProximoEvento] = useState(null)
+  const [buscandoDiagnostico, setBuscandoDiagnostico] = useState(false)
+
+  const fetchProximoEvento = useCallback(async () => {
+    setBuscandoDiagnostico(true)
+    try {
+      const params = new URLSearchParams({ desde: new Date().toISOString() })
+      const res = await fetch(`${API}/deportivo/eventos?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!res.ok) return
+      const todos = await res.json()
+      // El backend ya los devuelve ordenados por fecha_inicio asc.
+      setProximoEvento(todos[0] ?? null)
+    } catch {
+      // Es un diagnóstico best-effort: si falla, simplemente no mostramos nada extra.
+    } finally {
+      setBuscandoDiagnostico(false)
+    }
+  }, [token])
+
   const fetchEventosHoy = useCallback(async () => {
     setLoading(true)
     setError(null)
+    setProximoEvento(null)
     try {
       const res = await fetch(`${API}/deportivo/eventos/hoy`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       if (!res.ok) throw new Error(`Error ${res.status}: No se pudieron cargar los eventos de hoy.`)
-      setEventos(await res.json())
+      const data = await res.json()
+      setEventos(data)
+      if (data.length === 0) fetchProximoEvento()
     } catch (err) {
       setError(err.message)
     } finally {
       setLoading(false)
     }
-  }, [token])
+  }, [token, fetchProximoEvento])
 
   useEffect(() => { fetchEventosHoy() }, [fetchEventosHoy])
 
@@ -134,8 +176,43 @@ function SelectorEvento({ onSeleccionar }) {
         ))}
 
         {!loading && !error && eventos.length === 0 && (
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 text-center text-gray-500">
-            No hay eventos programados para hoy.
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 text-center text-gray-500 space-y-4">
+            <p>No hay eventos programados para hoy.</p>
+
+            {buscandoDiagnostico && (
+              <p className="text-xs text-gray-400 flex items-center justify-center gap-2">
+                <Loader2 size={13} className="animate-spin" /> Buscando el próximo evento…
+              </p>
+            )}
+
+            {!buscandoDiagnostico && proximoEvento && (
+              <div className="text-left bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-900 flex items-start gap-2.5">
+                <Info size={16} className="flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-semibold">Sí hay un próximo evento cargado:</p>
+                  <p className="mt-0.5">
+                    <span className="font-medium">{proximoEvento.titulo}</span>
+                    {' — '}
+                    <span className="capitalize">{formatoFechaHora(new Date(proximoEvento.fecha_inicio))}</span>
+                    {' '}
+                    <span className="text-blue-700">
+                      ({ESTADO_LABEL[proximoEvento.estado] ?? proximoEvento.estado})
+                    </span>
+                  </p>
+                  <p className="mt-2 text-xs text-blue-700">
+                    Este escáner solo muestra eventos cuya fecha cae en el día calendario de hoy
+                    (hora Argentina) y con estado "programado" o "en curso". Si esperabas verlo acá,
+                    revisá la fecha/hora con la que se cargó o su estado en "Gestión de Eventos".
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {!buscandoDiagnostico && !proximoEvento && (
+              <p className="text-xs text-gray-400">
+                Tampoco hay ningún evento futuro cargado en el sistema.
+              </p>
+            )}
           </div>
         )}
       </div>

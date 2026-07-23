@@ -80,7 +80,8 @@ Decisiones técnicas:
 
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 from typing import List, Optional, Set
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
@@ -101,6 +102,13 @@ router = APIRouter(
 
 _ROLES_TECNICO = ("personal_tecnico", "admin_general")
 _ROLES_PUERTA = ("admin_temporal", "personal_tecnico", "admin_general", "personal_administrativo")
+
+# Timezone fija de Argentina, usada para calcular "hoy" en /eventos/hoy.
+# NUNCA usar date.today() acá: depende de la timezone del SO del servidor
+# (en Docker/cloud suele ser UTC por defecto), que puede no coincidir con
+# la hora real del club y hacer que un evento de la noche "desaparezca"
+# justo en el borde de la medianoche UTC.
+_TZ_AR = ZoneInfo("America/Argentina/Buenos_Aires")
 _ROLES_JUGADOR = ("socio", "jugador")
 _ROLES_AUTOCOMPLETAR = ("admin_general",)  # Solo el Admin General ve y usa este botón.
 
@@ -909,13 +917,32 @@ def listar_eventos_de_hoy(
     db: Session = Depends(get_db),
     _operador: models.Usuario = Depends(require_roles(*_ROLES_PUERTA)),
 ) -> List[models.Evento]:
-    hoy = date.today()
+    # "Hoy" = el día calendario en Argentina, no en la timezone del SO del
+    # servidor ni en la de la sesión de Postgres (ambas suelen ser UTC por
+    # defecto y no coinciden con la hora real del club). Se calcula el
+    # rango [00:00, 24:00) de hoy en hora Argentina y se convierte a UTC
+    # para comparar contra fecha_inicio/fecha_fin, que se guardan en UTC.
+    hoy_ar = datetime.now(_TZ_AR).date()
+    inicio_dia_utc = datetime.combine(hoy_ar, datetime.min.time(), tzinfo=_TZ_AR).astimezone(timezone.utc)
+    fin_dia_utc = inicio_dia_utc + timedelta(days=1)
+
+    # No alcanza con "fecha_inicio cae dentro de hoy": un evento que arrancó
+    # anoche (hora AR) y sigue en curso durante el día de hoy —por ejemplo
+    # fecha_inicio 23:30 del día anterior, fecha_fin 15:30 de hoy— quedaba
+    # afuera del filtro anterior aunque el portero lo tenga que seguir
+    # controlando ahora mismo. Se usa superposición de intervalos en vez de
+    # "empieza hoy": el evento entra si su ventana [fecha_inicio, fin_efectivo]
+    # toca en algún punto la ventana [inicio_dia_utc, fin_dia_utc) de hoy.
+    # Para eventos sin fecha_fin (instantáneos / duración no definida) se usa
+    # fecha_inicio como su propio fin, así se sigue exigiendo que arranquen hoy.
+    fin_efectivo = func.coalesce(models.Evento.fecha_fin, models.Evento.fecha_inicio)
 
     return (
         db.query(models.Evento)
         .options(joinedload(models.Evento.categoria))
         .filter(
-            func.date(models.Evento.fecha_inicio) == hoy,
+            models.Evento.fecha_inicio < fin_dia_utc,
+            fin_efectivo >= inicio_dia_utc,
             models.Evento.estado.in_(("programado", "en_curso")),
         )
         .order_by(models.Evento.fecha_inicio.asc())
@@ -993,6 +1020,9 @@ def editar_evento(
             detail="No se envió ningún campo para actualizar.",
         )
 
+    if "id_categoria" in cambios and cambios["id_categoria"] is not None:
+        _obtener_categoria_o_404(db, cambios["id_categoria"])
+
     nueva_fecha_inicio = cambios.get("fecha_inicio", evento.fecha_inicio)
     nueva_fecha_fin = cambios.get("fecha_fin", evento.fecha_fin)
     if nueva_fecha_fin is not None and nueva_fecha_fin < nueva_fecha_inicio:
@@ -1003,6 +1033,8 @@ def editar_evento(
 
     antes = {
         "titulo": evento.titulo,
+        "tipo": evento.tipo,
+        "id_categoria": evento.id_categoria,
         "descripcion": evento.descripcion,
         "fecha_inicio": evento.fecha_inicio.isoformat(),
         "fecha_fin": evento.fecha_fin.isoformat() if evento.fecha_fin else None,

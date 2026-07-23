@@ -1210,11 +1210,20 @@ class EventoCreate(EventoBase):
 
 class EventoUpdate(BaseModel):
     titulo: Optional[str] = Field(default=None, min_length=1, max_length=200)
+    tipo: Optional[str] = None
+    id_categoria: Optional[int] = None
     descripcion: Optional[str] = None
     fecha_inicio: Optional[datetime] = None
     fecha_fin: Optional[datetime] = None
     ubicacion: Optional[str] = Field(default=None, max_length=200)
     estado: Optional[str] = None
+
+    @field_validator("tipo")
+    @classmethod
+    def tipo_valido(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and v not in TIPOS_EVENTO:
+            raise ValueError(f"Tipo inválido. Opciones: {TIPOS_EVENTO}")
+        return v
 
     @field_validator("estado")
     @classmethod

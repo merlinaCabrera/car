@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block content %}
+<h2 style="margin:0 0 16px; color:#1b5e20; font-size:20px; font-weight:700;">
+  Tu cuenta fue dada de baja
+</h2>
+<p style="margin:0 0 12px; color:#333; font-size:15px; line-height:1.6;">
+  Hola <strong>{{ nombre_socio }}</strong>,
+</p>
+<p style="margin:0 0 20px; color:#333; font-size:15px; line-height:1.6;">
+  Te informamos que tu cuenta en el <strong>Club Atlético Roberts</strong> fue
+  dada de baja por la administración. A partir de este momento no podrás
+  acceder al portal de socios.
+</p>
+<p style="margin:0; color:#666; font-size:13px; line-height:1.6;">
+  Si creés que esto es un error o querés más información, comunicate directamente
+  con la administración del club.
+</p>
+{% endblock %}

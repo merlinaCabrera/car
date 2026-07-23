@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block content %}
+<h2 style="margin:0 0 16px; color:#1b5e20; font-size:20px; font-weight:700;">
+  ⏰ Tu orden expiró
+</h2>
+<p style="margin:0 0 12px; color:#333; font-size:15px; line-height:1.6;">
+  Hola <strong>{{ nombre_socio }}</strong>,
+</p>
+<p style="margin:0 0 20px; color:#333; font-size:15px; line-height:1.6;">
+  Tu orden <strong>#{{ numero_orden }}</strong> por <strong>${{ monto }}</strong>
+  expiró porque no se recibió el comprobante de pago dentro de las 48 horas.
+  Los productos y turnos reservados quedaron liberados.
+</p>
+<table width="100%" cellpadding="0" cellspacing="0"
+       style="background-color:#fef9f0; border-left:4px solid #f59e0b;
+              border-radius:4px; margin-bottom:20px;">
+  <tr><td style="padding:14px 16px;">
+    <p style="margin:0; color:#92400e; font-size:14px; line-height:1.6;">
+      Si todavía querés realizar la compra, podés volver a generarla desde el portal.
+      El stock y los turnos quedan disponibles nuevamente para otros socios.
+    </p>
+  </td></tr>
+</table>
+<p style="margin:0; color:#666; font-size:13px;">
+  Si creés que esto es un error, comunicate con la administración del club.
+</p>
+{% endblock %}

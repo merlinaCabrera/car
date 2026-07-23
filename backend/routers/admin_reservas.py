@@ -17,7 +17,7 @@ from decimal import Decimal
 from typing import List, Optional
 from datetime import date, datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request, status
 from sqlalchemy.orm import Session, joinedload
 
 import models
@@ -25,6 +25,7 @@ import schemas
 from database import get_db
 from dependencies import require_roles
 from utils.audit import registrar_audit, extraer_ip
+from mailer.services import email_tasks
 
 router = APIRouter()
 
@@ -484,6 +485,7 @@ def suspender_reserva(
     id_reserva: int,
     payload: schemas.SuspenderReservaPayload,
     request: Request,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     admin: models.Usuario = Depends(require_roles(*_ROLES_ADMIN)),
 ) -> schemas.SuspenderReservaResponse:
@@ -551,6 +553,19 @@ def suspender_reserva(
 
     db.commit()
     db.refresh(responsable)
+
+    # ── Mail al socio avisando la suspensión y el saldo acreditado ────────────
+    if responsable.email:
+        fecha_str = reserva.fecha_inicio.strftime("%d/%m/%Y %H:%M")
+        background_tasks.add_task(
+            email_tasks.task_reserva_suspendida,
+            email_destino=responsable.email,
+            nombre_socio=responsable.nombre,
+            instalacion=reserva.instalacion,
+            fecha_reserva=fecha_str,
+            monto_acreditado=str(monto),
+            motivo=payload.motivo,
+        )
 
     return schemas.SuspenderReservaResponse(
         id_reserva=reserva.id_reserva,

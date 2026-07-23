@@ -15,7 +15,7 @@ Cambios respecto a la versión anterior:
 from pathlib import Path
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session, joinedload
 
 import models
@@ -23,6 +23,7 @@ import schemas
 from database import get_db              # ← unificado, ya no hay get_db local
 from dependencies import get_current_user, require_roles
 from security import get_password_hash, verify_password
+from mailer.services import email_tasks
 
 router = APIRouter(
     prefix="/usuarios",
@@ -60,6 +61,7 @@ _TAMANIO_MAXIMO_BYTES = 5 * 1024 * 1024  # 5 MB
 )
 def crear_usuario(
     usuario: schemas.UsuarioCreate,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
 ):
     """
@@ -89,6 +91,15 @@ def crear_usuario(
 
     # Refresh con roles (lista vacía en este punto, pero el schema los espera)
     db.refresh(nuevo_usuario)
+
+    # Avisar al admin que hay una solicitud nueva para aprobar
+    background_tasks.add_task(
+        email_tasks.task_aviso_admin_nuevo_socio,
+        nombre_socio=f"{nuevo_usuario.nombre} {nuevo_usuario.apellido}",
+        dni_socio=nuevo_usuario.dni,
+        email_socio=nuevo_usuario.email or "—",
+    )
+
     return nuevo_usuario
 
 

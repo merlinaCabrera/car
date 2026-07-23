@@ -27,7 +27,7 @@ from database import get_db
 from dependencies import get_current_user, require_roles
 from security import get_password_hash
 from fastapi import BackgroundTasks 
-from mailer.services.email_tasks import task_cuenta_aprobada
+from mailer.services.email_tasks import task_cuenta_aprobada, task_socio_dado_de_baja, task_socio_reactivado
 
 router = APIRouter(
     prefix="/admin/usuarios",
@@ -374,6 +374,7 @@ def editar_socio(
 )
 def dar_baja_socio(
     id_usuario: int,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_admin: models.Usuario = Depends(require_roles(*_ADMIN)),
 ):
@@ -396,6 +397,14 @@ def dar_baja_socio(
         },
     ))
     db.commit()
+
+    if usuario.email:
+        background_tasks.add_task(
+            task_socio_dado_de_baja,
+            email_destino=usuario.email,
+            nombre_socio=usuario.nombre,
+        )
+
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -406,6 +415,7 @@ def dar_baja_socio(
 )
 def reactivar_socio(
     id_usuario: int,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_admin: models.Usuario = Depends(require_roles(*_ADMIN)),
 ):
@@ -424,6 +434,14 @@ def reactivar_socio(
         detalle={"socio_reactivado_dni": usuario.dni, "reactivado_por_dni": current_admin.dni},
     ))
     db.commit()
+
+    if usuario.email:
+        background_tasks.add_task(
+            task_socio_reactivado,
+            email_destino=usuario.email,
+            nombre_socio=usuario.nombre,
+        )
+
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 

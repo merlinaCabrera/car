@@ -82,11 +82,13 @@ async def enviar_orden_rechazada(email_destino: str, nombre_socio: str, numero_o
 
 
 async def enviar_cuota_vencida(email_destino: str, nombre_socio: str, fecha_vencimiento: str) -> None:
+    import os
+    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
     await _enviar(
         destinatarios=[email_destino],
         asunto="Tu cuota social está vencida",
         template_name="cuota_vencida.html",
-        body={"nombre_socio": nombre_socio, "fecha_vencimiento": fecha_vencimiento},
+        body={"nombre_socio": nombre_socio, "fecha_vencimiento": fecha_vencimiento, "frontend_url": frontend_url},
     )
 
 
@@ -102,11 +104,13 @@ async def enviar_convocatoria(email_destino: str, nombre_socio: str, titulo_even
 # Pegar al FINAL de mailer/services/email_service.py (después de enviar_convocatoria)
 
 async def enviar_cuenta_aprobada(email_destino: str, nombre_socio: str) -> None:
+    import os
+    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
     await _enviar(
         destinatarios=[email_destino],
         asunto="¡Tu cuenta fue aprobada! 🎉",
         template_name="cuenta_aprobada.html",
-        body={"nombre_socio": nombre_socio},
+        body={"nombre_socio": nombre_socio, "frontend_url": frontend_url},
     )
 
 
@@ -221,4 +225,132 @@ async def enviar_aviso_club_efectivo(
             "monto": monto,
             "tipo": "efectivo (pendiente de cobro presencial)",
         },
+    )
+
+
+async def enviar_aviso_club_comprobante_recibido(
+    nombre_socio: str,
+    dni_socio: str,
+    numero_pago: int,
+    monto: str,
+    comprobante_url: str,
+) -> None:
+    import os
+    club_email = os.getenv("CLUB_EMAIL", "clubatleticoroberts1@gmail.com")
+    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
+    await _enviar(
+        destinatarios=[club_email],
+        asunto=f"📎 Comprobante recibido — Pago #{numero_pago} ({nombre_socio})",
+        template_name="aviso_club_comprobante.html",
+        body={
+            "nombre_socio": nombre_socio,
+            "dni_socio": dni_socio,
+            "numero_pago": numero_pago,
+            "monto": monto,
+            "comprobante_url": f"{frontend_url}{comprobante_url}",
+            "admin_url": f"{frontend_url}/admin/pagos",
+        },
+    )
+
+
+async def enviar_orden_expirada(
+    email_destino: str,
+    nombre_socio: str,
+    numero_orden: int,
+    monto: str,
+) -> None:
+    await _enviar(
+        destinatarios=[email_destino],
+        asunto=f"⏰ Tu orden #{numero_orden} expiró",
+        template_name="orden_expirada.html",
+        body={"nombre_socio": nombre_socio, "numero_orden": numero_orden, "monto": monto},
+    )
+
+
+async def enviar_recordatorio_comprobante(
+    email_destino: str,
+    nombre_socio: str,
+    numero_orden: int,
+    monto: str,
+    horas_restantes: int,
+) -> None:
+    import os
+    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
+    await _enviar(
+        destinatarios=[email_destino],
+        asunto=f"⚠️ Recordatorio: subí el comprobante de tu orden #{numero_orden}",
+        template_name="recordatorio_comprobante.html",
+        body={
+            "nombre_socio": nombre_socio,
+            "numero_orden": numero_orden,
+            "monto": monto,
+            "horas_restantes": horas_restantes,
+            "frontend_url": frontend_url,
+        },
+    )
+
+
+async def enviar_aviso_admin_nuevo_socio(
+    nombre_socio: str,
+    dni_socio: str,
+    email_socio: str,
+) -> None:
+    import os
+    club_email = os.getenv("CLUB_EMAIL", "clubatleticoroberts1@gmail.com")
+    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
+    await _enviar(
+        destinatarios=[club_email],
+        asunto=f"🙋 Nuevo socio registrado: {nombre_socio}",
+        template_name="aviso_admin_nuevo_socio.html",
+        body={
+            "nombre_socio": nombre_socio,
+            "dni_socio": dni_socio,
+            "email_socio": email_socio,
+            "admin_url": f"{frontend_url}/admin/solicitudes",
+        },
+    )
+
+
+async def enviar_reserva_suspendida(
+    email_destino: str,
+    nombre_socio: str,
+    instalacion: str,
+    fecha_reserva: str,
+    monto_acreditado: str,
+    motivo: str,
+) -> None:
+    import os
+    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
+    await _enviar(
+        destinatarios=[email_destino],
+        asunto=f"❌ Tu reserva de {instalacion} fue suspendida",
+        template_name="reserva_suspendida.html",
+        body={
+            "nombre_socio": nombre_socio,
+            "instalacion": instalacion,
+            "fecha_reserva": fecha_reserva,
+            "monto_acreditado": monto_acreditado,
+            "motivo": motivo,
+            "frontend_url": frontend_url,
+        },
+    )
+
+
+async def enviar_socio_dado_de_baja(email_destino: str, nombre_socio: str) -> None:
+    await _enviar(
+        destinatarios=[email_destino],
+        asunto="Tu cuenta en el Club Atlético Roberts fue dada de baja",
+        template_name="socio_dado_de_baja.html",
+        body={"nombre_socio": nombre_socio},
+    )
+
+
+async def enviar_socio_reactivado(email_destino: str, nombre_socio: str) -> None:
+    import os
+    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
+    await _enviar(
+        destinatarios=[email_destino],
+        asunto="✅ Tu cuenta fue reactivada — Club Atlético Roberts",
+        template_name="socio_reactivado.html",
+        body={"nombre_socio": nombre_socio, "frontend_url": frontend_url},
     )

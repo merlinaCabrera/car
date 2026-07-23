@@ -1,28 +1,31 @@
 {% extends "base.html" %}
 {% block content %}
 <h2 style="margin:0 0 16px; color:#1b5e20; font-size:20px; font-weight:700;">
-  ¡Bienvenido al Club! 🎉
+  ⚠️ Recordatorio: subí tu comprobante
 </h2>
 <p style="margin:0 0 12px; color:#333; font-size:15px; line-height:1.6;">
   Hola <strong>{{ nombre_socio }}</strong>,
 </p>
 <p style="margin:0 0 20px; color:#333; font-size:15px; line-height:1.6;">
-  Tu solicitud de alta fue <strong>aprobada</strong>. Ya sos parte del
-  <strong>Club Atlético Roberts</strong> y podés acceder a tu panel de socio.
+  Tu orden <strong>#{{ numero_orden }}</strong> por <strong>${{ monto }}</strong>
+  vence en <strong>{{ horas_restantes }} horas</strong> y todavía no recibimos
+  el comprobante de transferencia. Si no lo subís a tiempo, la orden se cancelará
+  automáticamente y los productos/turnos quedarán liberados.
 </p>
-<table cellpadding="0" cellspacing="0" width="100%" style="margin-bottom:20px;">
+<table cellpadding="0" cellspacing="0" width="100%" style="margin-bottom:16px;">
   <tr>
     <td align="center">
-      <a href="{{ frontend_url }}/login"
+      <a href="{{ frontend_url }}/mis-compras"
          style="display:inline-block; background-color:#1b5e20; color:#ffffff;
                 text-decoration:none; font-size:15px; font-weight:700;
                 padding:12px 32px; border-radius:6px;">
-        Ingresar al portal →
+        Subir comprobante ahora →
       </a>
     </td>
   </tr>
 </table>
 <p style="margin:0; color:#666; font-size:13px; line-height:1.6;">
-  Si tenés alguna duda, comunicate con la administración del club.
+  Si ya realizaste la transferencia, entrá a <strong>Mis Compras</strong> y adjuntá
+  el comprobante para que podamos verificarlo.
 </p>
 {% endblock %}

@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block content %}
+<h2 style="margin:0 0 16px; color:#1b5e20; font-size:20px; font-weight:700;">
+  ❌ Tu reserva fue suspendida
+</h2>
+<p style="margin:0 0 12px; color:#333; font-size:15px; line-height:1.6;">
+  Hola <strong>{{ nombre_socio }}</strong>,
+</p>
+<p style="margin:0 0 20px; color:#333; font-size:15px; line-height:1.6;">
+  Lamentablemente tu reserva de <strong>{{ instalacion }}</strong> del
+  <strong>{{ fecha_reserva }}</strong> fue suspendida por el siguiente motivo:
+</p>
+<table width="100%" cellpadding="0" cellspacing="0"
+       style="background-color:#fef9f0; border-left:4px solid #f59e0b;
+              border-radius:4px; margin-bottom:20px;">
+  <tr><td style="padding:14px 16px;">
+    <p style="margin:0; color:#92400e; font-size:14px; font-style:italic;">
+      "{{ motivo }}"
+    </p>
+  </td></tr>
+</table>
+<table width="100%" cellpadding="0" cellspacing="0"
+       style="background-color:#f1f8f1; border-left:4px solid #1b5e20;
+              border-radius:4px; margin-bottom:20px;">
+  <tr><td style="padding:14px 16px;">
+    <p style="margin:0 0 4px; color:#555; font-size:13px;">Saldo acreditado a tu favor</p>
+    <p style="margin:0; color:#1b5e20; font-size:22px; font-weight:700;">${{ monto_acreditado }}</p>
+    <p style="margin:4px 0 0; color:#666; font-size:12px;">
+      Podés usar este saldo en tu próxima compra o reserva.
+    </p>
+  </td></tr>
+</table>
+<p style="margin:0; color:#666; font-size:13px; line-height:1.6;">
+  Si tenés alguna consulta, comunicate con la administración del club.
+</p>
+{% endblock %}

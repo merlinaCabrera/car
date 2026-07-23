@@ -56,6 +56,9 @@ def _validar_firma(
     x_request_id: Optional[str],
     data_id: Optional[str],
 ) -> bool:
+    print(f"[MP webhook DEBUG] secret en memoria (repr) = {settings.mp_webhook_secret!r}")
+    print(f"[MP webhook DEBUG] secret longitud = {len(settings.mp_webhook_secret)}")
+
     """
     Validación HMAC-SHA256 documentada por Mercado Pago para webhooks.
     Header X-Signature: "ts=<timestamp>,v1=<hash>"

@@ -12,9 +12,13 @@ from sqlalchemy.orm import declarative_base, sessionmaker
 # REQUEST sea procesado — solo necesitamos que la URL esté disponible cuando
 # la primera sesión de BD se abra, no cuando el módulo se importa.
 #
-# DATABASE_URL debe estar en tu .env (desarrollo) o en las variables de entorno
-# de Render (producción). Ejemplo de .env:
-#   DATABASE_URL=postgresql://neondb_owner:xxx@ep-calm-bread.neon.tech/neondb?sslmode=require
+# IMPORTANTE (Neon free tier):
+# DATABASE_URL debe ser la conexión POOLED (con "-pooler" en el host), no la
+# directa. Neon usa PgBouncer en esa URL, lo que permite muchas más conexiones
+# lógicas concurrentes sin agotar el límite real de Postgres. Se consigue
+# copiando "Pooled connection" desde el dashboard de Neon → Connection Details.
+# Ejemplo de .env:
+#   DATABASE_URL=postgresql://user:pass@ep-xxx-pooler.sa-east-1.aws.neon.tech/neondb?sslmode=require
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _get_database_url() -> str:
@@ -34,14 +38,34 @@ def _get_database_url() -> str:
 
 SQLALCHEMY_DATABASE_URL = _get_database_url()
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Pool de SQLAlchemy — pensado para Neon free tier + conexión pooled (PgBouncer).
+#
+# Con PgBouncer del lado de Neon manejando el grueso del pooling, del lado de
+# SQLAlchemy no hace falta un pool grande: alcanza con uno chico que cubra
+# picos de requests concurrentes del dashboard de admin (~5-6 en paralelo)
+# más algún job del scheduler corriendo al mismo tiempo.
+#
+# - pool_pre_ping=True: hace un SELECT 1 antes de entregar una conexión del
+#   pool. Esencial acá porque Neon con "scale to zero" apaga el compute tras
+#   ~5 min de inactividad y cierra conexiones viejas; sin esto, SQLAlchemy te
+#   devuelve conexiones muertas y explotan con errores raros a mitad de
+#   request, no con un timeout claro.
+# - pool_recycle=180: descarta y reabre conexiones con más de 3 min, así
+#   nunca se intenta reusar una que Neon ya mató del otro lado.
+# - pool_size/max_overflow: 10 + 5 = 15 conexiones lógicas máx. Client-side;
+#   como pasan por el pooler de Neon, no pegan 1 a 1 contra Postgres.
+# - pool_timeout=15: si en 15s no hay conexión libre, falla rápido con un
+#   error claro en vez de colgar 30s (mejor UX: ves el fallo, no un spinner
+#   infinito).
+# ─────────────────────────────────────────────────────────────────────────────
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL,
-    # pool_pre_ping=True verifica que la conexión siga activa antes de usarla.
-    # Esencial para Neon, que cierra conexiones inactivas agresivamente.
     pool_pre_ping=True,
-    # pool_size y max_overflow para el plan gratuito de Neon (límite de conexiones).
-    pool_size=5,
-    max_overflow=2,
+    pool_size=10,
+    max_overflow=5,
+    pool_recycle=180,
+    pool_timeout=15,
 )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

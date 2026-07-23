@@ -22,12 +22,10 @@
  */
 
 import { useAuth } from '../context/AuthContext'
-import { useNavigate } from 'react-router-dom'
 import { useAdminResource } from '../hooks/useAdminResource'
 import MetricCard from '../components/admin/MetricCard'
 import {
   LayoutDashboard,
-  ScanLine,
   UserPlus,
   CreditCard,
   ShoppingBag,
@@ -54,7 +52,6 @@ const formatoFechaCorta = (iso) =>
 
 export default function AdminInicio() {
   const { user } = useAuth()
-  const navigate = useNavigate()
 
   // ── Tareas pendientes (mismo criterio que antes) ─────────────────────────
   const solicitudes = useAdminResource('/admin/usuarios/pendientes', {
@@ -82,15 +79,6 @@ export default function AdminInicio() {
           Hola, {user?.nombre || 'Admin'} — esto es lo que necesita tu atención hoy.
         </p>
       </div>
-
-      {/* CTA principal: Lector de QR */}
-      <button
-        onClick={() => navigate('/admin/escaner')}
-        className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-6 px-4 rounded-2xl shadow-md transition-all active:scale-[0.99] text-base md:text-lg flex items-center justify-center gap-3"
-      >
-        <ScanLine size={22} />
-        Lector de QR — Control de Acceso
-      </button>
 
       {/* ── Tareas pendientes de revisión ──────────────────────────────────── */}
       <div>

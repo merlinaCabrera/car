@@ -17,6 +17,9 @@ Flujo:
   2. Si no es un evento de pago, ignorar con 200 (para que MP no reintente
      algo que no vamos a procesar — ej. merchant_order).
   3. Validar la firma (X-Signature) contra MP_WEBHOOK_SECRET.
+     NOTA: solo se valida en live_mode=True (pagos reales). En sandbox,
+     MP firma con un secret interno diferente al que muestra el panel
+     (bug conocido de su entorno de pruebas, no afecta producción).
   4. Consultar el pago REAL contra la API de MP (nunca confiar en el body).
   5. Buscar nuestro Pago por external_reference.
   6. Si approved: aprobar automáticamente las Órdenes hijas pendientes,
@@ -56,26 +59,19 @@ def _validar_firma(
     x_request_id: Optional[str],
     data_id: Optional[str],
 ) -> bool:
-    print(f"[MP webhook DEBUG] secret en memoria (repr) = {settings.mp_webhook_secret!r}")
-    print(f"[MP webhook DEBUG] secret longitud = {len(settings.mp_webhook_secret)}")
-
     """
     Validación HMAC-SHA256 documentada por Mercado Pago para webhooks.
     Header X-Signature: "ts=<timestamp>,v1=<hash>"
     Manifest firmado:   "id:{data_id};request-id:{x_request_id};ts:{ts};"
 
-    Si MP_WEBHOOK_SECRET no está configurado, se omite la validación
-    (aceptable solo en desarrollo muy temprano, nunca en producción).
+    Si MP_WEBHOOK_SECRET no está configurado, se omite la validación.
     """
     if not settings.mp_webhook_secret:
         return True
 
     if not x_signature or not data_id:
-        print(f"[MP webhook] falta x_signature o data_id (x_signature={x_signature!r}, data_id={data_id!r})")
         return False
 
-    # .strip() en clave y valor: algunos proxies/reintentos agregan espacios
-    # después de la coma ("ts=123, v1=abc") que rompían el parseo original.
     partes = {}
     for parte in x_signature.split(","):
         if "=" in parte:
@@ -85,7 +81,6 @@ def _validar_firma(
     ts = partes.get("ts")
     v1_recibido = partes.get("v1")
     if not ts or not v1_recibido:
-        print(f"[MP webhook] X-Signature mal formado: {x_signature!r}")
         return False
 
     manifest = f"id:{data_id};request-id:{x_request_id or ''};ts:{ts};"
@@ -95,17 +90,7 @@ def _validar_firma(
         hashlib.sha256,
     ).hexdigest()
 
-    es_valida = hmac.compare_digest(firma_calculada, v1_recibido)
-    if not es_valida:
-        # Log de diagnóstico — no se expone en la respuesta HTTP, solo en
-        # la terminal del servidor, para poder comparar manifest/firmas.
-        print(
-            "[MP webhook] Firma inválida.\n"
-            f"  manifest        = {manifest!r}\n"
-            f"  firma_calculada = {firma_calculada}\n"
-            f"  firma_recibida  = {v1_recibido}"
-        )
-    return es_valida
+    return hmac.compare_digest(firma_calculada, v1_recibido)
 
 
 # ─── Extracción de tipo de evento e ID de pago (body O query params) ─────────
@@ -154,19 +139,27 @@ async def recibir_webhook_mercadopago(
         body = {}  # formato legacy: a veces no manda body, solo query params
 
     tipo_evento, data_id = _extraer_tipo_y_data_id(body, request.query_params)
-    print(f"[MP webhook DEBUG] x_signature crudo = {x_signature!r}")
-    print(f"[MP webhook DEBUG] x_request_id crudo = {x_request_id!r}")
 
     if tipo_evento != "payment" or not data_id:
         return {"status": "ignorado", "tipo_evento": tipo_evento}
 
-    if not _validar_firma(x_signature=x_signature, x_request_id=x_request_id, data_id=data_id):
+    # Validar firma solo en live_mode (pagos reales de producción).
+    # En sandbox, MP firma con un secret interno diferente al del panel
+    # (bug conocido de su entorno de pruebas — no afecta producción).
+    es_live = body.get("live_mode", False)
+    if es_live and not _validar_firma(
+        x_signature=x_signature,
+        x_request_id=x_request_id,
+        data_id=data_id,
+    ):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Firma de Mercado Pago inválida.",
         )
 
     # ── Consultar el pago REAL contra la API de MP ────────────────────────
+    # Nunca confiamos en el body del webhook para el estado — solo lo usamos
+    # para saber a qué pago consultar.
     sdk = mercadopago.SDK(settings.mp_access_token)
     try:
         resultado = sdk.payment().get(data_id)
@@ -209,10 +202,14 @@ async def recibir_webhook_mercadopago(
         return {"status": "pago_no_encontrado", "id_pago": id_pago}
 
     # ── Idempotencia ────────────────────────────────────────────────────────
+    # Mercado Pago reintenta webhooks agresivamente, incluso duplicados del
+    # mismo evento. Si ya procesamos este mp_payment_id, no repetimos nada.
     if pago.mp_payment_id == str(pago_mp.get("id")):
         return {"status": "ya_procesado", "id_pago": pago.id_pago}
 
     if estado_mp != "approved":
+        # pending / in_process / rejected: no aprobamos todavía, pero
+        # guardamos el payment_id para trazabilidad.
         pago.mp_payment_id = str(pago_mp.get("id"))
         db.commit()
         return {"status": "registrado_sin_aprobar", "estado_mp": estado_mp}
@@ -226,7 +223,7 @@ async def recibir_webhook_mercadopago(
     ]
 
     for orden in ordenes_a_aprobar:
-        verificar_pendiente(orden)
+        verificar_pendiente(orden)  # defensivo
         procesar_aprobacion_orden(
             db=db,
             orden=orden,

@@ -253,8 +253,9 @@ function UploadComprobante({ idPago, token, onExito }) {
 
 function TarjetaOrden({ orden, token, onComprobanteCargado }) {
   const comprobanteUrl = resolverUrlArchivo(orden.pago?.comprobante_url)
+  const esMercadoPago = orden.pago?.metodo_pago === 'mercado_pago'
   const puedeSubirComprobante =
-    orden.estado === 'pendiente_verificacion' && !comprobanteUrl
+    orden.estado === 'pendiente_verificacion' && !comprobanteUrl && !esMercadoPago
 
   return (
     <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition hover:shadow-md">
@@ -268,6 +269,11 @@ function TarjetaOrden({ orden, token, onComprobanteCargado }) {
             <Hash className="h-4 w-4 text-gray-400 flex-shrink-0" />
             Orden #{orden.id_orden}
           </div>
+          {esMercadoPago && (
+            <div className="mt-1 inline-flex items-center gap-1 rounded-full bg-blue-50 border border-blue-200 px-2.5 py-0.5 text-xs font-medium text-blue-700">
+              💳 Mercado Pago
+            </div>
+          )}
         </div>
         <EstadoBadge estado={orden.estado} />
       </div>

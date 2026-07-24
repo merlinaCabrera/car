@@ -76,6 +76,7 @@ function VerificacionModal({ orden, onClose, onActionSuccess, token }) {
   const [motivoRechazo,    setMotivoRechazo]    = useState('')
 
   const esPdf = orden.pago?.comprobante_url?.toLowerCase().endsWith('.pdf')
+  const esMercadoPago = orden.pago?.metodo_pago === 'mercado_pago'
 
   // Campo editable de meses a imputar (solo para ítems de cuota_social)
   const detalleCuota = orden.detalles?.find(d => d.producto?.categoria === 'cuota_social')
@@ -172,9 +173,17 @@ function VerificacionModal({ orden, onClose, onActionSuccess, token }) {
 
           <div className="flex flex-col gap-3 px-4 py-4 rounded-xl bg-blue-50 border border-blue-200">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-semibold text-blue-900">Monto transferido (declarado)</span>
+              <span className="text-sm font-semibold text-blue-900">
+                {esMercadoPago ? 'Monto cobrado por Mercado Pago' : 'Monto transferido (declarado)'}
+              </span>
               <span className="text-xl font-bold text-blue-900">{formatoMoneda.format(orden.monto_total)}</span>
             </div>
+            {esMercadoPago && (
+              <div className="flex items-center gap-2 border-t border-blue-200/60 pt-3 mt-1 text-sm text-blue-800">
+                <span>💳</span>
+                <span>Pago procesado y verificado automáticamente por Mercado Pago.</span>
+              </div>
+            )}
 
             {detalleCuota && (
               <div className="flex items-center justify-between border-t border-blue-200/60 pt-3 mt-1">
@@ -271,7 +280,7 @@ function VerificacionModal({ orden, onClose, onActionSuccess, token }) {
               </button>
               <button
                 onClick={handleAprobar}
-                disabled={isSubmitting || !orden.pago?.comprobante_url}
+                disabled={isSubmitting || (!esMercadoPago && !orden.pago?.comprobante_url)}
                 className="px-4 py-2 rounded-lg text-white bg-green-600 hover:bg-green-700 font-semibold disabled:opacity-50 transition-colors flex items-center gap-2"
               >
                 {isSubmitting && <Loader2 size={14} className="animate-spin" />}
@@ -488,15 +497,30 @@ export default function AdminPagos() {
                 </div>
 
                 <div className="flex items-center justify-between gap-3 pt-1">
-                  {o.pago?.comprobante_url ? (
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                      ✓ Adjunto
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
-                      Pendiente
-                    </span>
-                  )}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {o.pago?.metodo_pago === 'mercado_pago' ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        💳 MP
+                      </span>
+                    ) : o.pago?.metodo_pago === 'efectivo' ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
+                        💵 Efectivo
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700">
+                        🏦 Transfer.
+                      </span>
+                    )}
+                    {o.pago?.comprobante_url ? (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                        ✓ Adjunto
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                        Pendiente
+                      </span>
+                    )}
+                  </div>
                   <button
                     onClick={() => setOrdenSeleccionada(o)}
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-blue-700 bg-blue-50 hover:bg-blue-100 font-semibold text-sm transition-colors"
@@ -520,7 +544,7 @@ export default function AdminPagos() {
           <table className="min-w-full divide-y divide-gray-100">
             <thead className="bg-gray-50">
               <tr>
-                {['Fecha', 'Socio', 'DNI', 'Monto Total', 'Comprobante', 'Acciones'].map(h => (
+                {['Fecha', 'Socio', 'DNI', 'Monto Total', 'Método', 'Comprobante', 'Acciones'].map(h => (
                   <th key={h} className="px-6 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">
                     {h}
                   </th>
@@ -549,6 +573,21 @@ export default function AdminPagos() {
                   </td>
                   <td className="px-6 py-4 text-sm font-semibold text-gray-900">
                     {formatoMoneda.format(o.monto_total)}
+                  </td>
+                  <td className="px-6 py-4">
+                    {o.pago?.metodo_pago === 'mercado_pago' ? (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        💳 MP
+                      </span>
+                    ) : o.pago?.metodo_pago === 'efectivo' ? (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
+                        💵 Efectivo
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700">
+                        🏦 Transfer.
+                      </span>
+                    )}
                   </td>
                   <td className="px-6 py-4">
                     {o.pago?.comprobante_url ? (

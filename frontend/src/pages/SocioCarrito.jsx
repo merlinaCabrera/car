@@ -138,9 +138,10 @@ function OrdenGeneradaModal({ cartTotal, cartPayload, token, onClose, onCheckout
         <div className="p-6 border-b flex-shrink-0 flex items-start justify-between">
           <div>
             <h2 className="text-xl font-bold text-gray-800">
-              {paso === 'metodo'       && 'Finalizar compra'}
+              {paso === 'metodo'        && 'Finalizar compra'}
               {paso === 'transferencia' && (orden ? '¡Compra generada!' : 'Confirmar compra')}
               {paso === 'efectivo'      && (orden ? '¡Compra registrada!' : 'Confirmar compra')}
+              {paso === 'mercado_pago'  && '¡Redirigiendo a Mercado Pago!'}
             </h2>
             {orden && (
               <p className="text-sm text-gray-500 mt-1">
@@ -211,20 +212,20 @@ function OrdenGeneradaModal({ cartTotal, cartPayload, token, onClose, onCheckout
                 </div>
               </button>
 
-              {/* Mercado Pago — próximamente */}
+              {/* Mercado Pago */}
               <button
-                disabled
-                className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-dashed
-                           border-gray-200 bg-white opacity-50 cursor-not-allowed text-left"
+                onClick={() => handleConfirmar('mercado_pago')}
+                disabled={isConfirming}
+                className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-blue-200
+                           bg-blue-50 hover:bg-blue-100 transition-colors text-left
+                           disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <span className="text-2xl">💳</span>
                 <div>
-                  <p className="font-bold text-gray-400 text-sm">Mercado Pago</p>
-                  <p className="text-xs text-gray-400 mt-0.5">Próximamente disponible</p>
+                  <p className="font-bold text-blue-900 text-sm">Mercado Pago</p>
+                  <p className="text-xs text-blue-600 mt-0.5">Tarjeta, dinero en cuenta o cuotas</p>
                 </div>
-                <span className="ml-auto text-xs font-semibold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
-                  Pronto
-                </span>
+                {isConfirming && <Loader2 size={16} className="animate-spin ml-auto text-blue-500" />}
               </button>
             </div>
           </div>
@@ -329,6 +330,38 @@ function OrdenGeneradaModal({ cartTotal, cartPayload, token, onClose, onCheckout
             </div>
           </div>
         )}
+
+        {/* ── PASO 1c: mercado pago — redirigir al init_point ── */}
+        {paso === 'mercado_pago' && orden && (() => {
+          // Redirigir automáticamente al link de pago de Mercado Pago
+          // en cuanto el paso esté listo (la orden ya fue creada en el backend).
+          // Usamos un setTimeout de 1500ms para que el socio vea el mensaje
+          // antes de salir de la página.
+          setTimeout(() => { window.location.href = orden.init_point }, 1500)
+          return (
+            <div className="p-6 space-y-4 overflow-y-auto flex-1">
+              <div className="text-center py-6">
+                <Loader2 size={48} className="animate-spin text-blue-500 mx-auto" />
+                <h3 className="mt-4 font-bold text-gray-800 text-lg">Generando link de pago…</h3>
+                <p className="text-sm text-gray-500 mt-2">
+                  En un momento te redirigimos a Mercado Pago para completar el pago de{' '}
+                  <strong>{formatoMoneda.format(orden.monto_total)}</strong>.
+                </p>
+              </div>
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-800">
+                Si no sos redirigido automáticamente,{' '}
+                <a
+                  href={orden.init_point}
+                  className="font-bold underline"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  hacé clic acá
+                </a>.
+              </div>
+            </div>
+          )
+        })()}
 
         {/* Footer */}
         <div className="p-4 bg-gray-50 rounded-b-2xl border-t flex justify-end gap-3 flex-shrink-0">

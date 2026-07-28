@@ -10,7 +10,7 @@ from backend.mailer.services.email_service import enviar_orden_aprobada
 
 asyncio.run(
     enviar_orden_aprobada(
-        email_destino="merlinacabreramc@gmail.com",  # poné un mail tuyo para verlo llegar
+        email_destino="merlinacabreramc@gmail.com", 
         nombre_socio="Juan Pérez",
         numero_orden=123,
         monto="5000.00",

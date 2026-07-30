@@ -9,6 +9,6 @@ python-jose[cryptography]
 python-multipart
 python-dotenv
 APScheduler==3.10.4
-fastapi-mail==1.4.1
-aiosmtplib
+httpx
+jinja2
 mercadopago

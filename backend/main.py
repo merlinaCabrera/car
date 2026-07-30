@@ -60,7 +60,9 @@ origins = [
     "http://127.0.0.1:5173",
     "https://club-atletico-api.onrender.com", 
     "https://car-frontend-dusky.vercel.app",
-    "https://car-frontend-git-main-merlina-s-projects.vercel.app"
+    "https://car-frontend-git-main-merlina-s-projects.vercel.app",
+    "https://clubatleticoroberts.com",
+    "https://www.clubatleticoroberts.com",
 ]
 
 app.add_middleware(

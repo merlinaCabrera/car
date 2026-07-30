@@ -1,68 +1,63 @@
 """
-services/email_service.py — Capa de servicio de correo
+services/email_service.py — Capa de servicio de correo via Resend HTTP API
 
-Diseño:
-  - Una única instancia de FastMail (reutiliza la conexión/config, no la recrea
-    en cada request).
-  - Funciones "puras" async que arman el mensaje y lo envían.
-  - Usa templates Jinja2 en /templates/email para que el HTML no viva
-    hardcodeado en el código Python (más mantenible y escalable).
-  - Cada función acá NO decide "cuándo" enviar; eso lo decide la ruta,
-    que la delega a BackgroundTasks. Esta capa solo sabe "cómo" enviar.
+Usa httpx para llamar directamente a la API REST de Resend (api.resend.com),
+evitando SMTP que está bloqueado en Render free tier.
+Renderiza los templates Jinja2 localmente antes de enviar.
 """
 
+import os
 from pathlib import Path
 
-from fastapi_mail import ConnectionConfig, FastMail, MessageSchema, MessageType
+import httpx
+from jinja2 import Environment, FileSystemLoader, select_autoescape
 
-from ..config import email_settings
+# ── Configuración ─────────────────────────────────────────────────────────────
+
+RESEND_API_KEY  = os.getenv("RESEND_API_KEY", "")
+MAIL_FROM       = os.getenv("MAIL_FROM", "onboarding@resend.dev")
+MAIL_FROM_NAME  = os.getenv("MAIL_FROM_NAME", "Club Atlético Roberts")
+CLUB_EMAIL      = os.getenv("CLUB_EMAIL", "clubatleticoroberts1@gmail.com")
+FRONTEND_URL    = os.getenv("FRONTEND_URL", "http://localhost:5173")
 
 TEMPLATE_FOLDER = Path(__file__).resolve().parent.parent / "templates" / "email"
 
-conf = ConnectionConfig(
-    MAIL_USERNAME=email_settings.MAIL_USERNAME,
-    MAIL_PASSWORD=email_settings.MAIL_PASSWORD,
-    MAIL_FROM=email_settings.MAIL_FROM,
-    MAIL_FROM_NAME=email_settings.MAIL_FROM_NAME,
-    MAIL_PORT=email_settings.MAIL_PORT,
-    MAIL_SERVER=email_settings.MAIL_SERVER,
-    MAIL_STARTTLS=email_settings.MAIL_STARTTLS,
-    MAIL_SSL_TLS=email_settings.MAIL_SSL_TLS,
-    USE_CREDENTIALS=email_settings.USE_CREDENTIALS,
-    VALIDATE_CERTS=email_settings.VALIDATE_CERTS,
-    TEMPLATE_FOLDER=TEMPLATE_FOLDER,
+_jinja_env = Environment(
+    loader=FileSystemLoader(str(TEMPLATE_FOLDER)),
+    autoescape=select_autoescape(["html"]),
 )
 
-# Instancia única reutilizable en toda la app
-fm = FastMail(conf)
+
+# ── Core ──────────────────────────────────────────────────────────────────────
+
+def _render(template_name: str, body: dict) -> str:
+    return _jinja_env.get_template(template_name).render(**body)
 
 
 async def _enviar(destinatarios: list[str], asunto: str, template_name: str, body: dict) -> None:
-    """
-    Función interna genérica: arma y envía un mail usando una plantilla Jinja2.
-    Si falla (Gmail caído, credenciales vencidas, etc.), la excepción se propaga
-    y quien la llama (la background task) debe loguearla — ver email_tasks.py.
-    """
-    message = MessageSchema(
-        subject=asunto,
-        recipients=destinatarios,
-        template_body=body,
-        subtype=MessageType.html,
-    )
-    await fm.send_message(message, template_name=template_name)
+    html = _render(template_name, body)
+    from_field = f"{MAIL_FROM_NAME} <{MAIL_FROM}>"
+
+    async with httpx.AsyncClient(timeout=15) as client:
+        res = await client.post(
+            "https://api.resend.com/emails",
+            headers={
+                "Authorization": f"Bearer {RESEND_API_KEY}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "from":    from_field,
+                "to":      destinatarios,
+                "subject": asunto,
+                "html":    html,
+            },
+        )
+        if res.status_code >= 400:
+            raise RuntimeError(f"Resend API error {res.status_code}: {res.text}")
 
 
-async def send_recuperar_password(email: str, nombre: str, token: str):
-    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
-    link = f"{frontend_url}/recuperar-password?token={token}"
-    html = render_template("recuperar_password.html", {
-        "nombre": nombre,
-        "link": link,
-        "expiracion": "1 hora",
-    })
-    await _send(to=email, subject="Recuperá tu contraseña — Club Atlético", html=html)
-    
-    
+# ── Funciones de envío ────────────────────────────────────────────────────────
+
 async def enviar_orden_aprobada(email_destino: str, nombre_socio: str, numero_orden: int, monto: str) -> None:
     await _enviar(
         destinatarios=[email_destino],
@@ -82,13 +77,11 @@ async def enviar_orden_rechazada(email_destino: str, nombre_socio: str, numero_o
 
 
 async def enviar_cuota_vencida(email_destino: str, nombre_socio: str, fecha_vencimiento: str) -> None:
-    import os
-    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
     await _enviar(
         destinatarios=[email_destino],
         asunto="Tu cuota social está vencida",
         template_name="cuota_vencida.html",
-        body={"nombre_socio": nombre_socio, "fecha_vencimiento": fecha_vencimiento, "frontend_url": frontend_url},
+        body={"nombre_socio": nombre_socio, "fecha_vencimiento": fecha_vencimiento, "frontend_url": FRONTEND_URL},
     )
 
 
@@ -101,16 +94,12 @@ async def enviar_convocatoria(email_destino: str, nombre_socio: str, titulo_even
     )
 
 
-# Pegar al FINAL de mailer/services/email_service.py (después de enviar_convocatoria)
-
 async def enviar_cuenta_aprobada(email_destino: str, nombre_socio: str) -> None:
-    import os
-    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
     await _enviar(
         destinatarios=[email_destino],
         asunto="¡Tu cuenta fue aprobada! 🎉",
         template_name="cuenta_aprobada.html",
-        body={"nombre_socio": nombre_socio, "frontend_url": frontend_url},
+        body={"nombre_socio": nombre_socio, "frontend_url": FRONTEND_URL},
     )
 
 
@@ -124,140 +113,81 @@ async def enviar_recuperar_password(email_destino: str, nombre_socio: str, link_
 
 
 async def enviar_orden_aprobada_cuota(
-    email_destino: str,
-    nombre_socio: str,
-    numero_orden: int,
-    meses_pagados: int,
-    cubierto_hasta: str,
+    email_destino: str, nombre_socio: str, numero_orden: int, meses_pagados: int, cubierto_hasta: str,
 ) -> None:
     await _enviar(
         destinatarios=[email_destino],
         asunto=f"✅ Tu pago de cuota #{numero_orden} fue aprobado",
         template_name="orden_aprobada_cuota.html",
-        body={
-            "nombre_socio": nombre_socio,
-            "numero_orden": numero_orden,
-            "meses_pagados": meses_pagados,
-            "cubierto_hasta": cubierto_hasta,
-        },
+        body={"nombre_socio": nombre_socio, "numero_orden": numero_orden,
+              "meses_pagados": meses_pagados, "cubierto_hasta": cubierto_hasta},
     )
 
 
 async def enviar_orden_aprobada_tienda(
-    email_destino: str,
-    nombre_socio: str,
-    numero_orden: int,
-    monto: str,
+    email_destino: str, nombre_socio: str, numero_orden: int, monto: str,
 ) -> None:
     await _enviar(
         destinatarios=[email_destino],
         asunto=f"✅ Tu compra #{numero_orden} fue aprobada",
         template_name="orden_aprobada_tienda.html",
-        body={
-            "nombre_socio": nombre_socio,
-            "numero_orden": numero_orden,
-            "monto": monto,
-        },
+        body={"nombre_socio": nombre_socio, "numero_orden": numero_orden, "monto": monto},
     )
 
 
 async def enviar_aviso_club_pago_recibido(
-    nombre_socio: str,
-    dni_socio: str,
-    numero_orden: int,
-    monto: str,
-    tipo: str,
+    nombre_socio: str, dni_socio: str, numero_orden: int, monto: str, tipo: str,
 ) -> None:
-    import os
-    club_email = os.getenv("CLUB_EMAIL", "clubatleticoroberts1@gmail.com")
     await _enviar(
-        destinatarios=[club_email],
+        destinatarios=[CLUB_EMAIL],
         asunto=f"💰 Pago aprobado — Orden #{numero_orden} ({tipo})",
         template_name="aviso_club_pago.html",
-        body={
-            "nombre_socio": nombre_socio,
-            "dni_socio": dni_socio,
-            "numero_orden": numero_orden,
-            "monto": monto,
-            "tipo": tipo,
-        },
+        body={"nombre_socio": nombre_socio, "dni_socio": dni_socio,
+              "numero_orden": numero_orden, "monto": monto, "tipo": tipo},
     )
 
+
 async def enviar_orden_generada(
-    email_destino: str,
-    nombre_socio: str,
-    numero_pago: int,
-    monto: str,
-    metodo: str,
+    email_destino: str, nombre_socio: str, numero_pago: int, monto: str, metodo: str,
 ) -> None:
-    import os
-    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
     await _enviar(
         destinatarios=[email_destino],
         asunto=f"📋 Orden #{numero_pago} generada — Club Atlético Roberts",
         template_name="orden_generada.html",
-        body={
-            "nombre_socio": nombre_socio,
-            "numero_pago": numero_pago,
-            "monto": monto,
-            "metodo": metodo,
-            "frontend_url": frontend_url,
-        },
+        body={"nombre_socio": nombre_socio, "numero_pago": numero_pago,
+              "monto": monto, "metodo": metodo, "frontend_url": FRONTEND_URL},
     )
 
 
 async def enviar_aviso_club_efectivo(
-    nombre_socio: str,
-    dni_socio: str,
-    numero_pago: int,
-    monto: str,
+    nombre_socio: str, dni_socio: str, numero_pago: int, monto: str,
 ) -> None:
-    import os
-    club_email = os.getenv("CLUB_EMAIL", "clubatleticoroberts1@gmail.com")
     await _enviar(
-        destinatarios=[club_email],
+        destinatarios=[CLUB_EMAIL],
         asunto=f"💵 Pago en efectivo pendiente — Orden #{numero_pago}",
         template_name="aviso_club_pago.html",
-        body={
-            "nombre_socio": nombre_socio,
-            "dni_socio": dni_socio,
-            "numero_orden": numero_pago,
-            "monto": monto,
-            "tipo": "efectivo (pendiente de cobro presencial)",
-        },
+        body={"nombre_socio": nombre_socio, "dni_socio": dni_socio,
+              "numero_orden": numero_pago, "monto": monto,
+              "tipo": "efectivo (pendiente de cobro presencial)"},
     )
 
 
 async def enviar_aviso_club_comprobante_recibido(
-    nombre_socio: str,
-    dni_socio: str,
-    numero_pago: int,
-    monto: str,
-    comprobante_url: str,
+    nombre_socio: str, dni_socio: str, numero_pago: int, monto: str, comprobante_url: str,
 ) -> None:
-    import os
-    club_email = os.getenv("CLUB_EMAIL", "clubatleticoroberts1@gmail.com")
-    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
     await _enviar(
-        destinatarios=[club_email],
+        destinatarios=[CLUB_EMAIL],
         asunto=f"📎 Comprobante recibido — Pago #{numero_pago} ({nombre_socio})",
         template_name="aviso_club_comprobante.html",
-        body={
-            "nombre_socio": nombre_socio,
-            "dni_socio": dni_socio,
-            "numero_pago": numero_pago,
-            "monto": monto,
-            "comprobante_url": f"{frontend_url}{comprobante_url}",
-            "admin_url": f"{frontend_url}/admin/pagos",
-        },
+        body={"nombre_socio": nombre_socio, "dni_socio": dni_socio,
+              "numero_pago": numero_pago, "monto": monto,
+              "comprobante_url": f"{FRONTEND_URL}{comprobante_url}",
+              "admin_url": f"{FRONTEND_URL}/admin/pagos"},
     )
 
 
 async def enviar_orden_expirada(
-    email_destino: str,
-    nombre_socio: str,
-    numero_orden: int,
-    monto: str,
+    email_destino: str, nombre_socio: str, numero_orden: int, monto: str,
 ) -> None:
     await _enviar(
         destinatarios=[email_destino],
@@ -268,71 +198,40 @@ async def enviar_orden_expirada(
 
 
 async def enviar_recordatorio_comprobante(
-    email_destino: str,
-    nombre_socio: str,
-    numero_orden: int,
-    monto: str,
-    horas_restantes: int,
+    email_destino: str, nombre_socio: str, numero_orden: int, monto: str, horas_restantes: int,
 ) -> None:
-    import os
-    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
     await _enviar(
         destinatarios=[email_destino],
         asunto=f"⚠️ Recordatorio: subí el comprobante de tu orden #{numero_orden}",
         template_name="recordatorio_comprobante.html",
-        body={
-            "nombre_socio": nombre_socio,
-            "numero_orden": numero_orden,
-            "monto": monto,
-            "horas_restantes": horas_restantes,
-            "frontend_url": frontend_url,
-        },
+        body={"nombre_socio": nombre_socio, "numero_orden": numero_orden,
+              "monto": monto, "horas_restantes": horas_restantes, "frontend_url": FRONTEND_URL},
     )
 
 
 async def enviar_aviso_admin_nuevo_socio(
-    nombre_socio: str,
-    dni_socio: str,
-    email_socio: str,
+    nombre_socio: str, dni_socio: str, email_socio: str,
 ) -> None:
-    import os
-    club_email = os.getenv("CLUB_EMAIL", "clubatleticoroberts1@gmail.com")
-    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
     await _enviar(
-        destinatarios=[club_email],
+        destinatarios=[CLUB_EMAIL],
         asunto=f"🙋 Nuevo socio registrado: {nombre_socio}",
         template_name="aviso_admin_nuevo_socio.html",
-        body={
-            "nombre_socio": nombre_socio,
-            "dni_socio": dni_socio,
-            "email_socio": email_socio,
-            "admin_url": f"{frontend_url}/admin/solicitudes",
-        },
+        body={"nombre_socio": nombre_socio, "dni_socio": dni_socio,
+              "email_socio": email_socio, "admin_url": f"{FRONTEND_URL}/admin/solicitudes"},
     )
 
 
 async def enviar_reserva_suspendida(
-    email_destino: str,
-    nombre_socio: str,
-    instalacion: str,
-    fecha_reserva: str,
-    monto_acreditado: str,
-    motivo: str,
+    email_destino: str, nombre_socio: str, instalacion: str,
+    fecha_reserva: str, monto_acreditado: str, motivo: str,
 ) -> None:
-    import os
-    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
     await _enviar(
         destinatarios=[email_destino],
         asunto=f"❌ Tu reserva de {instalacion} fue suspendida",
         template_name="reserva_suspendida.html",
-        body={
-            "nombre_socio": nombre_socio,
-            "instalacion": instalacion,
-            "fecha_reserva": fecha_reserva,
-            "monto_acreditado": monto_acreditado,
-            "motivo": motivo,
-            "frontend_url": frontend_url,
-        },
+        body={"nombre_socio": nombre_socio, "instalacion": instalacion,
+              "fecha_reserva": fecha_reserva, "monto_acreditado": monto_acreditado,
+              "motivo": motivo, "frontend_url": FRONTEND_URL},
     )
 
 
@@ -346,11 +245,9 @@ async def enviar_socio_dado_de_baja(email_destino: str, nombre_socio: str) -> No
 
 
 async def enviar_socio_reactivado(email_destino: str, nombre_socio: str) -> None:
-    import os
-    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
     await _enviar(
         destinatarios=[email_destino],
         asunto="✅ Tu cuenta fue reactivada — Club Atlético Roberts",
         template_name="socio_reactivado.html",
-        body={"nombre_socio": nombre_socio, "frontend_url": frontend_url},
+        body={"nombre_socio": nombre_socio, "frontend_url": FRONTEND_URL},
     )

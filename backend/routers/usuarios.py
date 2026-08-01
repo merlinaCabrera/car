@@ -24,6 +24,7 @@ from database import get_db              # ← unificado, ya no hay get_db local
 from dependencies import get_current_user, require_roles
 from security import get_password_hash, verify_password
 from mailer.services import email_tasks
+from mailer.services.email_tasks import task_aviso_admin_nuevo_socio, task_solicitud_recibida
 
 router = APIRouter(
     prefix="/usuarios",
@@ -99,6 +100,14 @@ def crear_usuario(
         dni_socio=nuevo_usuario.dni,
         email_socio=nuevo_usuario.email or "—",
     )
+
+    # Confirmar al socio que su solicitud fue recibida
+    if nuevo_usuario.email:
+        background_tasks.add_task(
+            email_tasks.task_solicitud_recibida,
+            email_destino=nuevo_usuario.email,
+            nombre_socio=nuevo_usuario.nombre,
+        )
 
     return nuevo_usuario
 

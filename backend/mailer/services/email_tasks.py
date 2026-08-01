@@ -234,3 +234,10 @@ async def task_socio_reactivado(email_destino: str, nombre_socio: str) -> None:
         logger.info(f"Mail 'socio_reactivado' enviado a {email_destino}")
     except Exception:
         logger.exception(f"Fallo al enviar mail 'socio_reactivado' a {email_destino}")
+
+async def task_solicitud_recibida(email_destino: str, nombre_socio: str) -> None:
+    try:
+        await email_service.enviar_solicitud_recibida(email_destino, nombre_socio)
+        logger.info(f"Mail 'solicitud_recibida' enviado a {email_destino}")
+    except Exception:
+        logger.exception(f"Fallo al enviar mail 'solicitud_recibida' a {email_destino}")

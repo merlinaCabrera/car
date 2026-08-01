@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block content %}
+<h2 style="margin:0 0 16px; color:#1b5e20; font-size:20px; font-weight:700;">
+  ✅ Recibimos tu solicitud
+</h2>
+<p style="margin:0 0 12px; color:#333; font-size:15px; line-height:1.6;">
+  Hola <strong>{{ nombre_socio }}</strong>,
+</p>
+<p style="margin:0 0 20px; color:#333; font-size:15px; line-height:1.6;">
+  Tu solicitud de alta como socio del <strong>Club Atlético Roberts</strong>
+  fue recibida correctamente. La administración la revisará a la brevedad
+  y te notificaremos por este medio cuando tu cuenta sea aprobada.
+</p>
+<table width="100%" cellpadding="0" cellspacing="0"
+       style="background-color:#f1f8f1; border-left:4px solid #1b5e20;
+              border-radius:4px; margin-bottom:20px;">
+  <tr><td style="padding:14px 16px;">
+    <p style="margin:0; color:#1b5e20; font-size:14px; line-height:1.6;">
+      Mientras tanto, no podés iniciar sesión hasta que tu cuenta sea aprobada.
+      Si tenés alguna consulta, comunicate directamente con la administración del club.
+    </p>
+  </td></tr>
+</table>
+<p style="margin:0; color:#666; font-size:13px; line-height:1.6;">
+  ¡Gracias por sumarte al Club Atlético Roberts!
+</p>
+{% endblock %}

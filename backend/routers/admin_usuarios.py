@@ -257,6 +257,15 @@ def aprobar_usuario(
         id_rol=rol_socio.id_rol,
         asignado_por=current_admin.id_usuario,
     ))
+
+    # Setear mes_cubierto_hasta al último día del mes actual para que
+    # el socio arranque al día y recién deba pagar el mes siguiente.
+    # Solo se toca si está vacío — no pisamos si ya tenía cobertura previa.
+    if usuario.mes_cubierto_hasta is None:
+        hoy = date.today()
+        import calendar
+        ultimo_dia = calendar.monthrange(hoy.year, hoy.month)[1]
+        usuario.mes_cubierto_hasta = date(hoy.year, hoy.month, ultimo_dia)
     db.add(models.AuditLog(
         usuario_actor=current_admin.id_usuario,
         accion="APROBAR_SOLICITUD_SOCIO",

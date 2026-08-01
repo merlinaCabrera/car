@@ -27,6 +27,12 @@ _jinja_env = Environment(
     autoescape=select_autoescape(["html"]),
 )
 
+# Variables disponibles en TODOS los templates sin pasarlas explícitamente
+_jinja_env.globals.update({
+    "frontend_url": FRONTEND_URL,
+    "club_email":   CLUB_EMAIL,
+})
+
 
 # ── Core ──────────────────────────────────────────────────────────────────────
 

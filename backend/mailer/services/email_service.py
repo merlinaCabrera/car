@@ -27,12 +27,6 @@ _jinja_env = Environment(
     autoescape=select_autoescape(["html"]),
 )
 
-# Variables disponibles en TODOS los templates sin pasarlas explícitamente
-_jinja_env.globals.update({
-    "frontend_url": FRONTEND_URL,
-    "club_email":   CLUB_EMAIL,
-})
-
 
 # ── Core ──────────────────────────────────────────────────────────────────────
 
@@ -256,4 +250,12 @@ async def enviar_socio_reactivado(email_destino: str, nombre_socio: str) -> None
         asunto="✅ Tu cuenta fue reactivada — Club Atlético Roberts",
         template_name="socio_reactivado.html",
         body={"nombre_socio": nombre_socio, "frontend_url": FRONTEND_URL},
+    )
+
+async def enviar_solicitud_recibida(email_destino: str, nombre_socio: str) -> None:
+    await _enviar(
+        destinatarios=[email_destino],
+        asunto="✅ Recibimos tu solicitud — Club Atlético Roberts",
+        template_name="solicitud_recibida.html",
+        body={"nombre_socio": nombre_socio},
     )

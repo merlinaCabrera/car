@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block content %}
+<h2 style="margin:0 0 16px; color:#1b5e20; font-size:20px; font-weight:700;">
+  ✅ ¡Tu orden fue aprobada!
+</h2>
+<p style="margin:0 0 12px; color:#333; font-size:15px; line-height:1.6;">
+  Hola <strong>{{ nombre_socio }}</strong>,
+</p>
+<p style="margin:0 0 20px; color:#333; font-size:15px; line-height:1.6;">
+  Tu pago correspondiente a la orden <strong>#{{ numero_orden }}</strong>
+  por un total de <strong>${{ monto }}</strong> fue verificado y aprobado
+  por la administración del club.
+</p>
+<p style="margin:0; color:#666; font-size:13px; line-height:1.6;">
+  Podés ver el estado de tu cuenta en cualquier momento desde el portal del socio.
+  Si tenés alguna consulta, comunicate con la administración del club.
+</p>
+{% endblock %}

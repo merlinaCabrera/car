@@ -56,6 +56,26 @@ const NAV_PERSONAL_TECNICO = [
   { name: 'Asistencias', path: '/asistencias', icon: UserCheck },
 ];
 
+const NAV_PERSONAL_ADMINISTRATIVO = [
+  { name: 'Socios', path: '/admin/socios', icon: Users },
+  { name: 'Solicitudes Pendientes', path: '/admin/solicitudes', icon: UserCheck },
+  { name: 'Tesorería', path: '/admin/pagos', icon: Wallet },
+  { name: 'Comercios Adheridos', path: '/admin/comercios', icon: Store },
+  { name: 'Agenda de Reservas', path: '/admin/reservas', icon: Calendar },
+];
+
+const NAV_ADMIN_TEMPORAL = [
+  { name: 'Escáner General', path: '/admin/escaner', icon: ScanLine },
+  { name: 'Escáner Eventos', path: '/admin/escaner-evento', icon: CalendarDays },
+  { name: 'Escáner Canchas', path: '/admin/escaner-canchas', icon: CalendarClock },
+];
+
+// Invitado: por definir. Por ahora muestra el escáner general.
+// Cuando se defina su escáner propio, agregar acá.
+const NAV_INVITADO = [
+  { name: 'Escáner General', path: '/admin/escaner', icon: ScanLine },
+];
+
 export default function MainLayout({ userRole }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -274,62 +294,38 @@ export default function MainLayout({ userRole }) {
             </div>
           )}
 
-          {/* ══ VISTAS DE OTROS ROLES — plegables, solo para admin ═════════ */}
+          {/* ══ VER COMO... — 6 roles plegables, solo para admin ══════════ */}
           {esAdminGeneral && (
             <div>
               <hr className="border-gray-700 my-4" />
               <p className="px-2 mb-2 text-xs text-gray-400 uppercase tracking-wider font-semibold">Ver como...</p>
 
-              {/* Vista Socio */}
-              <button onClick={() => toggleSeccion('socio')}
-                className="flex items-center justify-between w-full px-4 py-3 text-slate-400 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors">
-                <span className="flex items-center gap-3"><Home size={18} /> Vista Socio</span>
-                <ChevronDown size={16} className={`transition-transform ${seccionesAbiertas.socio ? 'rotate-180' : ''}`} />
-              </button>
-              {seccionesAbiertas.socio && (
-                <div className="ml-4 border-l border-slate-700 pl-2 mb-1">
-                  {NAV_SOCIO.map((link) => (
-                    <Link key={link.path} to={link.path} onClick={closeMenu}
-                      className="flex items-center gap-3 px-4 py-2.5 text-slate-400 hover:bg-slate-800 hover:text-white rounded-xl text-sm font-medium transition-colors">
-                      <link.icon size={16} /><span>{link.name}</span>
-                    </Link>
-                  ))}
+              {[
+                { key: 'socio',     label: 'Vista Socio',                  icon: Home,          nav: NAV_SOCIO },
+                { key: 'jugador',   label: 'Vista Jugador',                 icon: Users,         nav: NAV_JUGADOR },
+                { key: 'tecnico',   label: 'Vista Técnico',                 icon: ClipboardList, nav: NAV_PERSONAL_TECNICO },
+                { key: 'padmin',    label: 'Vista Personal Administrativo', icon: Wallet,        nav: NAV_PERSONAL_ADMINISTRATIVO },
+                { key: 'atemp',     label: 'Vista Admin Temporal',          icon: ScanLine,      nav: NAV_ADMIN_TEMPORAL },
+                { key: 'invitado',  label: 'Vista Invitado',                icon: UserCheck,     nav: NAV_INVITADO },
+              ].map(({ key, label, icon: Icon, nav }) => (
+                <div key={key}>
+                  <button onClick={() => toggleSeccion(key)}
+                    className="flex items-center justify-between w-full px-4 py-3 text-slate-400 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors">
+                    <span className="flex items-center gap-3"><Icon size={18} /> {label}</span>
+                    <ChevronDown size={16} className={`transition-transform ${seccionesAbiertas[key] ? 'rotate-180' : ''}`} />
+                  </button>
+                  {seccionesAbiertas[key] && (
+                    <div className="ml-4 border-l border-slate-700 pl-2 mb-1">
+                      {nav.map((link) => (
+                        <Link key={link.path} to={link.path} onClick={closeMenu}
+                          className="flex items-center gap-3 px-4 py-2.5 text-slate-400 hover:bg-slate-800 hover:text-white rounded-xl text-sm font-medium transition-colors">
+                          <link.icon size={16} /><span>{link.name}</span>
+                        </Link>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              )}
-
-              {/* Vista Jugador */}
-              <button onClick={() => toggleSeccion('jugador')}
-                className="flex items-center justify-between w-full px-4 py-3 text-slate-400 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors">
-                <span className="flex items-center gap-3"><Users size={18} /> Vista Jugador</span>
-                <ChevronDown size={16} className={`transition-transform ${seccionesAbiertas.jugador ? 'rotate-180' : ''}`} />
-              </button>
-              {seccionesAbiertas.jugador && (
-                <div className="ml-4 border-l border-slate-700 pl-2 mb-1">
-                  {NAV_JUGADOR.map((link) => (
-                    <Link key={link.path} to={link.path} onClick={closeMenu}
-                      className="flex items-center gap-3 px-4 py-2.5 text-slate-400 hover:bg-slate-800 hover:text-white rounded-xl text-sm font-medium transition-colors">
-                      <link.icon size={16} /><span>{link.name}</span>
-                    </Link>
-                  ))}
-                </div>
-              )}
-
-              {/* Vista Técnico */}
-              <button onClick={() => toggleSeccion('tecnico')}
-                className="flex items-center justify-between w-full px-4 py-3 text-slate-400 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors">
-                <span className="flex items-center gap-3"><ClipboardList size={18} /> Vista Técnico</span>
-                <ChevronDown size={16} className={`transition-transform ${seccionesAbiertas.tecnico ? 'rotate-180' : ''}`} />
-              </button>
-              {seccionesAbiertas.tecnico && (
-                <div className="ml-4 border-l border-slate-700 pl-2 mb-1">
-                  {NAV_PERSONAL_TECNICO.map((link) => (
-                    <Link key={link.path} to={link.path} onClick={closeMenu}
-                      className="flex items-center gap-3 px-4 py-2.5 text-slate-400 hover:bg-slate-800 hover:text-white rounded-xl text-sm font-medium transition-colors">
-                      <link.icon size={16} /><span>{link.name}</span>
-                    </Link>
-                  ))}
-                </div>
-              )}
+              ))}
             </div>
           )}
 

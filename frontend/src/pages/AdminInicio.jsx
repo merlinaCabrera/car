@@ -85,8 +85,9 @@ export default function AdminInicio() {
         <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 sm:mb-3">
           Pendientes de revisión
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
           <MetricCard
+            compacto
             icon={UserPlus}
             iconColor="bg-amber-100 text-amber-700"
             titulo="Solicitudes de Socios"
@@ -103,6 +104,7 @@ export default function AdminInicio() {
           />
 
           <MetricCard
+            compacto
             icon={CreditCard}
             iconColor="bg-orange-100 text-orange-700"
             titulo="Pagos por Verificar"
@@ -119,6 +121,7 @@ export default function AdminInicio() {
           />
 
           <MetricCard
+            compacto
             icon={ShoppingBag}
             iconColor="bg-blue-100 text-blue-700"
             titulo="Órdenes de Tienda"
@@ -141,8 +144,9 @@ export default function AdminInicio() {
         <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 sm:mb-3">
           Gestión operativa
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
           <MetricCard
+            compacto
             icon={Store}
             iconColor="bg-purple-100 text-purple-700"
             titulo="Comercios Adheridos"
@@ -159,6 +163,7 @@ export default function AdminInicio() {
           />
 
           <MetricCard
+            compacto
             icon={Package}
             iconColor="bg-teal-100 text-teal-700"
             titulo="Catálogo de Productos"
@@ -175,6 +180,7 @@ export default function AdminInicio() {
           />
 
           <MetricCard
+            compacto
             icon={Calendar}
             iconColor={
               resumen.data?.reservas_sin_reparto > 0

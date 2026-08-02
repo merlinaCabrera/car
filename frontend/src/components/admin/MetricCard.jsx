@@ -30,15 +30,21 @@ export default function MetricCard({
   ctaLabel,
   ctaPath,
   proximamente = false,
-  span = false, // ocupa 2 columnas en la grilla (para contenido más rico)
+  span = false,       // ocupa 2 columnas en la grilla (para contenido más rico)
+  compacto = false,    // en mobile: sin descripción ni botón de texto, tile de ícono+número+título
 }) {
   const navigate = useNavigate()
 
+  const irAlDestino = () => {
+    if (ctaPath && !loading) navigate(ctaPath)
+  }
+
   return (
     <div
-      className={`bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-6 flex flex-col gap-3 sm:gap-4 ${
+      onClick={compacto ? irAlDestino : undefined}
+      className={`bg-white rounded-2xl shadow-sm border border-gray-100 p-3 sm:p-6 flex flex-col gap-2 sm:gap-4 ${
         span ? 'md:col-span-2' : ''
-      }`}
+      } ${compacto && ctaPath ? 'cursor-pointer active:bg-gray-50 sm:cursor-default sm:active:bg-white' : ''}`}
     >
       <div className="flex items-start justify-between">
         <div className={`p-2 sm:p-2.5 rounded-xl ${iconColor}`}>
@@ -48,6 +54,10 @@ export default function MetricCard({
           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-100 text-amber-700">
             <Clock size={11} /> Próximamente
           </span>
+        )}
+        {/* En modo compacto, la flecha reemplaza al botón de texto en mobile */}
+        {compacto && ctaPath && !proximamente && (
+          <ArrowRight size={14} className="text-gray-300 sm:hidden mt-1.5" />
         )}
       </div>
 
@@ -80,7 +90,11 @@ export default function MetricCard({
         )}
 
         {descripcion && (
-          <p className="text-xs sm:text-sm text-gray-400 mt-1 line-clamp-2 sm:line-clamp-none">
+          <p
+            className={`text-xs sm:text-sm text-gray-400 mt-1 line-clamp-2 sm:line-clamp-none ${
+              compacto ? 'hidden sm:block' : ''
+            }`}
+          >
             {descripcion}
           </p>
         )}
@@ -88,8 +102,13 @@ export default function MetricCard({
 
       {ctaPath && (
         <button
-          onClick={() => navigate(ctaPath)}
-          className="mt-auto inline-flex items-center justify-center gap-1.5 text-xs sm:text-sm font-semibold text-blue-600 hover:text-blue-700 transition-colors disabled:opacity-50"
+          onClick={(e) => {
+            e.stopPropagation()
+            navigate(ctaPath)
+          }}
+          className={`mt-auto inline-flex items-center justify-center gap-1.5 text-xs sm:text-sm font-semibold text-blue-600 hover:text-blue-700 transition-colors disabled:opacity-50 ${
+            compacto ? 'hidden sm:inline-flex' : ''
+          }`}
           disabled={loading}
         >
           {ctaLabel}

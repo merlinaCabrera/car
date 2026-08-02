@@ -43,6 +43,8 @@ function EstadoSinPermiso() {
     </div>
   )
 }
+
+function EstadoError({ mensaje, onReintentar }) {
   return (
     <div className="flex items-center gap-3 p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm">
       <AlertCircle size={18} className="flex-shrink-0" />

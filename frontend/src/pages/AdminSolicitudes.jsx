@@ -8,25 +8,41 @@ import {
   AlertCircle,
   UserCheck,
   Users,
+  ShieldAlert,
 } from 'lucide-react'
 
 const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 
 // ─── Sub-componentes ──────────────────────────────────────────────────────────
 
-function EstadoVacio() {
+function EstadoVacio({ mensaje }) {
   return (
     <div className="bg-white rounded-2xl border border-gray-100 p-12">
       <div className="flex flex-col items-center justify-center text-center text-gray-500">
         <CheckCircle size={48} strokeWidth={1.5} className="text-green-500 mb-4" />
         <p className="font-semibold text-lg text-gray-700">¡Todo en orden!</p>
-        <p className="text-sm mt-1 max-w-xs">No hay nuevas solicitudes de alta pendientes de aprobación en este momento.</p>
+        <p className="text-sm mt-1 max-w-xs">
+          {mensaje ?? 'No hay nuevas solicitudes de alta pendientes de aprobación en este momento.'}
+        </p>
       </div>
     </div>
   )
 }
 
-function EstadoError({ mensaje, onReintentar }) {
+function EstadoSinPermiso() {
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 p-12">
+      <div className="flex flex-col items-center justify-center text-center text-gray-500">
+        <ShieldAlert size={48} strokeWidth={1.5} className="text-amber-500 mb-4" />
+        <p className="font-semibold text-lg text-gray-700">No tenés acceso a esta sección</p>
+        <p className="text-sm mt-1 max-w-xs">
+          Tu cuenta no tiene permisos de administrador. Iniciá sesión con una cuenta de admin para
+          ver las solicitudes de alta.
+        </p>
+      </div>
+    </div>
+  )
+}
   return (
     <div className="flex items-center gap-3 p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm">
       <AlertCircle size={18} className="flex-shrink-0" />
@@ -56,7 +72,16 @@ function SkeletonRow() {
 // ─── Componente principal ─────────────────────────────────────────────────────
 
 export default function AdminSolicitudes() {
-  const { token } = useAuth()
+  const { token, user } = useAuth()
+
+  const ROLES_ADMIN = ['admin_general', 'personal_administrativo']
+  const esAdmin = !!user?.roles_asignados?.some(
+    ur =>
+      ur.rol?.nombre &&
+      ROLES_ADMIN.includes(ur.rol.nombre) &&
+      ur.rol?.es_activo !== false &&
+      (!ur.valido_hasta || new Date(ur.valido_hasta) > new Date())
+  )
 
   const [pendientes, setPendientes] = useState([])
   const [loading, setLoading]       = useState(true)
@@ -70,6 +95,12 @@ const fetchPendientes = useCallback(async () => {
     // Si no hay token, no hacemos nada.
     if (!token) {
       console.warn("Fetch abortado: No hay token disponible.");
+      return;
+    }
+    // Si el usuario logueado no tiene rol de admin, ni siquiera pedimos el
+    // recurso: no tiene sentido pegarle al backend para que nos diga 403.
+    if (!esAdmin) {
+      setLoading(false);
       return;
     }
 
@@ -88,6 +119,12 @@ const fetchPendientes = useCallback(async () => {
       if (res.status === 401) {
         throw new Error("Tu sesión expiró. Por favor, volvé a iniciar sesión.");
       }
+      if (res.status === 403) {
+        // Ya sabemos que el usuario tiene rol de admin (esAdmin), así que si
+        // igual llega un 403 acá es algo transitorio del lado del backend/token,
+        // no "no hay nada pendiente". Lo tratamos como error real.
+        throw new Error('No se pudo verificar tu permiso de administrador. Volvé a iniciar sesión.');
+      }
       if (!res.ok) throw new Error(`Error ${res.status}: No se pudieron cargar.`);
       
       setPendientes(await res.json());
@@ -96,7 +133,7 @@ const fetchPendientes = useCallback(async () => {
     } finally {
       setLoading(false);
     }
-  }, [token]); // token es la dependencia clave aquí
+  }, [token, esAdmin]); // token es la dependencia clave aquí
 
   useEffect(() => {
     // Condición de guardia: solo hacer fetch si tenemos un token.
@@ -179,11 +216,14 @@ const fetchPendientes = useCallback(async () => {
         </div>
       </div>
 
+      {/* Sin permiso: usuario logueado que no es admin */}
+      {!loading && !esAdmin && <EstadoSinPermiso />}
+
       {/* Error */}
-      {error && <EstadoError mensaje={error} onReintentar={fetchPendientes} />}
+      {!loading && esAdmin && error && <EstadoError mensaje={error} onReintentar={fetchPendientes} />}
 
       {/* Tabla */}
-      {!error && (
+      {esAdmin && !error && (
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
           <table className="min-w-full divide-y divide-gray-100">
             <thead className="bg-gray-50">

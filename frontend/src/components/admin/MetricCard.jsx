@@ -36,13 +36,13 @@ export default function MetricCard({
 
   return (
     <div
-      className={`bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col gap-4 ${
+      className={`bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-6 flex flex-col gap-3 sm:gap-4 ${
         span ? 'md:col-span-2' : ''
       }`}
     >
       <div className="flex items-start justify-between">
-        <div className={`p-2.5 rounded-xl ${iconColor}`}>
-          <Icon size={20} />
+        <div className={`p-2 sm:p-2.5 rounded-xl ${iconColor}`}>
+          <Icon size={18} className="sm:w-5 sm:h-5" />
         </div>
         {proximamente && (
           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-100 text-amber-700">
@@ -51,12 +51,12 @@ export default function MetricCard({
         )}
       </div>
 
-      <div className="flex-1">
-        <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">{titulo}</h3>
+      <div className="flex-1 min-w-0">
+        <h3 className="text-xs sm:text-sm font-semibold text-gray-500 uppercase tracking-wide truncate">{titulo}</h3>
 
         {/* Estado: cargando */}
         {loading && (
-          <div className="h-9 w-24 bg-gray-200 rounded-md animate-pulse mt-2" />
+          <div className="h-7 sm:h-9 w-20 sm:w-24 bg-gray-200 rounded-md animate-pulse mt-2" />
         )}
 
         {/* Estado: error */}
@@ -74,18 +74,22 @@ export default function MetricCard({
 
         {/* Estado: contador numérico (modo original) */}
         {!loading && !error && children === undefined && (
-          <p className={`text-3xl font-bold mt-1 ${valor > 0 ? 'text-blue-600' : 'text-gray-900'}`}>
+          <p className={`text-2xl sm:text-3xl font-bold mt-1 ${valor > 0 ? 'text-blue-600' : 'text-gray-900'}`}>
             {valor}
           </p>
         )}
 
-        {descripcion && <p className="text-sm text-gray-400 mt-1">{descripcion}</p>}
+        {descripcion && (
+          <p className="text-xs sm:text-sm text-gray-400 mt-1 line-clamp-2 sm:line-clamp-none">
+            {descripcion}
+          </p>
+        )}
       </div>
 
       {ctaPath && (
         <button
           onClick={() => navigate(ctaPath)}
-          className="mt-auto inline-flex items-center justify-center gap-1.5 text-sm font-semibold text-blue-600 hover:text-blue-700 transition-colors disabled:opacity-50"
+          className="mt-auto inline-flex items-center justify-center gap-1.5 text-xs sm:text-sm font-semibold text-blue-600 hover:text-blue-700 transition-colors disabled:opacity-50"
           disabled={loading}
         >
           {ctaLabel}

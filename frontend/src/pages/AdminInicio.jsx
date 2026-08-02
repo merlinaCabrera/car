@@ -67,25 +67,25 @@ export default function AdminInicio() {
   const resumen = useAdminResource('/admin/dashboard/resumen')
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-6">
+    <div className="p-4 sm:p-6 max-w-6xl mx-auto space-y-5 sm:space-y-6">
 
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
-          <LayoutDashboard size={24} className="text-gray-500" />
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2 sm:gap-3">
+          <LayoutDashboard size={22} className="text-gray-500 flex-shrink-0" />
           Panel de Control
         </h1>
-        <p className="text-sm text-gray-500 mt-1">
+        <p className="text-xs sm:text-sm text-gray-500 mt-1">
           Hola, {user?.nombre || 'Admin'} — esto es lo que necesita tu atención hoy.
         </p>
       </div>
 
       {/* ── Tareas pendientes de revisión ──────────────────────────────────── */}
       <div>
-        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
+        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 sm:mb-3">
           Pendientes de revisión
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
           <MetricCard
             icon={UserPlus}
             iconColor="bg-amber-100 text-amber-700"
@@ -138,10 +138,10 @@ export default function AdminInicio() {
 
       {/* ── Gestión operativa ───────────────────────────────────────────────── */}
       <div>
-        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
+        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 sm:mb-3">
           Gestión operativa
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
           <MetricCard
             icon={Store}
             iconColor="bg-purple-100 text-purple-700"
@@ -198,10 +198,10 @@ export default function AdminInicio() {
 
       {/* ── Panorama general ────────────────────────────────────────────────── */}
       <div>
-        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
+        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 sm:mb-3">
           Panorama general
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
 
           {/* Ingresos del mes */}
           <MetricCard
@@ -213,20 +213,20 @@ export default function AdminInicio() {
             ctaLabel="Ir a Tesorería"
             ctaPath="/admin/pagos"
           >
-            <p className="text-3xl font-bold text-gray-900">
+            <p className="text-2xl sm:text-3xl font-bold text-gray-900">
               {formatoARS(resumen.data?.ingresos_mes)}
             </p>
-            <p className="text-sm text-gray-400 mt-1 capitalize">
+            <p className="text-xs sm:text-sm text-gray-400 mt-1 capitalize">
               Órdenes aprobadas en {resumen.data?.mes_label}.
             </p>
 
             {estadisticasPagos.data && !estadisticasPagos.loading && (
-              <div className="flex items-center gap-4 mt-3 pt-3 border-t border-gray-100">
-                <span className="flex items-center gap-1.5 text-sm font-semibold text-emerald-700">
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-3 pt-3 border-t border-gray-100">
+                <span className="flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-emerald-700">
                   <CheckCircle2 size={15} />
                   {estadisticasPagos.data.total_socios_al_dia} al día
                 </span>
-                <span className="flex items-center gap-1.5 text-sm font-semibold text-red-600">
+                <span className="flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-red-600">
                   <AlertTriangle size={15} />
                   {estadisticasPagos.data.total_socios_morosos} morosos
                 </span>
@@ -246,12 +246,12 @@ export default function AdminInicio() {
           >
             {resumen.data?.proximos_eventos?.length > 0 ? (
               <ul className="space-y-2 mt-1">
-                {resumen.data.proximos_eventos.map((ev) => (
-                  <li key={ev.id_evento} className="flex items-center justify-between gap-3 text-sm">
+                {resumen.data.proximos_eventos.slice(0, 3).map((ev) => (
+                  <li key={ev.id_evento} className="flex items-center justify-between gap-2 sm:gap-3 text-xs sm:text-sm">
                     <span className="font-medium text-gray-800 truncate">{ev.titulo}</span>
-                    <span className="flex items-center gap-3 text-gray-400 flex-shrink-0">
+                    <span className="flex items-center gap-2 sm:gap-3 text-gray-400 flex-shrink-0">
                       {ev.ubicacion && (
-                        <span className="flex items-center gap-1">
+                        <span className="hidden sm:flex items-center gap-1">
                           <MapPin size={12} /> {ev.ubicacion}
                         </span>
                       )}

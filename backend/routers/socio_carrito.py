@@ -303,12 +303,33 @@ def checkout_carrito(
         Decimal("0"),
     )
 
+    # 3b ── Aplicar saldo a favor si el socio lo eligió ───────────────────
+    saldo_aplicado = Decimal("0")
+    saldo_cubre_todo = False
+
+    if payload.usar_saldo and current_user.saldo_a_favor > Decimal("0"):
+        saldo_disponible = current_user.saldo_a_favor
+        if saldo_disponible >= monto_total_global:
+            # El saldo cubre todo — aprobación automática
+            saldo_aplicado = monto_total_global
+            saldo_cubre_todo = True
+        else:
+            # Saldo parcial — descuenta lo que hay
+            saldo_aplicado = saldo_disponible
+
+        current_user.saldo_a_favor -= saldo_aplicado
+        monto_total_global -= saldo_aplicado
+
+        # Si quedó en 0 por redondeo, asegurar que no sea negativo
+        if monto_total_global < Decimal("0"):
+            monto_total_global = Decimal("0")
+
     # 4 ── Crear el Pago (cabecera única de cobro) ───────────────────────────
     nuevo_pago = models.Pago(
         id_usuario=current_user.id_usuario,
         monto_total=monto_total_global,
         estado="pendiente",
-        metodo_pago=payload.metodo_pago,
+        metodo_pago=payload.metodo_pago if not saldo_cubre_todo else "saldo_a_favor",
         # comprobante_url queda NULL hasta que el socio lo suba (no aplica a MP).
     )
     db.add(nuevo_pago)
@@ -425,6 +446,27 @@ def checkout_carrito(
     db.commit()
     db.refresh(nuevo_pago)
 
+    # 8b ── Aprobación automática si el saldo cubrió el total ─────────────
+    if saldo_cubre_todo:
+        from utils.ordenes import procesar_aprobacion_orden, verificar_pendiente
+        for orden in ordenes_creadas:
+            db.refresh(orden)
+            try:
+                verificar_pendiente(orden)
+                procesar_aprobacion_orden(
+                    db=db,
+                    orden=orden,
+                    actor_id=current_user.id_usuario,
+                    background_tasks=background_tasks,
+                    notas_admin="Aprobación automática por saldo a favor",
+                    meses_corregidos=None,
+                    ip=_extraer_ip(request),
+                )
+            except Exception:
+                pass  # si falla, queda pendiente_verificacion como fallback
+        db.commit()
+        db.refresh(nuevo_pago)
+
     # 9 ── Mails en background ────────────────────────────────────────────────
     metodo = payload.metodo_pago
 
@@ -460,6 +502,8 @@ def checkout_carrito(
 
     respuesta = schemas.PagoResponse.model_validate(nuevo_pago)
     respuesta.init_point = init_point
+    respuesta.saldo_aplicado = saldo_aplicado
+    respuesta.saldo_cubre_todo = saldo_cubre_todo
     return respuesta
 
 

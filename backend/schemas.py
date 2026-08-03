@@ -299,7 +299,6 @@ class UsuarioResponse(UsuarioBase):
     creado_at: datetime
     es_becado: bool = False
     becado_hasta: Optional[date] = None
-    saldo_a_favor: Decimal = Field(default=Decimal("0.00"))
     roles_asignados: List[UsuarioRolResponse] = []
 
 
@@ -615,6 +614,14 @@ class PagoResponse(BaseModel):
     )
     estado: str
     fecha_creacion: datetime
+    saldo_aplicado: Decimal = Field(
+        default=Decimal("0.00"),
+        description="Monto descontado del saldo_a_favor del socio en este pago.",
+    )
+    saldo_cubre_todo: bool = Field(
+        default=False,
+        description="True si el saldo cubrió el total y la orden se aprobó automáticamente.",
+    )
     init_point: Optional[str] = Field(
         default=None,
         description=(
@@ -668,6 +675,10 @@ class OrdenCreate(BaseModel):
     metodo_pago: str = Field(
         default="transferencia",
         description="'efectivo' | 'transferencia' | 'mercado_pago'.",
+    )
+    usar_saldo: bool = Field(
+        default=False,
+        description="Si True, se aplica el saldo_a_favor del socio como descuento.",
     )
 
     @field_validator("items")

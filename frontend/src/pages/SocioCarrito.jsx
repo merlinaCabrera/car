@@ -69,12 +69,13 @@ const formatoMoneda = new Intl.NumberFormat('es-AR', {
 //
 // PASO 1c (mercado pago): deshabilitado, placeholder para futura integración.
 
-function OrdenGeneradaModal({ cartTotal, cartPayload, token, onClose, onCheckout }) {
+function OrdenGeneradaModal({ cartTotal, cartPayload, saldoDisponible = 0, token, onClose, onCheckout }) {
   // Paso: 'metodo' | 'transferencia' | 'efectivo' | 'mercadopago'
   const [paso,        setPaso]        = useState('metodo')
   const [isConfirming, setIsConfirming] = useState(false)
   const [confirmError, setConfirmError] = useState(null)
   const [orden,       setOrden]       = useState(null)   // PagoResponse del backend
+  const [usarSaldo,   setUsarSaldo]   = useState(false)  // checkbox saldo a favor
 
   // Upload
   const [file,        setFile]        = useState(null)
@@ -87,9 +88,14 @@ function OrdenGeneradaModal({ cartTotal, cartPayload, token, onClose, onCheckout
     setIsConfirming(true)
     setConfirmError(null)
     try {
-      const data = await onCheckout(metodo)  // llama al checkout en el padre
+      const data = await onCheckout(metodo, usarSaldo)  // pasa usarSaldo al padre
       setOrden(data)
-      setPaso(metodo)
+      // Si el saldo cubrió todo, mostrar paso especial de éxito
+      if (data.saldo_cubre_todo) {
+        setPaso('saldo_total')
+      } else {
+        setPaso(metodo)
+      }
     } catch (err) {
       setConfirmError(err.message)
     } finally {
@@ -178,55 +184,88 @@ function OrdenGeneradaModal({ cartTotal, cartPayload, token, onClose, onCheckout
               <p className="text-3xl font-bold text-indigo-900 mt-1">{formatoMoneda.format(cartTotal)}</p>
             </div>
 
-            <p className="text-sm text-gray-500 text-center">¿Cómo vas a pagar?</p>
+            {/* Checkbox saldo a favor */}
+            {saldoDisponible > 0 && (
+              <label className={`flex items-center justify-between gap-3 p-3 rounded-xl border-2 cursor-pointer transition-colors
+                ${usarSaldo ? 'border-emerald-400 bg-emerald-50' : 'border-gray-200 bg-gray-50 hover:border-emerald-300'}`}>
+                <div className="flex items-center gap-3">
+                  <input type="checkbox" checked={usarSaldo} onChange={e => setUsarSaldo(e.target.checked)}
+                    className="w-4 h-4 accent-emerald-600" />
+                  <div>
+                    <p className="text-sm font-semibold text-gray-800">Usar saldo a favor</p>
+                    <p className="text-xs text-emerald-600 font-medium">{formatoMoneda.format(saldoDisponible)} disponibles</p>
+                  </div>
+                </div>
+                {usarSaldo && saldoDisponible >= cartTotal && (
+                  <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-2 py-1 rounded-lg">Cubre todo ✓</span>
+                )}
+                {usarSaldo && saldoDisponible < cartTotal && (
+                  <span className="text-xs text-gray-500">Resta {formatoMoneda.format(cartTotal - saldoDisponible)}</span>
+                )}
+              </label>
+            )}
 
-            <div className="space-y-3">
-              {/* Transferencia */}
+            {/* Si el saldo cubre todo, botón directo sin elegir método */}
+            {usarSaldo && saldoDisponible >= cartTotal ? (
               <button
                 onClick={() => handleConfirmar('transferencia')}
                 disabled={isConfirming}
-                className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-indigo-200
-                           bg-indigo-50 hover:bg-indigo-100 transition-colors text-left
-                           disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full flex items-center justify-center gap-2 p-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold transition-colors disabled:opacity-50"
               >
-                <span className="text-2xl">🏦</span>
-                <div>
-                  <p className="font-bold text-indigo-900 text-sm">Transferencia bancaria</p>
-                  <p className="text-xs text-indigo-600 mt-0.5">Alias CLUB.ROBERTS · Requiere comprobante</p>
-                </div>
-                {isConfirming && <Loader2 size={16} className="animate-spin ml-auto text-indigo-500" />}
+                {isConfirming && <Loader2 size={16} className="animate-spin" />}
+                {isConfirming ? 'Procesando...' : '✓ Confirmar compra con saldo'}
               </button>
+            ) : (
+              <>
+                <p className="text-sm text-gray-500 text-center">
+                  {usarSaldo ? `Elegí cómo pagar los ${formatoMoneda.format(Math.max(0, cartTotal - saldoDisponible))} restantes:` : '¿Cómo vas a pagar?'}
+                </p>
+                <div className="space-y-3">
+                  <button onClick={() => handleConfirmar('transferencia')} disabled={isConfirming}
+                    className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-indigo-200 bg-indigo-50 hover:bg-indigo-100 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed">
+                    <span className="text-2xl">🏦</span>
+                    <div>
+                      <p className="font-bold text-indigo-900 text-sm">Transferencia bancaria</p>
+                      <p className="text-xs text-indigo-600 mt-0.5">Alias CLUB.ROBERTS · Requiere comprobante</p>
+                    </div>
+                    {isConfirming && <Loader2 size={16} className="animate-spin ml-auto text-indigo-500" />}
+                  </button>
+                  <button onClick={() => handleConfirmar('efectivo')} disabled={isConfirming}
+                    className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-gray-200 bg-gray-50 hover:bg-gray-100 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed">
+                    <span className="text-2xl">💵</span>
+                    <div>
+                      <p className="font-bold text-gray-800 text-sm">Efectivo</p>
+                      <p className="text-xs text-gray-500 mt-0.5">Un administrativo se contactará con vos</p>
+                    </div>
+                  </button>
+                  <button onClick={() => handleConfirmar('mercado_pago')} disabled={isConfirming}
+                    className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-blue-200 bg-blue-50 hover:bg-blue-100 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed">
+                    <span className="text-2xl">💳</span>
+                    <div>
+                      <p className="font-bold text-blue-900 text-sm">Mercado Pago</p>
+                      <p className="text-xs text-blue-600 mt-0.5">Tarjeta, dinero en cuenta o cuotas</p>
+                    </div>
+                    {isConfirming && <Loader2 size={16} className="animate-spin ml-auto text-blue-500" />}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
 
-              {/* Efectivo */}
-              <button
-                onClick={() => handleConfirmar('efectivo')}
-                disabled={isConfirming}
-                className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-gray-200
-                           bg-gray-50 hover:bg-gray-100 transition-colors text-left
-                           disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <span className="text-2xl">💵</span>
-                <div>
-                  <p className="font-bold text-gray-800 text-sm">Efectivo</p>
-                  <p className="text-xs text-gray-500 mt-0.5">Un administrativo se contactará con vos</p>
-                </div>
-              </button>
-
-              {/* Mercado Pago */}
-              <button
-                onClick={() => handleConfirmar('mercado_pago')}
-                disabled={isConfirming}
-                className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-blue-200
-                           bg-blue-50 hover:bg-blue-100 transition-colors text-left
-                           disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <span className="text-2xl">💳</span>
-                <div>
-                  <p className="font-bold text-blue-900 text-sm">Mercado Pago</p>
-                  <p className="text-xs text-blue-600 mt-0.5">Tarjeta, dinero en cuenta o cuotas</p>
-                </div>
-                {isConfirming && <Loader2 size={16} className="animate-spin ml-auto text-blue-500" />}
-              </button>
+        {/* ── PASO saldo_total: aprobación automática por saldo ── */}
+        {paso === 'saldo_total' && orden && (
+          <div className="p-6 space-y-4 overflow-y-auto flex-1">
+            <div className="text-center py-4">
+              <span className="text-5xl">✅</span>
+              <h3 className="mt-4 font-bold text-gray-800 text-lg">¡Compra aprobada!</h3>
+              <p className="text-sm text-gray-500 mt-2 leading-relaxed">
+                Tu saldo a favor cubrió el total de la orden <strong>#{orden.id_pago}</strong>.
+                La compra fue aprobada automáticamente, sin necesidad de comprobante.
+              </p>
+            </div>
+            <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-sm text-emerald-800 text-center">
+              Se descontaron <strong>{formatoMoneda.format(orden.saldo_aplicado)}</strong> de tu saldo a favor.
             </div>
           </div>
         )}
@@ -468,7 +507,7 @@ function CarritoVacio() {
 // ─── Componente principal ─────────────────────────────────────────────────────
 
 export default function SocioCarrito() {
-  const { token }                         = useAuth()
+  const { token, user, refreshUser }      = useAuth()
   const { cart, removeFromCart, clearCart, cartTotal } = useCart()
   const navigate                          = useNavigate()
 
@@ -494,10 +533,12 @@ export default function SocioCarrito() {
 
   // ── Checkout real — llamado desde el modal al confirmar método de pago ────
   // Devuelve el PagoResponse o lanza un Error (el modal lo captura).
-  const handleCheckout = async (metodo) => {
+  const handleCheckout = async (metodo, usarSaldo = false) => {
     setIsCheckingOut(true)
+    const usarSaldoFlag = usarSaldo
     const payload = {
       metodo_pago: metodo,
+      usar_saldo: usarSaldo,
       items: cart.map(item => ({
         id_producto: Number(item.id_producto ?? item.id),
         cantidad:    parseInt(item.qty, 10),
@@ -519,6 +560,10 @@ export default function SocioCarrito() {
       }
       clearCart()   // vaciar recién acá, cuando el backend confirmó
       setOrdenGenerada(data)
+      // Si usó saldo, refrescar el perfil para actualizar saldo_a_favor en la UI
+      if (usarSaldoFlag && data.saldo_aplicado > 0) {
+        refreshUser?.()
+      }
       return data
     } finally {
       setIsCheckingOut(false)
@@ -586,6 +631,7 @@ export default function SocioCarrito() {
         <OrdenGeneradaModal
           cartTotal={cartTotal}
           cartPayload={cart}
+          saldoDisponible={Number(user?.saldo_a_favor ?? 0)}
           orden={ordenGenerada}
           token={token}
           onClose={handleCloseModal}

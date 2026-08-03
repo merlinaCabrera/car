@@ -38,8 +38,8 @@ import escudoCar from '../assets/escudo-car.PNG';
 const NAV_SOCIO = [
   { name: 'Inicio', path: '/socio', icon: Home },
   { name: 'Gestión de Cuotas', path: '/socio/cuotas', icon: CreditCard },
-  { name: 'Reservas', path: '/socio/reservas', icon: Calendar },
-  { name: 'Reserva de Cancha', path: '/socio/cancha', icon: Trophy }, 
+  { name: 'Reserva Salón', path: '/socio/reservas', icon: Calendar },
+  { name: 'Reserva Canchas', path: '/socio/cancha', icon: Trophy }, 
   { name: 'Tienda', path: '/shopping', icon: ShoppingBag },
   { name: 'Mis Compras', path: '/mis-compras', icon: Package },
   { name: 'Configuración', path: '/perfil', icon: Settings },
@@ -334,9 +334,9 @@ export default function MainLayout({ userRole }) {
               )}
 
               {[
-                esAdminTemporal && { key: 'own_atemp', label: 'Admin Temporal', icon: ScanLine, nav: NAV_ADMIN_TEMPORAL },
-                esPersonalAdministrativo && { key: 'own_padmin', label: 'Personal Administrativo', icon: Wallet, nav: NAV_PERSONAL_ADMINISTRATIVO_PROPIO },
-                esPersonalTecnico && { key: 'own_tecnico', label: 'Cuerpo Técnico', icon: ClipboardList, nav: NAV_PERSONAL_TECNICO },
+                esAdminTemporal && { key: 'own_atemp', label: 'Escáneres', icon: ScanLine, nav: NAV_ADMIN_TEMPORAL },
+                esPersonalAdministrativo && { key: 'own_padmin', label: 'Administrativo', icon: Wallet, nav: NAV_PERSONAL_ADMINISTRATIVO_PROPIO },
+                esPersonalTecnico && { key: 'own_tecnico', label: 'Técnico', icon: ClipboardList, nav: NAV_PERSONAL_TECNICO },
                 esJugador && { key: 'own_jugador', label: 'Deportivo', icon: Users, nav: NAV_JUGADOR },
               ].filter(Boolean).map(({ key, label, icon: Icon, nav }, idx) => (
                 <div key={key}>

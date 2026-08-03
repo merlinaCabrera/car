@@ -1459,3 +1459,4 @@ class ValidationResponse(BaseModel):
     dni: str
     estado_financiero: str  # 'Al día' | 'Moroso'
     es_socio_activo: bool
+    

@@ -91,7 +91,7 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, isAuthenticated, login, logout, loading }}>
+    <AuthContext.Provider value={{ user, token, isAuthenticated, login, logout, loading, refreshUser: () => fetchUserProfile(token) }}>
       {!loading && children}
     </AuthContext.Provider>
   );

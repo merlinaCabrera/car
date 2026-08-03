@@ -331,43 +331,45 @@ export default function MainLayout({ userRole }) {
             </div>
           )}
 
-          {/* ══ ROLES NO-ADMIN: menú normal ════════════════════════════════ */}
-          {!esAdmin && (<>
-            {esSocio && (
-              <div>
-                {NAV_SOCIO.map((link) => (
-                  <Link key={link.path} to={link.path} onClick={closeMenu}
-                    className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors">
-                    <link.icon size={18} /><span>{link.name}</span>
-                  </Link>
-                ))}
-              </div>
-            )}
-            {esJugador && (
-              <div>
-                <hr className="border-gray-700 my-4" />
-                <p className="px-2 mb-2 text-xs text-gray-400 uppercase tracking-wider font-semibold">Deportivo</p>
-                {NAV_JUGADOR.map((link) => (
-                  <Link key={link.path} to={link.path} onClick={closeMenu}
-                    className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors">
-                    <link.icon size={18} /><span>{link.name}</span>
-                  </Link>
-                ))}
-              </div>
-            )}
-            {esPersonalTecnico && (
-              <div>
-                <hr className="border-gray-700 my-4" />
-                <p className="px-2 mb-2 text-xs text-gray-400 uppercase tracking-wider font-semibold">Cuerpo Técnico</p>
-                {NAV_PERSONAL_TECNICO.map((link) => (
-                  <Link key={link.path} to={link.path} onClick={closeMenu}
-                    className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors">
-                    <link.icon size={18} /><span>{link.name}</span>
-                  </Link>
-                ))}
-              </div>
-            )}
-          </>)}
+          {/* ══ ROLES NO-ADMIN: menú normal ════════════════════════════════
+              Estos bloques se evalúan de forma independiente de esAdmin:
+              un usuario puede ser socio + jugador + personal_administrativo
+              a la vez, y tiene que ver TODOS los bloques que le correspondan
+              apilados, no solo el de admin. */}
+          {esSocio && (
+            <div>
+              {NAV_SOCIO.map((link) => (
+                <Link key={link.path} to={link.path} onClick={closeMenu}
+                  className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors">
+                  <link.icon size={18} /><span>{link.name}</span>
+                </Link>
+              ))}
+            </div>
+          )}
+          {esJugador && (
+            <div>
+              <hr className="border-gray-700 my-4" />
+              <p className="px-2 mb-2 text-xs text-gray-400 uppercase tracking-wider font-semibold">Deportivo</p>
+              {NAV_JUGADOR.map((link) => (
+                <Link key={link.path} to={link.path} onClick={closeMenu}
+                  className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors">
+                  <link.icon size={18} /><span>{link.name}</span>
+                </Link>
+              ))}
+            </div>
+          )}
+          {esPersonalTecnico && (
+            <div>
+              <hr className="border-gray-700 my-4" />
+              <p className="px-2 mb-2 text-xs text-gray-400 uppercase tracking-wider font-semibold">Cuerpo Técnico</p>
+              {NAV_PERSONAL_TECNICO.map((link) => (
+                <Link key={link.path} to={link.path} onClick={closeMenu}
+                  className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors">
+                  <link.icon size={18} /><span>{link.name}</span>
+                </Link>
+              ))}
+            </div>
+          )}
 
         </nav>
 

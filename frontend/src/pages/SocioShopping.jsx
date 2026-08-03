@@ -31,7 +31,6 @@ import {
   Package,
   Tag,
   Home,
-  Layers,
   Shirt,
   AlertCircle,
   Check,
@@ -50,10 +49,11 @@ const formatoMoneda = new Intl.NumberFormat('es-AR', {
 
 // ─── Configuración de categorías de la tienda ─────────────────────────────────
 
+// Los alquileres (canchas/salón) ya no se muestran acá: tienen su propio
+// flujo en /socio/reservas y /socio/cancha, con selección de turno.
+// Acá solo va lo que se compra directo, sin reserva de horario.
 const CATEGORIAS = [
-  { key: 'todas',        label: 'Todo',          Icon: Layers  },
   { key: 'indumentaria', label: 'Indumentaria',  Icon: Shirt   },
-  { key: 'alquiler',     label: 'Alquileres',    Icon: Home    },
   { key: 'otro',         label: 'Otros',         Icon: Package },
 ]
 
@@ -340,19 +340,14 @@ function CartFAB({ itemCount }) {
 
 // ─── Estado vacío ─────────────────────────────────────────────────────────────
 
-function ProductosVacios({ categoriaActiva }) {
-  const esFiltrado = categoriaActiva !== 'todas'
+function ProductosVacios() {
   return (
     <div className="col-span-full flex flex-col items-center justify-center py-20 text-center px-4">
       <div className="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center mb-5">
         <Tag size={32} className="text-gray-300" strokeWidth={1.5} />
       </div>
-      <p className="font-bold text-gray-600">
-        {esFiltrado ? 'No hay productos en esta categoría' : 'No hay productos disponibles'}
-      </p>
-      <p className="text-sm text-gray-400 mt-1">
-        {esFiltrado ? 'Probá seleccionando otra categoría.' : 'Volvé a revisar más tarde.'}
-      </p>
+      <p className="font-bold text-gray-600">No hay productos en esta categoría</p>
+      <p className="text-sm text-gray-400 mt-1">Probá seleccionando otra categoría.</p>
     </div>
   )
 }
@@ -366,7 +361,7 @@ export default function SocioShopping() {
   const [productos,       setProductos]       = useState([])
   const [loading,         setLoading]         = useState(true)
   const [error,           setError]           = useState(null)
-  const [categoriaActiva, setCategoriaActiva] = useState('todas')
+  const [categoriaActiva, setCategoriaActiva] = useState('indumentaria')
   const [agregadosReciente, setAgregadosReciente] = useState(new Set())
 
   // Ref para timers de feedback de "¡Agregado!"
@@ -399,9 +394,9 @@ export default function SocioShopping() {
   }, [fetchProductos])
 
   // ── Filtro en cliente (sin nueva petición de red) ──────────────────────────
-  const productosFiltrados = categoriaActiva === 'todas'
-    ? productos
-    : productos.filter(p => p.categoria === categoriaActiva)
+  // Ya no hay tab "Todo": siempre se filtra por la categoría activa
+  // (indumentaria u otro). Los productos de alquiler no se listan acá.
+  const productosFiltrados = productos.filter(p => p.categoria === categoriaActiva)
 
   // ── Agregar al carrito con feedback temporal ───────────────────────────────
   const handleAgregar = (producto) => {
@@ -484,7 +479,7 @@ export default function SocioShopping() {
         )}
 
         {/* Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5">
+        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5">
 
           {/* Skeletons de carga */}
           {loading && [...Array(8)].map((_, i) => <ProductoSkeleton key={i} />)}
@@ -501,7 +496,7 @@ export default function SocioShopping() {
 
           {/* Estado vacío */}
           {!loading && productosFiltrados.length === 0 && !error && (
-            <ProductosVacios categoriaActiva={categoriaActiva} />
+            <ProductosVacios />
           )}
         </div>
       </div>

@@ -64,6 +64,16 @@ const NAV_PERSONAL_ADMINISTRATIVO = [
   { name: 'Agenda de Reservas', path: '/admin/reservas', icon: Calendar },
 ];
 
+// Menú REAL de un usuario personal_administrativo (no admin_general).
+// Nota: son menos links que NAV_PERSONAL_ADMINISTRATIVO (usada en el preview
+// "Ver como..." del admin_general), porque Tesorería y Solicitudes Pendientes
+// hoy están reservadas a admin_general.
+const NAV_PERSONAL_ADMINISTRATIVO_PROPIO = [
+  { name: 'Socios', path: '/admin/socios', icon: Users },
+  { name: 'Comercios Adheridos', path: '/admin/comercios', icon: Store },
+  { name: 'Agenda de Reservas', path: '/admin/reservas', icon: Calendar },
+];
+
 const NAV_ADMIN_TEMPORAL = [
   { name: 'Escáner General', path: '/admin/escaner', icon: ScanLine },
   { name: 'Escáner Eventos', path: '/admin/escaner-evento', icon: CalendarDays },
@@ -235,63 +245,36 @@ export default function MainLayout({ userRole }) {
 
         <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
 
-          {/* ══ ADMIN: sus secciones van PRIMERO ══════════════════════════ */}
-          {(esPersonalAdministrativo || esAdminGeneral) && (
+          {/* ══ ADMIN GENERAL: su menú curado va PRIMERO, sin compartir
+              condición con personal_administrativo (ese tiene su propio
+              bloque desplegable más abajo, junto al resto de roles) ══ */}
+          {esAdminGeneral && (
             <div>
-              {esAdminGeneral && (
-                <Link to="/admin" onClick={closeMenu}
-                  className="flex items-center justify-center gap-2 w-full px-4 py-3 mb-2 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-500 transition-all duration-200 shadow-lg">
-                  <LayoutDashboard size={18} />Panel de Admin
-                </Link>
-              )}
+              <Link to="/admin" onClick={closeMenu}
+                className="flex items-center justify-center gap-2 w-full px-4 py-3 mb-2 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-500 transition-all duration-200 shadow-lg">
+                <LayoutDashboard size={18} />Panel de Admin
+              </Link>
               <p className="px-2 mb-2 text-xs text-gray-400 uppercase tracking-wider font-semibold">Cuerpo Administrativo</p>
-              {esAdminGeneral && (
-                <Link to="/admin/pagos" onClick={closeMenu} className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors">
-                  <Wallet size={18} /><span>Tesorería</span>
-                </Link>
-              )}
-              {(esAdminGeneral || esPersonalAdministrativo) && (
-                <Link to="/admin/socios" onClick={closeMenu} className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors">
-                  <Users size={18} /><span>Socios</span>
-                </Link>
-              )}
-              {esAdminGeneral && (<>
-                <Link to="/gestion-planteles" onClick={closeMenu} className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors">
-                  <ClipboardList size={18} /><span>Planteles</span>
-                </Link>
-                <Link to="/gestion-eventos" onClick={closeMenu} className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors">
-                  <CalendarDays size={18} /><span>Eventos y Convocatorias</span>
-                </Link>
-                <Link to="/admin/productos" onClick={closeMenu} className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors">
-                  <Package size={18} /><span>Catálogo de Productos</span>
-                </Link>
-              </>)}
-              {(esAdminGeneral || esPersonalAdministrativo) && (<>
-                <Link to="/admin/comercios" onClick={closeMenu} className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors">
-                  <Store size={18} /><span>Comercios Adheridos</span>
-                </Link>
-                <Link to="/admin/reservas" onClick={closeMenu} className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors">
-                  <Calendar size={18} /><span>Agenda de Reservas</span>
-                </Link>
-              </>)}
-            </div>
-          )}
-
-          {/* Control de Acceso — solo para quienes tienen admin_temporal o personal_administrativo
-              como rol REAL (no vía "Ver como"). Admin General ya lo ve anidado dentro de
-              "Ver como... > Vista Admin Temporal", así que acá se lo ocultamos para no duplicarlo. */}
-          {(esAdminTemporal || esPersonalAdministrativo) && !esAdminGeneral && (
-            <div>
-              <hr className="border-gray-700 my-4" />
-              <p className="px-2 mb-2 text-xs text-gray-400 uppercase tracking-wider font-semibold">Control de Acceso</p>
-              <Link to="/admin/escaner" onClick={closeMenu} className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors">
-                <ScanLine size={18} /><span>Escáner General</span>
+              <Link to="/admin/pagos" onClick={closeMenu} className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors">
+                <Wallet size={18} /><span>Tesorería</span>
               </Link>
-              <Link to="/admin/escaner-evento" onClick={closeMenu} className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors">
-                <CalendarDays size={18} /><span>Escáner Eventos</span>
+              <Link to="/admin/socios" onClick={closeMenu} className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors">
+                <Users size={18} /><span>Socios</span>
               </Link>
-              <Link to="/admin/escaner-canchas" onClick={closeMenu} className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors">
-                <CalendarClock size={18} /><span>Escáner Canchas</span>
+              <Link to="/gestion-planteles" onClick={closeMenu} className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors">
+                <ClipboardList size={18} /><span>Planteles</span>
+              </Link>
+              <Link to="/gestion-eventos" onClick={closeMenu} className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors">
+                <CalendarDays size={18} /><span>Eventos y Convocatorias</span>
+              </Link>
+              <Link to="/admin/productos" onClick={closeMenu} className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors">
+                <Package size={18} /><span>Catálogo de Productos</span>
+              </Link>
+              <Link to="/admin/comercios" onClick={closeMenu} className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors">
+                <Store size={18} /><span>Comercios Adheridos</span>
+              </Link>
+              <Link to="/admin/reservas" onClick={closeMenu} className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors">
+                <Calendar size={18} /><span>Agenda de Reservas</span>
               </Link>
             </div>
           )}
@@ -331,44 +314,51 @@ export default function MainLayout({ userRole }) {
             </div>
           )}
 
-          {/* ══ ROLES NO-ADMIN: menú normal ════════════════════════════════
-              Estos bloques se evalúan de forma independiente de esAdmin:
-              un usuario puede ser socio + jugador + personal_administrativo
-              a la vez, y tiene que ver TODOS los bloques que le correspondan
-              apilados, no solo el de admin. */}
-          {esSocio && (
-            <div>
-              {NAV_SOCIO.map((link) => (
-                <Link key={link.path} to={link.path} onClick={closeMenu}
-                  className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors">
-                  <link.icon size={18} /><span>{link.name}</span>
-                </Link>
+          {/* ══ ROLES NO-ADMIN: Socio siempre primero y plano; el resto de
+              roles (si los tiene) van como desplegables, en jerarquía fija:
+              Admin Temporal > Personal Administrativo > Personal Técnico >
+              Jugador (último). Todo esto se oculta para admin_general porque
+              ya tiene su menú curado arriba + "Ver como..." para previsualizar
+              estas mismas vistas sin duplicarlas acá abajo. */}
+          {!esAdminGeneral && (
+            <>
+              {esSocio && (
+                <div>
+                  {NAV_SOCIO.map((link) => (
+                    <Link key={link.path} to={link.path} onClick={closeMenu}
+                      className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors">
+                      <link.icon size={18} /><span>{link.name}</span>
+                    </Link>
+                  ))}
+                </div>
+              )}
+
+              {[
+                esAdminTemporal && { key: 'own_atemp', label: 'Admin Temporal', icon: ScanLine, nav: NAV_ADMIN_TEMPORAL },
+                esPersonalAdministrativo && { key: 'own_padmin', label: 'Personal Administrativo', icon: Wallet, nav: NAV_PERSONAL_ADMINISTRATIVO_PROPIO },
+                esPersonalTecnico && { key: 'own_tecnico', label: 'Cuerpo Técnico', icon: ClipboardList, nav: NAV_PERSONAL_TECNICO },
+                esJugador && { key: 'own_jugador', label: 'Deportivo', icon: Users, nav: NAV_JUGADOR },
+              ].filter(Boolean).map(({ key, label, icon: Icon, nav }, idx) => (
+                <div key={key}>
+                  {idx === 0 && <hr className="border-gray-700 my-4" />}
+                  <button onClick={() => toggleSeccion(key)}
+                    className="flex items-center justify-between w-full px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors">
+                    <span className="flex items-center gap-3"><Icon size={18} /> {label}</span>
+                    <ChevronDown size={16} className={`transition-transform ${seccionesAbiertas[key] ? 'rotate-180' : ''}`} />
+                  </button>
+                  {seccionesAbiertas[key] && (
+                    <div className="ml-4 border-l border-slate-700 pl-2 mb-1">
+                      {nav.map((link) => (
+                        <Link key={link.path} to={link.path} onClick={closeMenu}
+                          className="flex items-center gap-3 px-4 py-2.5 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl text-sm font-medium transition-colors">
+                          <link.icon size={16} /><span>{link.name}</span>
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
               ))}
-            </div>
-          )}
-          {esJugador && (
-            <div>
-              <hr className="border-gray-700 my-4" />
-              <p className="px-2 mb-2 text-xs text-gray-400 uppercase tracking-wider font-semibold">Deportivo</p>
-              {NAV_JUGADOR.map((link) => (
-                <Link key={link.path} to={link.path} onClick={closeMenu}
-                  className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors">
-                  <link.icon size={18} /><span>{link.name}</span>
-                </Link>
-              ))}
-            </div>
-          )}
-          {esPersonalTecnico && (
-            <div>
-              <hr className="border-gray-700 my-4" />
-              <p className="px-2 mb-2 text-xs text-gray-400 uppercase tracking-wider font-semibold">Cuerpo Técnico</p>
-              {NAV_PERSONAL_TECNICO.map((link) => (
-                <Link key={link.path} to={link.path} onClick={closeMenu}
-                  className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors">
-                  <link.icon size={18} /><span>{link.name}</span>
-                </Link>
-              ))}
-            </div>
+            </>
           )}
 
         </nav>

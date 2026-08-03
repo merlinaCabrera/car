@@ -11,6 +11,7 @@ import {
   Wifi,
   WifiOff,
   Clock,
+  Wallet,
 } from 'lucide-react';
 
 const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8000';
@@ -302,26 +303,42 @@ export default function SocioInicio() {
           </div>
 
           {/* Footer de la tarjeta */}
-          <div className="border-t border-gray-100 px-6 py-4 flex items-center justify-between gap-4">
-            <div className="flex items-center gap-2 text-xs text-gray-400 min-w-0">
-              {online ? <Wifi size={13} className="flex-shrink-0 text-green-500" /> : <WifiOff size={13} className="flex-shrink-0 text-red-400" />}
-              <span className="truncate">
-                {online ? (countdown > 0 ? `Nuevo código en ${countdown}s` : 'Actualizando…') : 'Sin conexión'}
-              </span>
+          <div className="border-t border-gray-100 px-6 py-4 space-y-3">
+
+            {/* Saldo a favor — solo si tiene crédito */}
+            {perfil?.saldo_a_favor > 0 && (
+              <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-emerald-50 border border-emerald-200">
+                <span className="flex items-center gap-2 text-xs font-semibold text-emerald-700">
+                  <Wallet size={13} />
+                  Saldo a favor
+                </span>
+                <span className="text-xs font-bold text-emerald-700">
+                  {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 2 }).format(perfil.saldo_a_favor)}
+                </span>
+              </div>
+            )}
+
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-2 text-xs text-gray-400 min-w-0">
+                {online ? <Wifi size={13} className="flex-shrink-0 text-green-500" /> : <WifiOff size={13} className="flex-shrink-0 text-red-400" />}
+                <span className="truncate">
+                  {online ? (countdown > 0 ? `Nuevo código en ${countdown}s` : 'Actualizando…') : 'Sin conexión'}
+                </span>
+              </div>
+              <button
+                onClick={handleRefreshManual}
+                disabled={rotating}
+                className="flex-shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-xl
+                           text-xs font-semibold text-gray-700
+                           bg-gray-100 hover:bg-gray-200
+                           active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed
+                           transition-all duration-150 shadow-sm"
+                aria-label="Forzar actualización del código QR"
+              >
+                <RefreshCw size={13} className={rotating ? 'animate-spin' : ''} />
+                Actualizar
+              </button>
             </div>
-            <button
-              onClick={handleRefreshManual}
-              disabled={rotating}
-              className="flex-shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-xl
-                         text-xs font-semibold text-gray-700
-                         bg-gray-100 hover:bg-gray-200
-                         active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed
-                         transition-all duration-150 shadow-sm"
-              aria-label="Forzar actualización del código QR"
-            >
-              <RefreshCw size={13} className={rotating ? 'animate-spin' : ''} />
-              Actualizar
-            </button>
           </div>
         </div>
       </div>

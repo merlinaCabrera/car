@@ -299,6 +299,7 @@ class UsuarioResponse(UsuarioBase):
     creado_at: datetime
     es_becado: bool = False
     becado_hasta: Optional[date] = None
+    saldo_a_favor: Decimal = Field(default=Decimal("0.00"))
     roles_asignados: List[UsuarioRolResponse] = []
 
 

@@ -277,8 +277,10 @@ export default function MainLayout({ userRole }) {
             </div>
           )}
 
-          {/* Control de Acceso */}
-          {(esAdminTemporal || esPersonalAdministrativo || esAdminGeneral) && (
+          {/* Control de Acceso — solo para quienes tienen admin_temporal o personal_administrativo
+              como rol REAL (no vía "Ver como"). Admin General ya lo ve anidado dentro de
+              "Ver como... > Vista Admin Temporal", así que acá se lo ocultamos para no duplicarlo. */}
+          {(esAdminTemporal || esPersonalAdministrativo) && !esAdminGeneral && (
             <div>
               <hr className="border-gray-700 my-4" />
               <p className="px-2 mb-2 text-xs text-gray-400 uppercase tracking-wider font-semibold">Control de Acceso</p>

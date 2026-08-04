@@ -19,9 +19,10 @@
  *     activos y próximos eventos (ver routers/admin_dashboard.py)
  *
  * Deliberadamente NO incluye "Ingresos del Mes" ni desglose de socios al
- * día/morosos — se sacaron de este panel (quedaba mezclado con las tareas
- * accionables de arriba). Si en el futuro se arma una pantalla de reportes
- * tipo BI, ese es el lugar natural para esos números.
+ * día/morosos — viven en /admin/estadisticas (AdminEstadisticas.jsx),
+ * accesible con el link "Ver reportes" del header. Ese panel es
+ * retrospectivo (cómo venimos este mes/año); este es un to-do (qué
+ * necesita tu atención hoy) — se mantienen separados a propósito.
  *
  * "Reservas sin Reparto" (turnos confirmados sin reintegro QR configurado)
  * ya NO vive acá: es un riesgo operativo, no una tarea de aprobación de
@@ -29,6 +30,7 @@
  * que es donde se configura el reparto.
  */
 
+import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useAdminResource } from '../hooks/useAdminResource'
 import MetricCard from '../components/admin/MetricCard'
@@ -41,6 +43,7 @@ import {
   Store,
   Package,
   CalendarDays,
+  TrendingUp,
 } from 'lucide-react'
 
 export default function AdminInicio() {
@@ -61,14 +64,22 @@ export default function AdminInicio() {
     <div className="p-6 max-w-6xl mx-auto space-y-6">
 
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
-          <LayoutDashboard size={24} className="text-gray-500" />
-          Panel de Control
-        </h1>
-        <p className="text-sm text-gray-500 mt-1">
-          Hola, {user?.nombre || 'Admin'} — esto es lo que necesita tu atención hoy.
-        </p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
+            <LayoutDashboard size={24} className="text-gray-500" />
+            Panel de Control
+          </h1>
+          <p className="text-sm text-gray-500 mt-1">
+            Hola, {user?.nombre || 'Admin'} — esto es lo que necesita tu atención hoy.
+          </p>
+        </div>
+        <Link
+          to="/admin/estadisticas"
+          className="flex-shrink-0 flex items-center gap-1.5 text-sm font-semibold text-blue-600 hover:text-blue-700 hover:underline mt-1"
+        >
+          <TrendingUp size={15} /> Ver reportes
+        </Link>
       </div>
 
       {/* ── Tareas pendientes de revisión ──────────────────────────────────── */}

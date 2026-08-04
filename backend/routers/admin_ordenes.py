@@ -4,8 +4,8 @@ Router de verificación de Órdenes — panel del administrador.
 
 Endpoints:
   GET  /admin/ordenes/pendientes              → Bandeja de órdenes esperando verificación
-                                                  (con filtro opcional por tipo: cuota | tienda).
-  GET  /admin/ordenes/pendientes/count        → Cantidad total de órdenes pendientes.
+                                                  (con filtro opcional por tipo: cuota | tienda | alquiler | compra).
+  GET  /admin/ordenes/pendientes/count        → Cantidad de órdenes pendientes (con el mismo filtro opcional).
   GET  /admin/ordenes/pendientes-tienda/count → Cantidad de órdenes pendientes que son
                                                   puras ventas de tienda/alquiler (sin cuota_social).
   POST /admin/ordenes/{id_orden}/aprobar      → Aprueba la orden y aplica sus efectos.
@@ -43,7 +43,16 @@ router = APIRouter(
 )
 
 _ROLES_ADMIN = ("admin_general", "personal_administrativo")
-_TIPOS_FILTRO_VALIDOS = ("cuota", "tienda")
+
+# 'cuota' y 'tienda' son los filtros históricos, usados por AdminPagos.jsx y
+# AdminTienda.jsx respectivamente — sus semánticas NO cambian.
+# 'alquiler' y 'compra' son subconjuntos de 'tienda' (que a su vez sigue
+# incluyendo ambos) agregados para que el Panel de Control pueda mostrar un
+# contador separado de "pagos de alquiler pendientes" vs. "pagos de
+# indumentaria/otros pendientes", sin tocar la bandeja real de verificación
+# (que sigue mostrando todo junto en /admin/tienda, donde efectivamente se
+# aprueban/rechazan).
+_TIPOS_FILTRO_VALIDOS = ("cuota", "tienda", "alquiler", "compra")
 
 
 # ─── Helpers de esta ruta ─────────────────────────────────────────────────────
@@ -70,6 +79,12 @@ def _obtener_orden_o_404(db: Session, id_orden: int) -> models.Orden:
 
 def _subquery_tiene_cuota_social(db: Session):
     """Subquery EXISTS: True si la orden tiene al menos un ítem de cuota_social."""
+    return _subquery_tiene_categoria(db, "cuota_social")
+
+
+def _subquery_tiene_categoria(db: Session, categoria: str):
+    """Subquery EXISTS: True si la orden tiene al menos un ítem de `categoria`
+    (una de: cuota_social | alquiler | indumentaria | otro, ver chk_producto_categoria)."""
     return (
         db.query(models.DetalleOrden.id_detalle)
         .join(
@@ -78,14 +93,21 @@ def _subquery_tiene_cuota_social(db: Session):
         )
         .filter(
             models.DetalleOrden.id_orden == models.Orden.id_orden,
-            models.ProductoServicio.categoria == "cuota_social",
+            models.ProductoServicio.categoria == categoria,
         )
         .exists()
     )
 
 
 def _aplicar_filtro_tipo(query, db: Session, tipo: Optional[str]):
-    """Aplica el filtro `tipo` ('cuota' | 'tienda') a un query de Orden."""
+    """Aplica el filtro `tipo` a un query de Orden.
+
+    - 'cuota':    contiene un ítem de cuota_social.
+    - 'tienda':   sin cuota_social (indumentaria + alquiler + otro juntos —
+                  semántica histórica, la usa la bandeja real de /admin/tienda).
+    - 'alquiler': contiene un ítem de alquiler, sin cuota_social.
+    - 'compra':   sin cuota_social y sin alquiler (indumentaria + otro puros).
+    """
     if tipo is None:
         return query
 
@@ -98,7 +120,14 @@ def _aplicar_filtro_tipo(query, db: Session, tipo: Optional[str]):
     tiene_cuota = _subquery_tiene_cuota_social(db)
     if tipo == "cuota":
         return query.filter(tiene_cuota)
-    return query.filter(~tiene_cuota)
+    if tipo == "tienda":
+        return query.filter(~tiene_cuota)
+
+    tiene_alquiler = _subquery_tiene_categoria(db, "alquiler")
+    if tipo == "alquiler":
+        return query.filter(~tiene_cuota, tiene_alquiler)
+    # tipo == "compra"
+    return query.filter(~tiene_cuota, ~tiene_alquiler)
 
 
 # ─── ENDPOINT: Bandeja de órdenes pendientes ──────────────────────────────────
@@ -135,10 +164,17 @@ def listar_ordenes_pendientes(
 
 @router.get("/pendientes/count", response_model=int, summary="Cantidad de órdenes pendientes")
 def contar_ordenes_pendientes(
+    tipo: Optional[str] = Query(
+        None,
+        description="Filtro opcional: 'cuota' | 'tienda' | 'alquiler' | 'compra'. "
+                    "Si se omite, devuelve el total sin filtrar.",
+    ),
     db: Session = Depends(get_db),
     admin: models.Usuario = Depends(require_roles(*_ROLES_ADMIN)),
 ) -> int:
-    return db.query(models.Orden).filter(models.Orden.estado == "pendiente_verificacion").count()
+    query = db.query(models.Orden).filter(models.Orden.estado == "pendiente_verificacion")
+    query = _aplicar_filtro_tipo(query, db, tipo)
+    return query.count()
 
 
 @router.get(

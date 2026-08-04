@@ -1,18 +1,22 @@
-// frontend/src/pages/AdminTienda.jsx
+// frontend/src/pages/AdminAlquileres.jsx
 /**
- * Panel de Órdenes de Tienda — ruta `/admin/tienda`.
+ * Panel de Órdenes de Alquiler — ruta `/admin/alquileres`.
  *
- * Verificación de compras de indumentaria y otros (todo lo que NO es
- * cuota social NI alquiler — ver admin_ordenes.py: filtro `tipo=compra`).
- * Los alquileres tienen su propia bandeja separada en /admin/alquileres
- * (AdminAlquileres.jsx), para que cada tipo de compra sea claro y distinto.
+ * Verificación de pagos de alquiler de cancha/quincho (ítems con
+ * categoria='alquiler' — ver admin_ordenes.py: filtro `tipo=alquiler`).
+ * Separado de AdminTienda.jsx (indumentaria/otros) para que cada uno tenga
+ * su propia bandeja clara, en línea con las cards del Panel de Control.
  *
- * Mismo diseño y convenciones que AdminPagos.jsx: tabla con skeletons de
- * carga, banner de error con reintento, y un modal de verificación con
- * comprobante + detalle de ítems para aprobar o rechazar.
+ * Mismo diseño y convenciones que AdminTienda.jsx / AdminPagos.jsx: tabla
+ * con skeletons de carga, banner de error con reintento, y un modal de
+ * verificación con comprobante + detalle de ítems para aprobar o rechazar.
+ *
+ * Nota: esto es la aprobación del PAGO del alquiler. La configuración de
+ * reparto/reintegro QR de la reserva en sí (para que el escáner de canchas
+ * la acepte) se hace aparte, en /admin/reservas.
  *
  * Backend consumido:
- *   GET  /admin/ordenes/pendientes?tipo=compra
+ *   GET  /admin/ordenes/pendientes?tipo=alquiler
  *   POST /admin/ordenes/{id_orden}/aprobar
  *   POST /admin/ordenes/{id_orden}/rechazar
  */
@@ -20,7 +24,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../context/AuthContext'
 import {
-  ShoppingBag,
+  Home,
   AlertCircle,
   RefreshCw,
   Loader2,
@@ -50,7 +54,7 @@ function resumenItems(detalles) {
 
 // ─── Modal de Verificación de órdenes de tienda ──────────────────────────────
 
-function VerificacionTiendaModal({ orden, onClose, onActionSuccess, token }) {
+function VerificacionAlquilerModal({ orden, onClose, onActionSuccess, token }) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [apiError, setApiError] = useState(null)
   const [showRechazoInput, setShowRechazoInput] = useState(false)
@@ -118,7 +122,7 @@ function VerificacionTiendaModal({ orden, onClose, onActionSuccess, token }) {
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg flex flex-col max-h-[92dvh]">
         <div className="p-6 border-b flex-shrink-0 flex items-start justify-between">
           <div>
-            <h2 className="text-xl font-bold text-gray-800">Verificar Orden de Tienda</h2>
+            <h2 className="text-xl font-bold text-gray-800">Verificar Orden de Alquiler</h2>
             <p className="text-sm text-gray-500 mt-1">
               Orden #{orden.id_orden} de {orden.usuario?.nombre} {orden.usuario?.apellido}
             </p>
@@ -224,7 +228,7 @@ function VerificacionTiendaModal({ orden, onClose, onActionSuccess, token }) {
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 
-export default function AdminTienda() {
+export default function AdminAlquileres() {
   const { token } = useAuth()
 
   const [ordenes, setOrdenes] = useState([])
@@ -236,7 +240,7 @@ export default function AdminTienda() {
     setLoadingOrdenes(true)
     setErrorOrdenes(null)
     try {
-      const res = await fetch(`${API}/admin/ordenes/pendientes?tipo=compra`, {
+      const res = await fetch(`${API}/admin/ordenes/pendientes?tipo=alquiler`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       if (!res.ok) throw new Error(`Error ${res.status}: No se pudieron cargar las órdenes pendientes.`)
@@ -266,7 +270,7 @@ export default function AdminTienda() {
 
       {/* Modal de verificación */}
       {ordenSeleccionada && (
-        <VerificacionTiendaModal
+        <VerificacionAlquilerModal
           orden={ordenSeleccionada}
           onClose={() => setOrdenSeleccionada(null)}
           onActionSuccess={handleAccionOrdenExitosa}
@@ -278,11 +282,11 @@ export default function AdminTienda() {
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
-            <ShoppingBag size={24} className="text-gray-500" />
-            Órdenes de Tienda
+            <Home size={24} className="text-gray-500" />
+            Órdenes de Alquiler
           </h1>
           <p className="text-sm text-gray-500 mt-1">
-            Verificación de compras de indumentaria y otros.
+            Verificación de pagos de alquiler de cancha y quincho.
           </p>
         </div>
         <button
@@ -364,7 +368,7 @@ export default function AdminTienda() {
               {!loadingOrdenes && ordenes.length === 0 && (
                 <tr>
                   <td colSpan="5" className="text-center py-12 text-gray-500">
-                    ✅ No hay órdenes de tienda pendientes de verificación por el momento.
+                    ✅ No hay órdenes de alquiler pendientes de verificación por el momento.
                   </td>
                 </tr>
               )}

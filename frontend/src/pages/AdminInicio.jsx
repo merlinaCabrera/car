@@ -11,14 +11,22 @@
  * Fuentes de datos (5 llamadas en paralelo, cada una con su propio
  * loading/error independiente — si una falla, el resto del panel sigue
  * usable):
- *   - GET /admin/usuarios/pendientes            → solicitudes de alta
- *   - GET /admin/ordenes/pendientes/count        → pagos por verificar
- *   - GET /admin/ordenes/pendientes-tienda/count → pedidos de tienda
- *   - GET /admin/pagos/estadisticas               → socios al día / morosos
- *   - GET /admin/dashboard/resumen                → ingresos del mes,
- *     comercios/catálogo activos, reservas sin reparto, próximos eventos
- *     (agregado nuevo, pensado específicamente para este panel — ver
- *     routers/admin_dashboard.py)
+ *   - GET /admin/usuarios/pendientes                        → solicitudes de alta (card "Socios")
+ *   - GET /admin/ordenes/pendientes/count?tipo=cuota         → cuotas pendientes de aprobar
+ *   - GET /admin/ordenes/pendientes/count?tipo=compra        → indumentaria/otros pendientes de aprobar
+ *   - GET /admin/ordenes/pendientes/count?tipo=alquiler      → alquileres pendientes de aprobar
+ *   - GET /admin/dashboard/resumen                           → comercios/catálogo
+ *     activos y próximos eventos (ver routers/admin_dashboard.py)
+ *
+ * Deliberadamente NO incluye "Ingresos del Mes" ni desglose de socios al
+ * día/morosos — se sacaron de este panel (quedaba mezclado con las tareas
+ * accionables de arriba). Si en el futuro se arma una pantalla de reportes
+ * tipo BI, ese es el lugar natural para esos números.
+ *
+ * "Reservas sin Reparto" (turnos confirmados sin reintegro QR configurado)
+ * ya NO vive acá: es un riesgo operativo, no una tarea de aprobación de
+ * pago, así que se integró directo en /admin/reservas (AdminReservas.jsx),
+ * que es donde se configura el reparto.
  */
 
 import { useAuth } from '../context/AuthContext'
@@ -29,26 +37,11 @@ import {
   UserPlus,
   CreditCard,
   ShoppingBag,
+  Home,
   Store,
   Package,
-  Calendar,
-  Wallet,
   CalendarDays,
-  MapPin,
-  CheckCircle2,
-  AlertTriangle,
 } from 'lucide-react'
-
-const formatoARS = (monto) =>
-  Number(monto ?? 0).toLocaleString('es-AR', {
-    style: 'currency',
-    currency: 'ARS',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  })
-
-const formatoFechaCorta = (iso) =>
-  new Date(iso).toLocaleDateString('es-AR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
 
 export default function AdminInicio() {
   const { user } = useAuth()
@@ -57,40 +50,37 @@ export default function AdminInicio() {
   const solicitudes = useAdminResource('/admin/usuarios/pendientes', {
     transform: (data) => (Array.isArray(data) ? data.length : data?.total ?? 0),
   })
-  const pagosPendientes = useAdminResource('/admin/ordenes/pendientes/count')
-  const ordenesTienda = useAdminResource('/admin/ordenes/pendientes-tienda/count')
+  const cuotasPendientes = useAdminResource('/admin/ordenes/pendientes/count?tipo=cuota')
+  const ordenesPendientes = useAdminResource('/admin/ordenes/pendientes/count?tipo=compra')
+  const alquileresPendientes = useAdminResource('/admin/ordenes/pendientes/count?tipo=alquiler')
 
-  // ── Estado financiero global ───────────────────────────────────────────────
-  const estadisticasPagos = useAdminResource('/admin/pagos/estadisticas')
-
-  // ── Resumen agregado: ingresos, catálogo, comercios, reservas, eventos ────
+  // ── Resumen agregado: catálogo, comercios, eventos ────────────────────────
   const resumen = useAdminResource('/admin/dashboard/resumen')
 
   return (
-    <div className="p-4 sm:p-6 max-w-6xl mx-auto space-y-5 sm:space-y-6">
+    <div className="p-6 max-w-6xl mx-auto space-y-6">
 
       {/* Header */}
       <div>
-        <h1 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2 sm:gap-3">
-          <LayoutDashboard size={22} className="text-gray-500 flex-shrink-0" />
+        <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
+          <LayoutDashboard size={24} className="text-gray-500" />
           Panel de Control
         </h1>
-        <p className="text-xs sm:text-sm text-gray-500 mt-1">
+        <p className="text-sm text-gray-500 mt-1">
           Hola, {user?.nombre || 'Admin'} — esto es lo que necesita tu atención hoy.
         </p>
       </div>
 
       {/* ── Tareas pendientes de revisión ──────────────────────────────────── */}
       <div>
-        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 sm:mb-3">
+        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
           Pendientes de revisión
         </h2>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <MetricCard
-            compacto
             icon={UserPlus}
             iconColor="bg-amber-100 text-amber-700"
-            titulo="Solicitudes de Socios"
+            titulo="Socios"
             descripcion={
               !solicitudes.loading && !solicitudes.error && solicitudes.data === 0
                 ? 'No hay solicitudes pendientes.'
@@ -104,49 +94,59 @@ export default function AdminInicio() {
           />
 
           <MetricCard
-            compacto
             icon={CreditCard}
             iconColor="bg-orange-100 text-orange-700"
-            titulo="Pagos por Verificar"
+            titulo="Cuotas"
             descripcion={
-              !pagosPendientes.loading && !pagosPendientes.error && pagosPendientes.data === 0
-                ? 'No hay pagos pendientes.'
-                : 'Transferencias esperando aprobación.'
+              !cuotasPendientes.loading && !cuotasPendientes.error && cuotasPendientes.data === 0
+                ? 'No hay pagos de cuota pendientes.'
+                : 'Pagos de cuota social esperando aprobación.'
             }
-            valor={pagosPendientes.data ?? 0}
-            loading={pagosPendientes.loading}
-            error={pagosPendientes.error}
-            ctaLabel="Ir a Pagos"
+            valor={cuotasPendientes.data ?? 0}
+            loading={cuotasPendientes.loading}
+            error={cuotasPendientes.error}
+            ctaLabel="Ir a Cuotas"
             ctaPath="/admin/pagos"
           />
 
           <MetricCard
-            compacto
             icon={ShoppingBag}
             iconColor="bg-blue-100 text-blue-700"
-            titulo="Órdenes de Tienda"
+            titulo="Órdenes"
             descripcion={
-              !ordenesTienda.loading && !ordenesTienda.error && ordenesTienda.data === 0
+              !ordenesPendientes.loading && !ordenesPendientes.error && ordenesPendientes.data === 0
                 ? 'No hay pedidos pendientes.'
-                : 'Indumentaria y alquileres esperando aprobación.'
+                : 'Indumentaria y otros esperando aprobación.'
             }
-            valor={ordenesTienda.data ?? 0}
-            loading={ordenesTienda.loading}
-            error={ordenesTienda.error}
-            ctaLabel="Ir a Tienda"
+            valor={ordenesPendientes.data ?? 0}
+            loading={ordenesPendientes.loading}
+            error={ordenesPendientes.error}
+            ctaLabel="Ir a Órdenes"
             ctaPath="/admin/tienda"
+          />
+
+          <MetricCard
+            icon={Home}
+            iconColor="bg-violet-100 text-violet-700"
+            titulo="Alquileres"
+            descripcion={
+              !alquileresPendientes.loading && !alquileresPendientes.error && alquileresPendientes.data === 0
+                ? 'No hay pagos de alquiler pendientes.'
+                : 'Alquileres de quincho y cancha esperando aprobación.'
+            }
+            valor={alquileresPendientes.data ?? 0}
+            loading={alquileresPendientes.loading}
+            error={alquileresPendientes.error}
+            ctaLabel="Ir a Alquileres"
+            ctaPath="/admin/alquileres"
           />
         </div>
       </div>
 
-      {/* ── Gestión operativa ───────────────────────────────────────────────── */}
+      {/* ── Gestión operativa (sin título de sección: sigue directo abajo) ──── */}
       <div>
-        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 sm:mb-3">
-          Gestión operativa
-        </h2>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <MetricCard
-            compacto
             icon={Store}
             iconColor="bg-purple-100 text-purple-700"
             titulo="Comercios Adheridos"
@@ -163,7 +163,6 @@ export default function AdminInicio() {
           />
 
           <MetricCard
-            compacto
             icon={Package}
             iconColor="bg-teal-100 text-teal-700"
             titulo="Catálogo de Productos"
@@ -180,98 +179,23 @@ export default function AdminInicio() {
           />
 
           <MetricCard
-            compacto
-            icon={Calendar}
-            iconColor={
-              resumen.data?.reservas_sin_reparto > 0
-                ? 'bg-red-100 text-red-700'
-                : 'bg-emerald-100 text-emerald-700'
-            }
-            titulo="Reservas sin Reparto"
+            icon={CalendarDays}
+            iconColor="bg-indigo-100 text-indigo-700"
+            titulo="Eventos"
             descripcion={
-              !resumen.loading && !resumen.error && resumen.data?.reservas_sin_reparto === 0
-                ? 'Todas las reservas activas tienen reintegro configurado.'
-                : 'Turnos confirmados sin reintegro QR configurado — el escáner de canchas los va a rechazar.'
+              resumen.data?.proximos_eventos?.length
+                ? `${resumen.data.proximos_eventos.length} próximo${resumen.data.proximos_eventos.length !== 1 ? 's' : ''} programado${resumen.data.proximos_eventos.length !== 1 ? 's' : ''}.`
+                : 'Convocatorias y eventos institucionales.'
             }
-            valor={resumen.data?.reservas_sin_reparto ?? 0}
+            valor={resumen.data?.proximos_eventos?.length ?? 0}
             loading={resumen.loading}
             error={resumen.error}
-            ctaLabel="Ir a Reservas"
-            ctaPath="/admin/reservas"
+            ctaLabel="Ver eventos"
+            ctaPath="/gestion-eventos"
           />
         </div>
       </div>
 
-      {/* ── Panorama general ────────────────────────────────────────────────── */}
-      <div>
-        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 sm:mb-3">
-          Panorama general
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
-
-          {/* Ingresos del mes */}
-          <MetricCard
-            icon={Wallet}
-            iconColor="bg-green-100 text-green-700"
-            titulo="Ingresos del Mes"
-            loading={resumen.loading}
-            error={resumen.error}
-            ctaLabel="Ir a Tesorería"
-            ctaPath="/admin/pagos"
-          >
-            <p className="text-2xl sm:text-3xl font-bold text-gray-900">
-              {formatoARS(resumen.data?.ingresos_mes)}
-            </p>
-            <p className="text-xs sm:text-sm text-gray-400 mt-1 capitalize">
-              Órdenes aprobadas en {resumen.data?.mes_label}.
-            </p>
-
-            {estadisticasPagos.data && !estadisticasPagos.loading && (
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-3 pt-3 border-t border-gray-100">
-                <span className="flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-emerald-700">
-                  <CheckCircle2 size={15} />
-                  {estadisticasPagos.data.total_socios_al_dia} al día
-                </span>
-                <span className="flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-red-600">
-                  <AlertTriangle size={15} />
-                  {estadisticasPagos.data.total_socios_morosos} morosos
-                </span>
-              </div>
-            )}
-          </MetricCard>
-
-          {/* Próximos eventos */}
-          <MetricCard
-            icon={CalendarDays}
-            iconColor="bg-indigo-100 text-indigo-700"
-            titulo="Próximos Eventos"
-            loading={resumen.loading}
-            error={resumen.error}
-            ctaLabel="Ver agenda de eventos"
-            ctaPath="/gestion-eventos"
-          >
-            {resumen.data?.proximos_eventos?.length > 0 ? (
-              <ul className="space-y-2 mt-1">
-                {resumen.data.proximos_eventos.slice(0, 3).map((ev) => (
-                  <li key={ev.id_evento} className="flex items-center justify-between gap-2 sm:gap-3 text-xs sm:text-sm">
-                    <span className="font-medium text-gray-800 truncate">{ev.titulo}</span>
-                    <span className="flex items-center gap-2 sm:gap-3 text-gray-400 flex-shrink-0">
-                      {ev.ubicacion && (
-                        <span className="hidden sm:flex items-center gap-1">
-                          <MapPin size={12} /> {ev.ubicacion}
-                        </span>
-                      )}
-                      <span>{formatoFechaCorta(ev.fecha_inicio)}</span>
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-sm text-gray-400 mt-1">No hay eventos programados próximamente.</p>
-            )}
-          </MetricCard>
-        </div>
-      </div>
     </div>
   )
 }

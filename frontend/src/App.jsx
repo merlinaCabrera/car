@@ -22,6 +22,7 @@ import AdminReservas from './pages/AdminReservas';
 import AdminScanner from './pages/AdminScanner';
 import AdminProductos from './pages/AdminProductos';
 import AdminTienda from './pages/AdminTienda';
+import AdminAlquileres from './pages/AdminAlquileres';
 import SocioCompras from "./pages/SocioCompras";
 import Reservas from './pages/Reservas';
 import SocioNotificaciones from './pages/SocioNotificaciones';
@@ -81,6 +82,7 @@ function App() {
               <Route path="/admin/reservas" element={<AdminReservas />} />
               <Route path="/admin/productos" element={<AdminProductos />} />
               <Route path="/admin/tienda" element={<AdminTienda />} />
+              <Route path="/admin/alquileres" element={<AdminAlquileres />} />
             </Route>
           </Routes>
         </BrowserRouter>

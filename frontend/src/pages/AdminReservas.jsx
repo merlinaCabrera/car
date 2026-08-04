@@ -21,6 +21,7 @@ import {
   Filter,
   RefreshCw,
   AlertCircle,
+  AlertTriangle,
   Users,
   DollarSign,
   X,
@@ -45,6 +46,16 @@ const ESTADO_BADGE = {
   confirmada: 'bg-green-100 text-green-700',
   liberada: 'bg-gray-100 text-gray-500',
   expirada: 'bg-red-100 text-red-700',
+}
+
+// Mismo criterio que "reservas_sin_reparto" en admin_dashboard.py:
+// bloqueada/confirmada, vigente (todavía no terminó) y sin num_socios_esperados.
+function esSinReparto(r) {
+  return (
+    (r.estado === 'bloqueada' || r.estado === 'confirmada') &&
+    (r.num_socios_esperados === null || r.num_socios_esperados === undefined) &&
+    new Date(r.fecha_fin) >= new Date()
+  )
 }
 
 const formatoFechaHora = (iso) => {
@@ -192,6 +203,7 @@ export default function AdminReservas() {
   const [filtroEstado, setFiltroEstado] = useState('')
   const [filtroDesde, setFiltroDesde] = useState('')
   const [filtroHasta, setFiltroHasta] = useState('')
+  const [soloSinReparto, setSoloSinReparto] = useState(false)
 
   const [reservaEditando, setReservaEditando] = useState(null)
 
@@ -232,6 +244,9 @@ export default function AdminReservas() {
     setReservaEditando(null)
   }
 
+  const reservasSinReparto = reservas.filter(esSinReparto)
+  const reservasVisibles = soloSinReparto ? reservasSinReparto : reservas
+
   return (
     <div className="p-4 sm:p-8 max-w-6xl mx-auto space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-4">
@@ -250,6 +265,27 @@ export default function AdminReservas() {
           Actualizar
         </button>
       </div>
+
+      {/* Alerta: reservas sin reparto configurado */}
+      {!loading && reservasSinReparto.length > 0 && (
+        <button
+          type="button"
+          onClick={() => setSoloSinReparto(v => !v)}
+          className={`w-full flex items-center gap-3 p-4 rounded-2xl border text-left transition-colors ${
+            soloSinReparto
+              ? 'bg-red-100 border-red-300'
+              : 'bg-red-50 border-red-200 hover:bg-red-100'
+          }`}
+        >
+          <AlertTriangle size={20} className="text-red-600 flex-shrink-0" />
+          <span className="flex-1 text-sm text-red-800">
+            <strong>{reservasSinReparto.length}</strong> turno{reservasSinReparto.length !== 1 ? 's' : ''} confirmado{reservasSinReparto.length !== 1 ? 's' : ''} sin reintegro QR configurado — el escáner de canchas los va a rechazar.
+          </span>
+          <span className="text-xs font-semibold text-red-700 flex-shrink-0">
+            {soloSinReparto ? 'Ver todas' : 'Ver solo estas'}
+          </span>
+        </button>
+      )}
 
       {/* Filtros */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-wrap gap-3 items-end">
@@ -296,7 +332,7 @@ export default function AdminReservas() {
           <div key={i} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 h-24 animate-pulse" />
         ))}
 
-        {!loading && reservas.map(r => (
+        {!loading && reservasVisibles.map(r => (
           <div
             key={r.id_reserva}
             className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex items-center justify-between gap-4 flex-wrap"
@@ -343,9 +379,11 @@ export default function AdminReservas() {
           </div>
         ))}
 
-        {!loading && !error && reservas.length === 0 && (
+        {!loading && !error && reservasVisibles.length === 0 && (
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-10 text-center text-gray-500">
-            No hay reservas que coincidan con los filtros.
+            {soloSinReparto
+              ? 'No hay reservas sin reparto configurado dentro de estos filtros. 🎉'
+              : 'No hay reservas que coincidan con los filtros.'}
           </div>
         )}
       </div>

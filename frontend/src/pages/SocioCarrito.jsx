@@ -156,7 +156,10 @@ function OrdenGeneradaModal({ cartTotal, cartPayload, saldoDisponible = 0, token
             )}
             {!orden && (
               <p className="text-sm text-gray-500 mt-1">
-                Total: {formatoMoneda.format(cartTotal)}
+                Total: {formatoMoneda.format(usarSaldo && saldoDisponible > 0 ? Math.max(0, cartTotal - saldoDisponible) : cartTotal)}
+                {usarSaldo && saldoDisponible > 0 && (
+                  <span className="ml-1 text-gray-400 line-through">{formatoMoneda.format(cartTotal)}</span>
+                )}
               </p>
             )}
           </div>
@@ -181,7 +184,21 @@ function OrdenGeneradaModal({ cartTotal, cartPayload, saldoDisponible = 0, token
 
             <div className="text-center p-4 rounded-xl bg-indigo-50 border border-indigo-200">
               <p className="text-sm font-semibold text-indigo-900">Total a abonar</p>
-              <p className="text-3xl font-bold text-indigo-900 mt-1">{formatoMoneda.format(cartTotal)}</p>
+              {usarSaldo && saldoDisponible > 0 ? (
+                <>
+                  <p className="text-3xl font-bold text-indigo-900 mt-1">
+                    {formatoMoneda.format(Math.max(0, cartTotal - saldoDisponible))}
+                  </p>
+                  <p className="text-xs text-gray-400 line-through mt-1">
+                    {formatoMoneda.format(cartTotal)}
+                  </p>
+                  <p className="text-xs text-emerald-600 font-semibold">
+                    − {formatoMoneda.format(Math.min(saldoDisponible, cartTotal))} de saldo a favor
+                  </p>
+                </>
+              ) : (
+                <p className="text-3xl font-bold text-indigo-900 mt-1">{formatoMoneda.format(cartTotal)}</p>
+              )}
             </div>
 
             {/* Checkbox saldo a favor */}

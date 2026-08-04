@@ -830,7 +830,8 @@ export default function AdminSocios() {
     setLoading(true)
     setError(null)
     try {
-      const params = rolFiltro ? `?rol=${encodeURIComponent(rolFiltro)}` : ''
+      const filtroRol = rolFiltro ? `rol=${encodeURIComponent(rolFiltro)}&` : ''
+      const params = `?${filtroRol}limit=2000`
       const [sociosRes, pendientesRes] = await Promise.all([
         fetch(`${API}/admin/usuarios/${params}`, { headers: { Authorization: `Bearer ${token}` } }),
         fetch(`${API}/admin/usuarios/pendientes`, { headers: { Authorization: `Bearer ${token}` } }),

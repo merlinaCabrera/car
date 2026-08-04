@@ -461,7 +461,7 @@ def reactivar_socio(
 )
 def listar_todos_los_usuarios(
     skip: int = 0,
-    limit: int = 100,
+    limit: int = Query(default=1000, le=2000, description="Máximo de resultados a devolver (tope 2000)."),
     rol: Optional[str] = Query(default=None, description="Nombre del rol para filtrar (ej: 'socio', 'jugador'). Si se omite, devuelve todos los usuarios con al menos un rol activo."),
     db: Session = Depends(get_db),
     _: models.Usuario = Depends(require_roles(*_ADMIN)),

@@ -11,3 +11,4 @@ Base de datos: PostgreSQL + SQLAlchemy
 Frontend: React + Vite
 Pagos: Integración con MercadoPago (checkout, webhooks)
 Infraestructura: Docker
+hola

@@ -1013,6 +1013,16 @@ def editar_evento(
 ) -> models.Evento:
     evento = _obtener_evento_o_404(db, id_evento)
 
+    if evento.estado == "finalizado":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                f"El evento #{id_evento} ya está 'finalizado' y no puede editarse. "
+                "El sistema lo cerró automáticamente (o se cerró a mano) y su "
+                "historial de asistencias ya quedó consolidado."
+            ),
+        )
+
     cambios = payload.model_dump(exclude_unset=True)
     if not cambios:
         raise HTTPException(

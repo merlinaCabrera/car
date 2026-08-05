@@ -44,6 +44,7 @@ import {
   Search,
   Loader2,
   Info,
+  Clock,
 } from 'lucide-react'
 
 const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
@@ -61,6 +62,21 @@ const ESTADO_LABEL = {
   en_curso: 'en curso',
   finalizado: 'finalizado',
   cancelado: 'cancelado',
+}
+
+/**
+ * Hora estimada hasta la que este escáner va a seguir aceptando ingresos.
+ * Espeja exactamente la lógica de cierre automático del scheduler
+ * (backend/scheduler.py: fecha_fin + 30min, o fecha_inicio + 3h30min si el
+ * evento no tiene fecha_fin cargada) — así lo que se muestra acá es
+ * siempre coherente con cuándo el sistema realmente va a marcar el evento
+ * como 'finalizado' y dejar de aceptar escaneos.
+ */
+function calcularCierreEstimado(evento) {
+  const base = evento.fecha_fin
+    ? new Date(evento.fecha_fin)
+    : new Date(new Date(evento.fecha_inicio).getTime() + 3 * 60 * 60 * 1000)
+  return new Date(base.getTime() + 30 * 60 * 1000)
 }
 
 // ─── Selector de evento ────────────────────────────────────────────────────────
@@ -158,9 +174,15 @@ function SelectorEvento({ onSeleccionar }) {
           >
             <div>
               <p className="font-bold text-gray-900">{evento.titulo}</p>
-              <div className="flex items-center gap-4 mt-1 text-sm text-gray-500">
+              <div className="flex items-center gap-4 mt-1 text-sm text-gray-500 flex-wrap">
                 <span className="flex items-center gap-1.5">
                   <CalendarDays size={13} /> {formatoHora(new Date(evento.fecha_inicio))}
+                </span>
+                <span
+                  className="flex items-center gap-1.5 text-gray-400"
+                  title="Después de esta hora el sistema cierra el evento automáticamente y el escáner deja de aceptar ingresos"
+                >
+                  <Clock size={13} /> Cierra {formatoHora(calcularCierreEstimado(evento))}
                 </span>
                 {evento.ubicacion && (
                   <span className="flex items-center gap-1.5">
@@ -368,6 +390,9 @@ export default function AdminScannerEvento() {
     return <SelectorEvento onSeleccionar={setEventoActivo} />
   }
 
+  const cierreEstimado = calcularCierreEstimado(eventoActivo)
+  const cierreEsHoy = cierreEstimado.toDateString() === new Date().toDateString()
+
   return (
     <div className="p-6 max-w-md mx-auto space-y-5">
 
@@ -382,7 +407,12 @@ export default function AdminScannerEvento() {
         </button>
         <div className="min-w-0">
           <p className="font-bold text-gray-900 truncate">{eventoActivo.titulo}</p>
-          <p className="text-xs text-gray-500">Controlando el acceso</p>
+          <p className="text-xs text-gray-500 flex items-center gap-1.5">
+            Controlando el acceso — cierra{' '}
+            {cierreEsHoy
+              ? `hoy ${formatoHora(cierreEstimado)}`
+              : formatoFechaHora(cierreEstimado)}
+          </p>
         </div>
       </div>
 

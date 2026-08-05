@@ -43,6 +43,7 @@ import {
   List,
   LayoutGrid,
   FileDown,
+  Filter,
   History,
   Pencil,
 } from 'lucide-react'
@@ -608,6 +609,8 @@ export default function TecnicoEventos() {
   const [vista, setVista] = useState('lista')
   const [mesCalendario, setMesCalendario] = useState(new Date())
   const [mostrarFinalizados, setMostrarFinalizados] = useState(false)
+  const [categorias, setCategorias] = useState([])
+  const [categoriaFiltro, setCategoriaFiltro] = useState('todas')
   const { exportar, exportando, errorExport } = useExportarConvocatoria()
   const {
     exportar: exportarAsistencias,
@@ -674,6 +677,24 @@ export default function TecnicoEventos() {
   }, [token, mostrarFinalizados])
 
   useEffect(() => { fetchEventos() }, [fetchEventos])
+
+  // Catálogo de categorías para el filtro — mismo endpoint que usa el modal
+  // de "Nuevo Evento". Se pide una sola vez, no depende del filtro de estado.
+  useEffect(() => {
+    if (!token) return
+    fetch(`${API}/deportivo/categorias`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(res => (res.ok ? res.json() : []))
+      .then(setCategorias)
+      .catch(() => {})
+  }, [token])
+
+  // Filtro por categoría: se aplica en cliente porque `eventos` ya viene con
+  // `categoria` embebido en cada fila (no hace falta un roundtrip nuevo al
+  // backend, y así cambiar el filtro es instantáneo).
+  const eventosFiltrados = useMemo(() => {
+    if (categoriaFiltro === 'todas') return eventos
+    return eventos.filter(e => String(e.id_categoria) === String(categoriaFiltro))
+  }, [eventos, categoriaFiltro])
 
   const handleSaveSuccess = () => {
     setSelectedEvent(null)
@@ -743,6 +764,20 @@ export default function TecnicoEventos() {
           </p>
         </div>
         <div className="flex items-center gap-3 flex-shrink-0 flex-wrap">
+          <div className="relative">
+            <Filter size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+            <select
+              value={categoriaFiltro}
+              onChange={e => setCategoriaFiltro(e.target.value)}
+              className="form-input pl-9 pr-8 py-2 text-sm font-semibold text-gray-600 !w-auto min-w-[160px]"
+              title="Filtrar por categoría"
+            >
+              <option value="todas">Todas las categorías</option>
+              {categorias.map(cat => (
+                <option key={cat.id_categoria} value={cat.id_categoria}>{cat.nombre}</option>
+              ))}
+            </select>
+          </div>
           <VistaToggle vista={vista} onChange={setVista} />
           <button
             onClick={() => setMostrarFinalizados(prev => !prev)}
@@ -806,7 +841,7 @@ export default function TecnicoEventos() {
           ) : (
             <>
               <CalendarioMensual
-                eventos={eventos}
+                eventos={eventosFiltrados}
                 mes={mesCalendario}
                 onMesChange={setMesCalendario}
                 renderEvento={renderEventoCalendario}
@@ -832,13 +867,15 @@ export default function TecnicoEventos() {
             <div key={i} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 h-24 animate-pulse" />
           ))}
 
-          {!loading && eventos.length === 0 && (
+          {!loading && eventosFiltrados.length === 0 && (
             <div className="text-center py-12 text-gray-500">
-              No hay eventos programados.
+              {eventos.length === 0
+                ? 'No hay eventos programados.'
+                : 'No hay eventos para la categoría seleccionada.'}
             </div>
           )}
 
-          {!loading && eventos.map(evento => {
+          {!loading && eventosFiltrados.map(evento => {
             const isExpanded = expandedEventId === evento.id_evento
             const convocatoriasOrdenadas = [...evento.convocatorias].sort((a, b) =>
               (a.usuario?.apellido ?? '').localeCompare(b.usuario?.apellido ?? '')

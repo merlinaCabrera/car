@@ -50,6 +50,7 @@ def _hoy_local() -> date:
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy import text
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session, joinedload
 
 import models
@@ -97,11 +98,19 @@ def _registrar_asistencia(
     metodo: str,                           # 'QR' | 'DNI'
     operador_id: int,
     estado_financiero: str,                # 'al_dia' | 'moroso'
-) -> None:
+) -> bool:
     """
     Inserta una fila en `asistencias`. Solo se llama si id_evento fue provisto
     y la validación resultó en un usuario encontrado (válido o moroso).
     Los casos 'desconocido' (token no encontrado) no se registran.
+
+    Idempotente: usa INSERT ... ON CONFLICT DO NOTHING apoyado en la
+    constraint uq_asistencia_evento_usuario (id_evento, id_usuario). Si el
+    socio ya tenía un ingreso registrado para este evento, no se crea una
+    fila nueva.
+
+    Devuelve True si se insertó una fila nueva, False si el socio ya estaba
+    registrado para este evento (o si el evento no está activo).
     """
     # Verificar que el evento exista y esté activo
     evento = (
@@ -114,19 +123,21 @@ def _registrar_asistencia(
     )
     if not evento:
         # No lanzamos excepción: la validación fue OK, solo omitimos el registro
-        return
+        return False
 
     snapshot = "al_dia" if estado_financiero == "al_dia" else "moroso"
 
-    asistencia = models.Asistencia(
+    stmt = pg_insert(models.Asistencia.__table__).values(
         id_evento=id_evento,
         id_usuario=id_usuario,
         metodo=metodo,
         registrado_por=operador_id,
         estado_financiero_snapshot=snapshot,
-    )
-    db.add(asistencia)
+    ).on_conflict_do_nothing(constraint="uq_asistencia_evento_usuario")
+
+    resultado = db.execute(stmt)
     # El commit lo hace el llamador, que también hace el commit del audit_log
+    return (resultado.rowcount or 0) > 0
 
 
 def _registrar_audit(
@@ -431,7 +442,7 @@ def validar_qr_token(
 
     # 4 — Registrar asistencia (si hay evento y el usuario fue identificado)
     if payload.id_evento and respuesta.id_usuario is not None:
-        _registrar_asistencia(
+        se_inserto = _registrar_asistencia(
             db=db,
             id_evento=payload.id_evento,
             id_usuario=respuesta.id_usuario,
@@ -439,6 +450,7 @@ def validar_qr_token(
             operador_id=operador.id_usuario,
             estado_financiero=respuesta.estado_financiero,
         )
+        respuesta.ya_registrado = not se_inserto
 
     # 5 — Audit log
     if usuario is None:
@@ -537,7 +549,7 @@ def validar_dni(
 
     # 4 — Registrar asistencia si se proveyó evento y el usuario fue identificado
     if payload.id_evento:
-        _registrar_asistencia(
+        se_inserto = _registrar_asistencia(
             db=db,
             id_evento=payload.id_evento,
             id_usuario=usuario.id_usuario,
@@ -545,6 +557,7 @@ def validar_dni(
             operador_id=operador.id_usuario,
             estado_financiero=respuesta.estado_financiero,
         )
+        respuesta.ya_registrado = not se_inserto
 
     # 5 — Audit log
     _registrar_audit(

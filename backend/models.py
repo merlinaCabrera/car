@@ -1258,6 +1258,15 @@ class Asistencia(Base):
             "estado_financiero_snapshot IN ('al_dia', 'moroso')",
             name="chk_asistencia_snapshot",
         ),
+        # Un socio no puede tener dos ingresos registrados para el mismo
+        # evento. Antes no existía esta constraint y cada escaneo insertaba
+        # una fila nueva sin chequear si el socio ya había entrado — tanto
+        # el escáner de puerta (qr_auth.py) como el registro manual del
+        # técnico (deportivo.py::registrar_asistencia) ahora hacen
+        # INSERT ... ON CONFLICT apoyados en esta constraint.
+        UniqueConstraint(
+            "id_evento", "id_usuario", name="uq_asistencia_evento_usuario",
+        ),
         Index("idx_asistencias_evento",  "id_evento"),
         Index("idx_asistencias_usuario", "id_usuario"),
         Index("idx_asistencias_fecha",   "fecha_hora_ingreso",

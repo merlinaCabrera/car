@@ -104,6 +104,37 @@ async def task_orden_aprobada_tienda(
         logger.exception(f"Fallo al enviar mail 'orden_aprobada_tienda' a {email_destino} (orden #{numero_orden})")
 
 
+async def task_compra_confirmada(
+    email_destino: str,
+    nombre_socio: str,
+    numero_pago: int,
+    metodo_pago_label: str,
+    secciones: list,
+    subtotal: str,
+    saldo_aplicado: "str | None",
+    total_pagado: str,
+) -> None:
+    """
+    Mail único de "Compra confirmada", a nivel Pago (no por Orden). Reemplaza
+    a los viejos orden_aprobada_cuota / orden_aprobada_tienda: muestra el
+    detalle COMPLETO del carrito agrupado por categoría, el método de pago,
+    el saldo a favor aplicado (si hubo) y el total real cobrado — así el
+    socio nunca ve "pagaste 2 cuotas" cuando en realidad pagó $60.000 por
+    varios conceptos juntos.
+    """
+    try:
+        await email_service.enviar_compra_confirmada(
+            email_destino, nombre_socio, numero_pago, metodo_pago_label,
+            secciones, subtotal, saldo_aplicado, total_pagado,
+        )
+        logger.info(f"Mail 'compra_confirmada' enviado a {email_destino} (pago #{numero_pago})")
+    except Exception:
+        logger.exception(f"Fallo al enviar mail 'compra_confirmada' a {email_destino} (pago #{numero_pago})")
+        logger.info(f"Mail 'orden_aprobada_tienda' enviado a {email_destino} (orden #{numero_orden})")
+    except Exception:
+        logger.exception(f"Fallo al enviar mail 'orden_aprobada_tienda' a {email_destino} (orden #{numero_orden})")
+
+
 async def task_aviso_club_pago_recibido(
     nombre_socio: str,
     dni_socio: str,

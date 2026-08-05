@@ -135,6 +135,36 @@ async def enviar_orden_aprobada_tienda(
     )
 
 
+async def enviar_compra_confirmada(
+    email_destino: str,
+    nombre_socio: str,
+    numero_pago: int,
+    metodo_pago_label: str,
+    secciones: list,
+    subtotal: str,
+    saldo_aplicado: "str | None",
+    total_pagado: str,
+) -> None:
+    """
+    Mail único con el detalle COMPLETO de una compra (todas las categorías
+    de un mismo Pago juntas), en vez de mails partidos por cada Orden.
+    """
+    await _enviar(
+        destinatarios=[email_destino],
+        asunto=f"✅ Compra confirmada — Comprobante #{numero_pago}",
+        template_name="compra_confirmada.html",
+        body={
+            "nombre_socio": nombre_socio,
+            "numero_pago": numero_pago,
+            "metodo_pago_label": metodo_pago_label,
+            "secciones": secciones,
+            "subtotal": subtotal,
+            "saldo_aplicado": saldo_aplicado,
+            "total_pagado": total_pagado,
+        },
+    )
+
+
 async def enviar_aviso_club_pago_recibido(
     nombre_socio: str, dni_socio: str, numero_orden: int, monto: str, tipo: str,
 ) -> None:

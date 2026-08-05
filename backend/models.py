@@ -798,6 +798,13 @@ class Pago(Base):
     fecha_creacion: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now(),
     )
+    mail_confirmacion_enviado: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false"),
+        comment=(
+            "Evita reenviar el mail resumen de 'Compra confirmada' si el Pago "
+            "tiene varias Órdenes que se aprueban en momentos distintos."
+        ),
+    )
 
     # Relaciones
     usuario: Mapped["Usuario"] = relationship(

@@ -448,7 +448,7 @@ def checkout_carrito(
 
     # 8b ── Aprobación automática si el saldo cubrió el total ─────────────
     if saldo_cubre_todo:
-        from utils.ordenes import procesar_aprobacion_orden, verificar_pendiente
+        from utils.ordenes import procesar_aprobacion_orden, verificar_pendiente, finalizar_pago_si_corresponde
         for orden in ordenes_creadas:
             db.refresh(orden)
             try:
@@ -464,6 +464,7 @@ def checkout_carrito(
                 )
             except Exception:
                 pass  # si falla, queda pendiente_verificacion como fallback
+        finalizar_pago_si_corresponde(db=db, pago=nuevo_pago, background_tasks=background_tasks)
         db.commit()
         db.refresh(nuevo_pago)
 

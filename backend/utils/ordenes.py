@@ -89,6 +89,175 @@ def verificar_pendiente(orden: models.Orden) -> None:
         )
 
 
+# ─── Mail único de "Compra confirmada" a nivel Pago ──────────────────────────
+# Reemplaza a los viejos mails partidos por Orden (orden_aprobada_cuota /
+# orden_aprobada_tienda), que hacían que un socio que pagaba cuota + tienda
+# en un mismo carrito recibiera 2 mails separados, ninguno con el total real.
+#
+# Un Pago puede tener varias Órdenes (cuota + tienda) que se aprueban en
+# momentos distintos —incluso en requests HTTP separados—, así que esta
+# función se llama desde CADA punto donde una orden se resuelve (aprobada o
+# rechazada) y decide, cada vez, si "ya está todo resuelto" para ese Pago.
+# La bandera `mail_confirmacion_enviado` evita el reenvío por más que se
+# llame varias veces (ej: dos requests casi simultáneos).
+
+_ORDEN_SECCIONES = (
+    ("cuota_social", "Cuota Social"),
+    ("alquiler",     "Alquiler de Cancha"),
+    ("indumentaria", "Tienda / Indumentaria"),
+    ("otro",         "Otros"),
+)
+
+_METODO_PAGO_LABELS = {
+    "efectivo":       "Efectivo",
+    "transferencia":  "Transferencia bancaria",
+    "mercado_pago":   "Mercado Pago",
+    "saldo_a_favor":  "Saldo a favor",
+}
+
+
+def _armar_secciones_compra(pago: models.Pago) -> tuple[list[dict], "Decimal"]:
+    """
+    Recorre TODAS las Órdenes aprobadas de un Pago y arma el detalle completo
+    agrupado por categoría, en el orden fijo de _ORDEN_SECCIONES.
+
+    Devuelve (secciones, subtotal_items) donde subtotal_items es la suma de
+    todos los ítems ANTES de descontar saldo a favor (el Pago.monto_total ya
+    viene con el descuento aplicado — la diferencia entre ambos es lo que se
+    muestra como "Saldo a favor aplicado").
+    """
+    from decimal import Decimal
+
+    buckets: dict[str, list[dict]] = {clave: [] for clave, _ in _ORDEN_SECCIONES}
+    subtotal_items = Decimal("0")
+
+    for orden in pago.ordenes:
+        if orden.estado != "aprobada":
+            continue
+        for detalle in orden.detalles:
+            if detalle.producto is None:
+                continue
+            categoria = detalle.producto.categoria
+            if categoria not in buckets:
+                categoria = "otro"
+
+            subtotal_item = detalle.precio_unitario_historico * detalle.cantidad
+            subtotal_items += subtotal_item
+
+            item = {
+                "nombre": detalle.producto.nombre,
+                "cantidad": detalle.cantidad,
+                "precio_unitario": f"{detalle.precio_unitario_historico:.2f}",
+                "subtotal": f"{subtotal_item:.2f}",
+                "detalle_extra": None,
+            }
+            if categoria == "alquiler" and detalle.reserva is not None:
+                item["detalle_extra"] = (
+                    f"{detalle.reserva.instalacion} — "
+                    f"{detalle.reserva.fecha_inicio.strftime('%d/%m/%Y %H:%M')} hs"
+                )
+            elif categoria == "cuota_social" and detalle.mes_referencia is not None:
+                item["detalle_extra"] = detalle.mes_referencia.strftime("%B %Y")
+
+            buckets[categoria].append(item)
+
+    secciones = []
+    for clave, titulo in _ORDEN_SECCIONES:
+        lineas = buckets[clave]
+        if not lineas:
+            continue
+        subtotal_seccion = sum(
+            (Decimal(i["subtotal"]) for i in lineas), Decimal("0")
+        )
+        secciones.append({
+            "clave": clave,
+            "titulo": titulo,
+            "lineas": lineas,
+            "subtotal_seccion": f"{subtotal_seccion:.2f}",
+        })
+
+    return secciones, subtotal_items
+
+
+def finalizar_pago_si_corresponde(
+    *,
+    db: Session,
+    pago: Optional[models.Pago],
+    background_tasks: BackgroundTasks,
+) -> None:
+    """
+    Se llama después de aprobar O rechazar cualquier Orden. Si el Pago ya no
+    tiene ninguna Orden hija en 'pendiente_verificacion' (es decir, se
+    terminó de resolver del todo) y todavía no se mandó el mail resumen,
+    arma el detalle completo y lo dispara en background.
+
+    Si el Pago terminó totalmente rechazado (sin ninguna orden aprobada), NO
+    se manda este mail — el rechazo ya se avisa por separado en
+    rechazar_orden() vía task_orden_rechazada.
+    """
+    if pago is None or pago.mail_confirmacion_enviado:
+        return
+
+    quedan_pendientes = (
+        db.query(models.Orden.id_orden)
+        .filter(
+            models.Orden.id_pago == pago.id_pago,
+            models.Orden.estado == "pendiente_verificacion",
+        )
+        .first()
+        is not None
+    )
+    if quedan_pendientes:
+        return  # todavía falta resolver alguna orden hermana
+
+    pago.mail_confirmacion_enviado = True  # idempotencia, pase lo que pase abajo
+
+    if pago.estado != "verificado":
+        return  # rechazado del todo: ya se avisó por orden, no hay nada que confirmar
+
+    socio = pago.usuario
+    if not socio or not socio.email:
+        return
+
+    secciones, subtotal_items = _armar_secciones_compra(pago)
+    if not secciones:
+        return  # nada aprobado realmente (no debería pasar si estado=='verificado')
+
+    saldo_aplicado = subtotal_items - pago.monto_total
+    from decimal import Decimal
+    if saldo_aplicado < Decimal("0"):
+        saldo_aplicado = Decimal("0")  # defensivo — nunca debería ser negativo
+
+    tipos_presentes = {s["clave"] for s in secciones}
+    if tipos_presentes == {"cuota_social"}:
+        tipo_label = "cuota social"
+    elif "cuota_social" in tipos_presentes:
+        tipo_label = "mixta (cuota + tienda/alquiler)"
+    else:
+        tipo_label = "tienda/alquiler"
+
+    background_tasks.add_task(
+        email_tasks.task_aviso_club_pago_recibido,
+        nombre_socio=f"{socio.nombre} {socio.apellido}",
+        dni_socio=socio.dni,
+        numero_orden=pago.id_pago,
+        monto=f"{pago.monto_total:.2f}",
+        tipo=tipo_label,
+    )
+
+    background_tasks.add_task(
+        email_tasks.task_compra_confirmada,
+        email_destino=socio.email,
+        nombre_socio=socio.nombre,
+        numero_pago=pago.id_pago,
+        metodo_pago_label=_METODO_PAGO_LABELS.get(pago.metodo_pago, pago.metodo_pago),
+        secciones=secciones,
+        subtotal=f"{subtotal_items:.2f}",
+        saldo_aplicado=f"{saldo_aplicado:.2f}" if saldo_aplicado > 0 else None,
+        total_pagado=f"{pago.monto_total:.2f}",
+    )
+
+
 def procesar_aprobacion_orden(
     *,
     db: Session,
@@ -251,43 +420,12 @@ def procesar_aprobacion_orden(
         )
     )
 
-    # ── Paso 9: mails en background ───────────────────────────────────────────
-    if socio.email:
-        tiene_cuota = meses_cuota_descontados > 0
-        tiene_tienda = any(
-            d.producto is not None and d.producto.categoria != "cuota_social"
-            for d in orden.detalles
-        )
-
-        if tiene_cuota:
-            background_tasks.add_task(
-                email_tasks.task_orden_aprobada_cuota,
-                email_destino=socio.email,
-                nombre_socio=socio.nombre,
-                numero_orden=orden.id_orden,
-                meses_pagados=meses_cuota_descontados,
-                cubierto_hasta=socio.mes_cubierto_hasta.strftime("%d/%m/%Y") if socio.mes_cubierto_hasta else "-",
-            )
-
-        if tiene_tienda:
-            background_tasks.add_task(
-                email_tasks.task_orden_aprobada_tienda,
-                email_destino=socio.email,
-                nombre_socio=socio.nombre,
-                numero_orden=orden.id_orden,
-                monto=str(orden.monto_total),
-            )
-
-        background_tasks.add_task(
-            email_tasks.task_aviso_club_pago_recibido,
-            nombre_socio=f"{socio.nombre} {socio.apellido}",
-            dni_socio=socio.dni,
-            numero_orden=orden.id_orden,
-            monto=str(orden.monto_total),
-            tipo="cuota social" if tiene_cuota and not tiene_tienda
-                 else "tienda/alquiler" if tiene_tienda and not tiene_cuota
-                 else "mixta (cuota + tienda)",
-        )
+    # ── Paso 9: mail resumen (a nivel Pago, no por Orden) ─────────────────────
+    # Ya no se dispara nada acá: el llamador (admin_ordenes.py, webhooks_mercadopago.py,
+    # socio_carrito.py) debe invocar finalizar_pago_si_corresponde(db=db, pago=orden.pago,
+    # background_tasks=background_tasks) después de procesar todas las órdenes del Pago
+    # en esa misma request. Esa función arma UN solo mail con el detalle completo del
+    # Pago (todas sus órdenes/categorías), en vez de un mail partido por cada Orden.
 
     return schemas.OrdenAprobarResponse(
         id_orden=orden.id_orden,

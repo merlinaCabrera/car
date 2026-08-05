@@ -35,7 +35,7 @@ from database import get_db
 from dependencies import require_roles
 from mailer.services import email_tasks
 from utils.audit import registrar_audit as _registrar_audit, extraer_ip as _extraer_ip
-from utils.ordenes import procesar_aprobacion_orden, verificar_pendiente
+from utils.ordenes import procesar_aprobacion_orden, verificar_pendiente, finalizar_pago_si_corresponde
 
 router = APIRouter(
     prefix="/admin/ordenes",
@@ -225,6 +225,8 @@ def aprobar_orden(
         ip=_extraer_ip(request),
     )
 
+    finalizar_pago_si_corresponde(db=db, pago=orden.pago, background_tasks=background_tasks)
+
     db.commit()
     db.refresh(orden)
 
@@ -324,6 +326,8 @@ def rechazar_orden(
             numero_orden=orden.id_orden,
             motivo=payload.motivo_rechazo,
         )
+
+    finalizar_pago_si_corresponde(db=db, pago=pago, background_tasks=background_tasks)
 
     db.commit()
     db.refresh(orden)

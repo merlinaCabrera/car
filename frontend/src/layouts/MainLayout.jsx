@@ -251,30 +251,30 @@ export default function MainLayout({ userRole }) {
           {esAdminGeneral && (
             <div>
               <Link to="/admin" onClick={closeMenu}
-                className="flex items-center justify-center gap-2 w-full px-4 py-3 mb-2 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-500 transition-all duration-200 shadow-lg">
-                <LayoutDashboard size={18} />Panel de Admin
+                className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors">
+                <LayoutDashboard size={18} /><span>Inicio</span>
               </Link>
-              <p className="px-2 mb-2 text-xs text-gray-400 uppercase tracking-wider font-semibold">Cuerpo Administrativo</p>
-              <Link to="/admin/pagos" onClick={closeMenu} className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors">
-                <Wallet size={18} /><span>Tesorería</span>
-              </Link>
+              <hr className="border-gray-700 my-2" /><p className="px-2 mb-2 text-xs text-gray-400 uppercase tracking-wider font-semibold">Gestión</p>
               <Link to="/admin/socios" onClick={closeMenu} className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors">
                 <Users size={18} /><span>Socios</span>
               </Link>
-              <Link to="/gestion-planteles" onClick={closeMenu} className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors">
-                <ClipboardList size={18} /><span>Planteles</span>
-              </Link>
-              <Link to="/gestion-eventos" onClick={closeMenu} className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors">
-                <CalendarDays size={18} /><span>Eventos y Convocatorias</span>
+              <Link to="/admin/pagos" onClick={closeMenu} className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors">
+                <Wallet size={18} /><span>Cuotas</span>
               </Link>
               <Link to="/admin/productos" onClick={closeMenu} className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors">
-                <Package size={18} /><span>Catálogo de Productos</span>
+                <Package size={18} /><span>Catálogo</span>
               </Link>
-              <Link to="/admin/comercios" onClick={closeMenu} className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors">
-                <Store size={18} /><span>Comercios Adheridos</span>
+              <Link to="/admin/tienda" onClick={closeMenu} className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors">
+                <Store size={18} /><span>Tienda</span>
               </Link>
               <Link to="/admin/reservas" onClick={closeMenu} className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors">
-                <Calendar size={18} /><span>Agenda de Reservas</span>
+                <Calendar size={18} /><span>Alquileres</span>
+              </Link>
+              <Link to="/gestion-eventos" onClick={closeMenu} className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors">
+                <CalendarDays size={18} /><span>Eventos</span>
+              </Link>
+              <Link to="/admin/comercios" onClick={closeMenu} className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors">
+                <Store size={18} /><span>Comercios</span>
               </Link>
             </div>
           )}
@@ -286,12 +286,12 @@ export default function MainLayout({ userRole }) {
               <p className="px-2 mb-2 text-xs text-gray-400 uppercase tracking-wider font-semibold">Ver como...</p>
 
               {[
-                { key: 'socio',     label: 'Vista Socio',                  icon: Home,          nav: NAV_SOCIO },
-                { key: 'jugador',   label: 'Vista Jugador',                 icon: Users,         nav: NAV_JUGADOR },
-                { key: 'tecnico',   label: 'Vista Técnico',                 icon: ClipboardList, nav: NAV_PERSONAL_TECNICO },
-                { key: 'padmin',    label: 'Vista Personal Administrativo', icon: Wallet,        nav: NAV_PERSONAL_ADMINISTRATIVO },
-                { key: 'atemp',     label: 'Vista Admin Temporal',          icon: ScanLine,      nav: NAV_ADMIN_TEMPORAL },
-                { key: 'invitado',  label: 'Vista Invitado',                icon: UserCheck,     nav: NAV_INVITADO },
+                { key: 'socio',     label: 'Socio',          icon: Home,          nav: NAV_SOCIO },
+                { key: 'jugador',   label: 'Jugador',         icon: Users,         nav: NAV_JUGADOR },
+                { key: 'tecnico',   label: 'Técnico',         icon: ClipboardList, nav: NAV_PERSONAL_TECNICO },
+                { key: 'padmin',    label: 'Administrativo',  icon: Wallet,        nav: NAV_PERSONAL_ADMINISTRATIVO },
+                { key: 'atemp',     label: 'Escáneres',       icon: ScanLine,      nav: NAV_ADMIN_TEMPORAL },
+                { key: 'invitado',  label: 'Invitado',        icon: UserCheck,     nav: NAV_INVITADO },
               ].map(({ key, label, icon: Icon, nav }) => (
                 <div key={key}>
                   <button onClick={() => toggleSeccion(key)}

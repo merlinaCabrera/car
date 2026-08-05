@@ -1443,34 +1443,51 @@ def registrar_asistencia(
     esta_al_dia = socio.mes_cubierto_hasta is not None and socio.mes_cubierto_hasta >= date.today()
     estado_financiero = "al_dia" if esta_al_dia else "moroso"
 
-    nueva_asistencia = models.Asistencia(
+    # INSERT ... ON CONFLICT DO NOTHING apoyado en uq_asistencia_evento_usuario:
+    # si el técnico (o el escáner de puerta) ya había registrado a este socio
+    # en este evento, no se crea una fila duplicada — se devuelve la fila
+    # existente tal cual quedó registrada la primera vez.
+    stmt = pg_insert(models.Asistencia.__table__).values(
         id_evento=id_evento,
         id_usuario=socio.id_usuario,
         metodo=payload.metodo,
         registrado_por=operador.id_usuario,
         estado_financiero_snapshot=estado_financiero,
-    )
-    db.add(nueva_asistencia)
-    db.flush()
+    ).on_conflict_do_nothing(constraint="uq_asistencia_evento_usuario")
 
-    _registrar_audit(
-        db=db,
-        actor_id=operador.id_usuario,
-        accion="REGISTRAR_ASISTENCIA",
-        tabla_afectada="asistencias",
-        registro_id=nueva_asistencia.id_asistencia,
-        detalle={
-            "id_evento": id_evento,
-            "id_usuario": socio.id_usuario,
-            "metodo": payload.metodo,
-            "estado_financiero_snapshot": estado_financiero,
-        },
-        ip=_extraer_ip(request),
+    resultado = db.execute(stmt)
+    se_inserto = (resultado.rowcount or 0) > 0
+
+    asistencia = (
+        db.query(models.Asistencia)
+        .options(joinedload(models.Asistencia.usuario))
+        .filter(
+            models.Asistencia.id_evento == id_evento,
+            models.Asistencia.id_usuario == socio.id_usuario,
+        )
+        .one()
     )
+
+    if se_inserto:
+        _registrar_audit(
+            db=db,
+            actor_id=operador.id_usuario,
+            accion="REGISTRAR_ASISTENCIA",
+            tabla_afectada="asistencias",
+            registro_id=asistencia.id_asistencia,
+            detalle={
+                "id_evento": id_evento,
+                "id_usuario": socio.id_usuario,
+                "metodo": payload.metodo,
+                "estado_financiero_snapshot": estado_financiero,
+            },
+            ip=_extraer_ip(request),
+        )
+
     db.commit()
-    db.refresh(nueva_asistencia)
+    db.refresh(asistencia)
 
-    return nueva_asistencia
+    return asistencia
 
 
 @router.get(

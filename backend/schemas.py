@@ -365,6 +365,16 @@ class UsuarioQRValidacionResponse(BaseModel):
         default=False,
         description="TRUE si el acceso fue habilitado por beca activa (no por pago de cuota).",
     )
+    ya_registrado: bool = Field(
+        default=False,
+        description=(
+            "TRUE si se proveyó id_evento y el socio YA tenía un ingreso "
+            "registrado para ese evento (constraint uq_asistencia_evento_usuario). "
+            "En ese caso NO se insertó una fila nueva en asistencias — este "
+            "escaneo fue solo informativo. El frontend debe mostrar 'ya había "
+            "ingresado' en vez del cartel normal de aprobado/moroso."
+        ),
+    )
 
 
 # ── Asignación de roles ───────────────────────────────────────────────────────

@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import MainLayout from './layouts/MainLayout';
@@ -14,15 +14,13 @@ import SocioAlquileres from './pages/SocioAlquileres';
 import SocioPerfil from './pages/SocioPerfil';
 import AdminInicio from './pages/AdminInicio';
 import AdminSolicitudes from './pages/AdminSolicitudes';
-import AdminPagos from './pages/AdminPagos';
+import AdminVerificaciones from './pages/AdminVerificaciones';
 import AdminSocios from './pages/AdminSocios';
 import AdminComercios from './pages/AdminComercios';
 import JugadorCalendario from './pages/JugadorCalendario';
 import AdminReservas from './pages/AdminReservas';
 import AdminScanner from './pages/AdminScanner';
 import AdminProductos from './pages/AdminProductos';
-import AdminTienda from './pages/AdminTienda';
-import AdminAlquileres from './pages/AdminAlquileres';
 import AdminEstadisticas from './pages/AdminEstadisticas';
 import SocioCompras from "./pages/SocioCompras";
 import Reservas from './pages/Reservas';
@@ -76,14 +74,15 @@ function App() {
               <Route path="/admin/solicitudes" element={<AdminSolicitudes />} />
               <Route path="/admin/socios" element={<AdminSocios />} />
               <Route path="/admin/comercios" element={<AdminComercios />} />
-              <Route path="/admin/pagos" element={<AdminPagos />} />
+              <Route path="/admin/pagos" element={<Navigate to="/admin/verificaciones?tipo=cuota" replace />} />
+              <Route path="/admin/verificaciones" element={<AdminVerificaciones />} />
               <Route path="/admin/escaner" element={<AdminScanner />} />
               <Route path="/admin/escaner-evento" element={<AdminScannerEvento />} />
               <Route path="/admin/escaner-canchas" element={<AdminScannerCancha />} />
               <Route path="/admin/reservas" element={<AdminReservas />} />
               <Route path="/admin/productos" element={<AdminProductos />} />
-              <Route path="/admin/tienda" element={<AdminTienda />} />
-              <Route path="/admin/alquileres" element={<AdminAlquileres />} />
+              <Route path="/admin/tienda" element={<Navigate to="/admin/verificaciones?tipo=compra" replace />} />
+              <Route path="/admin/alquileres" element={<Navigate to="/admin/verificaciones?tipo=alquiler" replace />} />
               <Route path="/admin/estadisticas" element={<AdminEstadisticas />} />
             </Route>
           </Routes>

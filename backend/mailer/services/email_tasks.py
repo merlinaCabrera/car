@@ -130,9 +130,6 @@ async def task_compra_confirmada(
         logger.info(f"Mail 'compra_confirmada' enviado a {email_destino} (pago #{numero_pago})")
     except Exception:
         logger.exception(f"Fallo al enviar mail 'compra_confirmada' a {email_destino} (pago #{numero_pago})")
-        logger.info(f"Mail 'orden_aprobada_tienda' enviado a {email_destino} (orden #{numero_orden})")
-    except Exception:
-        logger.exception(f"Fallo al enviar mail 'orden_aprobada_tienda' a {email_destino} (orden #{numero_orden})")
 
 
 async def task_aviso_club_pago_recibido(

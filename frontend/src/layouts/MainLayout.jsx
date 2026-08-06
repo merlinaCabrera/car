@@ -59,7 +59,7 @@ const NAV_PERSONAL_TECNICO = [
 const NAV_PERSONAL_ADMINISTRATIVO = [
   { name: 'Socios', path: '/admin/socios', icon: Users },
   { name: 'Solicitudes Pendientes', path: '/admin/solicitudes', icon: UserCheck },
-  { name: 'Tesorería', path: '/admin/pagos', icon: Wallet },
+  { name: 'Verificaciones', path: '/admin/verificaciones', icon: Wallet },
   { name: 'Comercios Adheridos', path: '/admin/comercios', icon: Store },
   { name: 'Agenda de Reservas', path: '/admin/reservas', icon: Calendar },
 ];
@@ -258,14 +258,11 @@ export default function MainLayout({ userRole }) {
               <Link to="/admin/socios" onClick={closeMenu} className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors">
                 <Users size={18} /><span>Socios</span>
               </Link>
-              <Link to="/admin/pagos" onClick={closeMenu} className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors">
-                <Wallet size={18} /><span>Cuotas</span>
+              <Link to="/admin/verificaciones" onClick={closeMenu} className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors">
+                <Wallet size={18} /><span>Verificaciones</span>
               </Link>
               <Link to="/admin/productos" onClick={closeMenu} className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors">
                 <Package size={18} /><span>Catálogo</span>
-              </Link>
-              <Link to="/admin/tienda" onClick={closeMenu} className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors">
-                <Store size={18} /><span>Tienda</span>
               </Link>
               <Link to="/admin/reservas" onClick={closeMenu} className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors">
                 <Calendar size={18} /><span>Alquileres</span>

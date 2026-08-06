@@ -937,6 +937,38 @@ class Orden(Base):
     def __repr__(self) -> str:
         return f"<Orden #{self.id_orden} usuario={self.id_usuario} pago={self.id_pago} estado={self.estado}>"
 
+    @property
+    def categoria_resumen(self) -> str:
+        """
+        'cuota' | 'alquiler' | 'indumentaria' | 'otro' | 'mixta'.
+
+        Recorre los ítems de la orden: si todos pertenecen a la misma
+        categoría de producto, devuelve esa categoría (normalizando el
+        'cuota_social' de ProductoServicio.categoria al alias 'cuota' que
+        ya usa _aplicar_filtro_tipo en admin_ordenes.py, para no tener dos
+        vocabularios distintos en el mismo sistema). Si hay 2 o más
+        categorías distintas en la misma orden, devuelve 'mixta' — pensado
+        para la pantalla de verificaciones del admin, donde una orden
+        mixta (ej: indumentaria + alquiler juntos) necesita señalizarse
+        distinto de una orden "pura".
+
+        Es una @property (no una columna) porque es 100% derivable de
+        `self.detalles` y no tiene sentido duplicarlo en la base — se
+        recalcula en cada acceso, siempre consistente con los ítems reales.
+        """
+        categorias: set[str] = set()
+        for detalle in self.detalles:
+            if detalle.producto is None:
+                continue
+            categoria = detalle.producto.categoria
+            categorias.add("cuota" if categoria == "cuota_social" else categoria)
+
+        if len(categorias) > 1:
+            return "mixta"
+        if len(categorias) == 1:
+            return categorias.pop()
+        return "otro"  # orden sin ítems resolubles (no debería pasar en la práctica)
+
 
 class DetalleOrden(Base):
     """

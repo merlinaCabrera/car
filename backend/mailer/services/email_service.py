@@ -212,7 +212,12 @@ async def enviar_aviso_club_comprobante_recibido(
         body={"nombre_socio": nombre_socio, "dni_socio": dni_socio,
               "numero_pago": numero_pago, "monto": monto,
               "comprobante_url": f"{FRONTEND_URL}{comprobante_url}",
-              "admin_url": f"{FRONTEND_URL}/admin/pagos"},
+              # Antes apuntaba a /admin/pagos (solo cuotas) aunque este aviso
+              # se dispara para CUALQUIER tipo de pago con comprobante
+              # (cuota, alquiler, indumentaria o mixto) — se corrige para
+              # que el admin caiga en la bandeja unificada que agrupa por
+              # comprobante, no una específica de un solo tipo.
+              "admin_url": f"{FRONTEND_URL}/admin/verificaciones"},
     )
 
 

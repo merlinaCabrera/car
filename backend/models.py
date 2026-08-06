@@ -380,9 +380,17 @@ class Usuario(Base):
         back_populates="usuario",
     )
 
-    # Categorías deportivas
+    # Categorías deportivas (como jugador inscripto)
     categorias: Mapped[List["UsuarioCategoria"]] = relationship(
         "UsuarioCategoria", back_populates="usuario", cascade="all, delete-orphan",
+    )
+
+    # Categorías deportivas a cargo (como técnico asignado)
+    categorias_a_cargo: Mapped[List["TecnicoCategoria"]] = relationship(
+        "TecnicoCategoria",
+        foreign_keys="TecnicoCategoria.id_usuario",
+        back_populates="usuario",
+        cascade="all, delete-orphan",
     )
 
     # Asistencias (como asistente)
@@ -1019,6 +1027,9 @@ class CategoriaDeportiva(Base):
     eventos: Mapped[List["Evento"]] = relationship(
         "Evento", back_populates="categoria",
     )
+    tecnicos: Mapped[List["TecnicoCategoria"]] = relationship(
+        "TecnicoCategoria", back_populates="categoria", cascade="all, delete-orphan",
+    )
 
     __table_args__ = (
         CheckConstraint(
@@ -1076,6 +1087,58 @@ class UsuarioCategoria(Base):
 
     def __repr__(self) -> str:
         return f"<UsuarioCategoria user={self.id_usuario} cat={self.id_categoria} temporada={self.temporada}>"
+
+
+class TecnicoCategoria(Base):
+    """
+    Tabla puente: técnico ↔ categoría deportiva a su cargo.
+
+    Es la base del modelo de permisos acotados del técnico: acciones como
+    convocar jugadores, marcar capitán, o agregar/sacar un jugador manual
+    de una categoría, solo están habilitadas para el técnico si tiene una
+    fila acá para esa categoría. No tiene columna `temporada` a propósito
+    (a diferencia de UsuarioCategoria): la asignación de un técnico a una
+    categoría es una decisión estructural del club, no algo que rote todos
+    los años junto con el plantel de jugadores. El admin la da de baja
+    explícitamente (DELETE) si el técnico deja de estar a cargo.
+
+    Un mismo usuario puede estar asignado a varias categorías (ej: un
+    técnico que dirige Sub-15 y Sub-17), y una misma categoría puede tener
+    más de un técnico asignado (ej: técnico titular + ayudante).
+    """
+    __tablename__ = "tecnicos_categorias"
+
+    id_usuario: Mapped[int] = mapped_column(
+        ForeignKey("usuarios.id_usuario", ondelete="CASCADE"), primary_key=True,
+    )
+    id_categoria: Mapped[int] = mapped_column(
+        ForeignKey("categorias_deportivas.id_categoria", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    asignado_por: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("usuarios.id_usuario", ondelete="SET NULL"),
+        comment="Admin que hizo la asignación.",
+    )
+    asignado_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now(),
+    )
+
+    # Relaciones
+    usuario: Mapped["Usuario"] = relationship(
+        "Usuario",
+        foreign_keys=[id_usuario],
+        back_populates="categorias_a_cargo",
+    )
+    categoria: Mapped["CategoriaDeportiva"] = relationship(
+        "CategoriaDeportiva", back_populates="tecnicos",
+    )
+    asignador: Mapped[Optional["Usuario"]] = relationship(
+        "Usuario",
+        foreign_keys=[asignado_por],
+    )
+
+    def __repr__(self) -> str:
+        return f"<TecnicoCategoria tecnico={self.id_usuario} cat={self.id_categoria}>"
 
 
 class Evento(Base):

@@ -84,11 +84,13 @@ from datetime import date, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 from typing import List, Optional, Set
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request, Response, status
 from sqlalchemy import func
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session, joinedload
 from pydantic import BaseModel, Field
+
+from mailer.services.email_tasks import task_aviso_admin_jugador_categoria
 
 import models
 import schemas
@@ -112,6 +114,12 @@ _TZ_AR = ZoneInfo("America/Argentina/Buenos_Aires")
 _ROLES_JUGADOR = ("socio", "jugador")
 _ROLES_AUTOCOMPLETAR = ("admin_general",)  # Solo el Admin General ve y usa este botón.
 
+# Reservado para endpoints estructurales del club (crear categorías, asignar
+# técnicos a categorías, etc.) — separado de _ROLES_AUTOCOMPLETAR por nombre
+# para que cada constante documente su propio propósito, aunque hoy tengan
+# el mismo valor.
+_ROLES_ADMIN_GENERAL = ("admin_general",)
+
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -120,6 +128,64 @@ def _extraer_ip(request: Request) -> Optional[str]:
     if forwarded:
         return forwarded.split(",")[0].strip()
     return getattr(request.client, "host", None)
+
+
+def _verificar_acceso_categoria(
+    db: Session,
+    usuario: models.Usuario,
+    id_categoria: int,
+    *,
+    accion: str = "gestionar esta categoría",
+) -> None:
+    """
+    Permisos acotados por categoría para 'personal_tecnico'.
+
+    - 'admin_general' siempre pasa: tiene acceso a todas las categorías,
+      no depende de tecnicos_categorias.
+    - 'personal_tecnico' solo pasa si tiene una fila en tecnicos_categorias
+      para ESTA categoría puntual (ver modelo TecnicoCategoria). Si no,
+      403 — un técnico no puede convocar, marcar capitán, ni tocar el
+      plantel de una categoría que no es la suya, aunque tenga el rol
+      'personal_tecnico' en general.
+
+    Se llama DESPUÉS de require_roles(*_ROLES_TECNICO) en el propio
+    endpoint, así que acá ya sabemos que el usuario es admin_general o
+    personal_tecnico — no hace falta contemplar otros roles.
+    """
+    nombres_roles = {
+        ur.rol.nombre for ur in usuario.roles_asignados
+        if ur.rol.es_activo and (ur.valido_hasta is None or ur.valido_hasta > datetime.now(timezone.utc))
+    }
+    if "admin_general" in nombres_roles:
+        return
+
+    asignado = (
+        db.query(models.TecnicoCategoria)
+        .filter(
+            models.TecnicoCategoria.id_usuario == usuario.id_usuario,
+            models.TecnicoCategoria.id_categoria == id_categoria,
+        )
+        .first()
+    )
+    if asignado is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"No estás a cargo de esta categoría, no podés {accion}.",
+        )
+
+
+def _verificar_acceso_evento(
+    db: Session, usuario: models.Usuario, evento: models.Evento, *, accion: str,
+) -> None:
+    """
+    Igual que _verificar_acceso_categoria, pero a partir de un Evento.
+    Un evento SIN categoría asignada (id_categoria NULL) se considera
+    general/institucional — cualquier técnico puede gestionarlo, ya que no
+    hay ninguna categoría específica de la cual sea "dueño".
+    """
+    if evento.id_categoria is None:
+        return
+    _verificar_acceso_categoria(db, usuario, evento.id_categoria, accion=accion)
 
 
 def _registrar_audit(
@@ -213,6 +279,49 @@ def listar_categorias(
     return query.order_by(models.CategoriaDeportiva.nombre.asc()).all()
 
 
+@router.get(
+    "/mis-categorias-a-cargo",
+    response_model=List[schemas.CategoriaDeportivaResponse],
+    summary="Categorías que el usuario logueado puede GESTIONAR (no solo ver)",
+)
+def listar_mis_categorias_a_cargo(
+    db: Session = Depends(get_db),
+    usuario: models.Usuario = Depends(require_roles(*_ROLES_TECNICO)),
+) -> List[models.CategoriaDeportiva]:
+    """
+    A diferencia de GET /categorias (que devuelve TODAS, para que cualquiera
+    pueda ver el calendario general), este endpoint devuelve solo las
+    categorías donde el usuario puede convocar, marcar capitán, ver el
+    plantel o la planilla de presentismo — es decir, donde no le va a
+    rebotar un 403 al intentar gestionar algo.
+
+    - admin_general: todas las categorías activas (gestiona cualquiera).
+    - personal_tecnico: solo las que tiene asignadas en tecnicos_categorias.
+
+    Pensado para que el frontend arme selectores/tarjetas de "gestión" sin
+    mostrarle al técnico algo que después le va a fallar al tocarlo.
+    """
+    nombres_roles = {ur.rol.nombre for ur in usuario.roles_asignados if ur.rol.es_activo}
+    if "admin_general" in nombres_roles:
+        return (
+            db.query(models.CategoriaDeportiva)
+            .filter(models.CategoriaDeportiva.es_activa.is_(True))
+            .order_by(models.CategoriaDeportiva.nombre.asc())
+            .all()
+        )
+
+    return (
+        db.query(models.CategoriaDeportiva)
+        .join(
+            models.TecnicoCategoria,
+            models.TecnicoCategoria.id_categoria == models.CategoriaDeportiva.id_categoria,
+        )
+        .filter(models.TecnicoCategoria.id_usuario == usuario.id_usuario)
+        .order_by(models.CategoriaDeportiva.nombre.asc())
+        .all()
+    )
+
+
 @router.post(
     "/categorias",
     response_model=schemas.CategoriaDeportivaResponse,
@@ -223,7 +332,7 @@ def crear_categoria(
     payload: schemas.CategoriaDeportivaCreate,
     request: Request,
     db: Session = Depends(get_db),
-    tecnico: models.Usuario = Depends(require_roles(*_ROLES_TECNICO)),
+    admin: models.Usuario = Depends(require_roles(*_ROLES_ADMIN_GENERAL)),
 ) -> models.CategoriaDeportiva:
     ya_existe = (
         db.query(models.CategoriaDeportiva.id_categoria)
@@ -248,7 +357,7 @@ def crear_categoria(
 
     _registrar_audit(
         db=db,
-        actor_id=tecnico.id_usuario,
+        actor_id=admin.id_usuario,
         accion="CREAR_CATEGORIA_DEPORTIVA",
         tabla_afectada="categorias_deportivas",
         registro_id=nueva.id_categoria,
@@ -271,7 +380,7 @@ def editar_categoria(
     payload: schemas.CategoriaDeportivaUpdate,
     request: Request,
     db: Session = Depends(get_db),
-    tecnico: models.Usuario = Depends(require_roles(*_ROLES_TECNICO)),
+    admin: models.Usuario = Depends(require_roles(*_ROLES_ADMIN_GENERAL)),
 ) -> models.CategoriaDeportiva:
     categoria = _obtener_categoria_o_404(db, id_categoria)
 
@@ -324,7 +433,7 @@ def editar_categoria(
 
     _registrar_audit(
         db=db,
-        actor_id=tecnico.id_usuario,
+        actor_id=admin.id_usuario,
         accion="EDITAR_CATEGORIA_DEPORTIVA",
         tabla_afectada="categorias_deportivas",
         registro_id=categoria.id_categoria,
@@ -361,6 +470,7 @@ def listar_jugadores_categoria(
     tecnico: models.Usuario = Depends(require_roles(*_ROLES_TECNICO)),
 ) -> List[models.UsuarioCategoria]:
     _obtener_categoria_o_404(db, id_categoria)
+    _verificar_acceso_categoria(db, tecnico, id_categoria, accion="ver el plantel de esta categoría")
     temporada_filtro = temporada or _temporada_actual()
 
     return (
@@ -387,6 +497,7 @@ def inscribir_jugador(
     id_categoria: int,
     payload: schemas.UsuarioCategoriaCreate,
     request: Request,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     tecnico: models.Usuario = Depends(require_roles(*_ROLES_TECNICO)),
 ) -> models.UsuarioCategoria:
@@ -396,7 +507,8 @@ def inscribir_jugador(
             detail="El id_categoria del body no coincide con el de la URL.",
         )
 
-    _obtener_categoria_o_404(db, id_categoria)
+    categoria = _obtener_categoria_o_404(db, id_categoria)
+    _verificar_acceso_categoria(db, tecnico, id_categoria, accion="inscribir jugadores en esta categoría")
 
     usuario = (
         db.query(models.Usuario)
@@ -463,6 +575,20 @@ def inscribir_jugador(
     db.commit()
     db.refresh(nueva_inscripcion)
 
+    # Aviso al club por mail — no bloquea, no requiere aprobación. Solo se
+    # dispara si esta inscripción la hizo un técnico (no si la hizo el
+    # propio Admin General, que ya tiene visibilidad total del sistema).
+    if "admin_general" not in {ur.rol.nombre for ur in tecnico.roles_asignados}:
+        background_tasks.add_task(
+            task_aviso_admin_jugador_categoria,
+            nombre_tecnico=f"{tecnico.nombre} {tecnico.apellido}",
+            nombre_jugador=f"{usuario.nombre} {usuario.apellido}",
+            nombre_categoria=categoria.nombre,
+            temporada=payload.temporada,
+            id_categoria=id_categoria,
+            accion="agregado",
+        )
+
     return nueva_inscripcion
 
 
@@ -475,6 +601,7 @@ def eliminar_jugador(
     id_categoria: int,
     id_usuario: int,
     request: Request,
+    background_tasks: BackgroundTasks,
     temporada: str = Query(
         default=None,
         description="Año de temporada. Si se omite, usa la temporada actual.",
@@ -482,10 +609,13 @@ def eliminar_jugador(
     db: Session = Depends(get_db),
     tecnico: models.Usuario = Depends(require_roles(*_ROLES_TECNICO)),
 ) -> dict:
+    categoria = _obtener_categoria_o_404(db, id_categoria)
+    _verificar_acceso_categoria(db, tecnico, id_categoria, accion="dar de baja jugadores de esta categoría")
     temporada_filtro = temporada or _temporada_actual()
 
     inscripcion = (
         db.query(models.UsuarioCategoria)
+        .options(joinedload(models.UsuarioCategoria.usuario))
         .filter(
             models.UsuarioCategoria.id_categoria == id_categoria,
             models.UsuarioCategoria.id_usuario == id_usuario,
@@ -502,6 +632,7 @@ def eliminar_jugador(
             ),
         )
 
+    nombre_jugador = f"{inscripcion.usuario.nombre} {inscripcion.usuario.apellido}"
     db.delete(inscripcion)
 
     _registrar_audit(
@@ -518,6 +649,17 @@ def eliminar_jugador(
         ip=_extraer_ip(request),
     )
     db.commit()
+
+    if "admin_general" not in {ur.rol.nombre for ur in tecnico.roles_asignados}:
+        background_tasks.add_task(
+            task_aviso_admin_jugador_categoria,
+            nombre_tecnico=f"{tecnico.nombre} {tecnico.apellido}",
+            nombre_jugador=nombre_jugador,
+            nombre_categoria=categoria.nombre,
+            temporada=temporada_filtro,
+            id_categoria=id_categoria,
+            accion="sacado",
+        )
 
     return {"mensaje": f"Socio {id_usuario} dado de baja del plantel."}
 
@@ -541,6 +683,8 @@ def actualizar_capitan(
 
     Solo un técnico o admin_general puede ejecutar esta acción.
     """
+    _verificar_acceso_categoria(db, tecnico, id_categoria, accion="marcar capitán en esta categoría")
+
     inscripcion = (
         db.query(models.UsuarioCategoria)
         .options(
@@ -585,6 +729,157 @@ def actualizar_capitan(
     db.refresh(inscripcion)
 
     return inscripcion
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# TÉCNICOS A CARGO DE UNA CATEGORÍA (solo Admin General)
+# ═════════════════════════════════════════════════════════════════════════════
+# Base del modelo de permisos acotados: un usuario con rol 'personal_tecnico'
+# solo puede convocar/marcar capitán/gestionar el plantel de las categorías
+# donde tiene una fila acá. Gestionar esta asignación es en sí misma una
+# decisión estructural del club, así que queda reservada al Admin General
+# (mismo criterio que crear categorías o autocompletar plantel).
+
+@router.get(
+    "/tecnicos-categorias",
+    response_model=List[schemas.TecnicoCategoriaResponse],
+    summary="Listar asignaciones técnico ↔ categoría (solo Admin General)",
+)
+def listar_tecnicos_categorias(
+    id_categoria: Optional[int] = Query(default=None),
+    id_usuario: Optional[int] = Query(default=None),
+    db: Session = Depends(get_db),
+    _admin: models.Usuario = Depends(require_roles(*_ROLES_ADMIN_GENERAL)),
+) -> List[models.TecnicoCategoria]:
+    query = db.query(models.TecnicoCategoria).options(
+        joinedload(models.TecnicoCategoria.categoria),
+        joinedload(models.TecnicoCategoria.usuario),
+    )
+    if id_categoria is not None:
+        query = query.filter(models.TecnicoCategoria.id_categoria == id_categoria)
+    if id_usuario is not None:
+        query = query.filter(models.TecnicoCategoria.id_usuario == id_usuario)
+
+    return query.order_by(models.TecnicoCategoria.asignado_at.desc()).all()
+
+
+@router.post(
+    "/tecnicos-categorias",
+    response_model=schemas.TecnicoCategoriaResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Asignar un técnico a una categoría (solo Admin General)",
+)
+def asignar_tecnico_categoria(
+    payload: schemas.TecnicoCategoriaCreate,
+    request: Request,
+    db: Session = Depends(get_db),
+    admin: models.Usuario = Depends(require_roles(*_ROLES_ADMIN_GENERAL)),
+) -> models.TecnicoCategoria:
+    tecnico = (
+        db.query(models.Usuario)
+        .join(models.UsuarioRol, models.UsuarioRol.id_usuario == models.Usuario.id_usuario)
+        .join(models.Rol, models.Rol.id_rol == models.UsuarioRol.id_rol)
+        .filter(
+            models.Usuario.id_usuario == payload.id_usuario,
+            models.Rol.nombre == "personal_tecnico",
+            models.Usuario.fecha_baja.is_(None),
+        )
+        .first()
+    )
+    if tecnico is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="El usuario indicado no existe, está dado de baja, o no tiene el rol 'personal_tecnico'.",
+        )
+
+    categoria = (
+        db.query(models.CategoriaDeportiva)
+        .filter(models.CategoriaDeportiva.id_categoria == payload.id_categoria)
+        .first()
+    )
+    if categoria is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No existe una categoría con id {payload.id_categoria}.",
+        )
+
+    ya_asignado = (
+        db.query(models.TecnicoCategoria)
+        .filter(
+            models.TecnicoCategoria.id_usuario == payload.id_usuario,
+            models.TecnicoCategoria.id_categoria == payload.id_categoria,
+        )
+        .first()
+    )
+    if ya_asignado is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Ese técnico ya está asignado a esta categoría.",
+        )
+
+    asignacion = models.TecnicoCategoria(
+        id_usuario=payload.id_usuario,
+        id_categoria=payload.id_categoria,
+        asignado_por=admin.id_usuario,
+    )
+    db.add(asignacion)
+    db.flush()
+
+    _registrar_audit(
+        db=db,
+        actor_id=admin.id_usuario,
+        accion="ASIGNAR_TECNICO_CATEGORIA",
+        tabla_afectada="tecnicos_categorias",
+        registro_id=None,
+        detalle={"id_usuario": payload.id_usuario, "id_categoria": payload.id_categoria},
+        ip=_extraer_ip(request),
+    )
+    db.commit()
+    db.refresh(asignacion)
+
+    return asignacion
+
+
+@router.delete(
+    "/tecnicos-categorias/{id_usuario}/{id_categoria}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Quitar a un técnico de una categoría (solo Admin General)",
+)
+def quitar_tecnico_categoria(
+    id_usuario: int,
+    id_categoria: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    admin: models.Usuario = Depends(require_roles(*_ROLES_ADMIN_GENERAL)),
+) -> Response:
+    asignacion = (
+        db.query(models.TecnicoCategoria)
+        .filter(
+            models.TecnicoCategoria.id_usuario == id_usuario,
+            models.TecnicoCategoria.id_categoria == id_categoria,
+        )
+        .first()
+    )
+    if asignacion is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Ese técnico no está asignado a esta categoría.",
+        )
+
+    db.delete(asignacion)
+
+    _registrar_audit(
+        db=db,
+        actor_id=admin.id_usuario,
+        accion="QUITAR_TECNICO_CATEGORIA",
+        tabla_afectada="tecnicos_categorias",
+        registro_id=None,
+        detalle={"id_usuario": id_usuario, "id_categoria": id_categoria},
+        ip=_extraer_ip(request),
+    )
+    db.commit()
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -960,7 +1255,7 @@ def crear_evento(
     payload: schemas.EventoCreate,
     request: Request,
     db: Session = Depends(get_db),
-    tecnico: models.Usuario = Depends(require_roles(*_ROLES_TECNICO)),
+    admin: models.Usuario = Depends(require_roles(*_ROLES_ADMIN_GENERAL)),
 ) -> models.Evento:
     if payload.id_categoria is not None:
         _obtener_categoria_o_404(db, payload.id_categoria)
@@ -979,14 +1274,14 @@ def crear_evento(
         fecha_inicio=payload.fecha_inicio,
         fecha_fin=payload.fecha_fin,
         ubicacion=payload.ubicacion,
-        creado_por=tecnico.id_usuario,
+        creado_por=admin.id_usuario,
     )
     db.add(nuevo_evento)
     db.flush()
 
     _registrar_audit(
         db=db,
-        actor_id=tecnico.id_usuario,
+        actor_id=admin.id_usuario,
         accion="CREAR_EVENTO",
         tabla_afectada="eventos",
         registro_id=nuevo_evento.id_evento,
@@ -1009,7 +1304,7 @@ def editar_evento(
     payload: schemas.EventoUpdate,
     request: Request,
     db: Session = Depends(get_db),
-    tecnico: models.Usuario = Depends(require_roles(*_ROLES_TECNICO)),
+    admin: models.Usuario = Depends(require_roles(*_ROLES_ADMIN_GENERAL)),
 ) -> models.Evento:
     evento = _obtener_evento_o_404(db, id_evento)
 
@@ -1057,7 +1352,7 @@ def editar_evento(
 
     _registrar_audit(
         db=db,
-        actor_id=tecnico.id_usuario,
+        actor_id=admin.id_usuario,
         accion="EDITAR_EVENTO",
         tabla_afectada="eventos",
         registro_id=evento.id_evento,
@@ -1094,9 +1389,10 @@ class ConvocatoriaMasivaPayload(BaseModel):
 def listar_convocatorias_evento(
     id_evento: int,
     db: Session = Depends(get_db),
-    _tecnico: models.Usuario = Depends(require_roles(*_ROLES_TECNICO)),
+    tecnico: models.Usuario = Depends(require_roles(*_ROLES_TECNICO)),
 ) -> List[models.Convocatoria]:
-    _obtener_evento_o_404(db, id_evento)
+    evento = _obtener_evento_o_404(db, id_evento)
+    _verificar_acceso_evento(db, tecnico, evento, accion="ver la convocatoria de este evento")
 
     return (
         db.query(models.Convocatoria)
@@ -1131,6 +1427,7 @@ def convocar_jugadores_evento(
         resetea las respuestas que ya dio el resto del plantel.
     """
     evento = _obtener_evento_o_404(db, id_evento)
+    _verificar_acceso_evento(db, tecnico, evento, accion="convocar jugadores a este evento")
     if evento.estado not in ("programado",):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -1216,6 +1513,9 @@ def eliminar_convocatoria(
     db: Session = Depends(get_db),
     tecnico: models.Usuario = Depends(require_roles(*_ROLES_TECNICO)),
 ) -> dict:
+    evento = _obtener_evento_o_404(db, id_evento)
+    _verificar_acceso_evento(db, tecnico, evento, accion="modificar la convocatoria de este evento")
+
     convocatoria = (
         db.query(models.Convocatoria)
         .filter(
@@ -1340,6 +1640,7 @@ def cerrar_convocatoria_evento(
     de `asistencias`.
     """
     evento = _obtener_evento_o_404(db, id_evento)
+    _verificar_acceso_evento(db, tecnico, evento, accion="cerrar la convocatoria de este evento")
 
     convocatorias = (
         db.query(models.Convocatoria)
@@ -1498,9 +1799,10 @@ def registrar_asistencia(
 def listar_asistencias_evento(
     id_evento: int,
     db: Session = Depends(get_db),
-    _tecnico: models.Usuario = Depends(require_roles(*_ROLES_TECNICO)),
+    tecnico: models.Usuario = Depends(require_roles(*_ROLES_TECNICO)),
 ) -> List[models.Asistencia]:
-    _obtener_evento_o_404(db, id_evento)
+    evento = _obtener_evento_o_404(db, id_evento)
+    _verificar_acceso_evento(db, tecnico, evento, accion="ver la planilla de presentismo de este evento")
 
     return (
         db.query(models.Asistencia)

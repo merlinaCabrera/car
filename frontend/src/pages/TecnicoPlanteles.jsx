@@ -901,7 +901,14 @@ export default function TecnicoPlanteles() {
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch(`${API}/deportivo/categorias?incluir_inactivas=true`, {
+      // Admin ve TODAS (incluidas inactivas, para poder reactivarlas).
+      // Técnico ve solo las que tiene asignadas — mismo criterio que usa
+      // el backend para permitir/rechazar sus acciones de gestión, así
+      // nunca ve una tarjeta que después le va a rebotar con 403.
+      const endpoint = esAdminGeneral
+        ? `${API}/deportivo/categorias?incluir_inactivas=true`
+        : `${API}/deportivo/mis-categorias-a-cargo`
+      const res = await fetch(endpoint, {
         headers: { Authorization: `Bearer ${token}` },
       })
       if (!res.ok) throw new Error(`Error ${res.status}: No se pudieron cargar las categorías.`)
@@ -911,7 +918,7 @@ export default function TecnicoPlanteles() {
     } finally {
       setLoading(false)
     }
-  }, [token])
+  }, [token, esAdminGeneral])
 
   useEffect(() => { fetchCategorias() }, [fetchCategorias])
 
@@ -1043,7 +1050,9 @@ export default function TecnicoPlanteles() {
 
         {!loading && categorias.length === 0 && (
           <div className="col-span-full text-center py-12 text-gray-500">
-            Todavía no hay categorías deportivas cargadas.
+            {esAdminGeneral
+              ? 'Todavía no hay categorías deportivas cargadas.'
+              : 'Todavía no estás asignado a ninguna categoría — pedile al Admin General que te asigne una.'}
           </div>
         )}
       </div>

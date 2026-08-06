@@ -251,6 +251,42 @@ async def enviar_aviso_admin_nuevo_socio(
     )
 
 
+async def enviar_aviso_admin_jugador_categoria(
+    nombre_tecnico: str,
+    nombre_jugador: str,
+    nombre_categoria: str,
+    temporada: str,
+    id_categoria: int,
+    accion: str,  # 'agregado' | 'sacado'
+) -> None:
+    """
+    Aviso al club (no al técnico, no al jugador) cuando un técnico agrega o
+    saca manualmente a un jugador de un plantel — fuera del autocompletado
+    masivo por edad, que ya es admin_general-only. Es solo informativo: no
+    bloquea la acción ni requiere aprobación (a diferencia de una solicitud).
+    """
+    es_alta = accion == "agregado"
+    await _enviar(
+        destinatarios=[CLUB_EMAIL],
+        asunto=(
+            f"{'➕' if es_alta else '➖'} {nombre_tecnico} {accion} a {nombre_jugador} "
+            f"{'en' if es_alta else 'de'} {nombre_categoria}"
+        ),
+        template_name="aviso_admin_jugador_categoria.html",
+        body={
+            "emoji": "➕" if es_alta else "➖",
+            "color_titulo": "#1b5e20" if es_alta else "#b71c1c",
+            "titulo": "Jugador agregado a un plantel" if es_alta else "Jugador sacado de un plantel",
+            "nombre_tecnico": nombre_tecnico,
+            "accion_texto": "Agregó al jugador" if es_alta else "Sacó al jugador",
+            "nombre_jugador": nombre_jugador,
+            "nombre_categoria": nombre_categoria,
+            "temporada": temporada,
+            "admin_url": f"{FRONTEND_URL}/gestion-planteles?categoria={id_categoria}",
+        },
+    )
+
+
 async def enviar_reserva_suspendida(
     email_destino: str, nombre_socio: str, instalacion: str,
     fecha_reserva: str, monto_acreditado: str, motivo: str,

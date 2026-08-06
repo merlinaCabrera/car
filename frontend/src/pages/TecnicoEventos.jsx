@@ -52,6 +52,20 @@ import { useExportarAsistencias } from '../hooks/useExportarAsistencias'
 
 const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 
+// ─── Helper: roles del usuario logueado ────────────────────────────────────────
+// Mismo criterio que TecnicoPlanteles.jsx / MainLayout.jsx: soporta array de
+// strings (JWT) y array de objetos (API), priorizando el que tenga datos.
+function useRolesDeUsuario() {
+  const { user } = useAuth()
+  return useMemo(() => {
+    const fromJwt = user?.roles
+    const fromApi = user?.roles_asignados?.map(r => r.rol?.nombre).filter(Boolean)
+    if (fromApi?.length) return fromApi
+    if (fromJwt?.length) return fromJwt
+    return []
+  }, [user])
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const TIPO_CONFIG = {
@@ -611,6 +625,8 @@ export default function TecnicoEventos() {
   const [mostrarFinalizados, setMostrarFinalizados] = useState(false)
   const [categorias, setCategorias] = useState([])
   const [categoriaFiltro, setCategoriaFiltro] = useState('todas')
+  const userRoles = useRolesDeUsuario()
+  const esAdmin = userRoles.includes('admin_general')
   const { exportar, exportando, errorExport } = useExportarConvocatoria()
   const {
     exportar: exportarAsistencias,
@@ -680,6 +696,9 @@ export default function TecnicoEventos() {
 
   // Catálogo de categorías para el filtro — mismo endpoint que usa el modal
   // de "Nuevo Evento". Se pide una sola vez, no depende del filtro de estado.
+  // Deliberadamente sin restringir por rol: el CALENDARIO se puede ver
+  // completo (todas las categorías), lo que está acotado es la GESTIÓN
+  // (convocar, etc.) — ver el set `misCategoriaIds` más abajo.
   useEffect(() => {
     if (!token) return
     fetch(`${API}/deportivo/categorias`, { headers: { Authorization: `Bearer ${token}` } })
@@ -687,6 +706,31 @@ export default function TecnicoEventos() {
       .then(setCategorias)
       .catch(() => {})
   }, [token])
+
+  // Categorías donde el usuario logueado puede GESTIONAR (convocar, marcar
+  // capitán, etc.) — admin_general las tiene todas, personal_tecnico solo
+  // las que le asignaron. Se usa para no mostrarle a un técnico un botón
+  // "Armar Convocatoria" que después le va a rebotar con 403.
+  const [misCategoriaIds, setMisCategoriaIds] = useState(null) // null = "todavía no cargó"
+  useEffect(() => {
+    if (!token) return
+    fetch(`${API}/deportivo/mis-categorias-a-cargo`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(res => (res.ok ? res.json() : []))
+      .then(data => setMisCategoriaIds(new Set(data.map(c => c.id_categoria))))
+      .catch(() => setMisCategoriaIds(new Set()))
+  }, [token])
+
+  // Un evento se puede gestionar si: soy admin, el evento no tiene
+  // categoría asignada (general/institucional, sin dueño), o la categoría
+  // del evento está en mis categorías a cargo. Mientras `misCategoriaIds`
+  // no cargó todavía, no habilitamos nada (evita un parpadeo mostrando el
+  // botón y ocultándolo medio segundo después).
+  const puedeGestionarEvento = useCallback((evento) => {
+    if (esAdmin) return true
+    if (evento.id_categoria == null) return true
+    if (misCategoriaIds === null) return false
+    return misCategoriaIds.has(evento.id_categoria)
+  }, [esAdmin, misCategoriaIds])
 
   // Filtro por categoría: se aplica en cliente porque `eventos` ya viene con
   // `categoria` embebido en cada fila (no hace falta un roundtrip nuevo al
@@ -718,16 +762,19 @@ export default function TecnicoEventos() {
   // ── Render chip para el calendario mensual ─────────────────────────────────
   const renderEventoCalendario = useCallback((evento) => {
     const config = TIPO_CONFIG[evento.tipo] ?? TIPO_CONFIG.otro
+    const gestionable = puedeGestionarEvento(evento)
     return (
       <button
-        onClick={() => setSelectedEvent(evento)}
-        title={evento.titulo}
-        className={`w-full text-left px-1.5 py-0.5 rounded text-[10px] font-semibold text-white truncate transition-opacity hover:opacity-80 ${config.chip}`}
+        onClick={() => { if (gestionable) setSelectedEvent(evento) }}
+        title={gestionable ? evento.titulo : `${evento.titulo} — no estás a cargo de esta categoría`}
+        className={`w-full text-left px-1.5 py-0.5 rounded text-[10px] font-semibold text-white truncate transition-opacity ${config.chip} ${
+          gestionable ? 'hover:opacity-80 cursor-pointer' : 'opacity-50 cursor-not-allowed'
+        }`}
       >
         {formatoHora(evento.fecha_inicio)} {evento.titulo}
       </button>
     )
-  }, [])
+  }, [puedeGestionarEvento])
 
   return (
     <div className="p-6 max-w-4xl mx-auto space-y-6">
@@ -791,13 +838,15 @@ export default function TecnicoEventos() {
             <History size={15} />
             {mostrarFinalizados ? 'Viendo finalizados' : 'Ver finalizados'}
           </button>
-          <button
-            onClick={() => setModalNuevoEventoAbierto(true)}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-green-600 text-white font-semibold hover:bg-green-700 transition-colors shadow-sm text-sm"
-          >
-            <PlusCircle size={16} />
-            Nuevo Evento
-          </button>
+          {esAdmin && (
+            <button
+              onClick={() => setModalNuevoEventoAbierto(true)}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-green-600 text-white font-semibold hover:bg-green-700 transition-colors shadow-sm text-sm"
+            >
+              <PlusCircle size={16} />
+              Nuevo Evento
+            </button>
+          )}
           <button
             onClick={fetchEventos}
             disabled={loading}
@@ -958,22 +1007,34 @@ export default function TecnicoEventos() {
                       </button>
                     )}
 
-                    <button
-                      onClick={() => setEventoEditando(evento)}
-                      title="Editar título, fechas, ubicación, categoría o estado"
-                      className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-200 bg-white text-gray-600 font-semibold hover:bg-gray-50 hover:border-gray-300 transition-colors text-sm"
-                    >
-                      <Pencil size={14} />
-                      Editar
-                    </button>
+                    {esAdmin && (
+                      <button
+                        onClick={() => setEventoEditando(evento)}
+                        title="Editar título, fechas, ubicación, categoría o estado"
+                        className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-200 bg-white text-gray-600 font-semibold hover:bg-gray-50 hover:border-gray-300 transition-colors text-sm"
+                      >
+                        <Pencil size={14} />
+                        Editar
+                      </button>
+                    )}
 
-                    <button
-                      onClick={() => setSelectedEvent(evento)}
-                      className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 transition-colors shadow-sm text-sm"
-                    >
-                      <ListPlus size={15} />
-                      Armar Convocatoria
-                    </button>
+                    {puedeGestionarEvento(evento) ? (
+                      <button
+                        onClick={() => setSelectedEvent(evento)}
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 transition-colors shadow-sm text-sm"
+                      >
+                        <ListPlus size={15} />
+                        Armar Convocatoria
+                      </button>
+                    ) : (
+                      <span
+                        title="No estás a cargo de esta categoría — pedile al Admin que te asigne para poder convocar."
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gray-100 text-gray-400 font-semibold text-sm cursor-not-allowed"
+                      >
+                        <ListPlus size={15} />
+                        Armar Convocatoria
+                      </span>
+                    )}
                   </div>
                 </div>
 

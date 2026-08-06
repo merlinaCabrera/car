@@ -1144,6 +1144,25 @@ class AutocompletarPlantelResponse(BaseModel):
     )
 
 
+# ── Técnicos a cargo de una categoría ─────────────────────────────────────────
+
+class TecnicoCategoriaCreate(BaseModel):
+    """Payload para asignar un técnico a una categoría. Solo Admin General."""
+    id_usuario: int = Field(description="ID del usuario con rol 'personal_tecnico' a asignar.")
+    id_categoria: int
+
+
+class TecnicoCategoriaResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id_usuario: int
+    id_categoria: int
+    asignado_por: Optional[int] = None
+    asignado_at: datetime
+    categoria: Optional[CategoriaDeportivaResponse] = None
+    usuario: Optional[JugadorBusquedaResponse] = None
+
+
 ESTADOS_CONVOCATORIA = ("citado", "confirmado", "rechazado", "ausente", "presente")
 
 

@@ -234,6 +234,29 @@ async def task_aviso_admin_nuevo_socio(
         logger.exception(f"Fallo al enviar mail 'aviso_admin_nuevo_socio' al club (DNI {dni_socio})")
 
 
+async def task_aviso_admin_jugador_categoria(
+    nombre_tecnico: str,
+    nombre_jugador: str,
+    nombre_categoria: str,
+    temporada: str,
+    id_categoria: int,
+    accion: str,
+) -> None:
+    try:
+        await email_service.enviar_aviso_admin_jugador_categoria(
+            nombre_tecnico, nombre_jugador, nombre_categoria, temporada, id_categoria, accion,
+        )
+        logger.info(
+            f"Mail 'aviso_admin_jugador_categoria' enviado al club "
+            f"({nombre_tecnico} {accion} a {nombre_jugador} en categoría {id_categoria})"
+        )
+    except Exception:
+        logger.exception(
+            f"Fallo al enviar mail 'aviso_admin_jugador_categoria' al club "
+            f"(categoría {id_categoria})"
+        )
+
+
 async def task_reserva_suspendida(
     email_destino: str,
     nombre_socio: str,

@@ -148,7 +148,16 @@ const TABS_ROLES = [
   { label: 'Jugadores',         value: 'jugador'             },
   { label: 'Personal Técnico',  value: 'personal_tecnico'    },
   { label: 'Administrativos',   value: 'personal_administrativo' },
+  { label: 'Escáneres',         value: 'admin_temporal'      },
   { label: 'Invitados',         value: 'invitado'            },
+]
+
+const TABS_ESTADO = [
+  { label: 'Todos',    value: ''        },
+  { label: 'Al día',   value: 'al_dia'  },
+  { label: 'Morosos',  value: 'moroso'  },
+  { label: 'Activos',  value: 'activo'  },
+  { label: 'De baja',  value: 'baja'    },
 ]
 
 // ─── Sub-componente: Checkbox elegante para un rol ───────────────────────────
@@ -791,6 +800,7 @@ export default function AdminSocios() {
   const [searchTerm,   setSearchTerm]   = useState('')
   const [approvingId,  setApprovingId]  = useState(null)
   const [rolFiltro,    setRolFiltro]    = useState('')       // tab activo
+  const [estadoFiltro, setEstadoFiltro] = useState('')       // filtro de estado
   const [socioACobrar, setSocioACobrar] = useState(null)    // abre CobroModal
   const [precioCuota,  setPrecioCuota]  = useState(0)       // precio de referencia
   const [diaVencimiento, setDiaVencimiento] = useState(10);
@@ -987,13 +997,27 @@ export default function AdminSocios() {
   // ── Filtro local por texto ─────────────────────────────────────────────────
   const filteredSocios = useMemo(() => {
     const term = searchTerm.toLowerCase()
-    if (!term) return socios
-    return socios.filter(s =>
-      s.nombre.toLowerCase().includes(term) ||
-      s.apellido.toLowerCase().includes(term) ||
-      s.dni.includes(term)
-    )
-  }, [socios, searchTerm])
+    return socios.filter(s => {
+      // Filtro de búsqueda por texto
+      if (term && !(
+        s.nombre.toLowerCase().includes(term) ||
+        s.apellido.toLowerCase().includes(term) ||
+        s.dni.includes(term)
+      )) return false
+
+      // Filtro de estado
+      if (estadoFiltro === 'baja')   return !!s.fecha_baja
+      if (estadoFiltro === 'activo') return !s.fecha_baja
+      if (estadoFiltro === 'al_dia' || estadoFiltro === 'moroso') {
+        if (s.fecha_baja) return false
+        const { moroso } = calcularEstadoFinanciero(s.mes_cubierto_hasta, s.es_becado, diaVencimiento)
+        if (estadoFiltro === 'moroso')  return moroso
+        if (estadoFiltro === 'al_dia')  return !moroso
+      }
+
+      return true
+    })
+  }, [socios, searchTerm, estadoFiltro, diaVencimiento])
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
@@ -1059,6 +1083,23 @@ export default function AdminSocios() {
             onClick={() => { setRolFiltro(tab.value); setSearchTerm('') }}
             className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-all flex-shrink-0 ${
               rolFiltro === tab.value
+                ? 'bg-white text-gray-900 shadow-sm'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* ── Tabs de filtro por estado ─────────────────────────────────────── */}
+      <div className="flex gap-1 overflow-x-auto p-1 bg-gray-100 rounded-xl w-full sm:w-fit [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {TABS_ESTADO.map(tab => (
+          <button
+            key={tab.value}
+            onClick={() => { setEstadoFiltro(tab.value); setSearchTerm('') }}
+            className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-all flex-shrink-0 ${
+              estadoFiltro === tab.value
                 ? 'bg-white text-gray-900 shadow-sm'
                 : 'text-gray-500 hover:text-gray-700'
             }`}

@@ -18,6 +18,14 @@
  *   - GET /admin/dashboard/resumen                           → comercios/catálogo
  *     activos y próximos eventos (ver routers/admin_dashboard.py)
  *
+ * Las 3 llamadas de "pendientes de aprobar" se siguen pidiendo por
+ * separado (son baratas y ya existían), pero se muestran fusionadas en
+ * UNA sola card "Verificaciones" con el desglose como subtexto — antes
+ * eran 3 cards que apuntaban cada una a su propia página
+ * (AdminPagos/AdminTienda/AdminAlquileres); ahora las 3 quedaron
+ * unificadas en /admin/verificaciones, así que tres cards separadas ya
+ * no tenían sentido.
+ *
  * Deliberadamente NO incluye "Ingresos del Mes" ni desglose de socios al
  * día/morosos — viven en /admin/estadisticas (AdminEstadisticas.jsx),
  * accesible con el link "Ver reportes" del header. Ese panel es
@@ -38,8 +46,6 @@ import {
   LayoutDashboard,
   UserPlus,
   CreditCard,
-  ShoppingBag,
-  Home,
   Store,
   Package,
   CalendarDays,
@@ -53,9 +59,16 @@ export default function AdminInicio() {
   const solicitudes = useAdminResource('/admin/usuarios/pendientes', {
     transform: (data) => (Array.isArray(data) ? data.length : data?.total ?? 0),
   })
+  // Un solo contador para las 3 bandejas que ahora viven juntas en
+  // /admin/verificaciones (cuota + alquiler + compra) — antes eran 3
+  // llamadas y 3 cards separadas, una por cada página vieja.
   const cuotasPendientes = useAdminResource('/admin/ordenes/pendientes/count?tipo=cuota')
   const ordenesPendientes = useAdminResource('/admin/ordenes/pendientes/count?tipo=compra')
   const alquileresPendientes = useAdminResource('/admin/ordenes/pendientes/count?tipo=alquiler')
+
+  const verificacionesLoading = cuotasPendientes.loading || ordenesPendientes.loading || alquileresPendientes.loading
+  const verificacionesError = cuotasPendientes.error || ordenesPendientes.error || alquileresPendientes.error
+  const verificacionesTotal = (cuotasPendientes.data ?? 0) + (ordenesPendientes.data ?? 0) + (alquileresPendientes.data ?? 0)
 
   // ── Resumen agregado: catálogo, comercios, eventos ────────────────────────
   const resumen = useAdminResource('/admin/dashboard/resumen')
@@ -87,7 +100,7 @@ export default function AdminInicio() {
         <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
           Pendientes de revisión
         </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <MetricCard
             icon={UserPlus}
             iconColor="bg-amber-100 text-amber-700"
@@ -107,49 +120,17 @@ export default function AdminInicio() {
           <MetricCard
             icon={CreditCard}
             iconColor="bg-orange-100 text-orange-700"
-            titulo="Cuotas"
+            titulo="Verificaciones"
             descripcion={
-              !cuotasPendientes.loading && !cuotasPendientes.error && cuotasPendientes.data === 0
-                ? 'No hay pagos de cuota pendientes.'
-                : 'Pagos de cuota social esperando aprobación.'
+              !verificacionesLoading && !verificacionesError && verificacionesTotal === 0
+                ? 'No hay comprobantes pendientes.'
+                : `${cuotasPendientes.data ?? 0} cuota${cuotasPendientes.data === 1 ? '' : 's'} · ${alquileresPendientes.data ?? 0} alquiler${alquileresPendientes.data === 1 ? '' : 'es'} · ${ordenesPendientes.data ?? 0} compra${ordenesPendientes.data === 1 ? '' : 's'}`
             }
-            valor={cuotasPendientes.data ?? 0}
-            loading={cuotasPendientes.loading}
-            error={cuotasPendientes.error}
-            ctaLabel="Ir a Cuotas"
-            ctaPath="/admin/pagos"
-          />
-
-          <MetricCard
-            icon={ShoppingBag}
-            iconColor="bg-blue-100 text-blue-700"
-            titulo="Órdenes"
-            descripcion={
-              !ordenesPendientes.loading && !ordenesPendientes.error && ordenesPendientes.data === 0
-                ? 'No hay pedidos pendientes.'
-                : 'Indumentaria y otros esperando aprobación.'
-            }
-            valor={ordenesPendientes.data ?? 0}
-            loading={ordenesPendientes.loading}
-            error={ordenesPendientes.error}
-            ctaLabel="Ir a Órdenes"
-            ctaPath="/admin/tienda"
-          />
-
-          <MetricCard
-            icon={Home}
-            iconColor="bg-violet-100 text-violet-700"
-            titulo="Alquileres"
-            descripcion={
-              !alquileresPendientes.loading && !alquileresPendientes.error && alquileresPendientes.data === 0
-                ? 'No hay pagos de alquiler pendientes.'
-                : 'Alquileres de quincho y cancha esperando aprobación.'
-            }
-            valor={alquileresPendientes.data ?? 0}
-            loading={alquileresPendientes.loading}
-            error={alquileresPendientes.error}
-            ctaLabel="Ir a Alquileres"
-            ctaPath="/admin/alquileres"
+            valor={verificacionesTotal}
+            loading={verificacionesLoading}
+            error={verificacionesError}
+            ctaLabel="Ir a Verificaciones"
+            ctaPath="/admin/verificaciones"
           />
         </div>
       </div>

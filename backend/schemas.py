@@ -797,6 +797,10 @@ class UsuarioOrdenSimple(BaseModel):
 class OrdenAdminResponse(OrdenResponse):
     """OrdenResponse enriquecida con los datos del socio, para el panel admin."""
     usuario: Optional[UsuarioOrdenSimple] = None
+    categoria_resumen: str = Field(
+        description="'cuota' | 'alquiler' | 'indumentaria' | 'otro' | 'mixta'. "
+                    "Ver Orden.categoria_resumen en models.py.",
+    )
 
 
 class OrdenAprobarResponse(BaseModel):

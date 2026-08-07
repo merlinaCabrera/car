@@ -14,6 +14,7 @@ Todos los endpoints requieren rol 'admin_general' o 'personal_administrativo'.
 ────────────────────────────────────────────────────────────────────────────────
 """
 from datetime import date, datetime, timezone
+from decimal import Decimal
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
@@ -758,6 +759,80 @@ def actualizar_roles_usuario(
     )
     
     
+# ══════════════════════════════════════════════════════════════════════════════
+# ENDPOINT DEDICADO — AJUSTE DE SALDO A FAVOR
+# Separado del PATCH general por dos razones:
+#   1. Requiere un campo "motivo" obligatorio que queda en audit_log.
+#   2. Deja claro en el historial QUÉ cambió el saldo (ajuste manual vs.
+#      reintegro QR vs. suspensión de reserva — cada uno tiene su acción
+#      distinta en audit_log).
+# Solo admin_general puede tocar el saldo manualmente.
+# ══════════════════════════════════════════════════════════════════════════════
+
+class AjustarSaldoPayload(BaseModel):
+    saldo_a_favor: Decimal = Field(
+        ge=Decimal("0"),
+        description="Nuevo saldo a favor del socio (reemplaza el valor actual, no suma).",
+    )
+    motivo: str = Field(
+        min_length=3,
+        max_length=300,
+        description="Motivo del ajuste. Queda registrado en el audit_log.",
+    )
+
+
+@router.patch(
+    "/{id_usuario}/saldo",
+    response_model=schemas.UsuarioResponse,
+    summary="Ajustar el saldo a favor de un socio (Admin General)",
+)
+def ajustar_saldo(
+    id_usuario: int,
+    payload: AjustarSaldoPayload,
+    db: Session = Depends(get_db),
+    admin: models.Usuario = Depends(require_roles("admin_general")),
+) -> models.Usuario:
+    """
+    Permite al Admin General establecer el saldo a favor de un socio.
+    El valor reemplaza al actual (no acumula). Para acreditar o descontar
+    un monto específico, el frontend calcula el nuevo total y lo envía.
+
+    El motivo es obligatorio y queda en audit_log para trazabilidad completa.
+    """
+    usuario = (
+        db.query(models.Usuario)
+        .filter(models.Usuario.id_usuario == id_usuario)
+        .first()
+    )
+    if not usuario:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado.")
+    if usuario.fecha_baja is not None:
+        raise HTTPException(
+            status_code=400,
+            detail="No se puede modificar el saldo de un usuario dado de baja.",
+        )
+
+    saldo_anterior = usuario.saldo_a_favor
+    usuario.saldo_a_favor = payload.saldo_a_favor
+
+    db.add(models.AuditLog(
+        usuario_actor=admin.id_usuario,
+        accion="AJUSTE_SALDO_A_FAVOR",
+        tabla_afectada="usuarios",
+        registro_id=id_usuario,
+        detalle={
+            "saldo_anterior": str(saldo_anterior),
+            "saldo_nuevo":    str(payload.saldo_a_favor),
+            "diferencia":     str(payload.saldo_a_favor - saldo_anterior),
+            "motivo":         payload.motivo,
+            "ajustado_por_dni": admin.dni,
+        },
+    ))
+    db.commit()
+    db.refresh(usuario)
+    return usuario
+
+
 @router.get(
     "/{id_usuario}",
     response_model=schemas.UsuarioResponse,

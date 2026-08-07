@@ -148,16 +148,7 @@ const TABS_ROLES = [
   { label: 'Jugadores',         value: 'jugador'             },
   { label: 'Personal Técnico',  value: 'personal_tecnico'    },
   { label: 'Administrativos',   value: 'personal_administrativo' },
-  { label: 'Escáneres',         value: 'admin_temporal'      },
   { label: 'Invitados',         value: 'invitado'            },
-]
-
-const TABS_ESTADO = [
-  { label: 'Todos',    value: ''        },
-  { label: 'Al día',   value: 'al_dia'  },
-  { label: 'Morosos',  value: 'moroso'  },
-  { label: 'Activos',  value: 'activo'  },
-  { label: 'De baja',  value: 'baja'    },
 ]
 
 // ─── Sub-componente: Checkbox elegante para un rol ───────────────────────────
@@ -315,6 +306,14 @@ function SocioFormModal({ socio, onClose, onSave, catalogoRoles, token }) {
   const [formErrors,   setFormErrors]   = useState({})
   const [showPassword, setShowPassword] = useState(false)
 
+  // ── Saldo a favor ─────────────────────────────────────────────────────────
+  const [saldoActual,      setSaldoActual]      = useState(0)
+  const [nuevoSaldo,       setNuevoSaldo]       = useState('')
+  const [motivoSaldo,      setMotivoSaldo]      = useState('')
+  const [guardandoSaldo,   setGuardandoSaldo]   = useState(false)
+  const [saldoError,       setSaldoError]       = useState(null)
+  const [saldoExito,       setSaldoExito]       = useState(null)
+
   const [selectedRoles, setSelectedRoles] = useState([])
   const [loadingRoles,  setLoadingRoles]  = useState(false)
   const [errorRoles,    setErrorRoles]    = useState(false)
@@ -352,6 +351,11 @@ function SocioFormModal({ socio, onClose, onSave, catalogoRoles, token }) {
           es_becado:    data.es_becado    ?? false,
           becado_hasta: data.becado_hasta ? String(data.becado_hasta).split('T')[0] : '',
         }))
+
+        // 3. Inicializar saldo a favor
+        const saldo = parseFloat(data.saldo_a_favor ?? 0)
+        setSaldoActual(saldo)
+        setNuevoSaldo(saldo.toFixed(2))
       } catch (err) {
         setErrorRoles(true)
         setApiError(err.message)
@@ -383,6 +387,43 @@ function SocioFormModal({ socio, onClose, onSave, catalogoRoles, token }) {
         : prev
       return [...sinInvitado, id_rol]
     })
+  }
+
+  const handleGuardarSaldo = async () => {
+    setSaldoError(null)
+    setSaldoExito(null)
+    const nuevoValor = parseFloat(nuevoSaldo)
+    if (isNaN(nuevoValor) || nuevoValor < 0) {
+      setSaldoError('Ingresá un monto válido mayor o igual a 0.')
+      return
+    }
+    if (!motivoSaldo.trim() || motivoSaldo.trim().length < 3) {
+      setSaldoError('El motivo es obligatorio (mínimo 3 caracteres).')
+      return
+    }
+    if (nuevoValor === saldoActual) {
+      setSaldoError('El saldo nuevo es igual al actual. No hay cambios.')
+      return
+    }
+    setGuardandoSaldo(true)
+    try {
+      const res = await fetch(`${API}/admin/usuarios/${socio.id_usuario}/saldo`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ saldo_a_favor: nuevoValor, motivo: motivoSaldo.trim() }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.detail ?? 'No se pudo ajustar el saldo.')
+      setSaldoActual(parseFloat(data.saldo_a_favor ?? nuevoValor))
+      setNuevoSaldo(parseFloat(data.saldo_a_favor ?? nuevoValor).toFixed(2))
+      setMotivoSaldo('')
+      setSaldoExito(`Saldo actualizado correctamente a $${parseFloat(data.saldo_a_favor).toLocaleString('es-AR')}.`)
+      setTimeout(() => setSaldoExito(null), 4000)
+    } catch (err) {
+      setSaldoError(err.message)
+    } finally {
+      setGuardandoSaldo(false)
+    }
   }
 
   const validate = () => {
@@ -598,6 +639,81 @@ function SocioFormModal({ socio, onClose, onSave, catalogoRoles, token }) {
               </div>
             )}
 
+            {/* ── Sección Saldo a Favor (solo en modo edición, solo admin_general) ── */}
+            {isEditMode && (
+              <div className="space-y-3 p-4 rounded-xl border-2 border-amber-200 bg-amber-50">
+                <div>
+                  <p className="text-sm font-bold text-amber-900 flex items-center gap-2">
+                    💰 Saldo a Favor
+                  </p>
+                  <p className="text-xs text-amber-700 mt-0.5">
+                    El saldo se aplica automáticamente en el checkout. Ajustalo acá por reintegros manuales,
+                    correcciones o cortesías del club.
+                  </p>
+                </div>
+
+                {/* Saldo actual */}
+                <div className="flex items-center justify-between bg-white rounded-lg px-4 py-2.5 border border-amber-200">
+                  <span className="text-sm text-amber-800 font-medium">Saldo actual</span>
+                  <span className="text-lg font-bold text-amber-900">
+                    ${saldoActual.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+
+                {/* Nuevo saldo */}
+                <div>
+                  <label className="text-xs font-semibold text-amber-800 uppercase tracking-wider">
+                    Nuevo saldo ($)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={nuevoSaldo}
+                    onChange={e => setNuevoSaldo(e.target.value)}
+                    className="form-input mt-1.5 border-amber-300 focus:ring-amber-400 focus:border-amber-400"
+                    placeholder="Ej: 2500.00"
+                  />
+                </div>
+
+                {/* Motivo */}
+                <div>
+                  <label className="text-xs font-semibold text-amber-800 uppercase tracking-wider">
+                    Motivo <span className="font-normal normal-case text-amber-600">(queda en el historial)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={motivoSaldo}
+                    onChange={e => setMotivoSaldo(e.target.value)}
+                    className="form-input mt-1.5 border-amber-300 focus:ring-amber-400 focus:border-amber-400"
+                    placeholder="Ej: Reintegro por lluvia — partido del 20/07"
+                  />
+                </div>
+
+                {saldoError && (
+                  <div className="flex items-start gap-2 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-xs">
+                    <AlertCircle size={13} className="flex-shrink-0 mt-0.5" />
+                    <span>{saldoError}</span>
+                  </div>
+                )}
+                {saldoExito && (
+                  <div className="flex items-center gap-2 p-3 rounded-lg bg-green-50 border border-green-200 text-green-700 text-xs font-medium">
+                    ✓ {saldoExito}
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={handleGuardarSaldo}
+                  disabled={guardandoSaldo || parseFloat(nuevoSaldo) === saldoActual}
+                  className="w-full py-2.5 rounded-xl bg-amber-600 text-white font-bold text-sm hover:bg-amber-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+                >
+                  {guardandoSaldo && <Loader2 size={14} className="animate-spin" />}
+                  {guardandoSaldo ? 'Guardando…' : 'Guardar saldo'}
+                </button>
+              </div>
+            )}
+
             {isEditMode && (
               <SeccionRoles
                 catalogoRoles={catalogoRoles}
@@ -800,7 +916,6 @@ export default function AdminSocios() {
   const [searchTerm,   setSearchTerm]   = useState('')
   const [approvingId,  setApprovingId]  = useState(null)
   const [rolFiltro,    setRolFiltro]    = useState('')       // tab activo
-  const [estadoFiltro, setEstadoFiltro] = useState('')       // filtro de estado
   const [socioACobrar, setSocioACobrar] = useState(null)    // abre CobroModal
   const [precioCuota,  setPrecioCuota]  = useState(0)       // precio de referencia
   const [diaVencimiento, setDiaVencimiento] = useState(10);
@@ -997,27 +1112,13 @@ export default function AdminSocios() {
   // ── Filtro local por texto ─────────────────────────────────────────────────
   const filteredSocios = useMemo(() => {
     const term = searchTerm.toLowerCase()
-    return socios.filter(s => {
-      // Filtro de búsqueda por texto
-      if (term && !(
-        s.nombre.toLowerCase().includes(term) ||
-        s.apellido.toLowerCase().includes(term) ||
-        s.dni.includes(term)
-      )) return false
-
-      // Filtro de estado
-      if (estadoFiltro === 'baja')   return !!s.fecha_baja
-      if (estadoFiltro === 'activo') return !s.fecha_baja
-      if (estadoFiltro === 'al_dia' || estadoFiltro === 'moroso') {
-        if (s.fecha_baja) return false
-        const { moroso } = calcularEstadoFinanciero(s.mes_cubierto_hasta, s.es_becado, diaVencimiento)
-        if (estadoFiltro === 'moroso')  return moroso
-        if (estadoFiltro === 'al_dia')  return !moroso
-      }
-
-      return true
-    })
-  }, [socios, searchTerm, estadoFiltro, diaVencimiento])
+    if (!term) return socios
+    return socios.filter(s =>
+      s.nombre.toLowerCase().includes(term) ||
+      s.apellido.toLowerCase().includes(term) ||
+      s.dni.includes(term)
+    )
+  }, [socios, searchTerm])
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
@@ -1083,23 +1184,6 @@ export default function AdminSocios() {
             onClick={() => { setRolFiltro(tab.value); setSearchTerm('') }}
             className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-all flex-shrink-0 ${
               rolFiltro === tab.value
-                ? 'bg-white text-gray-900 shadow-sm'
-                : 'text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      {/* ── Tabs de filtro por estado ─────────────────────────────────────── */}
-      <div className="flex gap-1 overflow-x-auto p-1 bg-gray-100 rounded-xl w-full sm:w-fit [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {TABS_ESTADO.map(tab => (
-          <button
-            key={tab.value}
-            onClick={() => { setEstadoFiltro(tab.value); setSearchTerm('') }}
-            className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-all flex-shrink-0 ${
-              estadoFiltro === tab.value
                 ? 'bg-white text-gray-900 shadow-sm'
                 : 'text-gray-500 hover:text-gray-700'
             }`}

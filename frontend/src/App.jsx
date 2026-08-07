@@ -10,7 +10,6 @@ import SocioInicio from './pages/SocioInicio';
 import SocioCarrito from './pages/SocioCarrito';
 import SocioCuotas from './pages/SocioCuotas';
 import SocioShopping from './pages/SocioShopping';
-import SocioAlquileres from './pages/SocioAlquileres';
 import SocioPerfil from './pages/SocioPerfil';
 import AdminInicio from './pages/AdminInicio';
 import AdminSolicitudes from './pages/AdminSolicitudes';
@@ -52,7 +51,6 @@ function App() {
               <Route path="/carrito" element={<SocioCarrito />} />
               <Route path="/socio/cuotas" element={<SocioCuotas />} />
               <Route path="/shopping" element={<SocioShopping />} />
-              <Route path="/alquileres" element={<SocioAlquileres />} />
               <Route path="/configuracion" element={<SocioPerfil />} />
               <Route path="/perfil" element={<SocioPerfil />} />
               <Route path="/mis-compras" element={<SocioCompras />} />

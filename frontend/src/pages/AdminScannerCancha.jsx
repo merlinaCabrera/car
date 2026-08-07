@@ -1,25 +1,37 @@
 // frontend/src/pages/AdminScannerCancha.jsx
 /**
- * Escáner de Canchas — control de puerta para el reintegro QR del alquiler.
+ * Escáner de Canchas — control de puerta + reintegro QR del alquiler.
  *
- * Flujo (mismo patrón que AdminScannerEvento.jsx):
+ * Flujo (mismo patrón general que AdminScannerEvento.jsx):
  *   1. El operador ve las "Reservas activas ahora" (GET /reservas/activas)
- *      y elige a cuál está controlando la puerta. A diferencia de eventos
- *      (que duran 3-10hs y se filtran por día), acá se filtra por ventana
+ *      y elige a cuál está controlando la puerta. Se filtra por ventana
  *      horaria real: solo aparecen reservas 'confirmada' cuya fecha_inicio/
  *      fecha_fin contienen el momento actual (con 15min de margen antes).
- *   2. Se abre la cámara con @yudiel/react-qr-scanner.
- *   3. Cada QR leído es el qr_token crudo del socio — a diferencia del
- *      escáner de eventos, ACÁ NO se resuelve primero contra /qr/validar-token:
- *      POST /reservas/{id}/escanear-qr ya recibe el qr_token directo y
- *      resuelve todo en un solo paso (existe, no está de baja, no escaneó
- *      dos veces) porque este escáner no necesita el estado financiero del
- *      socio, solo registrar su asistencia al turno para el reintegro.
- *   4. Feedback grande en pantalla (verde = reintegro registrado, ámbar =
- *      ya había escaneado, rojo = error) y vuelta automática a la cámara.
- *   5. Sin fallback por DNI: el reintegro es un beneficio ligado al QR real
- *      del socio (evita que alguien reclame el reintegro de otro por DNI
- *      tipeado a mano). Si el QR no lee, el portero soluciona en secretaría.
+ *   2. Se abre la cámara con @yudiel/react-qr-scanner. Si el QR no lee,
+ *      hay fallback manual por DNI (POST /reservas/{id}/escanear-qr acepta
+ *      {qr_token} o {dni}).
+ *   3. POST /reservas/{id}/escanear-qr resuelve todo en un solo paso
+ *      (existe, no está de baja, no había escaneado ya) y devuelve
+ *      `ya_registrado: true/false` — la fuente de verdad sobre duplicados
+ *      es la constraint uq_reintegro_reserva_usuario del lado del backend,
+ *      no un estado en memoria del navegador (aguanta recargar la página,
+ *      dos dispositivos escaneando a la vez, etc.).
+ *   4. INMEDIATAMENTE después de un escaneo válido y nuevo (no duplicado),
+ *      se abre un modal preguntándole al admin_temporal cómo se resolvió
+ *      el reintegro — YA, en el momento, sin que nadie tenga que volver
+ *      a esto después desde otra pantalla:
+ *        - Efectivo / Transferencia → ya se le entregó la plata.
+ *        - Ya descontado → el monto ya venía restado del precio cobrado.
+ *        - Cupón (saldo a favor) → se acredita en su billetera interna.
+ *      Dispara PATCH /admin/reintegros/{id}/forma?forma=... con el mismo
+ *      rol de puerta (admin_temporal no necesita ser admin_general para
+ *      esto — ver _ROLES_ESCANEO en admin_reservas.py).
+ *   5. Si el socio YA había escaneado antes (ya_registrado=true) y ese
+ *      reintegro anterior quedó sin resolver ('pendiente' — por ejemplo
+ *      si a alguien se le cortó la conexión a mitad del modal), se le
+ *      ofrece resolverlo ahora en vez de dejarlo pendiente para siempre.
+ *      Si ya estaba resuelto, se muestra informativo, sin volver a tocar
+ *      el saldo por las dudas de un doble click accidental.
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react'
@@ -37,12 +49,25 @@ import {
   XCircle,
   Loader2,
   Users,
+  Search,
+  Banknote,
+  Landmark,
+  Receipt,
+  Ticket,
 } from 'lucide-react'
 
 const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 
 const formatoHora = (fecha) =>
   fecha.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
+
+const FORMA_LABEL = {
+  pendiente: 'Pendiente de definir',
+  efectivo: 'Efectivo',
+  transferencia: 'Transferencia',
+  ya_descontado: 'Ya descontado al cobrar',
+  saldo_a_favor: 'Cupón (saldo a favor)',
+}
 
 // ─── Selector de reserva activa ─────────────────────────────────────────────
 
@@ -72,8 +97,6 @@ function SelectorReserva({ onSeleccionar }) {
 
   useEffect(() => {
     fetchReservasActivas()
-    // Refresco cada 60s: turnos empiezan/terminan en vivo mientras el
-    // portero tiene esta pantalla abierta.
     const t = setInterval(fetchReservasActivas, 60000)
     return () => clearInterval(t)
   }, [fetchReservasActivas])
@@ -152,14 +175,98 @@ function SelectorReserva({ onSeleccionar }) {
   )
 }
 
+// ─── Modal: ¿cómo se resolvió el reintegro? ─────────────────────────────────
+
+function ModalFormaReintegro({ reintegro, onResuelto, onCerrar }) {
+  const { token } = useAuth()
+  const [enviando, setEnviando] = useState(false)
+  const [error, setError] = useState(null)
+
+  const opciones = [
+    { forma: 'efectivo', label: 'Efectivo', sub: 'Ya se le entregó en mano', Icon: Banknote },
+    { forma: 'transferencia', label: 'Transferencia', sub: 'Ya se le transfirió', Icon: Landmark },
+    { forma: 'ya_descontado', label: 'Ya descontado', sub: 'Vino restado del precio cobrado', Icon: Receipt },
+    { forma: 'saldo_a_favor', label: 'Cupón', sub: 'Se acredita como saldo a favor', Icon: Ticket },
+  ]
+
+  const elegir = async (forma) => {
+    setEnviando(true)
+    setError(null)
+    try {
+      const params = new URLSearchParams({ forma })
+      const res = await fetch(`${API}/admin/reintegros/${reintegro.id_reintegro}/forma?${params}`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.detail ?? 'No se pudo registrar la forma del reintegro.')
+      onResuelto(data)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setEnviando(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 space-y-4">
+        <div>
+          <p className="text-lg font-bold text-gray-900">{reintegro.nombreSocio}</p>
+          <p className="text-sm text-gray-500">
+            ¿Cómo se resolvió el reintegro de <span className="font-semibold">${reintegro.monto}</span>?
+          </p>
+        </div>
+
+        {error && (
+          <div className="flex items-center gap-2 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
+            <AlertCircle size={14} className="flex-shrink-0" />
+            {error}
+          </div>
+        )}
+
+        <div className="grid grid-cols-2 gap-2">
+          {opciones.map(({ forma, label, sub, Icon }) => (
+            <button
+              key={forma}
+              disabled={enviando}
+              onClick={() => elegir(forma)}
+              className="flex flex-col items-center gap-1.5 p-4 rounded-xl border border-gray-200 hover:border-emerald-300 hover:bg-emerald-50 disabled:opacity-40 transition-colors text-center"
+            >
+              <Icon size={22} className="text-gray-600" />
+              <span className="text-sm font-semibold text-gray-800">{label}</span>
+              <span className="text-[11px] text-gray-400 leading-tight">{sub}</span>
+            </button>
+          ))}
+        </div>
+
+        {enviando && (
+          <p className="text-xs text-gray-400 flex items-center justify-center gap-2">
+            <Loader2 size={12} className="animate-spin" /> Guardando…
+          </p>
+        )}
+
+        <button
+          onClick={onCerrar}
+          disabled={enviando}
+          className="w-full py-2 text-sm text-gray-400 hover:text-gray-600 disabled:opacity-40 transition-colors"
+        >
+          Decidir más tarde
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // ─── Feedback tras un escaneo ────────────────────────────────────────────────
 
-function FeedbackEscaneo({ resultado }) {
+function FeedbackEscaneo({ resultado, onDefinirForma }) {
   if (!resultado) return null
 
   const config = {
     ok: { classes: 'bg-green-50 border-green-300 text-green-800', Icon: CheckCircle2, label: 'REINTEGRO REGISTRADO' },
-    ya_escaneo: { classes: 'bg-amber-50 border-amber-300 text-amber-800', Icon: AlertTriangle, label: 'YA HABÍA ESCANEADO' },
+    duplicado_resuelto: { classes: 'bg-blue-50 border-blue-300 text-blue-800', Icon: AlertTriangle, label: 'YA HABÍA ESCANEADO' },
+    duplicado_pendiente: { classes: 'bg-amber-50 border-amber-300 text-amber-800', Icon: AlertTriangle, label: 'YA HABÍA ESCANEADO' },
     error: { classes: 'bg-red-50 border-red-300 text-red-800', Icon: XCircle, label: 'ERROR' },
   }[resultado.tipo]
 
@@ -173,7 +280,19 @@ function FeedbackEscaneo({ resultado }) {
       {resultado.monto != null && (
         <p className="text-sm font-mono opacity-75">Reintegro: ${resultado.monto}</p>
       )}
+      {resultado.forma && (
+        <p className="text-sm">Forma: {FORMA_LABEL[resultado.forma] ?? resultado.forma}</p>
+      )}
       {resultado.mensaje && <p className="text-sm">{resultado.mensaje}</p>}
+
+      {resultado.tipo === 'duplicado_pendiente' && (
+        <button
+          onClick={onDefinirForma}
+          className="mt-2 px-4 py-2 rounded-lg bg-amber-600 text-white font-semibold text-sm hover:bg-amber-700 transition-colors"
+        >
+          Definir forma ahora
+        </button>
+      )}
     </div>
   )
 }
@@ -187,23 +306,62 @@ export default function AdminScannerCancha() {
   const [escaneando, setEscaneando] = useState(true)
   const [procesando, setProcesando] = useState(false)
   const [resultado, setResultado] = useState(null)
+  const [modoManual, setModoManual] = useState(false)
+  const [dniManual, setDniManual] = useState('')
+  const [reintegroPendienteModal, setReintegroPendienteModal] = useState(null)
 
   const ultimoTokenRef = useRef(null)
   const bloqueadoRef = useRef(false)
 
-  const escanearQR = async (qrToken) => {
+  const escanear = async (body) => {
     const res = await fetch(`${API}/admin/reservas/${reservaActiva.id_reserva}/escanear-qr`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ qr_token: qrToken }),
+      body: JSON.stringify(body),
     })
     const data = await res.json().catch(() => ({}))
-    if (!res.ok) {
-      const err = new Error(data.detail ?? 'No se pudo registrar el escaneo.')
-      err.status = res.status
-      throw err
-    }
+    if (!res.ok) throw new Error(data.detail ?? 'No se pudo registrar el escaneo.')
     return data
+  }
+
+  const procesarReintegro = (reintegro) => {
+    if (!reintegro.ya_registrado) {
+      // Escaneo nuevo — abrir el modal de una para definir la forma YA,
+      // sin dejarlo pendiente para que alguien lo resuelva después.
+      setResultado({
+        tipo: 'ok',
+        id_reintegro: reintegro.id_reintegro,
+        nombreSocio: reintegro.nombre_socio,
+        monto: reintegro.monto,
+      })
+      setReintegroPendienteModal({
+        id_reintegro: reintegro.id_reintegro,
+        nombreSocio: reintegro.nombre_socio,
+        monto: reintegro.monto,
+      })
+      return
+    }
+
+    // Ya había un reintegro para este socio en esta reserva.
+    if (reintegro.forma === 'pendiente') {
+      // Quedó sin resolver de un escaneo anterior (ej: se cortó la conexión
+      // justo antes de elegir en el modal) — lo ofrecemos resolver ahora
+      // en vez de dejarlo pendiente para siempre.
+      setResultado({
+        tipo: 'duplicado_pendiente',
+        id_reintegro: reintegro.id_reintegro,
+        nombreSocio: reintegro.nombre_socio,
+        monto: reintegro.monto,
+        mensaje: 'Quedó sin definir la última vez.',
+      })
+    } else {
+      setResultado({
+        tipo: 'duplicado_resuelto',
+        nombreSocio: reintegro.nombre_socio,
+        monto: reintegro.monto,
+        forma: reintegro.forma,
+      })
+    }
   }
 
   const handleScan = async (detectedCodes) => {
@@ -217,28 +375,40 @@ export default function AdminScannerCancha() {
     setEscaneando(false)
 
     try {
-      const reintegro = await escanearQR(qrToken)
-      setResultado({
-        tipo: 'ok',
-        nombreSocio: reintegro.nombre_socio,
-        monto: reintegro.monto,
-      })
+      procesarReintegro(await escanear({ qr_token: qrToken }))
     } catch (err) {
-      // 409 = ya había escaneado en esta reserva (conflicto esperado, no un error grave)
-      if (err.status === 409) {
-        setResultado({ tipo: 'ya_escaneo', mensaje: err.message })
-      } else {
-        setResultado({ tipo: 'error', mensaje: err.message })
-      }
+      setResultado({ tipo: 'error', mensaje: err.message })
     } finally {
       setProcesando(false)
     }
   }
 
+  const handleBuscarPorDni = async (e) => {
+    e.preventDefault()
+    if (!dniManual.trim()) return
+    setProcesando(true)
+    setEscaneando(false)
+    try {
+      procesarReintegro(await escanear({ dni: dniManual.trim() }))
+    } catch (err) {
+      setResultado({ tipo: 'error', mensaje: err.message })
+    } finally {
+      setProcesando(false)
+      setDniManual('')
+    }
+  }
+
+  const handleModalResuelto = (reintegroActualizado) => {
+    setReintegroPendienteModal(null)
+    setResultado(prev => (prev ? { ...prev, forma: reintegroActualizado.forma, tipo: 'ok' } : prev))
+  }
+
   const volverAEscanear = () => {
     setResultado(null)
+    setReintegroPendienteModal(null)
     ultimoTokenRef.current = null
     bloqueadoRef.current = false
+    setModoManual(false)
     setEscaneando(true)
   }
 
@@ -248,6 +418,14 @@ export default function AdminScannerCancha() {
 
   return (
     <div className="p-6 max-w-md mx-auto space-y-5">
+
+      {reintegroPendienteModal && (
+        <ModalFormaReintegro
+          reintegro={reintegroPendienteModal}
+          onResuelto={handleModalResuelto}
+          onCerrar={() => setReintegroPendienteModal(null)}
+        />
+      )}
 
       {/* Header con la reserva activa */}
       <div className="flex items-center gap-3">
@@ -267,7 +445,7 @@ export default function AdminScannerCancha() {
       </div>
 
       {/* Cámara */}
-      {escaneando && (
+      {escaneando && !modoManual && (
         <div className="rounded-2xl overflow-hidden border border-gray-200 shadow-sm aspect-square bg-black">
           <Scanner
             onScan={handleScan}
@@ -284,9 +462,16 @@ export default function AdminScannerCancha() {
         </div>
       )}
 
-      {!procesando && resultado && (
+      {!procesando && resultado && !reintegroPendienteModal && (
         <>
-          <FeedbackEscaneo resultado={resultado} />
+          <FeedbackEscaneo
+            resultado={resultado}
+            onDefinirForma={() => setReintegroPendienteModal({
+              id_reintegro: resultado.id_reintegro,
+              nombreSocio: resultado.nombreSocio,
+              monto: resultado.monto,
+            })}
+          />
           <button
             onClick={volverAEscanear}
             className="w-full py-3 rounded-xl bg-slate-900 text-white font-bold hover:bg-slate-800 transition-colors"
@@ -294,6 +479,36 @@ export default function AdminScannerCancha() {
             Escanear siguiente
           </button>
         </>
+      )}
+
+      {/* Fallback manual por DNI */}
+      {escaneando && (
+        <div className="pt-2">
+          {!modoManual ? (
+            <button
+              onClick={() => setModoManual(true)}
+              className="w-full flex items-center justify-center gap-2 py-2.5 text-sm font-medium text-gray-500 hover:text-gray-700 transition-colors"
+            >
+              <Search size={14} /> El QR no lee — buscar por DNI
+            </button>
+          ) : (
+            <form onSubmit={handleBuscarPorDni} className="flex gap-2">
+              <input
+                value={dniManual}
+                onChange={e => setDniManual(e.target.value)}
+                placeholder="DNI del socio"
+                className="form-input flex-1"
+                autoFocus
+              />
+              <button type="submit" disabled={procesando} className="px-4 py-2 rounded-lg bg-slate-900 text-white font-semibold hover:bg-slate-800 disabled:opacity-50 transition-colors flex-shrink-0">
+                Buscar
+              </button>
+              <button type="button" onClick={() => setModoManual(false)} className="px-3 py-2 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors flex-shrink-0">
+                <ArrowLeft size={16} />
+              </button>
+            </form>
+          )}
+        </div>
       )}
     </div>
   )

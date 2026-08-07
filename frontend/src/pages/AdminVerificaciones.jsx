@@ -48,11 +48,16 @@ import {
   Loader2,
   X,
   Check,
+  CheckCheck,
   FileText,
   ExternalLink,
   Receipt,
   Package,
   User,
+  ChevronDown,
+  ChevronUp,
+  CheckCircle2,
+  XCircle,
 } from 'lucide-react'
 
 const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
@@ -140,7 +145,7 @@ function VerificacionModal({ orden, onClose, onActionSuccess, token }) {
         const err = await res.json().catch(() => ({}))
         throw new Error(err.detail ?? 'Error al aprobar la orden.')
       }
-      onActionSuccess()
+      onActionSuccess(orden.id_orden, 'aprobada')
     } catch (err) {
       setApiError(err.message)
     } finally {
@@ -165,7 +170,7 @@ function VerificacionModal({ orden, onClose, onActionSuccess, token }) {
         const err = await res.json().catch(() => ({}))
         throw new Error(err.detail ?? 'Error al rechazar la orden.')
       }
-      onActionSuccess()
+      onActionSuccess(orden.id_orden, 'rechazada')
     } catch (err) {
       setApiError(err.message)
     } finally {
@@ -350,19 +355,31 @@ function VerificacionModal({ orden, onClose, onActionSuccess, token }) {
 }
 
 // ─── Tarjeta agrupada por Pago ────────────────────────────────────────────────
+// Colapsada por defecto: solo el "título" (comprobante, socio, monto) queda
+// siempre visible; el detalle de cada Orden (con su propio Verificar) se
+// despliega al click. Si el Pago tiene más de una Orden, aparece un botón
+// para aprobar todas las que sigan pendientes de un solo tiro.
 
-function TarjetaPago({ pago, ordenes, onVerificar }) {
+function TarjetaPago({ pago, ordenes, resueltosEnSesion, onVerificar, onAprobarTodo, aprobandoTodo }) {
+  const [expandido, setExpandido] = useState(false)
   const metodo = METODO_PAGO_BADGE[pago?.metodo_pago] ?? METODO_PAGO_BADGE.transferencia
   const esMultiple = ordenes.length > 1
   const socio = ordenes[0]?.usuario
+
+  const pendientes = ordenes.filter(o => !resueltosEnSesion.has(o.id_orden))
+  const hayPendientes = pendientes.length > 0
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
       {/* Header del Pago — el comprobante único, visible una sola vez aunque
           haya varias Órdenes abajo. Esto es lo que antes se veía duplicado
           en 2 o 3 pantallas distintas sin ninguna señal de que era la misma
-          plata. */}
-      <div className="p-4 sm:p-5 bg-gray-50 border-b border-gray-100 flex items-center justify-between gap-3 flex-wrap">
+          plata. Clickeable: expande/colapsa el detalle de abajo. */}
+      <button
+        type="button"
+        onClick={() => setExpandido(e => !e)}
+        className="w-full text-left p-4 sm:p-5 bg-gray-50 hover:bg-gray-100 border-b border-gray-100 flex items-center justify-between gap-3 flex-wrap transition-colors"
+      >
         <div className="flex items-center gap-3 min-w-0">
           <div className="p-2 rounded-xl bg-white border border-gray-200 flex-shrink-0">
             <Receipt size={18} className="text-gray-400" />
@@ -378,6 +395,11 @@ function TarjetaPago({ pago, ordenes, onVerificar }) {
                   {ordenes.length} órdenes en este comprobante
                 </span>
               )}
+              {!hayPendientes && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700">
+                  <CheckCircle2 size={11} /> Verificado
+                </span>
+              )}
             </div>
             <p className="text-sm text-gray-500 flex items-center gap-1.5 mt-0.5 truncate">
               <User size={12} className="flex-shrink-0" />
@@ -385,37 +407,85 @@ function TarjetaPago({ pago, ordenes, onVerificar }) {
             </p>
           </div>
         </div>
-        <div className="text-right flex-shrink-0">
-          <p className="text-xs text-gray-400">Monto transferido (declarado)</p>
-          <p className="text-lg font-bold text-gray-900">{formatoMoneda.format(pago?.monto_total)}</p>
+        <div className="flex items-center gap-4 flex-shrink-0">
+          <div className="text-right">
+            <p className="text-xs text-gray-400">Monto transferido (declarado)</p>
+            <p className="text-lg font-bold text-gray-900">{formatoMoneda.format(pago?.monto_total)}</p>
+          </div>
+          {expandido ? <ChevronUp size={18} className="text-gray-400" /> : <ChevronDown size={18} className="text-gray-400" />}
         </div>
-      </div>
+      </button>
 
-      {/* Filas — una por Orden, cada una con su propio Aprobar/Rechazar */}
-      <div className="divide-y divide-gray-50">
-        {ordenes.map(o => (
-          <div key={o.id_orden} className="p-4 sm:p-5 flex items-center justify-between gap-4 flex-wrap">
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2 flex-wrap mb-1">
-                <CategoriaOrdenBadge categoria={o.categoria_resumen} />
-                <span className="text-xs text-gray-400">Orden #{o.id_orden}</span>
-              </div>
-              <p className="text-sm text-gray-600 truncate">
-                {(o.detalles ?? []).map(d => `${d.producto?.nombre ?? 'Producto'} x${d.cantidad}`).join(', ') || 'Sin ítems'}
+      {expandido && (
+        <>
+          {/* Aprobar todo — solo si hay 2+ órdenes y más de una sigue pendiente.
+              Con una sola orden pendiente no aporta nada sobre el botón
+              individual de la fila, así que no se muestra. */}
+          {esMultiple && pendientes.length > 1 && (
+            <div className="px-4 sm:px-5 py-3 bg-emerald-50 border-b border-emerald-100 flex items-center justify-between gap-3 flex-wrap">
+              <p className="text-xs text-emerald-800">
+                {pendientes.length} de {ordenes.length} órdenes siguen pendientes en este comprobante.
               </p>
-            </div>
-            <div className="flex items-center gap-3 flex-shrink-0">
-              <span className="text-sm font-semibold text-gray-900">{formatoMoneda.format(o.monto_total)}</span>
               <button
-                onClick={() => onVerificar(o)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-blue-700 bg-blue-50 hover:bg-blue-100 font-semibold text-sm transition-colors"
+                onClick={(e) => { e.stopPropagation(); onAprobarTodo(pago, pendientes) }}
+                disabled={aprobandoTodo}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs transition-colors disabled:opacity-50"
               >
-                Verificar
+                {aprobandoTodo ? <Loader2 size={13} className="animate-spin" /> : <CheckCheck size={13} />}
+                Aprobar Pago Completo
               </button>
             </div>
+          )}
+
+          {/* Filas — una por Orden. Las ya resueltas en esta sesión quedan
+              visibles en gris (con su resultado) en vez de desaparecer, para
+              que se vea de un vistazo qué faltaba y qué ya se resolvió. */}
+          <div className="divide-y divide-gray-50">
+            {ordenes.map(o => {
+              const resuelta = resueltosEnSesion.get(o.id_orden)
+              return (
+                <div
+                  key={o.id_orden}
+                  className={`p-4 sm:p-5 flex items-center justify-between gap-4 flex-wrap ${resuelta ? 'bg-gray-50/60' : ''}`}
+                >
+                  <div className={`min-w-0 flex-1 ${resuelta ? 'opacity-50' : ''}`}>
+                    <div className="flex items-center gap-2 flex-wrap mb-1">
+                      <CategoriaOrdenBadge categoria={o.categoria_resumen} />
+                      <span className="text-xs text-gray-400">Orden #{o.id_orden}</span>
+                    </div>
+                    <p className="text-sm text-gray-600 truncate">
+                      {(o.detalles ?? []).map(d => `${d.producto?.nombre ?? 'Producto'} x${d.cantidad}`).join(', ') || 'Sin ítems'}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3 flex-shrink-0">
+                    <span className={`text-sm font-semibold ${resuelta ? 'text-gray-400' : 'text-gray-900'}`}>
+                      {formatoMoneda.format(o.monto_total)}
+                    </span>
+                    {resuelta === 'aprobada' && (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-green-700 bg-green-50 font-semibold text-sm">
+                        <CheckCircle2 size={14} /> Aprobada
+                      </span>
+                    )}
+                    {resuelta === 'rechazada' && (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-red-600 bg-red-50 font-semibold text-sm">
+                        <XCircle size={14} /> Rechazada
+                      </span>
+                    )}
+                    {!resuelta && (
+                      <button
+                        onClick={() => onVerificar(o)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-blue-700 bg-blue-50 hover:bg-blue-100 font-semibold text-sm transition-colors"
+                      >
+                        Verificar
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
           </div>
-        ))}
-      </div>
+        </>
+      )}
     </div>
   )
 }
@@ -433,6 +503,15 @@ export default function AdminVerificaciones() {
     FILTROS_TIPO.some(f => f.value === tipoInicial) ? tipoInicial : ''
   )
   const [ordenSeleccionada, setOrdenSeleccionada] = useState(null)
+  // Órdenes resueltas (aprobada/rechazada) durante esta sesión de la pantalla
+  // — Map<id_orden, 'aprobada'|'rechazada'>. Se usa para seguir mostrando la
+  // fila en gris con su resultado en vez de que desaparezca de golpe: el
+  // backend ya no la devuelve en /pendientes apenas se resuelve, así que si
+  // refrescáramos la lista completa la perderíamos. Se limpia al cambiar de
+  // tab o al tocar "Actualizar" — momentos en los que tiene sentido arrancar
+  // de cero.
+  const [resueltosEnSesion, setResueltosEnSesion] = useState(new Map())
+  const [aprobandoTodoPagoId, setAprobandoTodoPagoId] = useState(null)
 
   const estadisticas = useAdminResource('/admin/pagos/estadisticas')
   const ordenesPath = filtroTipo
@@ -440,14 +519,68 @@ export default function AdminVerificaciones() {
     : '/admin/ordenes/pendientes'
   const ordenesResource = useAdminResource(ordenesPath)
 
+  const cambiarFiltro = (tipo) => {
+    setFiltroTipo(tipo)
+    setResueltosEnSesion(new Map())
+  }
+
   const refrescarTodo = () => {
     estadisticas.refetch()
     ordenesResource.refetch()
+    setResueltosEnSesion(new Map())
   }
 
-  const handleAccionExitosa = () => {
+  // Tras aprobar/rechazar UNA orden desde el modal: no se re-pide la lista
+  // completa (eso haría desaparecer la fila al toque, perdiendo el feedback
+  // visual). Solo se marca localmente como resuelta y se refrescan las
+  // estadísticas de arriba (esas sí cambian de verdad: socios al día/morosos).
+  const handleAccionExitosa = (idOrden, resultado) => {
     setOrdenSeleccionada(null)
-    refrescarTodo()
+    setResueltosEnSesion(prev => new Map(prev).set(idOrden, resultado))
+    estadisticas.refetch()
+  }
+
+  // "Aprobar Pago Completo" — aprueba, una por una, todas las órdenes que
+  // todavía estén pendientes dentro de un mismo Pago. Reusa el endpoint
+  // individual de siempre (POST /admin/ordenes/{id}/aprobar); no existe
+  // (ni hace falta) un endpoint de aprobación masiva en el backend — cada
+  // Orden se sigue aprobando de a una, solo que el click es uno solo.
+  // Sin ajuste de "meses a imputar": si alguna orden de cuota necesita ese
+  // ajuste manual, hay que aprobarla individual desde "Verificar".
+  const handleAprobarTodo = async (pago, pendientes) => {
+    const confirmado = window.confirm(
+      `¿Aprobar las ${pendientes.length} órdenes pendientes del Pago #${pago?.id_pago}? Esta acción no se puede deshacer.`
+    )
+    if (!confirmado) return
+
+    setAprobandoTodoPagoId(pago?.id_pago)
+    const resultados = new Map()
+    for (const orden of pendientes) {
+      try {
+        const res = await fetch(`${API}/admin/ordenes/${orden.id_orden}/aprobar`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({}),
+        })
+        resultados.set(orden.id_orden, res.ok ? 'aprobada' : 'error')
+      } catch {
+        resultados.set(orden.id_orden, 'error')
+      }
+    }
+    setResueltosEnSesion(prev => {
+      const siguiente = new Map(prev)
+      for (const [idOrden, resultado] of resultados) {
+        if (resultado !== 'error') siguiente.set(idOrden, resultado)
+      }
+      return siguiente
+    })
+    setAprobandoTodoPagoId(null)
+    estadisticas.refetch()
+
+    const fallidas = [...resultados.values()].filter(r => r === 'error').length
+    if (fallidas > 0) {
+      window.alert(`${fallidas} de ${pendientes.length} órdenes no se pudieron aprobar. Revisalas individualmente con "Verificar".`)
+    }
   }
 
   // Agrupar el array plano de Órdenes por id_pago — cada grupo se convierte
@@ -554,7 +687,7 @@ export default function AdminVerificaciones() {
             {FILTROS_TIPO.map(f => (
               <button
                 key={f.value}
-                onClick={() => setFiltroTipo(f.value)}
+                onClick={() => cambiarFiltro(f.value)}
                 className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
                   filtroTipo === f.value ? 'bg-slate-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
@@ -590,7 +723,10 @@ export default function AdminVerificaciones() {
                 key={pago?.id_pago ?? ordenes[0].id_orden}
                 pago={pago}
                 ordenes={ordenes}
+                resueltosEnSesion={resueltosEnSesion}
                 onVerificar={setOrdenSeleccionada}
+                onAprobarTodo={handleAprobarTodo}
+                aprobandoTodo={aprobandoTodoPagoId === pago?.id_pago}
               />
             ))}
 

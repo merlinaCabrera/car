@@ -718,7 +718,7 @@ class ReintegroQR(Base):
     monto: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
     forma: Mapped[str] = mapped_column(
         String(20), nullable=False, server_default=text("'pendiente'"),
-        comment="'pendiente' | 'saldo_a_favor' | 'efectivo' | 'transferencia'",
+        comment="'pendiente' | 'saldo_a_favor' | 'efectivo' | 'transferencia' | 'ya_descontado'",
     )
     escaneado_por: Mapped[int] = mapped_column(
         ForeignKey("usuarios.id_usuario"), nullable=False,
@@ -742,7 +742,7 @@ class ReintegroQR(Base):
     __table_args__ = (
         UniqueConstraint("id_reserva", "id_usuario", name="uq_reintegro_reserva_usuario"),
         CheckConstraint(
-            "forma IN ('pendiente', 'saldo_a_favor', 'efectivo', 'transferencia')",
+            "forma IN ('pendiente', 'saldo_a_favor', 'efectivo', 'transferencia', 'ya_descontado')",
             name="chk_reintegro_forma",
         ),
         Index("idx_reintegros_reserva", "id_reserva"),

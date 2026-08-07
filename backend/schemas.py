@@ -540,7 +540,19 @@ class SuspenderReservaResponse(BaseModel):
     nuevo_saldo: Decimal
 
 class EscanearQRPayload(BaseModel):
-    qr_token: str = Field(description="qr_token del socio, leído del QR físico.")
+    qr_token: Optional[str] = Field(
+        default=None, description="qr_token del socio, leído del QR físico.",
+    )
+    dni: Optional[str] = Field(
+        default=None,
+        description=(
+            "DNI del socio, como fallback manual si el QR no lee. A "
+            "diferencia del QR (que es un token único e infalsificable en la "
+            "práctica), el DNI lo tipea el operador a mano — por eso el "
+            "reintegro por DNI queda igual de registrado, pero es buena "
+            "práctica que el portero confirme identidad visualmente antes."
+        ),
+    )
 
 
 class ReintegroQRResponse(BaseModel):
@@ -553,6 +565,14 @@ class ReintegroQRResponse(BaseModel):
     monto: Decimal
     forma: str
     escaneado_at: datetime
+    ya_registrado: bool = Field(
+        default=False,
+        description=(
+            "TRUE si este socio YA tenía un reintegro registrado para esta "
+            "reserva (constraint uq_reintegro_reserva_usuario) — no se creó "
+            "una fila nueva, se devolvió la existente tal cual estaba."
+        ),
+    )
     
 
 

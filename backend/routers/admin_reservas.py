@@ -18,6 +18,7 @@ from typing import List, Optional
 from datetime import date, datetime, timedelta, timezone
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request, status
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session, joinedload
 
 import models
@@ -284,6 +285,12 @@ def escanear_qr(
     db: Session = Depends(get_db),
     operador: models.Usuario = Depends(require_roles(*_ROLES_ESCANEO)),
 ) -> schemas.ReintegroQRResponse:
+    if not payload.qr_token and not payload.dni:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Hace falta qr_token o dni para identificar al socio.",
+        )
+
     reserva = (
         db.query(models.ReservaInstalacion)
         .filter(models.ReservaInstalacion.id_reserva == id_reserva)
@@ -302,52 +309,58 @@ def escanear_qr(
             detail="Esta reserva todavía no tiene un reintegro unitario configurado. Cargalo primero en /admin/reservas/{id}/reparto.",
         )
 
-    socio = (
-        db.query(models.Usuario)
-        .filter(models.Usuario.qr_token == payload.qr_token)
-        .first()
-    )
-    if socio is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="QR inválido: socio no encontrado.")
+    query_socio = db.query(models.Usuario)
+    if payload.qr_token:
+        socio = query_socio.filter(models.Usuario.qr_token == payload.qr_token).first()
+        if socio is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="QR inválido: socio no encontrado.")
+    else:
+        socio = query_socio.filter(models.Usuario.dni == payload.dni).first()
+        if socio is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No existe ningún socio con ese DNI.")
 
-    ya_escaneo = (
+    # INSERT ... ON CONFLICT DO NOTHING apoyado en uq_reintegro_reserva_usuario:
+    # protege contra el mismo socio escaneado dos veces casi al mismo tiempo
+    # (doble tap del lector, o dos operadores escaneando a la vez) de forma
+    # atómica — a diferencia de "consultar si ya existe y después insertar",
+    # que tiene una ventana de carrera donde dos escaneos simultáneos podrían
+    # pasar el chequeo los dos y terminar duplicando el reintegro.
+    stmt = pg_insert(models.ReintegroQR.__table__).values(
+        id_reserva=id_reserva,
+        id_usuario=socio.id_usuario,
+        monto=reserva.monto_reintegro_unitario,
+        forma="pendiente",
+        escaneado_por=operador.id_usuario,
+    ).on_conflict_do_nothing(constraint="uq_reintegro_reserva_usuario")
+
+    resultado = db.execute(stmt)
+    se_inserto = (resultado.rowcount or 0) > 0
+
+    if se_inserto:
+        registrar_audit(
+            db=db,
+            actor_id=operador.id_usuario,
+            accion="escanear_qr_reintegro",
+            tabla_afectada="reintegros_qr",
+            registro_id=reserva.id_reserva,
+            detalle={
+                "id_usuario_socio": socio.id_usuario,
+                "monto": str(reserva.monto_reintegro_unitario),
+                "metodo": "qr" if payload.qr_token else "dni",
+            },
+            ip=extraer_ip(request),
+        )
+
+    db.commit()
+
+    reintegro = (
         db.query(models.ReintegroQR)
         .filter(
             models.ReintegroQR.id_reserva == id_reserva,
             models.ReintegroQR.id_usuario == socio.id_usuario,
         )
-        .first()
+        .one()
     )
-    if ya_escaneo is not None:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=f"{socio.nombre} {socio.apellido} ya escaneó su QR en esta reserva.",
-        )
-
-    reintegro = models.ReintegroQR(
-        id_reserva=id_reserva,
-        id_usuario=socio.id_usuario,
-        monto=reserva.monto_reintegro_unitario,
-        forma="pendiente",  # el admin decide después efectivo / transferencia / saldo_a_favor
-        escaneado_por=operador.id_usuario,
-    )
-    db.add(reintegro)
-
-    registrar_audit(
-        db=db,
-        actor_id=operador.id_usuario,
-        accion="escanear_qr_reintegro",
-        tabla_afectada="reintegros_qr",
-        registro_id=reserva.id_reserva,
-        detalle={
-            "id_usuario_socio": socio.id_usuario,
-            "monto": str(reserva.monto_reintegro_unitario),
-        },
-        ip=extraer_ip(request),
-    )
-
-    db.commit()
-    db.refresh(reintegro)
 
     return schemas.ReintegroQRResponse(
         id_reintegro=reintegro.id_reintegro,
@@ -357,6 +370,7 @@ def escanear_qr(
         monto=reintegro.monto,
         forma=reintegro.forma,
         escaneado_at=reintegro.escaneado_at,
+        ya_registrado=not se_inserto,
     )
 
 
@@ -367,12 +381,20 @@ def escanear_qr(
 )
 def definir_forma_reintegro(
     id_reintegro: int,
-    forma: str = Query(..., description="'efectivo' | 'transferencia' | 'saldo_a_favor'"),
+    forma: str = Query(..., description="'efectivo' | 'transferencia' | 'saldo_a_favor' | 'ya_descontado'"),
     request: Request = None,
     db: Session = Depends(get_db),
-    admin: models.Usuario = Depends(require_roles(*_ROLES_ADMIN)),
+    admin: models.Usuario = Depends(require_roles(*_ROLES_ESCANEO)),
 ) -> schemas.ReintegroQRResponse:
-    if forma not in ("efectivo", "transferencia", "saldo_a_favor"):
+    """
+    Define/corrige cómo se resolvió un reintegro. Mismo set de roles que
+    escanear_qr (_ROLES_ESCANEO): la idea es que el admin_temporal de la
+    puerta lo llame INMEDIATAMENTE después de escanear (desde el modal de
+    AdminScannerCancha.jsx), no que quede pendiente para que el Admin
+    General lo resuelva después. admin_general/personal_administrativo
+    también pueden usarlo para corregir un reintegro más tarde si hace falta.
+    """
+    if forma not in ("efectivo", "transferencia", "saldo_a_favor", "ya_descontado"):
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Forma inválida.")
 
     reintegro = (
@@ -384,15 +406,33 @@ def definir_forma_reintegro(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Reintegro no encontrado.")
 
     forma_anterior = reintegro.forma
-
-    # Si se define como saldo_a_favor, acreditamos en la billetera interna del socio.
-    if forma == "saldo_a_favor" and forma_anterior != "saldo_a_favor":
-        socio = (
-            db.query(models.Usuario)
-            .filter(models.Usuario.id_usuario == reintegro.id_usuario)
-            .first()
+    if forma == forma_anterior:
+        # Nada que cambiar — evita re-acreditar o re-debitar dos veces si se
+        # llama dos veces con el mismo valor (ej: doble tap en la UI).
+        socio = db.query(models.Usuario).filter(models.Usuario.id_usuario == reintegro.id_usuario).first()
+        return schemas.ReintegroQRResponse(
+            id_reintegro=reintegro.id_reintegro, id_reserva=reintegro.id_reserva,
+            id_usuario=reintegro.id_usuario, nombre_socio=f"{socio.nombre} {socio.apellido}",
+            monto=reintegro.monto, forma=reintegro.forma, escaneado_at=reintegro.escaneado_at,
         )
+
+    socio = (
+        db.query(models.Usuario)
+        .filter(models.Usuario.id_usuario == reintegro.id_usuario)
+        .first()
+    )
+
+    # Simetría crédito/débito en la billetera interna: acreditar al ENTRAR a
+    # 'saldo_a_favor', debitar al SALIR de 'saldo_a_favor' hacia cualquier
+    # otra forma. Antes esto solo contemplaba la entrada — si alguien
+    # corregía un reintegro que había quedado mal puesto en 'saldo_a_favor'
+    # (ej: error de tipeo del admin_temporal) y lo pasaba a 'efectivo', el
+    # crédito que ya se le había sumado al socio quedaba pegado para
+    # siempre, generándole saldo de más sin que correspondiera.
+    if forma == "saldo_a_favor" and forma_anterior != "saldo_a_favor":
         socio.saldo_a_favor = socio.saldo_a_favor + reintegro.monto
+    elif forma_anterior == "saldo_a_favor" and forma != "saldo_a_favor":
+        socio.saldo_a_favor = socio.saldo_a_favor - reintegro.monto
 
     reintegro.forma = forma
 
@@ -408,12 +448,6 @@ def definir_forma_reintegro(
 
     db.commit()
     db.refresh(reintegro)
-
-    socio = (
-        db.query(models.Usuario)
-        .filter(models.Usuario.id_usuario == reintegro.id_usuario)
-        .first()
-    )
 
     return schemas.ReintegroQRResponse(
         id_reintegro=reintegro.id_reintegro,

@@ -33,7 +33,7 @@
  *   POST /admin/ordenes/{id_orden}/rechazar
  */
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useAdminResource } from '../hooks/useAdminResource'
@@ -58,6 +58,9 @@ import {
   ChevronUp,
   CheckCircle2,
   XCircle,
+  Search,
+  Clock,
+  Ban,
 } from 'lucide-react'
 
 const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
@@ -74,6 +77,45 @@ const FILTROS_TIPO = [
   { value: 'alquiler', label: 'Alquileres' },
   { value: 'compra', label: 'Compras' },
 ]
+
+// El orden acá define el orden de los botones — "Pendientes" primero porque
+// es el caso de uso principal de la pantalla (a diferencia de FILTROS_TIPO,
+// donde "Todo" tiene sentido como default).
+const FILTROS_ESTADO = [
+  { value: 'pendiente_verificacion', label: 'Pendientes' },
+  { value: 'aprobada', label: 'Aceptadas' },
+  { value: 'rechazada', label: 'Rechazadas' },
+  { value: 'expirada', label: 'Expiradas' },
+  { value: 'cancelada_socio', label: 'Canceladas' },
+  { value: '', label: 'Todos los estados' },
+]
+
+// Info visual para los 4 estados "terminales" (todo lo que no sea
+// pendiente_verificacion) — se usa tanto para las filas ya resueltas
+// localmente en esta sesión como para las que ya venían resueltas del
+// backend (al mirar los tabs Aceptadas/Rechazadas/Expiradas/Canceladas).
+const ESTADO_ORDEN_INFO = {
+  aprobada: { label: 'Aprobada', icon: CheckCircle2, classes: 'text-green-700 bg-green-50' },
+  rechazada: { label: 'Rechazada', icon: XCircle, classes: 'text-red-600 bg-red-50' },
+  expirada: { label: 'Expirada', icon: Clock, classes: 'text-gray-500 bg-gray-100' },
+  cancelada_socio: { label: 'Cancelada por el socio', icon: Ban, classes: 'text-gray-500 bg-gray-100' },
+}
+
+/**
+ * Determina cómo se debe mostrar una fila de Orden: null si sigue pendiente
+ * (muestra el botón "Verificar"), o el estado a exhibir como badge de solo
+ * lectura. Dos fuentes posibles, en este orden de prioridad:
+ *   1. resueltosEnSesion — la acabás de aprobar/rechazar vos ahora mismo,
+ *      en esta misma sesión de pantalla (ver comentario en el componente
+ *      principal sobre por qué no se refetchea la lista completa).
+ *   2. orden.estado — si estás mirando el tab Aceptadas/Rechazadas/etc.,
+ *      el backend ya te la devuelve resuelta de antes.
+ */
+function estadoVisualDeOrden(orden, resueltosEnSesion) {
+  const local = resueltosEnSesion.get(orden.id_orden)
+  if (local) return local
+  return orden.estado !== 'pendiente_verificacion' ? orden.estado : null
+}
 
 const METODO_PAGO_BADGE = {
   mercado_pago: { label: '💳 MP', classes: 'bg-blue-100 text-blue-800' },
@@ -366,7 +408,7 @@ function TarjetaPago({ pago, ordenes, resueltosEnSesion, onVerificar, onAprobarT
   const esMultiple = ordenes.length > 1
   const socio = ordenes[0]?.usuario
 
-  const pendientes = ordenes.filter(o => !resueltosEnSesion.has(o.id_orden))
+  const pendientes = ordenes.filter(o => estadoVisualDeOrden(o, resueltosEnSesion) === null)
   const hayPendientes = pendientes.length > 0
 
   return (
@@ -407,12 +449,12 @@ function TarjetaPago({ pago, ordenes, resueltosEnSesion, onVerificar, onAprobarT
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-4 flex-shrink-0">
+        <div className="flex items-center gap-3 sm:gap-4 flex-shrink-0 w-full sm:w-auto justify-between sm:justify-end">
           <div className="text-right">
-            <p className="text-xs text-gray-400">Monto transferido (declarado)</p>
-            <p className="text-lg font-bold text-gray-900">{formatoMoneda.format(pago?.monto_total)}</p>
+            <p className="text-xs text-gray-400 hidden sm:block">Monto transferido (declarado)</p>
+            <p className="text-base sm:text-lg font-bold text-gray-900">{formatoMoneda.format(pago?.monto_total)}</p>
           </div>
-          {expandido ? <ChevronUp size={18} className="text-gray-400" /> : <ChevronDown size={18} className="text-gray-400" />}
+          {expandido ? <ChevronUp size={18} className="text-gray-400 flex-shrink-0" /> : <ChevronDown size={18} className="text-gray-400 flex-shrink-0" />}
         </div>
       </button>
 
@@ -437,18 +479,19 @@ function TarjetaPago({ pago, ordenes, resueltosEnSesion, onVerificar, onAprobarT
             </div>
           )}
 
-          {/* Filas — una por Orden. Las ya resueltas en esta sesión quedan
-              visibles en gris (con su resultado) en vez de desaparecer, para
-              que se vea de un vistazo qué faltaba y qué ya se resolvió. */}
+          {/* Filas — una por Orden. Las ya resueltas (en esta sesión, o de
+              antes si estás mirando un tab de solo lectura) quedan visibles
+              atenuadas con su resultado en vez de desaparecer. */}
           <div className="divide-y divide-gray-50">
             {ordenes.map(o => {
-              const resuelta = resueltosEnSesion.get(o.id_orden)
+              const resuelta = estadoVisualDeOrden(o, resueltosEnSesion)
+              const infoResuelta = resuelta ? ESTADO_ORDEN_INFO[resuelta] : null
               return (
                 <div
                   key={o.id_orden}
-                  className={`p-4 sm:p-5 flex items-center justify-between gap-4 flex-wrap ${resuelta ? 'bg-gray-50/60' : ''}`}
+                  className={`p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 ${resuelta ? 'bg-gray-50/60' : ''}`}
                 >
-                  <div className={`min-w-0 flex-1 ${resuelta ? 'opacity-50' : ''}`}>
+                  <div className={`min-w-0 flex-1 ${resuelta ? 'opacity-60' : ''}`}>
                     <div className="flex items-center gap-2 flex-wrap mb-1">
                       <CategoriaOrdenBadge categoria={o.categoria_resumen} />
                       <span className="text-xs text-gray-400">Orden #{o.id_orden}</span>
@@ -457,24 +500,19 @@ function TarjetaPago({ pago, ordenes, resueltosEnSesion, onVerificar, onAprobarT
                       {(o.detalles ?? []).map(d => `${d.producto?.nombre ?? 'Producto'} x${d.cantidad}`).join(', ') || 'Sin ítems'}
                     </p>
                   </div>
-                  <div className="flex items-center gap-3 flex-shrink-0">
+                  <div className="flex items-center justify-between sm:justify-end gap-3 flex-shrink-0">
                     <span className={`text-sm font-semibold ${resuelta ? 'text-gray-400' : 'text-gray-900'}`}>
                       {formatoMoneda.format(o.monto_total)}
                     </span>
-                    {resuelta === 'aprobada' && (
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-green-700 bg-green-50 font-semibold text-sm">
-                        <CheckCircle2 size={14} /> Aprobada
-                      </span>
-                    )}
-                    {resuelta === 'rechazada' && (
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-red-600 bg-red-50 font-semibold text-sm">
-                        <XCircle size={14} /> Rechazada
+                    {infoResuelta && (
+                      <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold text-sm flex-shrink-0 ${infoResuelta.classes}`}>
+                        <infoResuelta.icon size={14} /> {infoResuelta.label}
                       </span>
                     )}
                     {!resuelta && (
                       <button
                         onClick={() => onVerificar(o)}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-blue-700 bg-blue-50 hover:bg-blue-100 font-semibold text-sm transition-colors"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-blue-700 bg-blue-50 hover:bg-blue-100 font-semibold text-sm transition-colors flex-shrink-0"
                       >
                         Verificar
                       </button>
@@ -503,26 +541,49 @@ export default function AdminVerificaciones() {
     FILTROS_TIPO.some(f => f.value === tipoInicial) ? tipoInicial : ''
   )
   const [ordenSeleccionada, setOrdenSeleccionada] = useState(null)
+  const [filtroEstado, setFiltroEstado] = useState('pendiente_verificacion')
+
+  // Búsqueda por DNI o nombre — debounced para no pegarle al backend en
+  // cada tecla. 400ms es un punto medio razonable: suficiente para que no
+  // dispare con cada letra, corto para que no se sienta trabado.
+  const [busqueda, setBusqueda] = useState('')
+  const [busquedaDebounced, setBusquedaDebounced] = useState('')
+  useEffect(() => {
+    const t = setTimeout(() => setBusquedaDebounced(busqueda.trim()), 400)
+    return () => clearTimeout(t)
+  }, [busqueda])
+
   // Órdenes resueltas (aprobada/rechazada) durante esta sesión de la pantalla
   // — Map<id_orden, 'aprobada'|'rechazada'>. Se usa para seguir mostrando la
   // fila en gris con su resultado en vez de que desaparezca de golpe: el
   // backend ya no la devuelve en /pendientes apenas se resuelve, así que si
   // refrescáramos la lista completa la perderíamos. Se limpia al cambiar de
-  // tab o al tocar "Actualizar" — momentos en los que tiene sentido arrancar
-  // de cero.
+  // filtro (tipo, estado o búsqueda) o al tocar "Actualizar" — momentos en
+  // los que tiene sentido arrancar de cero.
   const [resueltosEnSesion, setResueltosEnSesion] = useState(new Map())
   const [aprobandoTodoPagoId, setAprobandoTodoPagoId] = useState(null)
 
+  useEffect(() => {
+    setResueltosEnSesion(new Map())
+  }, [filtroTipo, filtroEstado, busquedaDebounced])
+
   const estadisticas = useAdminResource('/admin/pagos/estadisticas')
-  const ordenesPath = filtroTipo
-    ? `/admin/ordenes/pendientes?tipo=${encodeURIComponent(filtroTipo)}`
-    : '/admin/ordenes/pendientes'
+
+  // Endpoint general (GET /admin/ordenes) en vez de /pendientes: permite
+  // pedir cualquier estado — no solo pendiente_verificacion — y buscar por
+  // socio. /pendientes sigue existiendo tal cual para lo que ya lo usaba
+  // (contadores del dashboard, etc.), no se tocó.
+  const ordenesParams = new URLSearchParams()
+  if (filtroEstado) ordenesParams.set('estado', filtroEstado)
+  if (filtroTipo) ordenesParams.set('tipo', filtroTipo)
+  if (busquedaDebounced) ordenesParams.set('q', busquedaDebounced)
+  const ordenesPath = `/admin/ordenes?${ordenesParams.toString()}`
   const ordenesResource = useAdminResource(ordenesPath)
 
-  const cambiarFiltro = (tipo) => {
-    setFiltroTipo(tipo)
-    setResueltosEnSesion(new Map())
-  }
+  // El reset de resueltosEnSesion al cambiar de filtro lo maneja el useEffect
+  // de arriba — estos setters solo cambian el valor del filtro en sí.
+  const cambiarFiltroTipo = (tipo) => setFiltroTipo(tipo)
+  const cambiarFiltroEstado = (estado) => setFiltroEstado(estado)
 
   const refrescarTodo = () => {
     estadisticas.refetch()
@@ -676,26 +737,65 @@ export default function AdminVerificaciones() {
 
       {/* ── Bandeja agrupada por Pago ────────────────────────────────────────── */}
       <div className="space-y-4">
-        <div className="flex items-center justify-between gap-3 flex-wrap">
-          <div>
-            <h2 className="text-lg font-bold text-gray-900">Pendientes de Verificación</h2>
-            <p className="text-sm text-gray-500 mt-0.5">
-              Cada tarjeta es un comprobante — puede contener varias órdenes.
-            </p>
-          </div>
-          <div className="flex items-center gap-1.5 flex-wrap">
-            {FILTROS_TIPO.map(f => (
-              <button
-                key={f.value}
-                onClick={() => cambiarFiltro(f.value)}
-                className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
-                  filtroTipo === f.value ? 'bg-slate-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-              >
-                {f.label}
-              </button>
-            ))}
-          </div>
+        <div>
+          <h2 className="text-lg font-bold text-gray-900">
+            {FILTROS_ESTADO.find(f => f.value === filtroEstado)?.label ?? 'Órdenes'}
+          </h2>
+          <p className="text-sm text-gray-500 mt-0.5">
+            Cada tarjeta es un comprobante — puede contener varias órdenes.
+          </p>
+        </div>
+
+        {/* Buscador por DNI o nombre del socio */}
+        <div className="relative">
+          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+          <input
+            type="text"
+            value={busqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
+            placeholder="Buscar por DNI, nombre o apellido del socio..."
+            className="form-input w-full pl-10 text-sm"
+          />
+          {busqueda && (
+            <button
+              onClick={() => setBusqueda('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              title="Limpiar búsqueda"
+            >
+              <X size={15} />
+            </button>
+          )}
+        </div>
+
+        {/* Tabs de categoría (tipo de ítem) */}
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {FILTROS_TIPO.map(f => (
+            <button
+              key={f.value}
+              onClick={() => cambiarFiltroTipo(f.value)}
+              className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
+                filtroTipo === f.value ? 'bg-slate-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Tabs de estado — separados de los de categoría porque son ejes
+            de filtro independientes (categoría × estado se combinan libre). */}
+        <div className="flex items-center gap-1.5 flex-wrap overflow-x-auto pb-1">
+          {FILTROS_ESTADO.map(f => (
+            <button
+              key={f.value}
+              onClick={() => cambiarFiltroEstado(f.value)}
+              className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${
+                filtroEstado === f.value ? 'bg-blue-600 text-white' : 'bg-blue-50 text-blue-700 hover:bg-blue-100'
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
         </div>
 
         {ordenesResource.error && !ordenesResource.loading && (
@@ -732,7 +832,11 @@ export default function AdminVerificaciones() {
 
             {gruposPorPago.length === 0 && (
               <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-12 text-center text-gray-500 text-sm">
-                ✅ No hay órdenes pendientes de verificación por el momento.
+                {busquedaDebounced
+                  ? `Sin resultados para "${busquedaDebounced}" en este filtro.`
+                  : filtroEstado === 'pendiente_verificacion'
+                    ? '✅ No hay órdenes pendientes de verificación por el momento.'
+                    : 'No hay órdenes que coincidan con este filtro.'}
               </div>
             )}
           </div>

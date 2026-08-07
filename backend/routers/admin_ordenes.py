@@ -5,6 +5,10 @@ Router de verificación de Órdenes — panel del administrador.
 Endpoints:
   GET  /admin/ordenes/pendientes              → Bandeja de órdenes esperando verificación
                                                   (con filtro opcional por tipo: cuota | tienda | alquiler | compra).
+  GET  /admin/ordenes                          → Listado general: cualquier estado (o todos),
+                                                  filtro por tipo, y búsqueda por DNI/nombre del socio.
+  GET  /admin/ordenes/socio/{id_usuario}       → Historial completo de compras de UN socio
+                                                  (cualquier estado), para ComprasSocioModal en AdminSocios.jsx.
   GET  /admin/ordenes/pendientes/count        → Cantidad de órdenes pendientes (con el mismo filtro opcional).
   GET  /admin/ordenes/pendientes-tienda/count → Cantidad de órdenes pendientes que son
                                                   puras ventas de tienda/alquiler (sin cuota_social).
@@ -27,6 +31,7 @@ from __future__ import annotations
 from typing import List, Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request, status
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session, joinedload
 
 import models
@@ -53,6 +58,14 @@ _ROLES_ADMIN = ("admin_general", "personal_administrativo")
 # (que sigue mostrando todo junto en /admin/tienda, donde efectivamente se
 # aprueban/rechazan).
 _TIPOS_FILTRO_VALIDOS = ("cuota", "tienda", "alquiler", "compra")
+
+# Los 5 estados posibles de una Orden (ver CheckConstraint chk_orden_estado
+# en models.py). 'cancelada_socio' es la que más se presta a pasarse por
+# alto: es cuando el socio mismo cancela la orden desde su carrito antes de
+# que un admin llegue a tocarla — no es lo mismo que 'rechazada' (que
+# implica que un admin la revisó y la rechazó) ni que 'expirada' (que
+# implica que nadie hizo nada y venció el plazo de 48hs).
+_ESTADOS_ORDEN_VALIDOS = ("pendiente_verificacion", "aprobada", "rechazada", "cancelada_socio", "expirada")
 
 
 # ─── Helpers de esta ruta ─────────────────────────────────────────────────────
@@ -140,9 +153,11 @@ def _aplicar_filtro_tipo(query, db: Session, tipo: Optional[str]):
 def listar_ordenes_pendientes(
     tipo: Optional[str] = Query(
         None,
-        description="Filtro opcional: 'cuota' (contienen cuota_social) o "
-                    "'tienda' (indumentaria/alquileres, sin cuota_social). "
-                    "Si se omite, devuelve todas.",
+        description="Filtro opcional: 'cuota' (contiene cuota_social), "
+                    "'alquiler' (contiene un ítem de alquiler, sin cuota_social), "
+                    "'compra' (indumentaria/otro puro, sin cuota_social ni alquiler), "
+                    "o 'tienda' (alquiler + compra juntos, sin cuota_social — "
+                    "semántica histórica). Si se omite, devuelve todas.",
     ),
     db: Session = Depends(get_db),
     admin: models.Usuario = Depends(require_roles(*_ROLES_ADMIN)),
@@ -160,6 +175,137 @@ def listar_ordenes_pendientes(
     query = _aplicar_filtro_tipo(query, db, tipo)
     ordenes = query.order_by(models.Orden.fecha_creacion.asc()).all()
     return ordenes
+
+
+# ─── ENDPOINT: Listado general (cualquier estado, con búsqueda) ───────────────
+
+@router.get(
+    "",
+    response_model=List[schemas.OrdenAdminResponse],
+    summary="Listar órdenes con filtros de estado/tipo y búsqueda por DNI o nombre del socio",
+)
+def listar_ordenes(
+    estado: Optional[str] = Query(
+        None,
+        description=f"Filtro opcional por estado exacto: {_ESTADOS_ORDEN_VALIDOS}. "
+                    "Si se omite, devuelve órdenes en cualquier estado.",
+    ),
+    tipo: Optional[str] = Query(
+        None,
+        description=f"Mismo filtro de categoría que /pendientes: {_TIPOS_FILTRO_VALIDOS}.",
+    ),
+    q: Optional[str] = Query(
+        None,
+        min_length=1,
+        max_length=100,
+        description="Busca por DNI, nombre o apellido del socio dueño de la orden "
+                    "(coincidencia parcial, sin distinguir mayúsculas/minúsculas).",
+    ),
+    limit: int = Query(
+        200, ge=1, le=500,
+        description="Tope de resultados — pensado para pantallas admin, no para exportar el historial completo.",
+    ),
+    db: Session = Depends(get_db),
+    admin: models.Usuario = Depends(require_roles(*_ROLES_ADMIN)),
+) -> List[schemas.OrdenAdminResponse]:
+    """
+    Generaliza a /pendientes: acá SÍ se puede pedir cualquier estado (o
+    ninguno, para traer de todos), y se puede filtrar por socio. Pensado
+    para la pantalla /admin/verificaciones, que necesita mostrar también
+    lo ya resuelto (aprobadas/rechazadas/expiradas/canceladas) cuando el
+    admin cambia de tab, y buscar "las compras de tal socio" sin tener que
+    ir a ComprasSocioModal a mano.
+
+    La búsqueda es un ILIKE simple sobre dni/nombre/apellido — no usa la
+    columna nombre_completo_search (tsvector) porque esa hace *full-text*
+    matching (por palabra completa, con stemming), y acá interesa más el
+    comportamiento de "iba escribiendo y ya empieza a filtrar" con
+    coincidencia parcial de subcadena, más predecible para un admin.
+    """
+    if estado is not None and estado not in _ESTADOS_ORDEN_VALIDOS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Estado inválido: '{estado}'. Opciones: {_ESTADOS_ORDEN_VALIDOS}",
+        )
+
+    query = (
+        db.query(models.Orden)
+        .join(models.Usuario, models.Orden.id_usuario == models.Usuario.id_usuario)
+        .options(
+            joinedload(models.Orden.detalles).joinedload(models.DetalleOrden.producto),
+            joinedload(models.Orden.usuario),
+            joinedload(models.Orden.pago),
+        )
+    )
+
+    if estado:
+        query = query.filter(models.Orden.estado == estado)
+
+    query = _aplicar_filtro_tipo(query, db, tipo)
+
+    if q:
+        termino = f"%{q.strip()}%"
+        query = query.filter(
+            or_(
+                models.Usuario.dni.ilike(termino),
+                models.Usuario.nombre.ilike(termino),
+                models.Usuario.apellido.ilike(termino),
+                func.concat(models.Usuario.nombre, " ", models.Usuario.apellido).ilike(termino),
+            )
+        )
+
+    return (
+        query.order_by(models.Orden.fecha_creacion.desc())
+        .limit(limit)
+        .all()
+    )
+
+
+# ─── ENDPOINT: Historial de compras de un socio ───────────────────────────────
+
+@router.get(
+    "/socio/{id_usuario}",
+    response_model=List[schemas.OrdenAdminResponse],
+    summary="Historial completo de órdenes de un socio (todos los estados, filtro opcional por tipo)",
+)
+def listar_ordenes_de_socio(
+    id_usuario: int,
+    tipo: Optional[str] = Query(
+        None,
+        description=f"Filtro opcional: {_TIPOS_FILTRO_VALIDOS}. Si se omite, devuelve todas.",
+    ),
+    db: Session = Depends(get_db),
+    admin: models.Usuario = Depends(require_roles(*_ROLES_ADMIN)),
+) -> List[schemas.OrdenAdminResponse]:
+    """
+    A diferencia de /pendientes (y de /), acá el filtro es por socio
+    puntual en vez de por estado — es el historial completo (pendientes,
+    aprobadas, rechazadas, canceladas, expiradas) de UN socio, para la
+    pestaña "Ver Compras" de AdminSocios.jsx (componente ComprasSocioModal).
+    """
+    existe_usuario = (
+        db.query(models.Usuario.id_usuario)
+        .filter(models.Usuario.id_usuario == id_usuario)
+        .first()
+    )
+    if existe_usuario is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No existe un usuario con id {id_usuario}.",
+        )
+
+    query = (
+        db.query(models.Orden)
+        .options(
+            joinedload(models.Orden.detalles).joinedload(models.DetalleOrden.producto),
+            joinedload(models.Orden.detalles).joinedload(models.DetalleOrden.reserva),
+            joinedload(models.Orden.usuario),
+            joinedload(models.Orden.pago),
+        )
+        .filter(models.Orden.id_usuario == id_usuario)
+    )
+    query = _aplicar_filtro_tipo(query, db, tipo)
+    return query.order_by(models.Orden.fecha_creacion.desc()).all()
 
 
 @router.get("/pendientes/count", response_model=int, summary="Cantidad de órdenes pendientes")

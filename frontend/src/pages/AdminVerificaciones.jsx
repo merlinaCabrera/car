@@ -27,8 +27,7 @@
  * si en el uso real hace falta ver también las hermanas ya resueltas.
  *
  * Backend consumido:
- *   GET  /admin/pagos/estadisticas
- *   GET  /admin/ordenes/pendientes?tipo=cuota|alquiler|compra
+ *   GET  /admin/ordenes?estado=...&tipo=...&q=...
  *   POST /admin/ordenes/{id_orden}/aprobar
  *   POST /admin/ordenes/{id_orden}/rechazar
  */
@@ -40,9 +39,6 @@ import { useAdminResource } from '../hooks/useAdminResource'
 import CategoriaOrdenBadge from '../components/admin/CategoriaOrdenBadge'
 import {
   Wallet,
-  UserCheck,
-  UserX,
-  Landmark,
   AlertCircle,
   RefreshCw,
   Loader2,
@@ -121,32 +117,6 @@ const METODO_PAGO_BADGE = {
   mercado_pago: { label: '💳 MP', classes: 'bg-blue-100 text-blue-800' },
   efectivo: { label: '💵 Efectivo', classes: 'bg-gray-100 text-gray-700' },
   transferencia: { label: '🏦 Transfer.', classes: 'bg-indigo-100 text-indigo-700' },
-}
-
-// ─── Sub-componente: tarjeta de estadística ──────────────────────────────────
-
-function StatCard({ icon: Icon, colorClasses, titulo, valor, loading, error, formato }) {
-  return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex items-center gap-4">
-      <div className={`p-3 rounded-xl flex-shrink-0 ${colorClasses}`}>
-        <Icon size={22} />
-      </div>
-      <div className="min-w-0">
-        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{titulo}</p>
-        {loading && <div className="h-7 w-24 bg-gray-200 rounded-md animate-pulse mt-1.5" />}
-        {!loading && error && (
-          <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
-            <AlertCircle size={12} /> Error
-          </p>
-        )}
-        {!loading && !error && (
-          <p className="text-2xl font-bold text-gray-900 mt-0.5 truncate">
-            {formato ? formato(valor) : valor}
-          </p>
-        )}
-      </div>
-    </div>
-  )
 }
 
 // ─── Modal de verificación de una Orden individual ───────────────────────────
@@ -567,8 +537,6 @@ export default function AdminVerificaciones() {
     setResueltosEnSesion(new Map())
   }, [filtroTipo, filtroEstado, busquedaDebounced])
 
-  const estadisticas = useAdminResource('/admin/pagos/estadisticas')
-
   // Endpoint general (GET /admin/ordenes) en vez de /pendientes: permite
   // pedir cualquier estado — no solo pendiente_verificacion — y buscar por
   // socio. /pendientes sigue existiendo tal cual para lo que ya lo usaba
@@ -586,19 +554,16 @@ export default function AdminVerificaciones() {
   const cambiarFiltroEstado = (estado) => setFiltroEstado(estado)
 
   const refrescarTodo = () => {
-    estadisticas.refetch()
     ordenesResource.refetch()
     setResueltosEnSesion(new Map())
   }
 
   // Tras aprobar/rechazar UNA orden desde el modal: no se re-pide la lista
   // completa (eso haría desaparecer la fila al toque, perdiendo el feedback
-  // visual). Solo se marca localmente como resuelta y se refrescan las
-  // estadísticas de arriba (esas sí cambian de verdad: socios al día/morosos).
+  // visual). Solo se marca localmente como resuelta.
   const handleAccionExitosa = (idOrden, resultado) => {
     setOrdenSeleccionada(null)
     setResueltosEnSesion(prev => new Map(prev).set(idOrden, resultado))
-    estadisticas.refetch()
   }
 
   // "Aprobar Pago Completo" — aprueba, una por una, todas las órdenes que
@@ -636,7 +601,6 @@ export default function AdminVerificaciones() {
       return siguiente
     })
     setAprobandoTodoPagoId(null)
-    estadisticas.refetch()
 
     const fallidas = [...resultados.values()].filter(r => r === 'error').length
     if (fallidas > 0) {
@@ -658,7 +622,7 @@ export default function AdminVerificaciones() {
     return Array.from(mapa.values())
   }, [ordenesResource.data])
 
-  const loadingGlobal = estadisticas.loading || ordenesResource.loading
+  const loadingGlobal = ordenesResource.loading
 
   return (
     <div className="p-4 sm:p-6 max-w-6xl mx-auto space-y-6 sm:space-y-8">
@@ -693,46 +657,6 @@ export default function AdminVerificaciones() {
         >
           <RefreshCw size={16} className={loadingGlobal ? 'animate-spin' : ''} />
         </button>
-      </div>
-
-      {/* ── Estadísticas financieras ─────────────────────────────────────────── */}
-      <div className="space-y-4">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <StatCard
-            icon={UserCheck}
-            colorClasses="bg-green-100 text-green-700"
-            titulo="Socios al Día"
-            valor={estadisticas.data?.total_socios_al_dia}
-            loading={estadisticas.loading}
-            error={estadisticas.error}
-          />
-          <StatCard
-            icon={UserX}
-            colorClasses="bg-red-100 text-red-700"
-            titulo="Socios Morosos"
-            valor={estadisticas.data?.total_socios_morosos}
-            loading={estadisticas.loading}
-            error={estadisticas.error}
-          />
-          <StatCard
-            icon={Landmark}
-            colorClasses="bg-blue-100 text-blue-700"
-            titulo="Deuda Estimada en Calle"
-            valor={estadisticas.data?.deuda_total_estimada}
-            loading={estadisticas.loading}
-            error={estadisticas.error}
-            formato={formatoMoneda.format}
-          />
-        </div>
-        {estadisticas.error && !estadisticas.loading && (
-          <div className="flex items-center gap-3 p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm">
-            <AlertCircle size={18} className="flex-shrink-0" />
-            <span className="flex-1">{estadisticas.error}</span>
-            <button onClick={estadisticas.refetch} className="underline underline-offset-2 font-medium hover:text-red-900">
-              Reintentar
-            </button>
-          </div>
-        )}
       </div>
 
       {/* ── Bandeja agrupada por Pago ────────────────────────────────────────── */}

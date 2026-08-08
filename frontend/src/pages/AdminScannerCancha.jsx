@@ -19,19 +19,22 @@
  *   4. INMEDIATAMENTE después de un escaneo válido y nuevo (no duplicado),
  *      se abre un modal preguntándole al admin_temporal cómo se resolvió
  *      el reintegro — YA, en el momento, sin que nadie tenga que volver
- *      a esto después desde otra pantalla:
+ *      a esto después desde otra pantalla. El modal es OBLIGATORIO: no
+ *      tiene botón para cerrarlo sin elegir, justamente para que no queden
+ *      reintegros en 'pendiente' sin que haya dónde retomarlos después
+ *      (no existe today una pantalla de "pendientes" fuera de este escáner).
  *        - Efectivo / Transferencia → ya se le entregó la plata.
  *        - Ya descontado → el monto ya venía restado del precio cobrado.
  *        - Cupón (saldo a favor) → se acredita en su billetera interna.
  *      Dispara PATCH /admin/reintegros/{id}/forma?forma=... con el mismo
  *      rol de puerta (admin_temporal no necesita ser admin_general para
  *      esto — ver _ROLES_ESCANEO en admin_reservas.py).
- *   5. Si el socio YA había escaneado antes (ya_registrado=true) y ese
- *      reintegro anterior quedó sin resolver ('pendiente' — por ejemplo
- *      si a alguien se le cortó la conexión a mitad del modal), se le
- *      ofrece resolverlo ahora en vez de dejarlo pendiente para siempre.
- *      Si ya estaba resuelto, se muestra informativo, sin volver a tocar
- *      el saldo por las dudas de un doble click accidental.
+ *   5. Red de contención por si igual queda algo en 'pendiente' (ej: datos
+ *      cargados antes de este cambio, o un reintegro tocado a mano desde
+ *      la API): si el socio vuelve a escanear y su reintegro sigue
+ *      'pendiente', se le ofrece "Definir forma ahora" para resolverlo en
+ *      ese momento en vez de dejarlo así. Si ya estaba resuelto, se
+ *      muestra informativo nomás, sin volver a tocar el saldo.
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react'
@@ -177,7 +180,7 @@ function SelectorReserva({ onSeleccionar }) {
 
 // ─── Modal: ¿cómo se resolvió el reintegro? ─────────────────────────────────
 
-function ModalFormaReintegro({ reintegro, onResuelto, onCerrar }) {
+function ModalFormaReintegro({ reintegro, onResuelto }) {
   const { token } = useAuth()
   const [enviando, setEnviando] = useState(false)
   const [error, setError] = useState(null)
@@ -245,14 +248,6 @@ function ModalFormaReintegro({ reintegro, onResuelto, onCerrar }) {
             <Loader2 size={12} className="animate-spin" /> Guardando…
           </p>
         )}
-
-        <button
-          onClick={onCerrar}
-          disabled={enviando}
-          className="w-full py-2 text-sm text-gray-400 hover:text-gray-600 disabled:opacity-40 transition-colors"
-        >
-          Decidir más tarde
-        </button>
       </div>
     </div>
   )
@@ -423,7 +418,6 @@ export default function AdminScannerCancha() {
         <ModalFormaReintegro
           reintegro={reintegroPendienteModal}
           onResuelto={handleModalResuelto}
-          onCerrar={() => setReintegroPendienteModal(null)}
         />
       )}
 

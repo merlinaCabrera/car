@@ -62,6 +62,7 @@ def listar_reservas(
     query = db.query(models.ReservaInstalacion).options(
         joinedload(models.ReservaInstalacion.usuario_responsable),
         joinedload(models.ReservaInstalacion.reintegros),
+        joinedload(models.ReservaInstalacion.orden),   # para exponer estado_orden al frontend
     )
 
     if instalacion:
@@ -88,6 +89,7 @@ def listar_reservas(
                 fecha_inicio=r.fecha_inicio,
                 fecha_fin=r.fecha_fin,
                 estado=r.estado,
+                estado_orden=r.orden.estado if r.orden is not None else None,
                 id_usuario=r.id_usuario,
                 nombre_responsable=nombre_responsable,
                 notas=r.notas,
@@ -133,6 +135,7 @@ def listar_reservas_activas(
         .options(
             joinedload(models.ReservaInstalacion.usuario_responsable),
             joinedload(models.ReservaInstalacion.reintegros),
+            joinedload(models.ReservaInstalacion.orden),
         )
         .filter(
             models.ReservaInstalacion.estado == "confirmada",
@@ -156,6 +159,7 @@ def listar_reservas_activas(
                 fecha_inicio=r.fecha_inicio,
                 fecha_fin=r.fecha_fin,
                 estado=r.estado,
+                estado_orden=r.orden.estado if r.orden is not None else None,
                 id_usuario=r.id_usuario,
                 nombre_responsable=nombre_responsable,
                 notas=r.notas,

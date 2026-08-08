@@ -36,6 +36,22 @@
  * ya NO vive acá: es un riesgo operativo, no una tarea de aprobación de
  * pago, así que se integró directo en /admin/reservas (AdminReservas.jsx),
  * que es donde se configura el reparto.
+ *
+ * ── Layout mobile (cambio de esta iteración) ─────────────────────────────
+ * Antes ambos grids arrancaban en 1 columna y recién abrían a 2/3 desde
+ * `sm:`/`md:` — en el celular (que es el uso real del admin_temporal/
+ * personal_administrativo en el club) quedaba una sola columna larga.
+ * Ahora:
+ *   - Bloque "Pendientes de revisión": 2 columnas siempre (incluso en
+ *     mobile chico), porque son solo 2 cards y entran bien lado a lado.
+ *   - Bloque "Gestión operativa": 2 columnas en mobile, 3 desde `sm:`
+ *     (~640px) — no se espera a `md:` (~768px) porque un mobile en
+ *     horizontal o un tablet chico ya tiene lugar de sobra para 3.
+ * Si en la práctica 2 columnas quedan muy apretadas para el contenido de
+ * MetricCard (texto largo, números grandes), lo más simple es agregar
+ * `compact` a MetricCard para esos breakpoints angostos — no lo hice acá
+ * porque no tengo ese archivo en este chat; avisame si hace falta y lo
+ * ajustamos juntos.
  */
 
 import { Link } from 'react-router-dom'
@@ -74,13 +90,13 @@ export default function AdminInicio() {
   const resumen = useAdminResource('/admin/dashboard/resumen')
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-6">
+    <div className="p-4 sm:p-6 max-w-6xl mx-auto space-y-6">
 
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
-            <LayoutDashboard size={24} className="text-gray-500" />
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-3">
+            <LayoutDashboard size={24} className="text-gray-500 flex-shrink-0" />
             Panel de Control
           </h1>
           <p className="text-sm text-gray-500 mt-1">
@@ -91,7 +107,7 @@ export default function AdminInicio() {
           to="/admin/estadisticas"
           className="flex-shrink-0 flex items-center gap-1.5 text-sm font-semibold text-blue-600 hover:text-blue-700 hover:underline mt-1"
         >
-          <TrendingUp size={15} /> Ver reportes
+          <TrendingUp size={15} /> <span className="hidden sm:inline">Ver reportes</span>
         </Link>
       </div>
 
@@ -100,7 +116,7 @@ export default function AdminInicio() {
         <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
           Pendientes de revisión
         </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4">
           <MetricCard
             icon={UserPlus}
             iconColor="bg-amber-100 text-amber-700"
@@ -137,7 +153,7 @@ export default function AdminInicio() {
 
       {/* ── Gestión operativa (sin título de sección: sigue directo abajo) ──── */}
       <div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
           <MetricCard
             icon={Store}
             iconColor="bg-purple-100 text-purple-700"

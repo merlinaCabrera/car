@@ -32,6 +32,14 @@ import {
   UserPlus,
   Banknote,
   X,
+  Receipt,
+  Package,
+  Calendar,
+  Filter,
+  CheckCircle2,
+  Clock,
+  XCircle,
+  AlertTriangle,
 } from 'lucide-react'
 
 const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
@@ -148,7 +156,16 @@ const TABS_ROLES = [
   { label: 'Jugadores',         value: 'jugador'             },
   { label: 'Personal Técnico',  value: 'personal_tecnico'    },
   { label: 'Administrativos',   value: 'personal_administrativo' },
+  { label: 'Escáneres',         value: 'admin_temporal'      },
   { label: 'Invitados',         value: 'invitado'            },
+]
+
+const TABS_ESTADO = [
+  { label: 'Todos',    value: ''        },
+  { label: 'Al día',   value: 'al_dia'  },
+  { label: 'Morosos',  value: 'moroso'  },
+  { label: 'Activos',  value: 'activo'  },
+  { label: 'De baja',  value: 'baja'    },
 ]
 
 // ─── Sub-componente: Checkbox elegante para un rol ───────────────────────────
@@ -902,6 +919,188 @@ function CobroModal({ socio, precioCuota, onClose, onSave, diaVencimiento }) {
   )
 }
 
+// ─── Modal: Historial de Compras del Socio ───────────────────────────────────
+// "Ver Compras" es la puerta de entrada al historial financiero del socio.
+// Desde ahí mismo se puede registrar un pago en efectivo — el CobroModal
+// se apila encima (z-50 vs z-40) para mantener el contexto del historial.
+
+const FILTROS_TIPO_COMPRA = [
+  { value: '', label: 'Todo' },
+  { value: 'cuota', label: 'Cuotas' },
+  { value: 'alquiler', label: 'Alquileres' },
+  { value: 'compra', label: 'Compras' },
+]
+
+const ESTADO_ORDEN_CONFIG = {
+  pendiente_verificacion: { label: 'Pendiente',  icon: Clock,          classes: 'bg-amber-100 text-amber-800 border-amber-200'   },
+  aprobada:               { label: 'Aprobada',   icon: CheckCircle2,   classes: 'bg-emerald-100 text-emerald-800 border-emerald-200' },
+  rechazada:              { label: 'Rechazada',  icon: XCircle,        classes: 'bg-red-100 text-red-800 border-red-200'         },
+  cancelada_socio:        { label: 'Cancelada',  icon: XCircle,        classes: 'bg-gray-100 text-gray-700 border-gray-200'      },
+  expirada:               { label: 'Expirada',   icon: AlertTriangle,  classes: 'bg-gray-100 text-gray-700 border-gray-200'      },
+}
+
+function EstadoOrdenBadge({ estado }) {
+  const config = ESTADO_ORDEN_CONFIG[estado] ?? { label: estado, icon: AlertTriangle, classes: 'bg-gray-100 text-gray-700 border-gray-200' }
+  const Icon = config.icon
+  return (
+    <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold flex-shrink-0 ${config.classes}`}>
+      <Icon size={12} />
+      {config.label}
+    </span>
+  )
+}
+
+function resumenItemsOrden(detalles) {
+  if (!detalles || detalles.length === 0) return 'Sin ítems'
+  return detalles.map(d => `${d.producto?.nombre ?? 'Producto'} x${d.cantidad}`).join(', ')
+}
+
+function formatoFechaOrden(iso) {
+  return new Date(iso).toLocaleDateString('es-AR', {
+    day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
+  })
+}
+
+function ComprasSocioModal({ socio, token, refreshTick, onClose, onCobrar }) {
+  const [ordenes,     setOrdenes]     = useState([])
+  const [loading,     setLoading]     = useState(true)
+  const [error,       setError]       = useState(null)
+  const [filtroTipo,  setFiltroTipo]  = useState('')
+
+  const fetchOrdenes = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const params = filtroTipo ? `?tipo=${encodeURIComponent(filtroTipo)}` : ''
+      const res = await fetch(`${API}/admin/ordenes/socio/${socio.id_usuario}${params}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        throw new Error(body.detail ?? `Error ${res.status} al cargar las compras.`)
+      }
+      setOrdenes(await res.json())
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }, [token, socio.id_usuario, filtroTipo])
+
+  useEffect(() => { fetchOrdenes() }, [fetchOrdenes, refreshTick])
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 flex justify-center items-center p-4"
+      onClick={e => { if (e.target === e.currentTarget) onClose() }}
+    >
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl flex flex-col max-h-[90dvh]">
+
+        <div className="p-6 border-b flex-shrink-0 flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+              <Receipt size={20} className="text-gray-400" />
+              Compras de {socio.nombre} {socio.apellido}
+            </h2>
+            <p className="text-sm text-gray-500 mt-1 font-mono">DNI {socio.dni}</p>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors flex-shrink-0">
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="px-6 pt-4 flex items-center justify-between gap-3 flex-wrap flex-shrink-0">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <Filter size={14} className="text-gray-400 mr-1" />
+            {FILTROS_TIPO_COMPRA.map(f => (
+              <button
+                key={f.value}
+                onClick={() => setFiltroTipo(f.value)}
+                className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
+                  filtroTipo === f.value
+                    ? 'bg-slate-900 text-white'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+
+          {!socio.fecha_baja && (
+            <button
+              onClick={() => onCobrar(socio)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold transition-colors shadow-sm flex-shrink-0"
+            >
+              <Banknote size={14} />
+              Registrar pago en efectivo
+            </button>
+          )}
+        </div>
+
+        <div className="p-6 pt-4 overflow-y-auto flex-1 space-y-3">
+          {error && (
+            <div className="flex items-center gap-2 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
+              <AlertCircle size={15} className="flex-shrink-0" />
+              <span className="flex-1">{error}</span>
+              <button onClick={fetchOrdenes} className="underline underline-offset-2 font-medium hover:text-red-900 flex-shrink-0">
+                Reintentar
+              </button>
+            </div>
+          )}
+
+          {loading && [...Array(3)].map((_, i) => (
+            <div key={i} className="h-20 rounded-xl bg-gray-100 animate-pulse" />
+          ))}
+
+          {!loading && !error && ordenes.length === 0 && (
+            <div className="text-center py-12 text-gray-400 text-sm">
+              {filtroTipo
+                ? 'Este socio no tiene compras de este tipo.'
+                : 'Este socio todavía no registra ninguna compra.'}
+            </div>
+          )}
+
+          {!loading && !error && ordenes.map(orden => (
+            <div key={orden.id_orden} className="rounded-xl border border-gray-200 p-4">
+              <div className="flex items-start justify-between gap-3 flex-wrap">
+                <div className="flex items-center gap-1.5 text-xs text-gray-400">
+                  <Calendar size={12} />
+                  {formatoFechaOrden(orden.fecha_creacion)}
+                  <span className="text-gray-300">·</span>
+                  Orden #{orden.id_orden}
+                </div>
+                <EstadoOrdenBadge estado={orden.estado} />
+              </div>
+
+              <div className="mt-2 flex items-start gap-2 text-sm text-gray-700">
+                <Package size={14} className="mt-0.5 flex-shrink-0 text-gray-400" />
+                <span className="break-words">{resumenItemsOrden(orden.detalles)}</span>
+              </div>
+
+              {orden.estado === 'rechazada' && orden.motivo_rechazo && (
+                <p className="mt-1.5 text-xs text-red-600">Motivo: {orden.motivo_rechazo}</p>
+              )}
+              {orden.notas_admin && (
+                <p className="mt-1.5 text-xs text-gray-400 italic">{orden.notas_admin}</p>
+              )}
+
+              <div className="mt-3 flex items-center justify-between border-t border-gray-100 pt-2.5">
+                <span className="text-xs text-gray-400">
+                  {orden.pago?.metodo_pago
+                    ? `Pagado por ${orden.pago.metodo_pago.replace('_', ' ')}`
+                    : 'Método de pago no registrado'}
+                </span>
+                <span className="text-base font-bold text-gray-900">{formatoMoneda.format(orden.monto_total)}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Componente principal ─────────────────────────────────────────────────────
 
 export default function AdminSocios() {
@@ -916,7 +1115,10 @@ export default function AdminSocios() {
   const [searchTerm,   setSearchTerm]   = useState('')
   const [approvingId,  setApprovingId]  = useState(null)
   const [rolFiltro,    setRolFiltro]    = useState('')       // tab activo
+  const [estadoFiltro, setEstadoFiltro] = useState('')       // filtro de estado
   const [socioACobrar, setSocioACobrar] = useState(null)    // abre CobroModal
+  const [socioCompras, setSocioCompras] = useState(null)    // abre ComprasSocioModal
+  const [comprasRefreshTick, setComprasRefreshTick] = useState(0) // refresca compras tras pago
   const [precioCuota,  setPrecioCuota]  = useState(0)       // precio de referencia
   const [diaVencimiento, setDiaVencimiento] = useState(10);
 
@@ -1043,6 +1245,8 @@ export default function AdminSocios() {
 
     // Refrescar la tabla para actualizar el estado de cuenta del socio
     fetchData()
+    // Si el modal de compras está abierto, que también se refresque
+    setComprasRefreshTick(t => t + 1)
   }
 
   // ── Handlers de tabla ──────────────────────────────────────────────────────
@@ -1112,13 +1316,32 @@ export default function AdminSocios() {
   // ── Filtro local por texto ─────────────────────────────────────────────────
   const filteredSocios = useMemo(() => {
     const term = searchTerm.toLowerCase()
-    if (!term) return socios
-    return socios.filter(s =>
-      s.nombre.toLowerCase().includes(term) ||
-      s.apellido.toLowerCase().includes(term) ||
-      s.dni.includes(term)
-    )
-  }, [socios, searchTerm])
+    return socios.filter(s => {
+      // ── Filtro de búsqueda por texto ──────────────────────────────────────
+      if (term && !(
+        s.nombre.toLowerCase().includes(term) ||
+        s.apellido.toLowerCase().includes(term) ||
+        s.dni.includes(term)
+      )) return false
+
+      // ── Filtro de estado ──────────────────────────────────────────────────
+      if (estadoFiltro === 'baja')   return !!s.fecha_baja
+      if (estadoFiltro === 'activo') return !s.fecha_baja
+
+      if (estadoFiltro === 'al_dia' || estadoFiltro === 'moroso') {
+        if (s.fecha_baja) return false
+        // Socios becados nunca son morosos
+        const hoyISO = new Date().toISOString().split('T')[0]
+        const becaActiva = s.es_becado && (!s.becado_hasta || s.becado_hasta >= hoyISO)
+        if (becaActiva) return estadoFiltro === 'al_dia'
+        const { moroso } = calcularEstadoFinanciero(s.mes_cubierto_hasta, s.fecha_ingreso, diaVencimiento)
+        if (estadoFiltro === 'moroso')  return moroso
+        if (estadoFiltro === 'al_dia')  return !moroso
+      }
+
+      return true
+    })
+  }, [socios, searchTerm, estadoFiltro, diaVencimiento])
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
@@ -1132,6 +1355,17 @@ export default function AdminSocios() {
           onSave={handleSaveSocio}
           catalogoRoles={catalogoRoles}
           token={token}
+        />
+      )}
+
+      {/* Modal de historial de compras — z-40, el CobroModal se apila encima en z-50 */}
+      {socioCompras && (
+        <ComprasSocioModal
+          socio={socioCompras}
+          token={token}
+          refreshTick={comprasRefreshTick}
+          onClose={() => setSocioCompras(null)}
+          onCobrar={(socio) => setSocioACobrar(socio)}
         />
       )}
 
@@ -1184,6 +1418,23 @@ export default function AdminSocios() {
             onClick={() => { setRolFiltro(tab.value); setSearchTerm('') }}
             className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-all flex-shrink-0 ${
               rolFiltro === tab.value
+                ? 'bg-white text-gray-900 shadow-sm'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* ── Tabs de filtro por estado ─────────────────────────────────────── */}
+      <div className="flex gap-1 overflow-x-auto p-1 bg-gray-100 rounded-xl w-full sm:w-fit [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {TABS_ESTADO.map(tab => (
+          <button
+            key={tab.value}
+            onClick={() => { setEstadoFiltro(tab.value); setSearchTerm('') }}
+            className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-all flex-shrink-0 ${
+              estadoFiltro === tab.value
                 ? 'bg-white text-gray-900 shadow-sm'
                 : 'text-gray-500 hover:text-gray-700'
             }`}
@@ -1357,11 +1608,11 @@ export default function AdminSocios() {
                 <div className="flex items-center gap-1 pt-2 border-t border-gray-50 -mx-1">
                   {!socio.fecha_baja && (
                     <button
-                      onClick={() => setSocioACobrar(socio)}
+                      onClick={() => setSocioCompras(socio)}
                       className="flex-1 inline-flex items-center justify-center gap-1.5 p-2 text-gray-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors text-xs font-medium"
-                      title="Registrar Pago"
+                      title="Ver compras y registrar pago"
                     >
-                      <Banknote size={16} /> Cobrar
+                      <Receipt size={16} /> Compras
                     </button>
                   )}
                   <button
@@ -1481,14 +1732,14 @@ export default function AdminSocios() {
                   )}
                 </td>
                 <td className="px-6 py-4 text-right space-x-1 whitespace-nowrap">
-                  {/* Registrar Pago — solo para socios activos */}
+                  {/* Ver Compras — abre historial + cobro desde ahí */}
                   {!socio.fecha_baja && (
                     <button
-                      onClick={() => setSocioACobrar(socio)}
+                      onClick={() => setSocioCompras(socio)}
                       className="p-2 text-gray-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
-                      title="Registrar Pago"
+                      title="Ver compras y registrar pago"
                     >
-                      <Banknote size={16} />
+                      <Receipt size={16} />
                     </button>
                   )}
                   <button

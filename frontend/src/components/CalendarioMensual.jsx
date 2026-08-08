@@ -102,7 +102,7 @@ export default function CalendarioMensual({ eventos = [], mes, onMesChange, rend
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
       {/* Navegación */}
-      <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+      <div className="flex items-center justify-between px-3 sm:px-5 py-3 sm:py-4 border-b border-gray-100">
         <button
           onClick={irAlMesAnterior}
           className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors"
@@ -111,8 +111,8 @@ export default function CalendarioMensual({ eventos = [], mes, onMesChange, rend
           <ChevronLeft size={18} />
         </button>
 
-        <div className="flex items-center gap-3">
-          <h2 className="text-base font-bold text-gray-900 capitalize">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <h2 className="text-sm sm:text-base font-bold text-gray-900 capitalize">
             {MESES[mes.getMonth()]} {mes.getFullYear()}
           </h2>
           {!esElMesActual && (
@@ -139,7 +139,7 @@ export default function CalendarioMensual({ eventos = [], mes, onMesChange, rend
         {DIAS_SEMANA.map(dia => (
           <div
             key={dia}
-            className="py-2 text-center text-[11px] font-semibold text-gray-400 uppercase tracking-wide"
+            className="py-1.5 sm:py-2 text-center text-[9px] sm:text-[11px] font-semibold text-gray-400 uppercase tracking-wide"
           >
             {dia}
           </div>
@@ -156,13 +156,13 @@ export default function CalendarioMensual({ eventos = [], mes, onMesChange, rend
           return (
             <div
               key={idx}
-              className={`min-h-[80px] p-1.5 flex flex-col gap-1 ${
+              className={`min-h-[56px] sm:min-h-[80px] p-1 sm:p-1.5 flex flex-col gap-1 ${
                 !esDelMes ? 'bg-gray-50/60' : ''
               }`}
             >
               {/* Número de día */}
               <span
-                className={`self-end text-xs font-semibold w-6 h-6 flex items-center justify-center rounded-full ${
+                className={`self-end text-[10px] sm:text-xs font-semibold w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center rounded-full ${
                   esHoy
                     ? 'bg-blue-600 text-white'
                     : esDelMes

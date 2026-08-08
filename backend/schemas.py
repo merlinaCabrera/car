@@ -514,6 +514,7 @@ class ReservaAdminListResponse(BaseModel):
     fecha_inicio: datetime
     fecha_fin: datetime
     estado: str
+    estado_orden: Optional[str] = None   # estado del pago: pendiente_verificacion | aprobada | rechazada | cancelada_socio | expirada
     id_usuario: Optional[int] = None
     nombre_responsable: Optional[str] = None
     notas: Optional[str] = None

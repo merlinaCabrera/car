@@ -36,7 +36,6 @@ import {
   Building2,
   CalendarDays,
   ChevronDown,
-  ChevronUp,
   HelpCircle,
   CheckCircle,
   XCircle,
@@ -67,6 +66,14 @@ function useRolesDeUsuario() {
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/**
+ * Normaliza texto para comparar sin importar mayúsculas/acentos — así
+ * buscar "arenaza" encuentra "Arenaza" y buscar "utilería" encuentra
+ * "utileria" si a alguien se le escapó una tilde al cargar el título.
+ */
+const normalizarTexto = (s) =>
+  (s ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
 
 const TIPO_CONFIG = {
   partido:       { label: 'Partido',       icon: Trophy,      classes: 'bg-emerald-100 text-emerald-800', chip: 'bg-emerald-500' },
@@ -625,6 +632,7 @@ export default function TecnicoEventos() {
   const [mostrarFinalizados, setMostrarFinalizados] = useState(false)
   const [categorias, setCategorias] = useState([])
   const [categoriaFiltro, setCategoriaFiltro] = useState('todas')
+  const [busqueda, setBusqueda] = useState('')
   const userRoles = useRolesDeUsuario()
   const esAdmin = userRoles.includes('admin_general')
   const { exportar, exportando, errorExport } = useExportarConvocatoria()
@@ -732,13 +740,28 @@ export default function TecnicoEventos() {
     return misCategoriaIds.has(evento.id_categoria)
   }, [esAdmin, misCategoriaIds])
 
-  // Filtro por categoría: se aplica en cliente porque `eventos` ya viene con
-  // `categoria` embebido en cada fila (no hace falta un roundtrip nuevo al
-  // backend, y así cambiar el filtro es instantáneo).
+  // Filtro por categoría + búsqueda de texto: se aplican en cliente porque
+  // `eventos` ya viene con `categoria` embebido en cada fila (no hace falta
+  // un roundtrip nuevo al backend, y así cambiar el filtro es instantáneo).
+  // La búsqueda matchea contra el título del evento Y el nombre de la
+  // categoría — así "primera" encuentra los partidos de Primera División,
+  // y "arenaza" encuentra los partidos contra ese rival (asumiendo que el
+  // título del evento lo incluye, como "vs. Arenaza").
   const eventosFiltrados = useMemo(() => {
-    if (categoriaFiltro === 'todas') return eventos
-    return eventos.filter(e => String(e.id_categoria) === String(categoriaFiltro))
-  }, [eventos, categoriaFiltro])
+    let resultado = eventos
+    if (categoriaFiltro !== 'todas') {
+      resultado = resultado.filter(e => String(e.id_categoria) === String(categoriaFiltro))
+    }
+    const q = normalizarTexto(busqueda.trim())
+    if (q) {
+      resultado = resultado.filter(e =>
+        normalizarTexto(e.titulo).includes(q) ||
+        normalizarTexto(e.categoria?.nombre).includes(q) ||
+        normalizarTexto(e.ubicacion).includes(q)
+      )
+    }
+    return resultado
+  }, [eventos, categoriaFiltro, busqueda])
 
   const handleSaveSuccess = () => {
     setSelectedEvent(null)
@@ -762,12 +785,15 @@ export default function TecnicoEventos() {
   // ── Render chip para el calendario mensual ─────────────────────────────────
   const renderEventoCalendario = useCallback((evento) => {
     const config = TIPO_CONFIG[evento.tipo] ?? TIPO_CONFIG.otro
+    const esFinalizado = evento.estado === 'finalizado'
     const gestionable = puedeGestionarEvento(evento)
     return (
       <button
         onClick={() => { if (gestionable) setSelectedEvent(evento) }}
         title={gestionable ? evento.titulo : `${evento.titulo} — no estás a cargo de esta categoría`}
-        className={`w-full text-left px-1.5 py-0.5 rounded text-[10px] font-semibold text-white truncate transition-opacity ${config.chip} ${
+        className={`w-full text-left px-1.5 py-0.5 rounded text-[10px] font-semibold text-white truncate transition-opacity ${
+          esFinalizado ? 'bg-gray-400' : config.chip
+        } ${
           gestionable ? 'hover:opacity-80 cursor-pointer' : 'opacity-50 cursor-not-allowed'
         }`}
       >
@@ -777,7 +803,7 @@ export default function TecnicoEventos() {
   }, [puedeGestionarEvento])
 
   return (
-    <div className="p-6 max-w-4xl mx-auto space-y-6">
+    <div className="p-4 sm:p-6 max-w-4xl mx-auto space-y-6">
       {selectedEvent && (
         <ConvocatoriaModal
           evento={selectedEvent}
@@ -800,23 +826,23 @@ export default function TecnicoEventos() {
       )}
 
       {/* Header */}
-      <div className="flex items-start justify-between gap-4 flex-wrap">
+      <div className="space-y-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
-            <Calendar size={24} className="text-gray-500" />
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-3">
+            <Calendar size={22} className="text-gray-500 flex-shrink-0" />
             Gestión de Eventos
           </h1>
           <p className="text-sm text-gray-500 mt-1">
             Armá las convocatorias para los próximos partidos y entrenamientos.
           </p>
         </div>
-        <div className="flex items-center gap-3 flex-shrink-0 flex-wrap">
-          <div className="relative">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+          <div className="relative flex-1 min-w-[140px] sm:flex-none">
             <Filter size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
             <select
               value={categoriaFiltro}
               onChange={e => setCategoriaFiltro(e.target.value)}
-              className="form-input pl-9 pr-8 py-2 text-sm font-semibold text-gray-600 !w-auto min-w-[160px]"
+              className="form-input pl-9 pr-8 py-2 text-sm font-semibold text-gray-600 w-full sm:!w-auto sm:min-w-[160px]"
               title="Filtrar por categoría"
             >
               <option value="todas">Todas las categorías</option>
@@ -836,7 +862,7 @@ export default function TecnicoEventos() {
             title="Incluir eventos ya finalizados (para exportar su planilla de asistencia)"
           >
             <History size={15} />
-            {mostrarFinalizados ? 'Viendo finalizados' : 'Ver finalizados'}
+            <span className="hidden sm:inline">{mostrarFinalizados ? 'Viendo finalizados' : 'Ver finalizados'}</span>
           </button>
           {esAdmin && (
             <button
@@ -844,7 +870,8 @@ export default function TecnicoEventos() {
               className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-green-600 text-white font-semibold hover:bg-green-700 transition-colors shadow-sm text-sm"
             >
               <PlusCircle size={16} />
-              Nuevo Evento
+              <span className="hidden sm:inline">Nuevo Evento</span>
+              <span className="sm:hidden">Nuevo</span>
             </button>
           )}
           <button
@@ -912,6 +939,26 @@ export default function TecnicoEventos() {
       {/* ── Vista Lista ──────────────────────────────────────────────────── */}
       {vista === 'lista' && (
         <div className="space-y-3">
+          <div className="relative">
+            <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+            <input
+              type="text"
+              value={busqueda}
+              onChange={e => setBusqueda(e.target.value)}
+              placeholder="Buscar por título, rival, categoría o lugar…"
+              className="form-input pl-10 pr-9 py-2.5 text-sm w-full"
+            />
+            {busqueda && (
+              <button
+                onClick={() => setBusqueda('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                title="Limpiar búsqueda"
+              >
+                <X size={15} />
+              </button>
+            )}
+          </div>
+
           {loading && [...Array(3)].map((_, i) => (
             <div key={i} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 h-24 animate-pulse" />
           ))}
@@ -920,6 +967,8 @@ export default function TecnicoEventos() {
             <div className="text-center py-12 text-gray-500">
               {eventos.length === 0
                 ? 'No hay eventos programados.'
+                : busqueda.trim()
+                ? `Ningún evento coincide con "${busqueda}".`
                 : 'No hay eventos para la categoría seleccionada.'}
             </div>
           )}
@@ -929,130 +978,153 @@ export default function TecnicoEventos() {
             const convocatoriasOrdenadas = [...evento.convocatorias].sort((a, b) =>
               (a.usuario?.apellido ?? '').localeCompare(b.usuario?.apellido ?? '')
             )
+            const esFinalizado = evento.estado === 'finalizado'
             return (
-              <div key={evento.id_evento} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <div className="inline-flex items-center gap-2 flex-wrap">
-                      <TipoBadge tipo={evento.tipo} />
-                      {evento.estado === 'finalizado' && (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-200 text-slate-700">
-                          <History size={12} /> Finalizado
-                        </span>
-                      )}
-                    </div>
-                    <h3 className="font-bold text-gray-900 text-lg mt-2">{evento.titulo}</h3>
-                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-500 mt-2">
-                      <span className="flex items-center gap-1.5">
-                        <Clock size={13} />
-                        {formatoFecha(evento.fecha_inicio)} - {formatoHora(evento.fecha_inicio)}
-                      </span>
-                      {evento.ubicacion && (
-                        <span className="flex items-center gap-1.5">
-                          <MapPin size={13} />
-                          {evento.ubicacion}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex-shrink-0 mt-1">
-                    {evento.categoria?.nombre ?? 'General'}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between gap-3 pt-4 border-t border-gray-100 flex-wrap">
-                  {/* Izquierda: contador expandible */}
-                  <button
-                    onClick={() => handleToggleExpand(evento.id_evento)}
-                    disabled={evento.convocatorias.length === 0}
-                    className="flex items-center gap-1.5 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <Users size={15} className="text-gray-400" />
-                    <span className="font-medium text-gray-600">
-                      {evento.convocatorias.length} convocado{evento.convocatorias.length !== 1 ? 's' : ''}
+              <div
+                key={evento.id_evento}
+                className={`rounded-2xl border shadow-sm overflow-hidden ${
+                  esFinalizado ? 'bg-gray-50 border-gray-200' : 'bg-white border-gray-100'
+                }`}
+              >
+                {/* Fila colapsada: SOLO título + fecha, tocable para expandir */}
+                <button
+                  onClick={() => handleToggleExpand(evento.id_evento)}
+                  className={`w-full flex items-center justify-between gap-3 p-4 sm:p-5 text-left transition-colors ${
+                    esFinalizado ? 'hover:bg-gray-100/60' : 'hover:bg-gray-50/60'
+                  }`}
+                >
+                  <div className="min-w-0 flex-1">
+                    <h3 className={`font-bold text-base sm:text-lg truncate ${esFinalizado ? 'text-gray-500' : 'text-gray-900'}`}>
+                      {evento.titulo}
+                    </h3>
+                    <span className={`flex items-center gap-1.5 text-sm mt-0.5 ${esFinalizado ? 'text-gray-400' : 'text-gray-500'}`}>
+                      <Clock size={13} className="flex-shrink-0" />
+                      {formatoFecha(evento.fecha_inicio)} · {formatoHora(evento.fecha_inicio)}
                     </span>
-                    {evento.convocatorias.length > 0 && (isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />)}
-                  </button>
+                  </div>
+                  <ChevronDown
+                    size={18}
+                    className={`flex-shrink-0 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                  />
+                </button>
 
-                  {/* Derecha: acciones */}
-                  <div className="flex items-center gap-2 flex-wrap">
-                    {/* Exportar convocatoria — visible solo si hay convocados */}
-                    {evento.convocatorias.length > 0 && (
-                      <button
-                        onClick={() => exportar(evento)}
-                        disabled={exportando}
-                        title="Descargar lista de convocados en PDF"
-                        className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-200 bg-white text-gray-600 font-semibold hover:bg-gray-50 hover:border-gray-300 disabled:opacity-50 disabled:cursor-wait transition-colors text-sm"
-                      >
-                        {exportando
-                          ? <Loader2 size={14} className="animate-spin" />
-                          : <FileDown size={14} />
-                        }
-                        {exportando ? 'Generando…' : 'Exportar convocatoria'}
-                      </button>
-                    )}
+                {/* Contenido expandido: todo lo demás — badges, ubicación,
+                    categoría, convocados y acciones. En mobile esto es lo
+                    que se evita mostrar de entrada para que la lista de
+                    eventos no ocupe toda la pantalla con info que no
+                    siempre hace falta ver. */}
+                {isExpanded && (
+                  <div className="px-4 sm:px-5 pb-4 sm:pb-5 space-y-4 border-t border-gray-100 pt-4">
+                    <div className="flex items-start justify-between gap-3 flex-wrap">
+                      <div className="inline-flex items-center gap-2 flex-wrap">
+                        <TipoBadge tipo={evento.tipo} />
+                        {evento.estado === 'finalizado' && (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-200 text-slate-700">
+                            <History size={12} /> Finalizado
+                          </span>
+                        )}
+                        <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                          {evento.categoria?.nombre ?? 'General'}
+                        </span>
+                      </div>
+                    </div>
 
-                    {/* Exportar asistencia real — solo eventos ya finalizados */}
-                    {evento.estado === 'finalizado' && (
-                      <button
-                        onClick={() => exportarAsistencias(evento)}
-                        disabled={exportandoAsistencias}
-                        title="Descargar planilla de asistencia real (quién ingresó por la puerta)"
-                        className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-200 bg-white text-gray-600 font-semibold hover:bg-gray-50 hover:border-gray-300 disabled:opacity-50 disabled:cursor-wait transition-colors text-sm"
-                      >
-                        {exportandoAsistencias
-                          ? <Loader2 size={14} className="animate-spin" />
-                          : <FileDown size={14} />
-                        }
-                        {exportandoAsistencias ? 'Generando…' : 'Exportar asistencia'}
-                      </button>
-                    )}
-
-                    {esAdmin && (
-                      <button
-                        onClick={() => setEventoEditando(evento)}
-                        title="Editar título, fechas, ubicación, categoría o estado"
-                        className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-200 bg-white text-gray-600 font-semibold hover:bg-gray-50 hover:border-gray-300 transition-colors text-sm"
-                      >
-                        <Pencil size={14} />
-                        Editar
-                      </button>
-                    )}
-
-                    {puedeGestionarEvento(evento) ? (
-                      <button
-                        onClick={() => setSelectedEvent(evento)}
-                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 transition-colors shadow-sm text-sm"
-                      >
-                        <ListPlus size={15} />
-                        Armar Convocatoria
-                      </button>
-                    ) : (
-                      <span
-                        title="No estás a cargo de esta categoría — pedile al Admin que te asigne para poder convocar."
-                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gray-100 text-gray-400 font-semibold text-sm cursor-not-allowed"
-                      >
-                        <ListPlus size={15} />
-                        Armar Convocatoria
+                    {evento.ubicacion && (
+                      <span className="flex items-center gap-1.5 text-sm text-gray-500">
+                        <MapPin size={13} className="flex-shrink-0" />
+                        {evento.ubicacion}
                       </span>
                     )}
-                  </div>
-                </div>
 
-                {isExpanded && (
-                  <div className="pt-4 border-t border-gray-100 space-y-2">
-                    <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Lista de Convocados</h4>
-                    {convocatoriasOrdenadas.length > 0 ? (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2">
-                        {convocatoriasOrdenadas.map(conv => (
-                          <div key={conv.id_usuario} className="flex items-center justify-between gap-2 p-2 rounded-lg bg-gray-50/50">
-                            <span className="font-medium text-sm text-gray-800">
-                              {conv.usuario?.apellido}, {conv.usuario?.nombre}
-                            </span>
-                            <EstadoConvocatoriaBadge estado={conv.estado} />
-                          </div>
-                        ))}
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2 border-t border-gray-100">
+                      {/* Contador de convocados */}
+                      <div className="flex items-center gap-1.5 text-sm">
+                        <Users size={15} className="text-gray-400 flex-shrink-0" />
+                        <span className="font-medium text-gray-600">
+                          {evento.convocatorias.length} convocado{evento.convocatorias.length !== 1 ? 's' : ''}
+                        </span>
                       </div>
-                    ) : null}
+
+                      {/* Acciones */}
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {evento.convocatorias.length > 0 && (
+                          <button
+                            onClick={() => exportar(evento)}
+                            disabled={exportando}
+                            title="Descargar lista de convocados en PDF"
+                            className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-200 bg-white text-gray-600 font-semibold hover:bg-gray-50 hover:border-gray-300 disabled:opacity-50 disabled:cursor-wait transition-colors text-sm"
+                          >
+                            {exportando
+                              ? <Loader2 size={14} className="animate-spin" />
+                              : <FileDown size={14} />
+                            }
+                            <span className="hidden sm:inline">{exportando ? 'Generando…' : 'Exportar convocatoria'}</span>
+                            <span className="sm:hidden">{exportando ? '…' : 'Exportar'}</span>
+                          </button>
+                        )}
+
+                        {evento.estado === 'finalizado' && (
+                          <button
+                            onClick={() => exportarAsistencias(evento)}
+                            disabled={exportandoAsistencias}
+                            title="Descargar planilla de asistencia real (quién ingresó por la puerta)"
+                            className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-200 bg-white text-gray-600 font-semibold hover:bg-gray-50 hover:border-gray-300 disabled:opacity-50 disabled:cursor-wait transition-colors text-sm"
+                          >
+                            {exportandoAsistencias
+                              ? <Loader2 size={14} className="animate-spin" />
+                              : <FileDown size={14} />
+                            }
+                            <span className="hidden sm:inline">{exportandoAsistencias ? 'Generando…' : 'Exportar asistencia'}</span>
+                            <span className="sm:hidden">{exportandoAsistencias ? '…' : 'Asistencia'}</span>
+                          </button>
+                        )}
+
+                        {esAdmin && (
+                          <button
+                            onClick={() => setEventoEditando(evento)}
+                            title="Editar título, fechas, ubicación, categoría o estado"
+                            className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-200 bg-white text-gray-600 font-semibold hover:bg-gray-50 hover:border-gray-300 transition-colors text-sm"
+                          >
+                            <Pencil size={14} />
+                            Editar
+                          </button>
+                        )}
+
+                        {puedeGestionarEvento(evento) ? (
+                          <button
+                            onClick={() => setSelectedEvent(evento)}
+                            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 transition-colors shadow-sm text-sm"
+                          >
+                            <ListPlus size={15} />
+                            Armar Convocatoria
+                          </button>
+                        ) : (
+                          <span
+                            title="No estás a cargo de esta categoría — pedile al Admin que te asigne para poder convocar."
+                            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gray-100 text-gray-400 font-semibold text-sm cursor-not-allowed"
+                          >
+                            <ListPlus size={15} />
+                            Armar Convocatoria
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {convocatoriasOrdenadas.length > 0 && (
+                      <div className="pt-3 border-t border-gray-100 space-y-2">
+                        <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Lista de Convocados</h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2">
+                          {convocatoriasOrdenadas.map(conv => (
+                            <div key={conv.id_usuario} className="flex items-center justify-between gap-2 p-2 rounded-lg bg-gray-50/50">
+                              <span className="font-medium text-sm text-gray-800 truncate">
+                                {conv.usuario?.apellido}, {conv.usuario?.nombre}
+                              </span>
+                              <EstadoConvocatoriaBadge estado={conv.estado} />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

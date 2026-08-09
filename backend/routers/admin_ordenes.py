@@ -57,7 +57,7 @@ _ROLES_ADMIN = ("admin_general", "personal_administrativo")
 # indumentaria/otros pendientes", sin tocar la bandeja real de verificación
 # (que sigue mostrando todo junto en /admin/tienda, donde efectivamente se
 # aprueban/rechazan).
-_TIPOS_FILTRO_VALIDOS = ("cuota", "tienda", "alquiler", "compra")
+_TIPOS_FILTRO_VALIDOS = ("cuota", "tienda", "alquiler", "compra", "mixta")
 
 # Los 5 estados posibles de una Orden (ver CheckConstraint chk_orden_estado
 # en models.py). 'cancelada_socio' es la que más se presta a pasarse por
@@ -112,6 +112,25 @@ def _subquery_tiene_categoria(db: Session, categoria: str):
     )
 
 
+def _subquery_cantidad_categorias(db: Session):
+    """Subquery escalar: cuántas categorías de producto DISTINTAS tiene la
+    orden (cuota_social/alquiler/indumentaria/otro, sin agrupar). Mismo
+    criterio que Orden.categoria_resumen en models.py — si da > 1, esa
+    property devuelve 'mixta', así que el filtro ?tipo=mixta tiene que usar
+    exactamente esta misma cuenta para que coincida con el badge que ve el
+    admin en la card."""
+    return (
+        db.query(func.count(func.distinct(models.ProductoServicio.categoria)))
+        .select_from(models.DetalleOrden)
+        .join(
+            models.ProductoServicio,
+            models.DetalleOrden.id_producto == models.ProductoServicio.id_producto,
+        )
+        .filter(models.DetalleOrden.id_orden == models.Orden.id_orden)
+        .scalar_subquery()
+    )
+
+
 def _aplicar_filtro_tipo(query, db: Session, tipo: Optional[str]):
     """Aplica el filtro `tipo` a un query de Orden.
 
@@ -120,6 +139,13 @@ def _aplicar_filtro_tipo(query, db: Session, tipo: Optional[str]):
                   semántica histórica, la usa la bandeja real de /admin/tienda).
     - 'alquiler': contiene un ítem de alquiler, sin cuota_social.
     - 'compra':   sin cuota_social y sin alquiler (indumentaria + otro puros).
+    - 'mixta':    tiene ítems de 2 o más categorías distintas (ej. cuota +
+                  indumentaria en el mismo comprobante). Es un filtro
+                  ADITIVO, no excluyente con los de arriba: una orden mixta
+                  de cuota+indumentaria también puede aparecer bajo 'cuota'
+                  si se filtra por ese tipo — pensado así a propósito, para
+                  no tocar la semántica de 'cuota'/'tienda'/'alquiler'/'compra'
+                  que ya usan las cards del Panel de Control y otras pantallas.
     """
     if tipo is None:
         return query
@@ -129,6 +155,9 @@ def _aplicar_filtro_tipo(query, db: Session, tipo: Optional[str]):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Parámetro 'tipo' inválido. Opciones válidas: {_TIPOS_FILTRO_VALIDOS}.",
         )
+
+    if tipo == "mixta":
+        return query.filter(_subquery_cantidad_categorias(db) > 1)
 
     tiene_cuota = _subquery_tiene_cuota_social(db)
     if tipo == "cuota":

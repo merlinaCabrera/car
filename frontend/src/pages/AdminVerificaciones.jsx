@@ -57,6 +57,7 @@ import {
   Search,
   Clock,
   Ban,
+  Filter,
 } from 'lucide-react'
 
 const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
@@ -72,6 +73,7 @@ const FILTROS_TIPO = [
   { value: 'cuota', label: 'Cuotas' },
   { value: 'alquiler', label: 'Alquileres' },
   { value: 'compra', label: 'Compras' },
+  { value: 'mixta', label: 'Mixtas' },
 ]
 
 // El orden acá define el orden de los botones — "Pendientes" primero porque
@@ -511,7 +513,7 @@ export default function AdminVerificaciones() {
     FILTROS_TIPO.some(f => f.value === tipoInicial) ? tipoInicial : ''
   )
   const [ordenSeleccionada, setOrdenSeleccionada] = useState(null)
-  const [filtroEstado, setFiltroEstado] = useState('pendiente_verificacion')
+  const [filtroEstado, setFiltroEstado] = useState('')
 
   // Búsqueda por DNI o nombre — debounced para no pegarle al backend en
   // cada tecla. 400ms es un punto medio razonable: suficiente para que no
@@ -637,8 +639,8 @@ export default function AdminVerificaciones() {
       )}
 
       {/* Header */}
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div className="min-w-0">
+      <div className="space-y-4">
+        <div>
           <h1 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2 sm:gap-3">
             <Wallet size={22} className="text-gray-500 flex-shrink-0" />
             Verificaciones
@@ -649,14 +651,72 @@ export default function AdminVerificaciones() {
             <span className="font-semibold text-gray-700">Gestión de Socios</span>.
           </p>
         </div>
-        <button
-          onClick={refrescarTodo}
-          disabled={loadingGlobal}
-          className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 disabled:opacity-40 transition-colors flex-shrink-0"
-          title="Actualizar Datos"
-        >
-          <RefreshCw size={16} className={loadingGlobal ? 'animate-spin' : ''} />
-        </button>
+
+        {/* ── Filtros: tipo + estado, mismo patrón que Socios / Reservas / Eventos ──
+            Deliberadamente SIN botón "Nuevo": el registro manual de un cobro
+            (efectivo/ventanilla) ya vive en Gestión de Socios → Compras →
+            Registrar Pago. Duplicarlo acá generaría dos caminos para lo mismo
+            (y el de Socios es mejor: ya sabe qué producto/cuota corresponde a
+            ese socio puntual, acá habría que hacérselo elegir a mano). */}
+        <div className="flex flex-nowrap items-center gap-1.5 sm:gap-3 overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 sm:overflow-visible">
+          <div className="relative flex-shrink-0">
+            <Filter size={13} className="absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none z-10" />
+            <select
+              value={filtroTipo}
+              onChange={e => cambiarFiltroTipo(e.target.value)}
+              className="form-input pl-7 pr-5 sm:pl-8 sm:pr-7 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-gray-600 w-auto"
+              title="Filtrar por tipo"
+            >
+              {FILTROS_TIPO.map(f => (
+                <option key={f.value} value={f.value}>{f.value === '' ? 'Tipo' : f.label}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="relative flex-shrink-0">
+            <Filter size={13} className="absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none z-10" />
+            <select
+              value={filtroEstado}
+              onChange={e => cambiarFiltroEstado(e.target.value)}
+              className="form-input pl-7 pr-5 sm:pl-8 sm:pr-7 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-gray-600 w-auto"
+              title="Filtrar por estado"
+            >
+              {FILTROS_ESTADO.map(f => (
+                <option key={f.value} value={f.value}>{f.value === '' ? 'Estado' : f.label}</option>
+              ))}
+            </select>
+          </div>
+
+          <button
+            onClick={refrescarTodo}
+            disabled={loadingGlobal}
+            className="flex-shrink-0 p-1.5 sm:p-2 rounded-lg text-gray-500 hover:bg-gray-100 disabled:opacity-40 transition-colors"
+            title="Actualizar datos"
+          >
+            <RefreshCw size={16} className={loadingGlobal ? 'animate-spin' : ''} />
+          </button>
+        </div>
+      </div>
+
+      {/* Buscador */}
+      <div className="relative">
+        <Search size={13} className="absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+        <input
+          type="text"
+          value={busqueda}
+          onChange={(e) => setBusqueda(e.target.value)}
+          placeholder="Buscar por DNI, nombre o apellido del socio..."
+          className="form-input pl-7 sm:pl-8 pr-4 py-1.5 sm:py-2 text-xs sm:text-sm w-full"
+        />
+        {busqueda && (
+          <button
+            onClick={() => setBusqueda('')}
+            className="absolute right-2.5 sm:right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            title="Limpiar búsqueda"
+          >
+            <X size={15} />
+          </button>
+        )}
       </div>
 
       {/* ── Bandeja agrupada por Pago ────────────────────────────────────────── */}
@@ -668,65 +728,6 @@ export default function AdminVerificaciones() {
           <p className="text-sm text-gray-500 mt-0.5">
             Cada tarjeta es un comprobante — puede contener varias órdenes.
           </p>
-        </div>
-
-        {/* Buscador por DNI o nombre del socio */}
-        <div className="relative">
-          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-          <input
-            type="text"
-            value={busqueda}
-            onChange={(e) => setBusqueda(e.target.value)}
-            placeholder="Buscar por DNI, nombre o apellido del socio..."
-            className="form-input w-full pl-10 text-sm"
-          />
-          {busqueda && (
-            <button
-              onClick={() => setBusqueda('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-              title="Limpiar búsqueda"
-            >
-              <X size={15} />
-            </button>
-          )}
-        </div>
-
-        {/* Tabs de categoría (tipo de ítem) — mismo estilo "pill gris" que
-            AdminSocios.jsx (TABS_ROLES/TABS_ESTADO), para que los filtros se
-            vean consistentes en toda la sección de admin. */}
-        <div className="flex gap-1 overflow-x-auto p-1 bg-gray-100 rounded-xl w-full sm:w-fit [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {FILTROS_TIPO.map(f => (
-            <button
-              key={f.value}
-              onClick={() => cambiarFiltroTipo(f.value)}
-              className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-all flex-shrink-0 ${
-                filtroTipo === f.value
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Tabs de estado — separados de los de categoría porque son ejes
-            de filtro independientes (categoría × estado se combinan libre).
-            Mismo estilo "pill gris" que la fila de arriba. */}
-        <div className="flex gap-1 overflow-x-auto p-1 bg-gray-100 rounded-xl w-full sm:w-fit [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {FILTROS_ESTADO.map(f => (
-            <button
-              key={f.value}
-              onClick={() => cambiarFiltroEstado(f.value)}
-              className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-all flex-shrink-0 whitespace-nowrap ${
-                filtroEstado === f.value
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              {f.label}
-            </button>
-          ))}
         </div>
 
         {ordenesResource.error && !ordenesResource.loading && (

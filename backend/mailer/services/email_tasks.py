@@ -24,6 +24,14 @@ from . import email_service
 logger = logging.getLogger("email_tasks")
 
 
+async def task_orden_aprobada(email_destino: str, nombre_socio: str, numero_orden: int, monto: str) -> None:
+    try:
+        await email_service.enviar_orden_aprobada(email_destino, nombre_socio, numero_orden, monto)
+        logger.info(f"Mail 'orden_aprobada' enviado a {email_destino} (orden #{numero_orden})")
+    except Exception:
+        logger.exception(f"Fallo al enviar mail 'orden_aprobada' a {email_destino} (orden #{numero_orden})")
+
+
 async def task_orden_rechazada(email_destino: str, nombre_socio: str, numero_orden: int, motivo: str) -> None:
     try:
         await email_service.enviar_orden_rechazada(email_destino, nombre_socio, numero_orden, motivo)
@@ -63,6 +71,37 @@ async def task_recuperar_password(email_destino: str, nombre_socio: str, link_re
         logger.info(f"Mail 'recuperar_password' enviado a {email_destino}")
     except Exception:
         logger.exception(f"Fallo al enviar mail 'recuperar_password' a {email_destino}")
+
+
+async def task_orden_aprobada_cuota(
+    email_destino: str,
+    nombre_socio: str,
+    numero_orden: int,
+    meses_pagados: int,
+    cubierto_hasta: str,
+) -> None:
+    try:
+        await email_service.enviar_orden_aprobada_cuota(
+            email_destino, nombre_socio, numero_orden, meses_pagados, cubierto_hasta
+        )
+        logger.info(f"Mail 'orden_aprobada_cuota' enviado a {email_destino} (orden #{numero_orden})")
+    except Exception:
+        logger.exception(f"Fallo al enviar mail 'orden_aprobada_cuota' a {email_destino} (orden #{numero_orden})")
+
+
+async def task_orden_aprobada_tienda(
+    email_destino: str,
+    nombre_socio: str,
+    numero_orden: int,
+    monto: str,
+) -> None:
+    try:
+        await email_service.enviar_orden_aprobada_tienda(
+            email_destino, nombre_socio, numero_orden, monto
+        )
+        logger.info(f"Mail 'orden_aprobada_tienda' enviado a {email_destino} (orden #{numero_orden})")
+    except Exception:
+        logger.exception(f"Fallo al enviar mail 'orden_aprobada_tienda' a {email_destino} (orden #{numero_orden})")
 
 
 async def task_compra_confirmada(

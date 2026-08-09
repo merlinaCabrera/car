@@ -91,7 +91,6 @@ from sqlalchemy.orm import Session, joinedload
 from pydantic import BaseModel, Field
 
 from mailer.services.email_tasks import task_aviso_admin_jugador_categoria
-from mailer.services import email_tasks
 
 import models
 import schemas
@@ -1415,7 +1414,6 @@ def convocar_jugadores_evento(
     id_evento: int,
     payload: ConvocatoriaMasivaPayload,
     request: Request,
-    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     tecnico: models.Usuario = Depends(require_roles(*_ROLES_TECNICO)),
 ) -> List[models.Convocatoria]:
@@ -1476,35 +1474,6 @@ def convocar_jugadores_evento(
             models.Convocatoria(id_evento=id_evento, id_usuario=id_usr, citado_por=tecnico.id_usuario)
             for id_usr in ids_a_agregar
         )
-
-        # ── Avisar a los jugadores RECIÉN convocados (mail + in-app) ──────────
-        # Solo a ids_a_agregar: si un jugador ya estaba convocado y se reenvía
-        # la lista completa (payload no destructivo), no lo re-notificamos.
-        jugadores_nuevos = (
-            db.query(models.Usuario)
-            .filter(models.Usuario.id_usuario.in_(ids_a_agregar))
-            .all()
-        )
-        fecha_evento_str = evento.fecha_inicio.strftime("%d/%m/%Y %H:%M")
-        for jugador_convocado in jugadores_nuevos:
-            db.add(
-                models.Notificacion(
-                    id_usuario=jugador_convocado.id_usuario,
-                    tipo="convocatoria",
-                    titulo="¡Fuiste convocado!",
-                    cuerpo=f"Te convocaron para \"{evento.titulo}\" el {fecha_evento_str}.",
-                    referencia_id=id_evento,
-                    referencia_tabla="eventos",
-                )
-            )
-            if jugador_convocado.email:
-                background_tasks.add_task(
-                    email_tasks.task_convocatoria,
-                    email_destino=jugador_convocado.email,
-                    nombre_socio=jugador_convocado.nombre,
-                    titulo_evento=evento.titulo,
-                    fecha_evento=fecha_evento_str,
-                )
 
     _registrar_audit(
         db=db,

@@ -216,35 +216,17 @@ def finalizar_pago_si_corresponde(
         return  # rechazado del todo: ya se avisó por orden, no hay nada que confirmar
 
     socio = pago.usuario
-    if not socio:
+    if not socio or not socio.email:
         return
 
     secciones, subtotal_items = _armar_secciones_compra(pago)
     if not secciones:
         return  # nada aprobado realmente (no debería pasar si estado=='verificado')
 
-    from decimal import Decimal
     saldo_aplicado = subtotal_items - pago.monto_total
+    from decimal import Decimal
     if saldo_aplicado < Decimal("0"):
         saldo_aplicado = Decimal("0")  # defensivo — nunca debería ser negativo
-
-    # ── Notificación in-app (una sola vez por Pago, no por Orden) ────────────
-    db.add(
-        models.Notificacion(
-            id_usuario=socio.id_usuario,
-            tipo="pago_verificado",
-            titulo="¡Pago verificado!",
-            cuerpo=(
-                f"Tu pago por un total de ${pago.monto_total:.2f} fue verificado y "
-                "aprobado. ¡Gracias por estar al día!"
-            ),
-            referencia_id=pago.id_pago,
-            referencia_tabla="pagos",
-        )
-    )
-
-    if not socio.email:
-        return  # sin email no hay mails que mandar, pero la notif in-app ya quedó
 
     tipos_presentes = {s["clave"] for s in secciones}
     if tipos_presentes == {"cuota_social"}:
@@ -424,9 +406,19 @@ def procesar_aprobacion_orden(
     )
 
     # ── Paso 8: notificación in-app ───────────────────────────────────────────
-    # Ya no se crea acá (era por Orden, mismo bug que tenían los mails: si el Pago
-    # tenía cuota+tienda, el socio veía 2 avisos separados con montos parciales).
-    # Ahora se crea UNA sola vez por Pago, dentro de finalizar_pago_si_corresponde.
+    db.add(
+        models.Notificacion(
+            id_usuario=socio.id_usuario,
+            tipo="orden_aprobada",
+            titulo="¡Pago verificado!",
+            cuerpo=(
+                f"Tu pago por un total de ${orden.monto_total} ha sido verificado y "
+                "aprobado. ¡Gracias por estar al día!"
+            ),
+            referencia_id=orden.id_orden,
+            referencia_tabla="ordenes",
+        )
+    )
 
     # ── Paso 9: mail resumen (a nivel Pago, no por Orden) ─────────────────────
     # Ya no se dispara nada acá: el llamador (admin_ordenes.py, webhooks_mercadopago.py,

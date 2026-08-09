@@ -304,6 +304,106 @@ def notificar_cuotas_vencidas():
         db.close()
 
 
+# ─── Job: expirar reservas de instalaciones sin pago al inicio del turno ──────
+
+def expirar_reservas_sin_pago():
+    """
+    Cada 15 minutos: busca reservas de instalaciones cuyo turno ya comenzó
+    pero la orden de pago todavía está 'pendiente_verificacion'.
+
+    Esto cubre el caso donde el socio bloqueó el turno, subió o no el
+    comprobante, pero el admin no lo aprobó a tiempo. Una vez pasada la
+    hora de inicio, el turno ya no puede usarse → se libera automáticamente.
+
+    Acción:
+      - Orden → 'expirada'
+      - ReservaInstalacion → 'liberada'
+      - AuditLog con motivo 'AUTO_EXPIRACION_TURNO_PASADO'
+      - Mail al socio informando que el turno venció sin confirmar
+
+    No toca reservas sin orden (no deberían existir, pero por seguridad).
+    No toca reservas ya en estado 'liberada', 'expirada' o 'confirmada'.
+    Es idempotente.
+    """
+    db = SessionLocal()
+    try:
+        ahora = datetime.now(timezone.utc)
+
+        # Reservas bloqueadas cuyo turno ya empezó y la orden sigue pendiente
+        reservas_vencidas = (
+            db.query(models.ReservaInstalacion)
+            .join(
+                models.Orden,
+                models.Orden.id_orden == models.ReservaInstalacion.id_orden,
+            )
+            .filter(
+                models.ReservaInstalacion.estado == "bloqueada",
+                models.ReservaInstalacion.fecha_inicio <= ahora,
+                models.Orden.estado == "pendiente_verificacion",
+            )
+            .all()
+        )
+
+        if not reservas_vencidas:
+            return
+
+        for reserva in reservas_vencidas:
+            orden = reserva.orden
+
+            # Liberar la reserva
+            reserva.estado = "liberada"
+
+            # Expirar la orden
+            orden.estado = "expirada"
+
+            # Audit log
+            db.add(models.AuditLog(
+                usuario_actor=None,   # acción automática del sistema
+                accion="AUTO_EXPIRACION_TURNO_PASADO",
+                tabla_afectada="reservas_instalaciones",
+                registro_id=reserva.id_reserva,
+                detalle={
+                    "instalacion":   reserva.instalacion,
+                    "fecha_inicio":  reserva.fecha_inicio.isoformat(),
+                    "id_orden":      orden.id_orden,
+                    "motivo":        "Turno iniciado sin pago aprobado — liberado automáticamente",
+                },
+            ))
+
+            # Mail al socio
+            socio = orden.usuario
+            if socio and socio.email:
+                try:
+                    asyncio.run(enviar_orden_expirada(
+                        email_destino=socio.email,
+                        nombre_socio=socio.nombre,
+                        numero_orden=orden.id_orden,
+                        monto=str(orden.monto_total),
+                    ))
+                except Exception as mail_exc:
+                    logger.error(
+                        f"[scheduler] Mail reserva_expirada falló "
+                        f"(reserva #{reserva.id_reserva}): {mail_exc}"
+                    )
+
+            logger.info(
+                f"[scheduler] Reserva #{reserva.id_reserva} "
+                f"({reserva.instalacion} {reserva.fecha_inicio}) "
+                f"liberada — orden #{orden.id_orden} expirada sin pago."
+            )
+
+        db.commit()
+
+    except Exception as exc:
+        db.rollback()
+        logger.error(
+            f"[scheduler] Error en expirar_reservas_sin_pago: {exc}",
+            exc_info=True,
+        )
+    finally:
+        db.close()
+
+
 # ─── Configuración del scheduler ─────────────────────────────────────────────
 
 scheduler = BackgroundScheduler(timezone="UTC")
@@ -322,6 +422,16 @@ scheduler.add_job(
     id="cerrar_eventos_vencidos",
     replace_existing=True,
     misfire_grace_time=60,
+    jitter=30,
+)
+
+scheduler.add_job(
+    expirar_reservas_sin_pago,
+    trigger="interval",
+    minutes=15,
+    id="expirar_reservas_sin_pago",
+    replace_existing=True,
+    misfire_grace_time=120,
     jitter=30,
 )
 

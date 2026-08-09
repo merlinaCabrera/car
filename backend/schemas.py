@@ -516,6 +516,7 @@ class ReservaAdminListResponse(BaseModel):
     estado: str
     id_usuario: Optional[int] = None
     nombre_responsable: Optional[str] = None
+    dni_responsable: Optional[str] = None
     notas: Optional[str] = None
     num_socios_esperados: Optional[int] = None
     monto_reintegro_unitario: Optional[Decimal] = None

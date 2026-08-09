@@ -1381,8 +1381,8 @@ export default function AdminSocios() {
       )}
 
       {/* Header */}
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div className="min-w-0">
+      <div className="space-y-4">
+        <div>
           <h1 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2 sm:gap-3">
             <Users size={22} className="text-gray-500 flex-shrink-0" />
             Gestión de Socios
@@ -1391,18 +1391,49 @@ export default function AdminSocios() {
             Crear, editar, aprobar, cobrar y dar de baja a los socios del club.
           </p>
         </div>
-        <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0 mt-1">
+
+        {/* ── Filtros: rol + estado, mismo patrón que Reservas / Gestión de Eventos ── */}
+        <div className="flex flex-nowrap items-center gap-1.5 sm:gap-3 overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 sm:overflow-visible">
+          <div className="relative flex-shrink-0">
+            <Filter size={13} className="absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none z-10" />
+            <select
+              value={rolFiltro}
+              onChange={e => { setRolFiltro(e.target.value); setSearchTerm('') }}
+              className="form-input pl-7 pr-5 sm:pl-8 sm:pr-7 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-gray-600 w-auto"
+              title="Filtrar por rol"
+            >
+              {TABS_ROLES.map(tab => (
+                <option key={tab.value} value={tab.value}>{tab.value === '' ? 'Rol' : tab.label}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="relative flex-shrink-0">
+            <Filter size={13} className="absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none z-10" />
+            <select
+              value={estadoFiltro}
+              onChange={e => { setEstadoFiltro(e.target.value); setSearchTerm('') }}
+              className="form-input pl-7 pr-5 sm:pl-8 sm:pr-7 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-gray-600 w-auto"
+              title="Filtrar por estado"
+            >
+              {TABS_ESTADO.map(tab => (
+                <option key={tab.value} value={tab.value}>{tab.value === '' ? 'Estado' : tab.label}</option>
+              ))}
+            </select>
+          </div>
+
           <button
             onClick={openModalForCreate}
-            className="inline-flex items-center gap-2 px-3.5 py-2 sm:px-4 rounded-xl bg-blue-600 text-white text-sm sm:text-base font-semibold hover:bg-blue-700 transition-colors shadow-sm whitespace-nowrap"
+            className="flex-shrink-0 inline-flex items-center gap-2 px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-green-600 text-white font-semibold hover:bg-green-700 transition-colors shadow-sm text-sm"
+            title="Nuevo Socio"
           >
             <PlusCircle size={16} />
             <span className="hidden sm:inline">Nuevo Socio</span>
-            <span className="sm:hidden">Nuevo</span>
           </button>
+
           <button
             onClick={fetchData} disabled={loading}
-            className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 disabled:opacity-40 transition-colors flex-shrink-0"
+            className="flex-shrink-0 p-1.5 sm:p-2 rounded-lg text-gray-500 hover:bg-gray-100 disabled:opacity-40 transition-colors"
             title="Actualizar lista"
           >
             <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
@@ -1410,49 +1441,15 @@ export default function AdminSocios() {
         </div>
       </div>
 
-      {/* ── Tabs de filtro por rol ─────────────────────────────────────────── */}
-      <div className="flex gap-1 overflow-x-auto p-1 bg-gray-100 rounded-xl w-full sm:w-fit [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {TABS_ROLES.map(tab => (
-          <button
-            key={tab.value}
-            onClick={() => { setRolFiltro(tab.value); setSearchTerm('') }}
-            className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-all flex-shrink-0 ${
-              rolFiltro === tab.value
-                ? 'bg-white text-gray-900 shadow-sm'
-                : 'text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      {/* ── Tabs de filtro por estado ─────────────────────────────────────── */}
-      <div className="flex gap-1 overflow-x-auto p-1 bg-gray-100 rounded-xl w-full sm:w-fit [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {TABS_ESTADO.map(tab => (
-          <button
-            key={tab.value}
-            onClick={() => { setEstadoFiltro(tab.value); setSearchTerm('') }}
-            className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-all flex-shrink-0 ${
-              estadoFiltro === tab.value
-                ? 'bg-white text-gray-900 shadow-sm'
-                : 'text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
       {/* Buscador */}
       <div className="relative">
-        <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+        <Search size={13} className="absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
         <input
           type="text"
           placeholder="Buscar por nombre, apellido o DNI..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+          className="form-input pl-7 sm:pl-8 pr-4 py-1.5 sm:py-2 text-xs sm:text-sm w-full"
         />
       </div>
 

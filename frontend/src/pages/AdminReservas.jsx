@@ -33,6 +33,7 @@ import {
   Volleyball,
   MapPin,
   PlusCircle,
+  Search,
 } from 'lucide-react'
 
 const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
@@ -125,14 +126,14 @@ function VistaToggle({ vista, onChange }) {
         <button
           key={key}
           onClick={() => onChange(key)}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${
+          className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${
             vista === key
               ? 'bg-white text-gray-900 shadow-sm'
               : 'text-gray-500 hover:text-gray-700'
           }`}
         >
           <Icon size={15} />
-          {label}
+          <span className="hidden sm:inline">{label}</span>
         </button>
       ))}
     </div>
@@ -394,8 +395,7 @@ export default function AdminReservas() {
   // Filtros lista
   const [filtroInstalacion, setFiltroInstalacion] = useState('')
   const [filtroEstadoOrden, setFiltroEstadoOrden] = useState('')
-  const [filtroDesde,       setFiltroDesde]       = useState('')
-  const [filtroHasta,       setFiltroHasta]       = useState('')
+  const [busqueda,           setBusqueda]           = useState('') // nombre o DNI del socio
 
   // Detalle abierto (calendario)
   const [reservaDetalle,    setReservaDetalle]    = useState(null)
@@ -421,8 +421,6 @@ export default function AdminReservas() {
         params.set('hasta', hasta.toISOString().slice(0, 10))
       } else {
         if (filtroInstalacion) params.set('instalacion', filtroInstalacion)
-        if (filtroDesde)       params.set('desde',       filtroDesde)
-        if (filtroHasta)       params.set('hasta',       filtroHasta)
       }
 
       const res = await fetch(`${API}/admin/reservas?${params.toString()}`, {
@@ -435,7 +433,7 @@ export default function AdminReservas() {
     } finally {
       setLoading(false)
     }
-  }, [token, vista, mes, filtroInstalacion, filtroDesde, filtroHasta])
+  }, [token, vista, mes, filtroInstalacion])
 
   useEffect(() => { fetchReservas() }, [fetchReservas])
 
@@ -477,8 +475,15 @@ export default function AdminReservas() {
       if (filtroInstalacion) lista = lista.filter(r => r.instalacion === filtroInstalacion)
       if (filtroEstadoOrden) lista = lista.filter(r => r.estado_orden === filtroEstadoOrden)
     }
+    const busquedaNorm = busqueda.trim().toLowerCase()
+    if (busquedaNorm) {
+      lista = lista.filter(r =>
+        r.nombre_responsable?.toLowerCase().includes(busquedaNorm) ||
+        r.dni_responsable?.toLowerCase().includes(busquedaNorm)
+      )
+    }
     return lista
-  }, [reservas, instDelGrupo, vista, filtroInstalacion, filtroEstadoOrden, filtroCalendario])
+  }, [reservas, instDelGrupo, vista, filtroInstalacion, filtroEstadoOrden, filtroCalendario, busqueda])
 
   // ── Chip para el calendario ───────────────────────────────────────────────
   const renderReservaCalendario = useCallback((reserva) => {
@@ -517,55 +522,116 @@ export default function AdminReservas() {
       )}
 
       {/* Header */}
-      <div className="flex items-start justify-between gap-4 flex-wrap">
+      <div className="space-y-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
-            <Calendar size={24} className="text-gray-500" />
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-3">
+            <Calendar size={22} className="text-gray-500 flex-shrink-0" />
             Agenda de Reservas
           </h1>
           <p className="text-sm text-gray-500 mt-1">
             Quincho y canchas — estado de pagos y ocupación.
           </p>
         </div>
-        <div className="flex items-center gap-3 flex-wrap flex-shrink-0">
+
+        {/* Tabs: Canchas / Quincho — base, arriba de todo */}
+        <div className="flex gap-1 p-1 bg-gray-100 rounded-xl w-fit mx-auto">
+          {GRUPOS.map(grupo => {
+            const Icon = grupo.icon
+            return (
+              <button
+                key={grupo.key}
+                onClick={() => handleGrupoChange(grupo.key)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                  grupoActivo === grupo.key
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                <Icon size={15} />
+                {grupo.label}
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Barra de filtros — mismo patrón que Gestión de Eventos */}
+        <div className="flex flex-nowrap items-center gap-1.5 sm:gap-3 overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 sm:overflow-visible">
+          {instDelGrupo.length > 1 && (
+            <div className="relative flex-shrink-0">
+              <Filter size={13} className="absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none z-10" />
+              <select
+                value={filtroInstalacion}
+                onChange={e => setFiltroInstalacion(e.target.value)}
+                className="form-input pl-7 pr-5 sm:pl-8 sm:pr-7 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-gray-600 w-auto"
+                title="Filtrar por cancha"
+              >
+                <option value="">Canchas</option>
+                {instDelGrupo.map(inst => (
+                  <option key={inst} value={inst}>{labelInstalacion(inst)}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          <div className="relative flex-shrink-0">
+            <Filter size={13} className="absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none z-10" />
+            <select
+              value={vista === 'calendario' ? filtroCalendario : filtroEstadoOrden}
+              onChange={e =>
+                vista === 'calendario'
+                  ? setFiltroCalendario(e.target.value)
+                  : setFiltroEstadoOrden(e.target.value)
+              }
+              className="form-input pl-7 pr-5 sm:pl-8 sm:pr-7 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-gray-600 w-auto"
+              title="Filtrar por estado"
+            >
+              <option value="">Estados</option>
+              <option value="pendiente_verificacion">Pendiente</option>
+              <option value="aprobada">Aprobada</option>
+              {vista === 'lista' && (
+                <>
+                  <option value="rechazada">Rechazada</option>
+                  <option value="cancelada_socio">Cancelada</option>
+                  <option value="expirada">Expirada</option>
+                </>
+              )}
+            </select>
+          </div>
+
+          <div className="flex-shrink-0">
+            <VistaToggle vista={vista} onChange={setVista} />
+          </div>
+
           <button
             onClick={() => setModalNuevaAbierto(true)}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800 transition-colors shadow-sm"
+            className="flex-shrink-0 inline-flex items-center gap-2 px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-green-600 text-white font-semibold hover:bg-green-700 transition-colors shadow-sm text-sm"
+            title="Nueva Reserva"
           >
             <PlusCircle size={16} />
-            Nueva Reserva
+            <span className="hidden sm:inline">Nueva Reserva</span>
           </button>
-          <VistaToggle vista={vista} onChange={setVista} />
+
           <button
             onClick={fetchReservas}
             disabled={loading}
-            className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 disabled:opacity-40 transition-colors"
+            className="flex-shrink-0 p-1.5 sm:p-2 rounded-lg text-gray-500 hover:bg-gray-100 disabled:opacity-40 transition-colors"
             title="Actualizar"
           >
             <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
           </button>
         </div>
-      </div>
 
-      {/* Tabs: Canchas / Quincho */}
-      <div className="flex gap-1 p-1 bg-gray-100 rounded-xl w-fit">
-        {GRUPOS.map(grupo => {
-          const Icon = grupo.icon
-          return (
-            <button
-              key={grupo.key}
-              onClick={() => handleGrupoChange(grupo.key)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
-                grupoActivo === grupo.key
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              <Icon size={15} />
-              {grupo.label}
-            </button>
-          )
-        })}
+        {/* Buscador por socio: nombre o DNI de quien alquiló */}
+        <div className="relative">
+          <Search size={13} className="absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+          <input
+            type="text"
+            value={busqueda}
+            onChange={e => setBusqueda(e.target.value)}
+            placeholder="Buscar por socio o DNI..."
+            className="form-input pl-7 sm:pl-8 py-1.5 sm:py-2 text-xs sm:text-sm w-full"
+          />
+        </div>
       </div>
 
       {/* Error */}
@@ -584,28 +650,6 @@ export default function AdminReservas() {
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm h-96 animate-pulse" />
           ) : (
             <>
-              {/* Pills de filtro por estado */}
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Mostrar:</span>
-                {[
-                  { value: '',                       label: 'Todos'      },
-                  { value: 'pendiente_verificacion', label: 'Pendientes' },
-                  { value: 'aprobada',               label: 'Aprobadas'  },
-                ].map(opt => (
-                  <button
-                    key={opt.value}
-                    onClick={() => setFiltroCalendario(opt.value)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
-                      filtroCalendario === opt.value
-                        ? 'bg-slate-900 text-white'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                    }`}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-
               {/* Calendarios por instalación */}
               {instDelGrupo.map(inst => {
                 const reservasDeEsta = reservasFiltradas.filter(r => r.instalacion === inst)
@@ -650,48 +694,6 @@ export default function AdminReservas() {
       {/* ── Vista Lista ──────────────────────────────────────────────────── */}
       {vista === 'lista' && (
         <div className="space-y-4">
-          {/* Filtros */}
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-wrap gap-3 items-end">
-            <div className="flex items-center gap-2 text-sm font-semibold text-gray-400 pr-1">
-              <Filter size={14} /> Filtros
-            </div>
-
-            {instDelGrupo.length > 1 && (
-              <select
-                value={filtroInstalacion}
-                onChange={e => setFiltroInstalacion(e.target.value)}
-                className="form-input text-sm"
-              >
-                <option value="">Todas las canchas</option>
-                {instDelGrupo.map(inst => (
-                  <option key={inst} value={inst}>{labelInstalacion(inst)}</option>
-                ))}
-              </select>
-            )}
-
-            <select
-              value={filtroEstadoOrden}
-              onChange={e => setFiltroEstadoOrden(e.target.value)}
-              className="form-input text-sm"
-            >
-              <option value="">Todos los estados</option>
-              <option value="pendiente_verificacion">Pendiente</option>
-              <option value="aprobada">Aprobada</option>
-              <option value="rechazada">Rechazada</option>
-              <option value="cancelada_socio">Cancelada</option>
-              <option value="expirada">Expirada</option>
-            </select>
-
-            <div className="flex items-center gap-2">
-              <label className="text-xs text-gray-400">Desde</label>
-              <input type="date" value={filtroDesde} onChange={e => setFiltroDesde(e.target.value)} className="form-input text-sm" />
-            </div>
-            <div className="flex items-center gap-2">
-              <label className="text-xs text-gray-400">Hasta</label>
-              <input type="date" value={filtroHasta} onChange={e => setFiltroHasta(e.target.value)} className="form-input text-sm" />
-            </div>
-          </div>
-
           {/* Skeleton */}
           {loading && [...Array(3)].map((_, i) => (
             <div key={i} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 h-20 animate-pulse" />

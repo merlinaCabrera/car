@@ -78,8 +78,10 @@ def listar_reservas(
     resultado: List[schemas.ReservaAdminListResponse] = []
     for r in reservas:
         nombre_responsable = None
+        dni_responsable = None
         if r.usuario_responsable is not None:
             nombre_responsable = f"{r.usuario_responsable.nombre} {r.usuario_responsable.apellido}"
+            dni_responsable = r.usuario_responsable.dni
 
         resultado.append(
             schemas.ReservaAdminListResponse(
@@ -90,6 +92,7 @@ def listar_reservas(
                 estado=r.estado,
                 id_usuario=r.id_usuario,
                 nombre_responsable=nombre_responsable,
+                dni_responsable=dni_responsable,
                 notas=r.notas,
                 num_socios_esperados=r.num_socios_esperados,
                 monto_reintegro_unitario=r.monto_reintegro_unitario,

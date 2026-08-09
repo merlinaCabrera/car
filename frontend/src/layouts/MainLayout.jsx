@@ -25,6 +25,7 @@ import {
   Trophy,
   CalendarClock,
   ChevronDown,
+  TrendingUp,
 } from 'lucide-react'
 
 // Importación del asset real
@@ -261,14 +262,20 @@ export default function MainLayout({ userRole }) {
               <Link to="/admin/verificaciones" onClick={closeMenu} className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors">
                 <Wallet size={18} /><span>Verificaciones</span>
               </Link>
-              <Link to="/admin/productos" onClick={closeMenu} className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors">
-                <Package size={18} /><span>Catálogo</span>
+              <Link to="/admin/estadisticas" onClick={closeMenu} className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors">
+                <TrendingUp size={18} /><span>Estadísticas</span>
               </Link>
               <Link to="/admin/reservas" onClick={closeMenu} className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors">
                 <Calendar size={18} /><span>Alquileres</span>
               </Link>
               <Link to="/gestion-eventos" onClick={closeMenu} className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors">
                 <CalendarDays size={18} /><span>Eventos</span>
+              </Link>
+              <Link to="/gestion-planteles" onClick={closeMenu} className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors">
+                <ClipboardList size={18} /><span>Planteles</span>
+              </Link>
+              <Link to="/admin/productos" onClick={closeMenu} className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors">
+                <Package size={18} /><span>Catálogo</span>
               </Link>
               <Link to="/admin/comercios" onClick={closeMenu} className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors">
                 <Store size={18} /><span>Comercios</span>

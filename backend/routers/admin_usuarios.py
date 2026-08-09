@@ -544,6 +544,53 @@ def listar_roles(
     return query.order_by(models.Rol.peso_jerarquico.desc()).all()
 
 
+# DNI reservado para la cuenta compartida "Invitado / No-Socio". Nunca puede
+# pertenecer a una persona real (DNI argentino real no empieza con 8 ceros).
+# Se usa para imputar compras/alquileres de gente que no es socio (ej: un
+# vecino que alquila el quincho), cuando el admin registra el cobro a mano.
+DNI_CUENTA_INVITADO = "00000000"
+
+
+@router.get(
+    "/cuenta-invitado",                        # ← declarar ANTES de /{id_usuario}
+    response_model=schemas.UsuarioListResponse,
+    summary="Obtiene (o crea si no existe) la cuenta compartida 'Invitado / No-Socio'",
+)
+def obtener_cuenta_invitado(
+    db: Session = Depends(get_db),
+    _: models.Usuario = Depends(require_roles(*_ADMIN)),
+):
+    """
+    Cuenta única y compartida para imputar cobros manuales (alquileres, y en
+    el futuro compras de tienda) de personas que NO son socias del club —
+    ej: un vecino que alquila el quincho para un cumpleaños.
+
+    No tiene ningún rol asignado a propósito: así no aparece en los listados
+    de socios/jugadores/etc. ni contamina esas métricas. Quién es realmente
+    la persona detrás de cada cobro queda anotado en el campo de notas de
+    esa orden/reserva puntual (nombre_responsable), no en esta cuenta — la
+    cuenta es solo el "casillero" contable, no representa a nadie en particular.
+
+    Se crea sola la primera vez que se pide (get-or-create), para no depender
+    de correr un script de seed a mano en cada entorno.
+    """
+    invitado = db.query(models.Usuario).filter(models.Usuario.dni == DNI_CUENTA_INVITADO).first()
+    if invitado is not None:
+        return invitado
+
+    invitado = models.Usuario(
+        dni=DNI_CUENTA_INVITADO,
+        nombre="Invitado",
+        apellido="/ No-Socio",
+        password_hash=get_password_hash(f"cuenta-invitado-sin-login-{DNI_CUENTA_INVITADO}"),
+        requiere_cambio_password=False,
+    )
+    db.add(invitado)
+    db.commit()
+    db.refresh(invitado)
+    return invitado
+
+
 @router.put(
     "/{id_usuario}/roles",
     response_model=ActualizarRolesResponse,

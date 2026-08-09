@@ -66,6 +66,7 @@ import {
   Package,
   CalendarDays,
   TrendingUp,
+  CalendarCheck,
 } from 'lucide-react'
 
 export default function AdminInicio() {
@@ -153,37 +154,24 @@ export default function AdminInicio() {
 
       {/* ── Gestión operativa (sin título de sección: sigue directo abajo) ──── */}
       <div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
           <MetricCard
-            icon={Store}
-            iconColor="bg-purple-100 text-purple-700"
-            titulo="Comercios Adheridos"
+            icon={CalendarCheck}
+            iconColor="bg-green-100 text-green-700"
+            titulo="Alquileres"
             descripcion={
-              resumen.data
-                ? `${resumen.data.comercios_activos} activos de ${resumen.data.comercios_total} en total.`
-                : 'Beneficios para socios.'
+              resumen.data?.reservas_semana != null
+                ? resumen.data.reservas_semana === 0
+                  ? 'Sin reservas esta semana.'
+                  : `${resumen.data.reservas_semana} reserva${resumen.data.reservas_semana !== 1 ? 's' : ''} programada${resumen.data.reservas_semana !== 1 ? 's' : ''} esta semana.`
+                : 'Canchas y quincho — agenda de reservas.'
             }
-            valor={resumen.data?.comercios_activos ?? 0}
+            valor={resumen.data?.reservas_semana ?? '—'}
+            valorColor="text-gray-700"
             loading={resumen.loading}
             error={resumen.error}
-            ctaLabel="Ver comercios"
-            ctaPath="/admin/comercios"
-          />
-
-          <MetricCard
-            icon={Package}
-            iconColor="bg-teal-100 text-teal-700"
-            titulo="Catálogo de Productos"
-            descripcion={
-              resumen.data
-                ? `${resumen.data.productos_activos} activos de ${resumen.data.productos_total} en total.`
-                : 'Cuotas, alquileres e indumentaria.'
-            }
-            valor={resumen.data?.productos_activos ?? 0}
-            loading={resumen.loading}
-            error={resumen.error}
-            ctaLabel="Ver catálogo"
-            ctaPath="/admin/productos"
+            ctaLabel="Ver agenda"
+            ctaPath="/admin/reservas"
           />
 
           <MetricCard
@@ -196,10 +184,45 @@ export default function AdminInicio() {
                 : 'Convocatorias y eventos institucionales.'
             }
             valor={resumen.data?.proximos_eventos?.length ?? 0}
+            valorColor="text-gray-700"
             loading={resumen.loading}
             error={resumen.error}
             ctaLabel="Ver eventos"
             ctaPath="/gestion-eventos"
+          />
+
+          <MetricCard
+            icon={Package}
+            iconColor="bg-teal-100 text-teal-700"
+            titulo="Catálogo de Productos"
+            descripcion={
+              resumen.data
+                ? `${resumen.data.productos_activos} activos de ${resumen.data.productos_total} en total.`
+                : 'Cuotas, alquileres e indumentaria.'
+            }
+            valor={resumen.data?.productos_activos ?? 0}
+            valorColor="text-gray-700"
+            loading={resumen.loading}
+            error={resumen.error}
+            ctaLabel="Ver catálogo"
+            ctaPath="/admin/productos"
+          />
+
+          <MetricCard
+            icon={Store}
+            iconColor="bg-purple-100 text-purple-700"
+            titulo="Comercios Adheridos"
+            descripcion={
+              resumen.data
+                ? `${resumen.data.comercios_activos} activos de ${resumen.data.comercios_total} en total.`
+                : 'Beneficios para socios.'
+            }
+            valor={resumen.data?.comercios_activos ?? 0}
+            valorColor="text-gray-700"
+            loading={resumen.loading}
+            error={resumen.error}
+            ctaLabel="Ver comercios"
+            ctaPath="/admin/comercios"
           />
         </div>
       </div>

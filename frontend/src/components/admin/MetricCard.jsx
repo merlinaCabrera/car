@@ -24,14 +24,15 @@ export default function MetricCard({
   titulo,
   descripcion,
   valor,
+  valorColor,        // override del color del número. Si no se pasa: azul cuando > 0, gris cuando 0
   children,
   loading,
   error,
   ctaLabel,
   ctaPath,
   proximamente = false,
-  span = false,       // ocupa 2 columnas en la grilla (para contenido más rico)
-  compacto = false,    // en mobile: sin descripción ni botón de texto, tile de ícono+número+título
+  span = false,
+  compacto = false,
 }) {
   const navigate = useNavigate()
 
@@ -84,7 +85,9 @@ export default function MetricCard({
 
         {/* Estado: contador numérico (modo original) */}
         {!loading && !error && children === undefined && (
-          <p className={`text-2xl sm:text-3xl font-bold mt-1 ${valor > 0 ? 'text-blue-600' : 'text-gray-900'}`}>
+          <p className={`text-2xl sm:text-3xl font-bold mt-1 ${
+            valorColor ?? (valor > 0 ? 'text-blue-600' : 'text-gray-900')
+          }`}>
             {valor}
           </p>
         )}

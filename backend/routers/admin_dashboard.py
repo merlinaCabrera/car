@@ -72,6 +72,7 @@ class ResumenDashboardResponse(BaseModel):
     ingresos_mes: Decimal
     mes_label: str
     reservas_sin_reparto: int
+    reservas_semana: int          # reservas confirmadas/bloqueadas en los próximos 7 días
     comercios_activos: int
     comercios_total: int
     productos_activos: int
@@ -184,10 +185,23 @@ def obtener_resumen(
         .all()
     )
 
+    # ── Reservas esta semana ───────────────────────────────────────────────────
+    fin_semana = ahora + timedelta(days=7)
+    reservas_semana = (
+        db.query(func.count(models.ReservaInstalacion.id_reserva))
+        .filter(
+            models.ReservaInstalacion.estado.in_(["bloqueada", "confirmada"]),
+            models.ReservaInstalacion.fecha_inicio >= ahora,
+            models.ReservaInstalacion.fecha_inicio <= fin_semana,
+        )
+        .scalar()
+    ) or 0
+
     return ResumenDashboardResponse(
         ingresos_mes=ingresos_mes,
         mes_label=mes_label,
         reservas_sin_reparto=reservas_sin_reparto,
+        reservas_semana=reservas_semana,
         comercios_activos=comercios_activos,
         comercios_total=comercios_total,
         productos_activos=productos_activos,

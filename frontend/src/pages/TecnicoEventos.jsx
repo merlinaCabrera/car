@@ -592,25 +592,27 @@ function VistaToggle({ vista, onChange }) {
     <div className="flex items-center bg-gray-100 rounded-xl p-1 gap-1">
       <button
         onClick={() => onChange('lista')}
-        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${
+        title="Vista lista"
+        className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${
           vista === 'lista'
             ? 'bg-white text-gray-900 shadow-sm'
             : 'text-gray-500 hover:text-gray-700'
         }`}
       >
         <List size={15} />
-        Lista
+        <span className="hidden sm:inline">Lista</span>
       </button>
       <button
         onClick={() => onChange('calendario')}
-        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${
+        title="Vista calendario"
+        className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${
           vista === 'calendario'
             ? 'bg-white text-gray-900 shadow-sm'
             : 'text-gray-500 hover:text-gray-700'
         }`}
       >
         <LayoutGrid size={15} />
-        Calendario
+        <span className="hidden sm:inline">Calendario</span>
       </button>
     </div>
   )
@@ -837,12 +839,12 @@ export default function TecnicoEventos() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-          <div className="relative flex-1 min-w-[140px] sm:flex-none">
-            <Filter size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+          <div className="relative">
+            <Filter size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none z-10" />
             <select
               value={categoriaFiltro}
               onChange={e => setCategoriaFiltro(e.target.value)}
-              className="form-input pl-9 pr-8 py-2 text-sm font-semibold text-gray-600 w-full sm:!w-auto sm:min-w-[160px]"
+              className="form-input pl-8 pr-7 py-2 text-sm font-semibold text-gray-600 w-auto"
               title="Filtrar por categoría"
             >
               <option value="todas">Todas las categorías</option>
@@ -867,11 +869,11 @@ export default function TecnicoEventos() {
           {esAdmin && (
             <button
               onClick={() => setModalNuevoEventoAbierto(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-green-600 text-white font-semibold hover:bg-green-700 transition-colors shadow-sm text-sm"
+              className="inline-flex items-center gap-2 px-2.5 sm:px-4 py-2 rounded-xl bg-green-600 text-white font-semibold hover:bg-green-700 transition-colors shadow-sm text-sm"
+              title="Nuevo Evento"
             >
               <PlusCircle size={16} />
               <span className="hidden sm:inline">Nuevo Evento</span>
-              <span className="sm:hidden">Nuevo</span>
             </button>
           )}
           <button

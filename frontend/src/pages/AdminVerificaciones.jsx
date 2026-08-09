@@ -691,14 +691,18 @@ export default function AdminVerificaciones() {
           )}
         </div>
 
-        {/* Tabs de categoría (tipo de ítem) */}
-        <div className="flex items-center gap-1.5 flex-wrap">
+        {/* Tabs de categoría (tipo de ítem) — mismo estilo "pill gris" que
+            AdminSocios.jsx (TABS_ROLES/TABS_ESTADO), para que los filtros se
+            vean consistentes en toda la sección de admin. */}
+        <div className="flex gap-1 overflow-x-auto p-1 bg-gray-100 rounded-xl w-full sm:w-fit [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {FILTROS_TIPO.map(f => (
             <button
               key={f.value}
               onClick={() => cambiarFiltroTipo(f.value)}
-              className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
-                filtroTipo === f.value ? 'bg-slate-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-all flex-shrink-0 ${
+                filtroTipo === f.value
+                  ? 'bg-white text-gray-900 shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700'
               }`}
             >
               {f.label}
@@ -707,14 +711,17 @@ export default function AdminVerificaciones() {
         </div>
 
         {/* Tabs de estado — separados de los de categoría porque son ejes
-            de filtro independientes (categoría × estado se combinan libre). */}
-        <div className="flex items-center gap-1.5 flex-wrap overflow-x-auto pb-1">
+            de filtro independientes (categoría × estado se combinan libre).
+            Mismo estilo "pill gris" que la fila de arriba. */}
+        <div className="flex gap-1 overflow-x-auto p-1 bg-gray-100 rounded-xl w-full sm:w-fit [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {FILTROS_ESTADO.map(f => (
             <button
               key={f.value}
               onClick={() => cambiarFiltroEstado(f.value)}
-              className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${
-                filtroEstado === f.value ? 'bg-blue-600 text-white' : 'bg-blue-50 text-blue-700 hover:bg-blue-100'
+              className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-all flex-shrink-0 whitespace-nowrap ${
+                filtroEstado === f.value
+                  ? 'bg-white text-gray-900 shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700'
               }`}
             >
               {f.label}

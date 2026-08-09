@@ -1,6 +1,10 @@
 VAMOS DESDE CERO:
 
-
+tema mail (clubatleticoroberts1)
+Lo que quedó pendiente (para la próxima, si querés seguir)
+Notificación de admin "4 pagos por aprobar...": mi recomendación es que no sea una fila guardada en Notificacion (se desactualiza al toque y ensucia la tabla) — mejor un endpoint liviano que cuente en vivo (pendientes, solicitudes, etc.), igual a como ya lo hace AdminInicio.jsx, pero mostrado como badge en el ícono de la campanita/menú, no solo en el dashboard. Si querés, en la próxima lo armo.
+Popups/toasts en la app: para esto no hace falta backend nuevo — es un tema 100% frontend (mostrar un toast cuando llega una notificación nueva, por ejemplo poleando /notificaciones/ cada tanto, o mejor a futuro con WebSockets). Lo dejamos para cuando quieras encarar el frontend de notificaciones.
+Alta/baja de socio y flujo completo por mail: ya existen aviso_admin_nuevo_socio, cuenta_aprobada, socio_dado_de_baja, socio_reactivado — todos conectados correctamente. Si querés que revise algo puntual de esos (contenido, cuándo disparan), decime cuál.
 
 
 

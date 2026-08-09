@@ -514,6 +514,13 @@ class ReservaAdminListResponse(BaseModel):
     fecha_inicio: datetime
     fecha_fin: datetime
     estado: str
+    estado_orden: Optional[str] = Field(
+        default=None,
+        description="Estado de la Orden de pago vinculada (si la hay): "
+                     "'aprobada' | 'pendiente_verificacion' | 'rechazada' | etc. "
+                     "None si la reserva no tiene ningún pago asociado (bloqueo "
+                     "de agenda puro, sin cobro).",
+    )
     id_usuario: Optional[int] = None
     nombre_responsable: Optional[str] = None
     dni_responsable: Optional[str] = None
@@ -530,7 +537,14 @@ class CrearReservaManualPayload(BaseModel):
     """
     Payload para que el admin cree una reserva sin pasar por el carrito.
     Útil para socios mayores que no usan la app o para no-socios (ej: quincho).
-    La reserva se crea directamente en estado 'confirmada', sin orden de pago.
+    La reserva se crea directamente en estado 'confirmada'.
+
+    Registrar el cobro es OPCIONAL: si se omiten id_usuario_pago/id_producto,
+    la reserva queda como bloqueo de agenda puro (comportamiento histórico,
+    sin plata involucrada — para bloqueos de mantenimiento, por ejemplo).
+    Si se completan, además del bloqueo se crea un Pago+Orden 'aprobada' en
+    efectivo, vinculado a la reserva, para que quede registrado en
+    Verificaciones/Estadísticas igual que cualquier otro ingreso.
     """
     instalacion: str = Field(
         description="Clave de la instalación: 'cancha_1', 'cancha_2' o 'quincho'.",
@@ -539,12 +553,29 @@ class CrearReservaManualPayload(BaseModel):
     fecha_fin:    datetime = Field(description="Fecha y hora de fin del turno.")
     nombre_responsable: str = Field(
         max_length=150,
-        description="Nombre completo del responsable (socio o no-socio). Se guarda en notas.",
+        description="Nombre completo del responsable (socio, invitado o no-socio). "
+                     "Se guarda en notas Y en la orden (si se registra cobro), para "
+                     "poder identificar 'a nombre de quién' está el comprobante incluso "
+                     "cuando el pago quedó a nombre de la cuenta Invitado compartida.",
     )
     notas_extra: Optional[str] = Field(
         default=None,
         max_length=400,
         description="Información adicional: referencia de pago, evento, etc.",
+    )
+    id_usuario_pago: Optional[int] = Field(
+        default=None,
+        description="Socio (o la cuenta Invitado/No-Socio) a quien se le imputa el "
+                     "cobro. Requerido junto con id_producto si se quiere registrar pago.",
+    )
+    id_producto: Optional[int] = Field(
+        default=None,
+        description="Producto de categoría 'alquiler' que se está cobrando. "
+                     "Requerido junto con id_usuario_pago si se quiere registrar pago.",
+    )
+    cantidad: int = Field(
+        default=1, ge=1,
+        description="Cantidad de turnos/unidades del producto (normalmente 1).",
     )
 
     @field_validator("fecha_fin")

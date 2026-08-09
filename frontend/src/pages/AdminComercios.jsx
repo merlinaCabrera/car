@@ -27,6 +27,7 @@ import {
   Edit,
   Trash2,
   RefreshCw,
+  Search,
   AlertCircle,
   Store,
   UserCheck,
@@ -233,6 +234,7 @@ export default function AdminComercios() {
 
   // ── Catálogo de usuarios — fetch único al montar (para el selector) ────────
   const [usuarios, setUsuarios] = useState([])
+  const [searchTerm, setSearchTerm] = useState('')
 
   useEffect(() => {
     if (!token) return
@@ -263,6 +265,13 @@ export default function AdminComercios() {
   }, [token])
 
   useEffect(() => { fetchComercios() }, [fetchComercios])
+
+  // ── Filtro de búsqueda por nombre de comercio ──────────────────────────────
+  const comerciosFiltrados = useMemo(() => {
+    const termino = searchTerm.trim().toLowerCase()
+    if (!termino) return comercios
+    return comercios.filter(c => c.nombre_fantasia?.toLowerCase().includes(termino))
+  }, [comercios, searchTerm])
 
   // ── Guardar comercio (POST o PATCH) — fail-fast ────────────────────────────
   const handleSaveComercio = async (data, id) => {
@@ -362,11 +371,10 @@ export default function AdminComercios() {
         <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0 mt-1">
           <button
             onClick={openModalForCreate}
-            className="inline-flex items-center gap-2 px-3.5 py-2 sm:px-4 rounded-xl bg-blue-600 text-white text-sm sm:text-base font-semibold hover:bg-blue-700 transition-colors shadow-sm whitespace-nowrap"
+            className="inline-flex items-center justify-center p-2 sm:p-2.5 rounded-xl bg-blue-600 text-white hover:bg-blue-700 transition-colors shadow-sm flex-shrink-0"
+            title="Nuevo Comercio"
           >
-            <PlusCircle size={16} />
-            <span className="hidden sm:inline">Nuevo Comercio</span>
-            <span className="sm:hidden">Nuevo</span>
+            <PlusCircle size={18} />
           </button>
           <button
             onClick={fetchComercios} disabled={loading}
@@ -376,6 +384,18 @@ export default function AdminComercios() {
             <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
           </button>
         </div>
+      </div>
+
+      {/* Buscador */}
+      <div className="relative">
+        <Search size={13} className="absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+        <input
+          type="text"
+          placeholder="Buscar por nombre del comercio..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="form-input pl-7 sm:pl-8 pr-4 py-1.5 sm:py-2 text-xs sm:text-sm w-full"
+        />
       </div>
 
       {/* Error de carga */}
@@ -404,7 +424,7 @@ export default function AdminComercios() {
       {/* Tarjetas — mobile */}
       {!loading && (
         <div className="md:hidden bg-white rounded-2xl shadow-sm border border-gray-100 divide-y divide-gray-50">
-          {comercios.map(comercio => (
+          {comerciosFiltrados.map(comercio => (
             <div key={comercio.id_comercio} className="p-4 space-y-3">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
@@ -467,9 +487,9 @@ export default function AdminComercios() {
             </div>
           ))}
 
-          {comercios.length === 0 && (
+          {comerciosFiltrados.length === 0 && (
             <div className="text-center py-12 text-gray-500 text-sm px-4">
-              No hay comercios asociados cargados todavía.
+              {searchTerm ? `No hay comercios que coincidan con "${searchTerm}".` : 'No hay comercios asociados cargados todavía.'}
             </div>
           )}
         </div>
@@ -496,7 +516,7 @@ export default function AdminComercios() {
               </tr>
             ))}
 
-            {!loading && comercios.map(comercio => (
+            {!loading && comerciosFiltrados.map(comercio => (
               <tr key={comercio.id_comercio} className="hover:bg-gray-50/70 transition-colors">
                 <td className="px-6 py-4">
                   <div className="font-medium text-gray-900">{comercio.nombre_fantasia}</div>
@@ -558,10 +578,10 @@ export default function AdminComercios() {
               </tr>
             ))}
 
-            {!loading && comercios.length === 0 && (
+            {!loading && comerciosFiltrados.length === 0 && (
               <tr>
                 <td colSpan="6" className="text-center py-12 text-gray-500">
-                  No hay comercios asociados cargados todavía.
+                  {searchTerm ? `No hay comercios que coincidan con "${searchTerm}".` : 'No hay comercios asociados cargados todavía.'}
                 </td>
               </tr>
             )}

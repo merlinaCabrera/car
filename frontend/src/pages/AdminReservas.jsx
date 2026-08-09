@@ -34,6 +34,7 @@ import {
   MapPin,
   PlusCircle,
   Search,
+  Wallet,
 } from 'lucide-react'
 
 const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
@@ -240,6 +241,70 @@ function ModalNuevaReserva({ onClose, onGuardado }) {
   const [guardando, setGuardando] = useState(false)
   const [error,     setError]     = useState(null)
 
+  // ── Cobro opcional ─────────────────────────────────────────────────────────
+  const [cobroActivo, setCobroActivo] = useState(false)
+  const [usuarios, setUsuarios] = useState([])
+  const [cargandoUsuarios, setCargandoUsuarios] = useState(false)
+  const [busquedaSocio, setBusquedaSocio] = useState('')
+  const [persona, setPersona] = useState(null)  // usuario seleccionado (socio o invitado)
+  const [cargandoInvitado, setCargandoInvitado] = useState(false)
+  const [productos, setProductos] = useState([])
+  const [cargandoProductos, setCargandoProductos] = useState(false)
+  const [idProducto, setIdProducto] = useState('')
+  const [cantidad, setCantidad] = useState(1)
+
+  // Trae la lista de usuarios (para buscar socio) y el catálogo de alquileres
+  // recién cuando el admin activa "Registrar cobro" — no antes, para no pagar
+  // ese costo si nunca lo va a usar.
+  useEffect(() => {
+    if (!cobroActivo || usuarios.length > 0) return
+    setCargandoUsuarios(true)
+    fetch(`${API}/admin/usuarios`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(res => res.json())
+      .then(data => setUsuarios(Array.isArray(data) ? data : []))
+      .catch(() => {})
+      .finally(() => setCargandoUsuarios(false))
+
+    setCargandoProductos(true)
+    fetch(`${API}/admin/productos`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(res => res.json())
+      .then(data => setProductos(Array.isArray(data) ? data.filter(p => p.categoria === 'alquiler' && p.es_activo) : []))
+      .catch(() => {})
+      .finally(() => setCargandoProductos(false))
+  }, [cobroActivo, token, usuarios.length])
+
+  const usuariosFiltrados = useMemo(() => {
+    const q = busquedaSocio.trim().toLowerCase()
+    if (!q) return []
+    return usuarios
+      .filter(u =>
+        `${u.nombre} ${u.apellido}`.toLowerCase().includes(q) ||
+        u.dni?.includes(q)
+      )
+      .slice(0, 6)
+  }, [busquedaSocio, usuarios])
+
+  const usarCuentaInvitado = async () => {
+    setCargandoInvitado(true)
+    setError(null)
+    try {
+      const res = await fetch(`${API}/admin/usuarios/cuenta-invitado`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.detail ?? 'No se pudo obtener la cuenta Invitado.')
+      setPersona(data)
+      setBusquedaSocio('')
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setCargandoInvitado(false)
+    }
+  }
+
+  const productoSeleccionado = productos.find(p => String(p.id_producto) === String(idProducto))
+  const montoEstimado = productoSeleccionado ? Number(productoSeleccionado.precio_actual) * cantidad : 0
+
   const handleChange = (e) => {
     const { name, value } = e.target
     setForm(prev => ({ ...prev, [name]: value }))
@@ -259,6 +324,10 @@ function ModalNuevaReserva({ onClose, onGuardado }) {
       setError('El nombre del responsable es obligatorio.')
       return
     }
+    if (cobroActivo && (!persona || !idProducto)) {
+      setError('Para registrar el cobro elegí a quién se le imputa y qué producto se está cobrando.')
+      return
+    }
     setGuardando(true)
     setError(null)
     try {
@@ -271,6 +340,11 @@ function ModalNuevaReserva({ onClose, onGuardado }) {
           fecha_fin:          new Date(form.fecha_fin).toISOString(),
           nombre_responsable: form.nombre_responsable.trim(),
           notas_extra:        form.notas_extra.trim() || null,
+          ...(cobroActivo ? {
+            id_usuario_pago: persona.id_usuario,
+            id_producto:     Number(idProducto),
+            cantidad,
+          } : {}),
         }),
       })
       const data = await res.json().catch(() => ({}))
@@ -298,7 +372,7 @@ function ModalNuevaReserva({ onClose, onGuardado }) {
           <div>
             <h2 className="text-lg font-bold text-gray-900">Nueva Reserva Manual</h2>
             <p className="text-xs text-gray-500 mt-0.5">
-              Para socios sin app o no-socios. Se crea como confirmada sin orden de pago.
+              Para socios sin app o no-socios. El cobro es opcional.
             </p>
           </div>
           <button type="button" onClick={onClose} className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100">
@@ -350,6 +424,10 @@ function ModalNuevaReserva({ onClose, onGuardado }) {
               placeholder="Nombre y apellido del responsable"
               required className="form-input w-full"
             />
+            <p className="text-[11px] text-gray-400 mt-1">
+              Queda anotado acá aunque el cobro (si lo registrás abajo) quede a
+              nombre de la cuenta Invitado — así sabés después quién fue.
+            </p>
           </div>
 
           <div>
@@ -357,9 +435,128 @@ function ModalNuevaReserva({ onClose, onGuardado }) {
             <input
               type="text" name="notas_extra"
               value={form.notas_extra} onChange={handleChange}
-              placeholder="Grupo, evento, referencia de pago en efectivo..."
+              placeholder="Grupo, evento, referencia..."
               className="form-input w-full"
             />
+          </div>
+
+          {/* ── Cobro opcional ────────────────────────────────────────────── */}
+          <div className="border-t pt-4">
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={cobroActivo}
+                onChange={(e) => setCobroActivo(e.target.checked)}
+                className="w-4 h-4 rounded border-gray-300 text-slate-900 focus:ring-slate-900"
+              />
+              <span className="text-sm font-semibold text-gray-800 flex items-center gap-1.5">
+                <Wallet size={15} className="text-gray-500" />
+                Registrar cobro (efectivo)
+              </span>
+            </label>
+            <p className="text-[11px] text-gray-400 mt-1 ml-6">
+              Si lo dejás sin marcar, la reserva queda solo como bloqueo de
+              agenda, sin que se registre ningún ingreso.
+            </p>
+
+            {cobroActivo && (
+              <div className="mt-3 space-y-3 bg-gray-50 rounded-xl p-3 border border-gray-100">
+                {/* A quién se le imputa */}
+                <div>
+                  <label className={L}>¿A quién se le cobra?</label>
+                  {persona ? (
+                    <div className="flex items-center justify-between gap-2 bg-white rounded-lg border border-gray-200 px-3 py-2">
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-gray-800 truncate">
+                          {persona.nombre} {persona.apellido}
+                        </p>
+                        <p className="text-xs text-gray-400">DNI {persona.dni}</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setPersona(null)}
+                        className="text-xs font-semibold text-gray-400 hover:text-gray-600 flex-shrink-0"
+                      >
+                        Cambiar
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="relative">
+                        <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                        <input
+                          type="text"
+                          value={busquedaSocio}
+                          onChange={(e) => setBusquedaSocio(e.target.value)}
+                          placeholder={cargandoUsuarios ? 'Cargando socios…' : 'Buscar socio por nombre o DNI...'}
+                          disabled={cargandoUsuarios}
+                          className="form-input w-full pl-7 text-sm"
+                        />
+                      </div>
+                      {usuariosFiltrados.length > 0 && (
+                        <div className="mt-1 border border-gray-200 rounded-lg overflow-hidden bg-white max-h-36 overflow-y-auto">
+                          {usuariosFiltrados.map(u => (
+                            <button
+                              key={u.id_usuario}
+                              type="button"
+                              onClick={() => { setPersona(u); setBusquedaSocio('') }}
+                              className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 border-b last:border-b-0 border-gray-100"
+                            >
+                              <span className="font-medium text-gray-800">{u.nombre} {u.apellido}</span>
+                              <span className="text-gray-400 ml-2">DNI {u.dni}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                      <button
+                        type="button"
+                        onClick={usarCuentaInvitado}
+                        disabled={cargandoInvitado}
+                        className="mt-2 w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg border border-dashed border-gray-300 text-xs font-semibold text-gray-500 hover:bg-white hover:border-gray-400 transition-colors disabled:opacity-50"
+                      >
+                        {cargandoInvitado ? <Loader2 size={13} className="animate-spin" /> : <Users size={13} />}
+                        No es socio — usar cuenta Invitado
+                      </button>
+                    </>
+                  )}
+                </div>
+
+                {/* Qué se cobra */}
+                <div>
+                  <label className={L}>Producto</label>
+                  <select
+                    value={idProducto}
+                    onChange={(e) => setIdProducto(e.target.value)}
+                    disabled={cargandoProductos}
+                    className="form-input w-full text-sm"
+                  >
+                    <option value="">{cargandoProductos ? 'Cargando…' : 'Elegí un producto de alquiler'}</option>
+                    {productos.map(p => (
+                      <option key={p.id_producto} value={p.id_producto}>
+                        {p.nombre} — ${Number(p.precio_actual).toLocaleString('es-AR')}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className={L}>Cantidad</label>
+                    <input
+                      type="number" min={1} value={cantidad}
+                      onChange={(e) => setCantidad(Math.max(1, Number(e.target.value) || 1))}
+                      className="form-input w-full text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className={L}>Total</label>
+                    <div className="form-input w-full text-sm bg-gray-100 text-gray-600 flex items-center font-semibold">
+                      ${montoEstimado.toLocaleString('es-AR')}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

@@ -62,6 +62,7 @@ def listar_reservas(
     query = db.query(models.ReservaInstalacion).options(
         joinedload(models.ReservaInstalacion.usuario_responsable),
         joinedload(models.ReservaInstalacion.reintegros),
+        joinedload(models.ReservaInstalacion.orden),
     )
 
     if instalacion:
@@ -90,6 +91,7 @@ def listar_reservas(
                 fecha_inicio=r.fecha_inicio,
                 fecha_fin=r.fecha_fin,
                 estado=r.estado,
+                estado_orden=r.orden.estado if r.orden else None,
                 id_usuario=r.id_usuario,
                 nombre_responsable=nombre_responsable,
                 dni_responsable=dni_responsable,
@@ -112,7 +114,7 @@ def listar_reservas(
     "/admin/reservas",
     response_model=schemas.ReservaAdminListResponse,
     status_code=status.HTTP_201_CREATED,
-    summary="Crear una reserva manual (admin) — sin carrito ni orden de pago",
+    summary="Crear una reserva manual (admin), con cobro opcional",
 )
 def crear_reserva_manual(
     payload: schemas.CrearReservaManualPayload,
@@ -122,10 +124,17 @@ def crear_reserva_manual(
 ) -> schemas.ReservaAdminListResponse:
     """
     El admin crea una reserva directamente en estado 'confirmada', sin pasar
-    por el carrito ni generar una orden. Útil para:
+    por el carrito. Útil para:
       - Socios que pagan en ventanilla o efectivo y no usan la app.
-      - No-socios que alquilan el quincho.
-      - Correcciones manuales de la agenda.
+      - No-socios que alquilan el quincho/cancha (ver cuenta 'Invitado /
+        No-Socio' — DNI reservado 00000000, sembrada en la base para estos casos).
+      - Correcciones/bloqueos manuales de la agenda (sin cobro).
+
+    Registrar el cobro es OPCIONAL (ver CrearReservaManualPayload). Si se
+    completan id_usuario_pago + id_producto, además del bloqueo de agenda se
+    crea un Pago 'verificado' (efectivo) + Orden 'aprobada', vinculados a la
+    reserva vía ReservaInstalacion.id_orden — así el ingreso aparece en
+    Verificaciones y en el gráfico de Estadísticas igual que cualquier otro.
 
     Verifica colisión de horario antes de insertar.
     """
@@ -151,6 +160,58 @@ def crear_reserva_manual(
             ),
         )
 
+    # id_usuario_pago y id_producto van de la mano: los dos o ninguno.
+    quiere_cobrar = payload.id_usuario_pago is not None or payload.id_producto is not None
+    if quiere_cobrar and (payload.id_usuario_pago is None or payload.id_producto is None):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Para registrar el cobro hacen falta id_usuario_pago e id_producto juntos.",
+        )
+
+    orden = None
+    if quiere_cobrar:
+        usuario_pago = db.get(models.Usuario, payload.id_usuario_pago)
+        if usuario_pago is None:
+            raise HTTPException(status_code=404, detail="El usuario/invitado seleccionado no existe.")
+
+        producto = db.get(models.ProductoServicio, payload.id_producto)
+        if producto is None or producto.categoria != "alquiler":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="El producto debe existir y ser de categoría 'alquiler'.",
+            )
+
+        monto = producto.precio_actual * payload.cantidad
+
+        pago = models.Pago(
+            id_usuario=usuario_pago.id_usuario,
+            monto_total=monto,
+            metodo_pago="efectivo",
+            estado="verificado",
+        )
+        db.add(pago)
+        db.flush()
+
+        orden = models.Orden(
+            id_usuario=usuario_pago.id_usuario,
+            id_pago=pago.id_pago,
+            estado="aprobada",
+            monto_total=monto,
+            aprobada_por=admin.id_usuario,
+            aprobada_at=datetime.now(timezone.utc),
+            notas_admin=f"Alquiler manual — {payload.nombre_responsable}",
+        )
+        db.add(orden)
+        db.flush()
+
+        detalle = models.DetalleOrden(
+            id_orden=orden.id_orden,
+            id_producto=producto.id_producto,
+            cantidad=payload.cantidad,
+            precio_unitario_historico=producto.precio_actual,
+        )
+        db.add(detalle)
+
     # Combinar nombre del responsable y notas en el campo notas del modelo
     notas_combinadas = payload.nombre_responsable
     if payload.notas_extra:
@@ -160,15 +221,15 @@ def crear_reserva_manual(
         instalacion=payload.instalacion,
         fecha_inicio=payload.fecha_inicio,
         fecha_fin=payload.fecha_fin,
-        estado="confirmada",           # confirmada directamente — sin flujo de pago
+        estado="confirmada",
         notas=notas_combinadas,
-        id_orden=None,                 # sin orden asociada
-        id_usuario=None,               # puede no ser socio
+        id_orden=orden.id_orden if orden else None,
+        id_usuario=payload.id_usuario_pago,  # None si no se registró cobro
     )
     db.add(reserva)
     db.flush()  # obtener id_reserva antes del commit
 
-    _registrar_audit(
+    registrar_audit(
         db=db,
         actor_id=admin.id_usuario,
         accion="CREAR_RESERVA_MANUAL",
@@ -180,8 +241,10 @@ def crear_reserva_manual(
             "fecha_fin":          payload.fecha_fin.isoformat(),
             "nombre_responsable": payload.nombre_responsable,
             "notas_extra":        payload.notas_extra,
+            "cobro_registrado":   quiere_cobrar,
+            "id_orden":           orden.id_orden if orden else None,
         },
-        ip=_extraer_ip(request),
+        ip=extraer_ip(request),
     )
 
     db.commit()
@@ -193,8 +256,8 @@ def crear_reserva_manual(
         fecha_inicio=reserva.fecha_inicio,
         fecha_fin=reserva.fecha_fin,
         estado=reserva.estado,
-        estado_orden=None,
-        id_usuario=None,
+        estado_orden=orden.estado if orden else None,
+        id_usuario=reserva.id_usuario,
         nombre_responsable=payload.nombre_responsable,
         notas=reserva.notas,
         num_socios_esperados=None,

@@ -34,6 +34,7 @@ import {
   Infinity as InfinityIcon,
   CalendarDays,
   Save,
+  Filter,
 } from 'lucide-react'
 
 const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
@@ -53,6 +54,18 @@ const CATEGORIA_BADGE_CLASSES = {
   indumentaria: 'bg-orange-100 text-orange-800',
   otro:         'bg-gray-100 text-gray-700',
 }
+
+// Mismo patrón de filtro que AdminVerificaciones.jsx. Sin 'cuota_social'
+// porque esa categoría ya tiene su propio pedestal fijo arriba y nunca
+// aparece en esta tabla — filtrar por ella siempre daría 0 resultados acá.
+// Sin 'mixta' porque ese concepto es de Órdenes (un pago puede combinar
+// varios tipos), no de Productos (cada producto tiene UNA sola categoría).
+const FILTROS_CATEGORIA = [
+  { value: '', label: 'Todo' },
+  { value: 'alquiler', label: 'Alquileres' },
+  { value: 'indumentaria', label: 'Indumentaria' },
+  { value: 'otro', label: 'Otro' },
+]
 
 const formatoMoneda = new Intl.NumberFormat('es-AR', {
   style: 'currency',
@@ -309,6 +322,7 @@ export default function AdminProductos() {
   const [loading,         setLoading]         = useState(true)
   const [error,           setError]           = useState(null)
   const [busqueda,        setBusqueda]        = useState('')
+  const [filtroCategoria, setFiltroCategoria]  = useState('')
   const [isModalOpen,     setIsModalOpen]     = useState(false)
   const [editingProducto, setEditingProducto] = useState(null)
 
@@ -432,16 +446,18 @@ export default function AdminProductos() {
     }
   }, [successDia])
 
-  // ── Filtro local por nombre o categoría ─────────────────────────────────────
+  // ── Filtro local por nombre/categoría (texto) + filtro por tipo (select) ────
   const productosFiltrados = useMemo(() => {
     const q = busqueda.trim().toLowerCase()
-    if (!q) return productos
-    return productos.filter(p =>
-      p.nombre.toLowerCase().includes(q) ||
-      p.categoria.toLowerCase().includes(q) ||
-      (CATEGORIA_LABELS[p.categoria] ?? '').toLowerCase().includes(q)
-    )
-  }, [productos, busqueda])
+    return productos.filter(p => {
+      const matchTexto = !q ||
+        p.nombre.toLowerCase().includes(q) ||
+        p.categoria.toLowerCase().includes(q) ||
+        (CATEGORIA_LABELS[p.categoria] ?? '').toLowerCase().includes(q)
+      const matchCategoria = !filtroCategoria || p.categoria === filtroCategoria
+      return matchTexto && matchCategoria
+    })
+  }, [productos, busqueda, filtroCategoria])
   
   // TAREA 1: Separar la cuota social del resto de productos
   const cuotaSocial = useMemo(() =>
@@ -466,8 +482,8 @@ export default function AdminProductos() {
       )}
 
       {/* Header */}
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div className="min-w-0">
+      <div className="space-y-4">
+        <div>
           <h1 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2 sm:gap-3">
             <Package size={22} className="text-gray-500 flex-shrink-0" />
             Catálogo de Productos y Servicios
@@ -476,23 +492,52 @@ export default function AdminProductos() {
             Cuotas, alquileres, indumentaria y demás ítems disponibles para la venta.
           </p>
         </div>
-        <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0 mt-1">
+
+        {/* ── Filtros: tipo, mismo patrón que Socios / Reservas / Eventos / Verificaciones ── */}
+        <div className="flex flex-nowrap items-center gap-1.5 sm:gap-3 overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 sm:overflow-visible">
+          <div className="relative flex-shrink-0">
+            <Filter size={13} className="absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none z-10" />
+            <select
+              value={filtroCategoria}
+              onChange={e => setFiltroCategoria(e.target.value)}
+              className="form-input pl-7 pr-5 sm:pl-8 sm:pr-7 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-gray-600 w-auto"
+              title="Filtrar por tipo"
+            >
+              {FILTROS_CATEGORIA.map(f => (
+                <option key={f.value} value={f.value}>{f.value === '' ? 'Tipo' : f.label}</option>
+              ))}
+            </select>
+          </div>
+
           <button
             onClick={openModalForCreate}
-            className="inline-flex items-center gap-2 px-3.5 py-2 sm:px-4 rounded-xl bg-blue-600 text-white text-sm sm:text-base font-semibold hover:bg-blue-700 transition-colors shadow-sm whitespace-nowrap"
+            className="flex-shrink-0 inline-flex items-center gap-2 px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-green-600 text-white font-semibold hover:bg-green-700 transition-colors shadow-sm text-sm"
+            title="Nuevo Producto"
           >
             <PlusCircle size={16} />
             <span className="hidden sm:inline">Nuevo Producto</span>
-            <span className="sm:hidden">Nuevo</span>
           </button>
+
           <button
             onClick={fetchProductos} disabled={loading}
-            className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 disabled:opacity-40 transition-colors flex-shrink-0"
+            className="flex-shrink-0 p-1.5 sm:p-2 rounded-lg text-gray-500 hover:bg-gray-100 disabled:opacity-40 transition-colors"
             title="Actualizar lista"
           >
             <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
           </button>
         </div>
+      </div>
+
+      {/* Buscador */}
+      <div className="relative">
+        <Search size={13} className="absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+        <input
+          type="text"
+          value={busqueda}
+          onChange={e => setBusqueda(e.target.value)}
+          placeholder="Buscar por nombre o categoría…"
+          className="form-input pl-7 sm:pl-8 pr-4 py-1.5 sm:py-2 text-xs sm:text-sm w-full"
+        />
       </div>
 
       {/* Error de carga */}
@@ -505,18 +550,6 @@ export default function AdminProductos() {
           </button>
         </div>
       )}
-
-      {/* Buscador */}
-      <div className="relative w-full max-w-sm">
-        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-        <input
-          type="search"
-          value={busqueda}
-          onChange={e => setBusqueda(e.target.value)}
-          placeholder="Buscar por nombre o categoría…"
-          className="form-input pl-9 w-full"
-        />
-      </div>
 
       {/* Pedestales de Configuración Global */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -700,7 +733,7 @@ export default function AdminProductos() {
 
           {otrosProductos.length === 0 && (
             <div className="text-center py-12 text-gray-500 text-sm px-4">
-              {busqueda
+              {(busqueda || filtroCategoria)
                 ? 'No se encontraron otros productos con ese criterio.'
                 : 'No hay otros productos o servicios cargados todavía.'}
             </div>
@@ -782,7 +815,7 @@ export default function AdminProductos() {
             {!loading && otrosProductos.length === 0 && (
               <tr>
                 <td colSpan="6" className="text-center py-12 text-gray-500">
-                  {busqueda
+                  {(busqueda || filtroCategoria)
                     ? 'No se encontraron otros productos con ese criterio.'
                     : 'No hay otros productos o servicios cargados todavía.'}
                 </td>

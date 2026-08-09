@@ -838,13 +838,13 @@ export default function TecnicoEventos() {
             Armá las convocatorias para los próximos partidos y entrenamientos.
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-          <div className="relative">
-            <Filter size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none z-10" />
+        <div className="flex flex-nowrap items-center gap-1.5 sm:gap-3 overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 sm:overflow-visible">
+          <div className="relative flex-shrink-0">
+            <Filter size={13} className="absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none z-10" />
             <select
               value={categoriaFiltro}
               onChange={e => setCategoriaFiltro(e.target.value)}
-              className="form-input pl-8 pr-7 py-2 text-sm font-semibold text-gray-600 w-auto"
+              className="form-input pl-7 pr-5 sm:pl-8 sm:pr-7 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-gray-600 w-auto"
               title="Filtrar por categoría"
             >
               <option value="todas">Todas las categorías</option>
@@ -853,23 +853,25 @@ export default function TecnicoEventos() {
               ))}
             </select>
           </div>
-          <VistaToggle vista={vista} onChange={setVista} />
+          <div className="flex-shrink-0">
+            <VistaToggle vista={vista} onChange={setVista} />
+          </div>
           <button
             onClick={() => setMostrarFinalizados(prev => !prev)}
-            className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl font-semibold text-sm transition-colors ${
+            className={`flex-shrink-0 inline-flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl font-semibold text-xs sm:text-sm transition-colors ${
               mostrarFinalizados
                 ? 'bg-slate-800 text-white hover:bg-slate-900'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
             }`}
             title="Incluir eventos ya finalizados (para exportar su planilla de asistencia)"
           >
-            <History size={15} />
+            <History size={13} />
             <span className="hidden sm:inline">{mostrarFinalizados ? 'Viendo finalizados' : 'Ver finalizados'}</span>
           </button>
           {esAdmin && (
             <button
               onClick={() => setModalNuevoEventoAbierto(true)}
-              className="inline-flex items-center gap-2 px-2.5 sm:px-4 py-2 rounded-xl bg-green-600 text-white font-semibold hover:bg-green-700 transition-colors shadow-sm text-sm"
+              className="flex-shrink-0 inline-flex items-center gap-2 px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-green-600 text-white font-semibold hover:bg-green-700 transition-colors shadow-sm text-sm"
               title="Nuevo Evento"
             >
               <PlusCircle size={16} />
@@ -879,7 +881,7 @@ export default function TecnicoEventos() {
           <button
             onClick={fetchEventos}
             disabled={loading}
-            className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 disabled:opacity-40 transition-colors"
+            className="flex-shrink-0 p-1.5 sm:p-2 rounded-lg text-gray-500 hover:bg-gray-100 disabled:opacity-40 transition-colors"
             title="Actualizar"
           >
             <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
@@ -942,13 +944,13 @@ export default function TecnicoEventos() {
       {vista === 'lista' && (
         <div className="space-y-3">
           <div className="relative">
-            <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+            <Search size={13} className="absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
             <input
               type="text"
               value={busqueda}
               onChange={e => setBusqueda(e.target.value)}
               placeholder="Buscar por título, rival, categoría o lugar…"
-              className="form-input pl-10 pr-9 py-2.5 text-sm w-full"
+              className="form-input pl-7 sm:pl-8 pr-9 py-1.5 sm:py-2 text-xs sm:text-sm w-full"
             />
             {busqueda && (
               <button

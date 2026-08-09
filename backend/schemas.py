@@ -514,7 +514,6 @@ class ReservaAdminListResponse(BaseModel):
     fecha_inicio: datetime
     fecha_fin: datetime
     estado: str
-    estado_orden: Optional[str] = None   # estado del pago: pendiente_verificacion | aprobada | rechazada | cancelada_socio | expirada
     id_usuario: Optional[int] = None
     nombre_responsable: Optional[str] = None
     notas: Optional[str] = None
@@ -524,6 +523,44 @@ class ReservaAdminListResponse(BaseModel):
 
 class ConfigurarRepartoPayload(BaseModel):
     num_socios_esperados: int = Field(gt=0)
+
+
+class CrearReservaManualPayload(BaseModel):
+    """
+    Payload para que el admin cree una reserva sin pasar por el carrito.
+    Útil para socios mayores que no usan la app o para no-socios (ej: quincho).
+    La reserva se crea directamente en estado 'confirmada', sin orden de pago.
+    """
+    instalacion: str = Field(
+        description="Clave de la instalación: 'cancha_1', 'cancha_2' o 'quincho'.",
+    )
+    fecha_inicio: datetime = Field(description="Fecha y hora de inicio del turno.")
+    fecha_fin:    datetime = Field(description="Fecha y hora de fin del turno.")
+    nombre_responsable: str = Field(
+        max_length=150,
+        description="Nombre completo del responsable (socio o no-socio). Se guarda en notas.",
+    )
+    notas_extra: Optional[str] = Field(
+        default=None,
+        max_length=400,
+        description="Información adicional: referencia de pago, evento, etc.",
+    )
+
+    @field_validator("fecha_fin")
+    @classmethod
+    def fecha_fin_posterior(cls, v, info):
+        inicio = info.data.get("fecha_inicio")
+        if inicio and v <= inicio:
+            raise ValueError("fecha_fin debe ser posterior a fecha_inicio.")
+        return v
+
+    @field_validator("instalacion")
+    @classmethod
+    def instalacion_valida(cls, v):
+        opciones = {"cancha_1", "cancha_2", "quincho"}
+        if v not in opciones:
+            raise ValueError(f"Instalación inválida. Opciones: {opciones}")
+        return v
     monto_reintegro_unitario: Optional[Decimal] = Field(
         default=None,
         description="Si no se manda, se calcula como precio_total × 20% / num_socios_esperados.",

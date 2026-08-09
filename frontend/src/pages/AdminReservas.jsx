@@ -32,6 +32,7 @@ import {
   Tent,
   Volleyball,
   MapPin,
+  PlusCircle,
 } from 'lucide-react'
 
 const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
@@ -140,8 +141,13 @@ function VistaToggle({ vista, onChange }) {
 
 // ─── Modal detalle de reserva ─────────────────────────────────────────────────
 
-function ModalDetalleReserva({ reserva, onClose }) {
-  const color = colorDeReserva(reserva)
+function ModalDetalleReserva({ reserva, onClose, onRechazar }) {
+  const color   = colorDeReserva(reserva)
+  const ahora   = new Date()
+  const vencida = reserva.estado_orden === 'pendiente_verificacion' &&
+                  new Date(reserva.fecha_fin) < ahora
+  const [rechazando, setRechazando] = useState(false)
+
   return (
     <div
       className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
@@ -154,6 +160,20 @@ function ModalDetalleReserva({ reserva, onClose }) {
             <X size={18} />
           </button>
         </div>
+
+        {/* Alerta de pendiente vencida */}
+        {vencida && (
+          <div className="flex items-start gap-2 p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm">
+            <AlertCircle size={16} className="flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold">Pago pendiente vencido</p>
+              <p className="text-xs mt-0.5 text-red-600">
+                El turno ya pasó y la orden nunca fue aprobada. Podés rechazarla para liberar el registro,
+                o aprobarla si el socio pagó en efectivo.
+              </p>
+            </div>
+          </div>
+        )}
 
         <div className="space-y-2 text-sm text-gray-600">
           <div className="flex items-center gap-2">
@@ -183,12 +203,182 @@ function ModalDetalleReserva({ reserva, onClose }) {
             {color.label}
           </span>
         </div>
+
+        {/* Botón rechazar — solo para pendientes */}
+        {reserva.estado_orden === 'pendiente_verificacion' && (
+          <button
+            onClick={async () => {
+              setRechazando(true)
+              await onRechazar(reserva.id_reserva)
+              setRechazando(false)
+              onClose()
+            }}
+            disabled={rechazando}
+            className="w-full py-2.5 rounded-xl bg-red-600 text-white text-sm font-bold hover:bg-red-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+          >
+            {rechazando && <Loader2 size={14} className="animate-spin" />}
+            {rechazando ? 'Rechazando…' : 'Rechazar / Liberar turno'}
+          </button>
+        )}
       </div>
     </div>
   )
 }
 
-// ─── Componente principal ─────────────────────────────────────────────────────
+// ─── Modal: Nueva Reserva Manual ─────────────────────────────────────────────
+
+function ModalNuevaReserva({ onClose, onGuardado }) {
+  const { token } = useAuth()
+  const [form, setForm] = useState({
+    instalacion:        'cancha_1',
+    fecha_inicio:       '',
+    fecha_fin:          '',
+    nombre_responsable: '',
+    notas_extra:        '',
+  })
+  const [guardando, setGuardando] = useState(false)
+  const [error,     setError]     = useState(null)
+
+  const handleChange = (e) => {
+    const { name, value } = e.target
+    setForm(prev => ({ ...prev, [name]: value }))
+  }
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    if (!form.fecha_inicio || !form.fecha_fin) {
+      setError('Las fechas de inicio y fin son obligatorias.')
+      return
+    }
+    if (new Date(form.fecha_fin) <= new Date(form.fecha_inicio)) {
+      setError('La fecha de fin debe ser posterior a la de inicio.')
+      return
+    }
+    if (!form.nombre_responsable.trim()) {
+      setError('El nombre del responsable es obligatorio.')
+      return
+    }
+    setGuardando(true)
+    setError(null)
+    try {
+      const res = await fetch(`${API}/admin/reservas`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          instalacion:        form.instalacion,
+          fecha_inicio:       new Date(form.fecha_inicio).toISOString(),
+          fecha_fin:          new Date(form.fecha_fin).toISOString(),
+          nombre_responsable: form.nombre_responsable.trim(),
+          notas_extra:        form.notas_extra.trim() || null,
+        }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.detail ?? 'No se pudo crear la reserva.')
+      onGuardado(data)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setGuardando(false)
+    }
+  }
+
+  const L = "block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide"
+
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+      onClick={e => { if (e.target === e.currentTarget) onClose() }}
+    >
+      <form
+        onSubmit={handleSubmit}
+        className="bg-white rounded-2xl shadow-xl w-full max-w-md flex flex-col max-h-[90dvh]"
+      >
+        <div className="p-6 border-b flex items-center justify-between flex-shrink-0">
+          <div>
+            <h2 className="text-lg font-bold text-gray-900">Nueva Reserva Manual</h2>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Para socios sin app o no-socios. Se crea como confirmada sin orden de pago.
+            </p>
+          </div>
+          <button type="button" onClick={onClose} className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100">
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="p-6 space-y-4 overflow-y-auto flex-1">
+          {error && (
+            <div className="flex items-center gap-2 p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm">
+              <AlertCircle size={15} className="flex-shrink-0" />
+              {error}
+            </div>
+          )}
+
+          <div>
+            <label className={L}>Instalación</label>
+            <select name="instalacion" value={form.instalacion} onChange={handleChange} className="form-input w-full">
+              <option value="cancha_1">Cancha 1</option>
+              <option value="cancha_2">Cancha 2</option>
+              <option value="quincho">Quincho</option>
+            </select>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={L}>Inicio</label>
+              <input
+                type="datetime-local" name="fecha_inicio"
+                value={form.fecha_inicio} onChange={handleChange}
+                required className="form-input w-full"
+              />
+            </div>
+            <div>
+              <label className={L}>Fin</label>
+              <input
+                type="datetime-local" name="fecha_fin"
+                value={form.fecha_fin} onChange={handleChange}
+                required className="form-input w-full"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className={L}>Responsable</label>
+            <input
+              type="text" name="nombre_responsable"
+              value={form.nombre_responsable} onChange={handleChange}
+              placeholder="Nombre y apellido del responsable"
+              required className="form-input w-full"
+            />
+          </div>
+
+          <div>
+            <label className={L}>Notas <span className="font-normal normal-case text-gray-400">(opcional)</span></label>
+            <input
+              type="text" name="notas_extra"
+              value={form.notas_extra} onChange={handleChange}
+              placeholder="Grupo, evento, referencia de pago en efectivo..."
+              className="form-input w-full"
+            />
+          </div>
+        </div>
+
+        <div className="p-4 bg-gray-50 rounded-b-2xl border-t flex justify-end gap-3 flex-shrink-0">
+          <button type="button" onClick={onClose}
+            className="px-4 py-2 rounded-lg text-gray-600 bg-gray-200 hover:bg-gray-300 font-semibold transition-colors"
+          >
+            Cancelar
+          </button>
+          <button type="submit" disabled={guardando}
+            className="px-4 py-2 rounded-lg text-white bg-slate-900 hover:bg-slate-800 font-semibold disabled:opacity-50 transition-colors flex items-center gap-2"
+          >
+            {guardando && <Loader2 size={14} className="animate-spin" />}
+            Crear Reserva
+          </button>
+        </div>
+      </form>
+    </div>
+  )
+}
 
 export default function AdminReservas() {
   const { token } = useAuth()
@@ -199,6 +389,7 @@ export default function AdminReservas() {
   const [grupoActivo, setGrupoActivo] = useState('canchas')
   const [vista,       setVista]       = useState('lista')
   const [mes,         setMes]         = useState(new Date())
+  const [filtroCalendario, setFiltroCalendario] = useState('') // '' | 'pendiente_verificacion' | 'aprobada'
 
   // Filtros lista
   const [filtroInstalacion, setFiltroInstalacion] = useState('')
@@ -207,7 +398,13 @@ export default function AdminReservas() {
   const [filtroHasta,       setFiltroHasta]       = useState('')
 
   // Detalle abierto (calendario)
-  const [reservaDetalle, setReservaDetalle] = useState(null)
+  const [reservaDetalle,    setReservaDetalle]    = useState(null)
+  const [modalNuevaAbierto, setModalNuevaAbierto] = useState(false)
+
+  const handleNuevaReservaGuardada = (nueva) => {
+    setReservas(prev => [nueva, ...prev])
+    setModalNuevaAbierto(false)
+  }
 
   // ── Fetch ─────────────────────────────────────────────────────────────────
   const fetchReservas = useCallback(async () => {
@@ -247,34 +444,57 @@ export default function AdminReservas() {
     setFiltroInstalacion('')
   }
 
+  const handleRechazar = async (idReserva) => {
+    try {
+      const res = await fetch(`${API}/admin/reservas/${idReserva}/rechazar`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        throw new Error(body.detail ?? 'No se pudo rechazar la reserva.')
+      }
+      // Quitar la reserva rechazada de la lista local sin refetch
+      setReservas(prev => prev.filter(r => r.id_reserva !== idReserva))
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
   // ── Filtrado ──────────────────────────────────────────────────────────────
   const instDelGrupo = instalacionesDe(grupoActivo)
+
+  const ahora = useMemo(() => new Date(), [])
 
   const reservasFiltradas = useMemo(() => {
     let lista = reservas.filter(r => instDelGrupo.includes(r.instalacion))
     if (vista === 'calendario') {
-      // Calendario: solo pendientes y aprobadas — las inactivas no aportan
+      // Calendario: solo pendientes y aprobadas
       lista = lista.filter(esActiva)
+      // Filtro adicional por estado si el usuario lo eligió
+      if (filtroCalendario) lista = lista.filter(r => r.estado_orden === filtroCalendario)
     } else {
       if (filtroInstalacion) lista = lista.filter(r => r.instalacion === filtroInstalacion)
       if (filtroEstadoOrden) lista = lista.filter(r => r.estado_orden === filtroEstadoOrden)
     }
     return lista
-  }, [reservas, instDelGrupo, vista, filtroInstalacion, filtroEstadoOrden])
+  }, [reservas, instDelGrupo, vista, filtroInstalacion, filtroEstadoOrden, filtroCalendario])
 
   // ── Chip para el calendario ───────────────────────────────────────────────
   const renderReservaCalendario = useCallback((reserva) => {
-    const color = colorDeReserva(reserva)
+    const color    = colorDeReserva(reserva)
+    const vencida  = reserva.estado_orden === 'pendiente_verificacion' &&
+                     new Date(reserva.fecha_fin) < ahora
     return (
       <button
         onClick={() => setReservaDetalle(reserva)}
-        title={`${labelInstalacion(reserva.instalacion)} — ${color.label}`}
-        className={`w-full text-left px-1.5 py-0.5 rounded text-[10px] font-semibold truncate transition-opacity hover:opacity-80 ${color.chip}`}
+        title={`${labelInstalacion(reserva.instalacion)} — ${color.label}${vencida ? ' ⚠️ vencida sin pago' : ''}`}
+        className={`w-full text-left px-1.5 py-0.5 rounded text-[10px] font-semibold truncate transition-opacity hover:opacity-80 ${color.chip} ${vencida ? 'ring-2 ring-red-500 ring-offset-0' : ''}`}
       >
-        {formatoHora(reserva.fecha_inicio)} {labelInstalacion(reserva.instalacion)}
+        {vencida ? '⚠️ ' : ''}{formatoHora(reserva.fecha_inicio)} {labelInstalacion(reserva.instalacion)}
       </button>
     )
-  }, [])
+  }, [ahora])
 
   const grupoInfo = GRUPOS.find(g => g.key === grupoActivo)
 
@@ -285,6 +505,14 @@ export default function AdminReservas() {
         <ModalDetalleReserva
           reserva={reservaDetalle}
           onClose={() => setReservaDetalle(null)}
+          onRechazar={handleRechazar}
+        />
+      )}
+
+      {modalNuevaAbierto && (
+        <ModalNuevaReserva
+          onClose={() => setModalNuevaAbierto(false)}
+          onGuardado={handleNuevaReservaGuardada}
         />
       )}
 
@@ -300,6 +528,13 @@ export default function AdminReservas() {
           </p>
         </div>
         <div className="flex items-center gap-3 flex-wrap flex-shrink-0">
+          <button
+            onClick={() => setModalNuevaAbierto(true)}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800 transition-colors shadow-sm"
+          >
+            <PlusCircle size={16} />
+            Nueva Reserva
+          </button>
           <VistaToggle vista={vista} onChange={setVista} />
           <button
             onClick={fetchReservas}
@@ -349,6 +584,29 @@ export default function AdminReservas() {
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm h-96 animate-pulse" />
           ) : (
             <>
+              {/* Pills de filtro por estado */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Mostrar:</span>
+                {[
+                  { value: '',                       label: 'Todos'      },
+                  { value: 'pendiente_verificacion', label: 'Pendientes' },
+                  { value: 'aprobada',               label: 'Aprobadas'  },
+                ].map(opt => (
+                  <button
+                    key={opt.value}
+                    onClick={() => setFiltroCalendario(opt.value)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
+                      filtroCalendario === opt.value
+                        ? 'bg-slate-900 text-white'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Calendarios por instalación */}
               {instDelGrupo.map(inst => {
                 const reservasDeEsta = reservasFiltradas.filter(r => r.instalacion === inst)
                 return (

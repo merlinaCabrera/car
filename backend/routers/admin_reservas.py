@@ -62,7 +62,6 @@ def listar_reservas(
     query = db.query(models.ReservaInstalacion).options(
         joinedload(models.ReservaInstalacion.usuario_responsable),
         joinedload(models.ReservaInstalacion.reintegros),
-        joinedload(models.ReservaInstalacion.orden),   # para exponer estado_orden al frontend
     )
 
     if instalacion:
@@ -74,7 +73,7 @@ def listar_reservas(
     if hasta:
         query = query.filter(models.ReservaInstalacion.fecha_inicio <= hasta)
 
-    reservas = query.order_by(models.ReservaInstalacion.fecha_inicio.asc()).all()
+    reservas = query.order_by(models.ReservaInstalacion.id_reserva.desc()).all()
 
     resultado: List[schemas.ReservaAdminListResponse] = []
     for r in reservas:
@@ -89,7 +88,6 @@ def listar_reservas(
                 fecha_inicio=r.fecha_inicio,
                 fecha_fin=r.fecha_fin,
                 estado=r.estado,
-                estado_orden=r.orden.estado if r.orden is not None else None,
                 id_usuario=r.id_usuario,
                 nombre_responsable=nombre_responsable,
                 notas=r.notas,
@@ -103,6 +101,105 @@ def listar_reservas(
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Reservas activas AHORA — selector del Escáner de Canchas
+# ─────────────────────────────────────────────────────────────────────────────
+# Crear reserva manual (sin carrito ni orden de pago)
+# ─────────────────────────────────────────────────────────────────────────────
+
+@router.post(
+    "/admin/reservas",
+    response_model=schemas.ReservaAdminListResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Crear una reserva manual (admin) — sin carrito ni orden de pago",
+)
+def crear_reserva_manual(
+    payload: schemas.CrearReservaManualPayload,
+    request: Request,
+    db: Session = Depends(get_db),
+    admin: models.Usuario = Depends(require_roles(*_ROLES_ADMIN)),
+) -> schemas.ReservaAdminListResponse:
+    """
+    El admin crea una reserva directamente en estado 'confirmada', sin pasar
+    por el carrito ni generar una orden. Útil para:
+      - Socios que pagan en ventanilla o efectivo y no usan la app.
+      - No-socios que alquilan el quincho.
+      - Correcciones manuales de la agenda.
+
+    Verifica colisión de horario antes de insertar.
+    """
+    # Verificar colisión con reservas existentes en la misma instalación
+    colision = (
+        db.query(models.ReservaInstalacion)
+        .filter(
+            models.ReservaInstalacion.instalacion == payload.instalacion,
+            models.ReservaInstalacion.estado.in_(["bloqueada", "confirmada"]),
+            models.ReservaInstalacion.fecha_inicio < payload.fecha_fin,
+            models.ReservaInstalacion.fecha_fin > payload.fecha_inicio,
+        )
+        .first()
+    )
+    if colision:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                f"Ya existe una reserva en {payload.instalacion} que se superpone "
+                f"con el horario solicitado "
+                f"({colision.fecha_inicio.strftime('%d/%m %H:%M')} — "
+                f"{colision.fecha_fin.strftime('%H:%M')})."
+            ),
+        )
+
+    # Combinar nombre del responsable y notas en el campo notas del modelo
+    notas_combinadas = payload.nombre_responsable
+    if payload.notas_extra:
+        notas_combinadas += f" — {payload.notas_extra}"
+
+    reserva = models.ReservaInstalacion(
+        instalacion=payload.instalacion,
+        fecha_inicio=payload.fecha_inicio,
+        fecha_fin=payload.fecha_fin,
+        estado="confirmada",           # confirmada directamente — sin flujo de pago
+        notas=notas_combinadas,
+        id_orden=None,                 # sin orden asociada
+        id_usuario=None,               # puede no ser socio
+    )
+    db.add(reserva)
+    db.flush()  # obtener id_reserva antes del commit
+
+    _registrar_audit(
+        db=db,
+        actor_id=admin.id_usuario,
+        accion="CREAR_RESERVA_MANUAL",
+        tabla_afectada="reservas_instalaciones",
+        registro_id=reserva.id_reserva,
+        detalle={
+            "instalacion":        payload.instalacion,
+            "fecha_inicio":       payload.fecha_inicio.isoformat(),
+            "fecha_fin":          payload.fecha_fin.isoformat(),
+            "nombre_responsable": payload.nombre_responsable,
+            "notas_extra":        payload.notas_extra,
+        },
+        ip=_extraer_ip(request),
+    )
+
+    db.commit()
+    db.refresh(reserva)
+
+    return schemas.ReservaAdminListResponse(
+        id_reserva=reserva.id_reserva,
+        instalacion=reserva.instalacion,
+        fecha_inicio=reserva.fecha_inicio,
+        fecha_fin=reserva.fecha_fin,
+        estado=reserva.estado,
+        estado_orden=None,
+        id_usuario=None,
+        nombre_responsable=payload.nombre_responsable,
+        notas=reserva.notas,
+        num_socios_esperados=None,
+        monto_reintegro_unitario=None,
+        escaneos_realizados=0,
+    )
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 #
 # CRÍTICO: esta ruta debe declararse ANTES de "/admin/reservas/{id_reserva}".
@@ -135,7 +232,6 @@ def listar_reservas_activas(
         .options(
             joinedload(models.ReservaInstalacion.usuario_responsable),
             joinedload(models.ReservaInstalacion.reintegros),
-            joinedload(models.ReservaInstalacion.orden),
         )
         .filter(
             models.ReservaInstalacion.estado == "confirmada",
@@ -159,7 +255,6 @@ def listar_reservas_activas(
                 fecha_inicio=r.fecha_inicio,
                 fecha_fin=r.fecha_fin,
                 estado=r.estado,
-                estado_orden=r.orden.estado if r.orden is not None else None,
                 id_usuario=r.id_usuario,
                 nombre_responsable=nombre_responsable,
                 notas=r.notas,

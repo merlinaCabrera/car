@@ -121,6 +121,23 @@ const METODO_PAGO_BADGE = {
   transferencia: { label: '🏦 Transfer.', classes: 'bg-indigo-100 text-indigo-700' },
 }
 
+// Estado a nivel Pago (no por Orden) para el badge de la tarjeta colapsada.
+// OJO: no es lo mismo que pago.estado del backend (que pasa a 'verificado'
+// apenas se aprueba la PRIMERA orden, aunque queden hermanas pendientes) —
+// acá priorizamos mostrar "Pendiente" mientras falte resolver algo, así el
+// admin no lo pasa por alto pensando que ya está verificado del todo.
+function estadoDePago(ordenes, resueltosEnSesion) {
+  const pendientes = ordenes.filter(o => estadoVisualDeOrden(o, resueltosEnSesion) === null)
+  if (pendientes.length > 0) {
+    return { label: 'Pendiente', icon: Clock, classes: 'text-amber-700 bg-amber-50' }
+  }
+  const hayAprobada = ordenes.some(o => estadoVisualDeOrden(o, resueltosEnSesion) === 'aprobada')
+  if (hayAprobada) {
+    return { label: 'Verificado', icon: CheckCircle2, classes: 'text-green-700 bg-green-50' }
+  }
+  return { label: 'Rechazado', icon: XCircle, classes: 'text-red-600 bg-red-50' }
+}
+
 // ─── Modal de verificación de una Orden individual ───────────────────────────
 // Fusiona lo mejor de los 3 modales viejos: desglose de ítems (venía del de
 // Alquileres), visor de comprobante + indicador de Mercado Pago + ajuste
@@ -382,56 +399,47 @@ function TarjetaPago({ pago, ordenes, resueltosEnSesion, onVerificar, onAprobarT
 
   const pendientes = ordenes.filter(o => estadoVisualDeOrden(o, resueltosEnSesion) === null)
   const hayPendientes = pendientes.length > 0
+  const estadoPago = estadoDePago(ordenes, resueltosEnSesion)
+  const EstadoIcon = estadoPago.icon
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-      {/* Header del Pago — el comprobante único, visible una sola vez aunque
-          haya varias Órdenes abajo. Esto es lo que antes se veía duplicado
-          en 2 o 3 pantallas distintas sin ninguna señal de que era la misma
-          plata. Clickeable: expande/colapsa el detalle de abajo. */}
+      {/* Header del Pago — colapsado, solo lo esencial: #pago, socio, estado
+          y monto. El método de pago, si hay varias órdenes, y el desglose
+          completo quedan en el desplegable. */}
       <button
         type="button"
         onClick={() => setExpandido(e => !e)}
-        className="w-full text-left p-4 sm:p-5 bg-gray-50 hover:bg-gray-100 border-b border-gray-100 flex items-center justify-between gap-3 flex-wrap transition-colors"
+        className="w-full text-left p-4 flex items-center justify-between gap-3 hover:bg-gray-50 transition-colors"
       >
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="p-2 rounded-xl bg-white border border-gray-200 flex-shrink-0">
-            <Receipt size={18} className="text-gray-400" />
-          </div>
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <p className="font-bold text-gray-900">Pago #{pago?.id_pago}</p>
-              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${metodo.classes}`}>
-                {metodo.label}
-              </span>
-              {esMultiple && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-600">
-                  {ordenes.length} órdenes en este comprobante
-                </span>
-              )}
-              {!hayPendientes && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700">
-                  <CheckCircle2 size={11} /> Verificado
-                </span>
-              )}
-            </div>
-            <p className="text-sm text-gray-500 flex items-center gap-1.5 mt-0.5 truncate">
-              <User size={12} className="flex-shrink-0" />
-              {socio?.apellido}, {socio?.nombre} · DNI {socio?.dni}
-            </p>
-          </div>
+        <div className="min-w-0 flex-1">
+          <p className="font-medium text-gray-900">
+            Pago #{pago?.id_pago}
+            {esMultiple && <span className="text-gray-400 font-normal"> · {ordenes.length} órdenes</span>}
+          </p>
+          <p className="text-xs text-gray-500 mt-0.5 truncate">
+            {socio?.apellido}, {socio?.nombre} · DNI {socio?.dni}
+          </p>
         </div>
-        <div className="flex items-center gap-3 sm:gap-4 flex-shrink-0 w-full sm:w-auto justify-between sm:justify-end">
-          <div className="text-right">
-            <p className="text-xs text-gray-400 hidden sm:block">Monto transferido (declarado)</p>
-            <p className="text-base sm:text-lg font-bold text-gray-900">{formatoMoneda.format(pago?.monto_total)}</p>
-          </div>
-          {expandido ? <ChevronUp size={18} className="text-gray-400 flex-shrink-0" /> : <ChevronDown size={18} className="text-gray-400 flex-shrink-0" />}
+
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <span className="text-sm font-bold text-gray-900">{formatoMoneda.format(pago?.monto_total)}</span>
+          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold flex-shrink-0 ${estadoPago.classes}`}>
+            <EstadoIcon size={11} /> {estadoPago.label}
+          </span>
+          {expandido ? <ChevronUp size={16} className="text-gray-400" /> : <ChevronDown size={16} className="text-gray-400" />}
         </div>
       </button>
 
       {expandido && (
         <>
+          {/* Método de pago — antes vivía en el header colapsado */}
+          <div className="px-4 sm:px-5 py-2.5 bg-gray-50 border-t border-b border-gray-100 flex items-center gap-2">
+            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${metodo.classes}`}>
+              {metodo.label}
+            </span>
+          </div>
+
           {/* Aprobar todo — solo si hay 2+ órdenes y más de una sigue pendiente.
               Con una sola orden pendiente no aporta nada sobre el botón
               individual de la fila, así que no se muestra. */}
@@ -621,8 +629,19 @@ export default function AdminVerificaciones() {
       if (!mapa.has(clave)) mapa.set(clave, { pago: orden.pago, ordenes: [] })
       mapa.get(clave).ordenes.push(orden)
     }
-    return Array.from(mapa.values())
-  }, [ordenesResource.data])
+    const grupos = Array.from(mapa.values())
+
+    // Sin filtro de estado puntual: las que todavía tienen algo pendiente
+    // de resolver van SIEMPRE arriba, para que no haya que buscarlas entre
+    // las ya resueltas. Es un sort estable, así que dentro de cada bloque
+    // se conserva el orden que ya trae el backend (más reciente primero).
+    if (!filtroEstado) {
+      const tienePendiente = (g) => g.ordenes.some(o => estadoVisualDeOrden(o, resueltosEnSesion) === null)
+      grupos.sort((a, b) => (tienePendiente(b) ? 1 : 0) - (tienePendiente(a) ? 1 : 0))
+    }
+
+    return grupos
+  }, [ordenesResource.data, filtroEstado, resueltosEnSesion])
 
   const loadingGlobal = ordenesResource.loading
 
@@ -750,17 +769,38 @@ export default function AdminVerificaciones() {
 
         {!ordenesResource.loading && !ordenesResource.error && (
           <div className="space-y-3">
-            {gruposPorPago.map(({ pago, ordenes }) => (
-              <TarjetaPago
-                key={pago?.id_pago ?? ordenes[0].id_orden}
-                pago={pago}
-                ordenes={ordenes}
-                resueltosEnSesion={resueltosEnSesion}
-                onVerificar={setOrdenSeleccionada}
-                onAprobarTodo={handleAprobarTodo}
-                aprobandoTodo={aprobandoTodoPagoId === pago?.id_pago}
-              />
-            ))}
+            {gruposPorPago.map(({ pago, ordenes }, i) => {
+              const esPendiente = ordenes.some(o => estadoVisualDeOrden(o, resueltosEnSesion) === null)
+              const anterior = gruposPorPago[i - 1]
+              const anteriorEraPendiente = anterior?.ordenes.some(o => estadoVisualDeOrden(o, resueltosEnSesion) === null)
+              // Divisor: solo tiene sentido cuando NO hay un filtro de estado
+              // puntual (ahí ya viene todo del mismo tipo) y hay una mezcla real.
+              const mostrarDivisorPendientes = !filtroEstado && i === 0 && esPendiente
+              const mostrarDivisorResto = !filtroEstado && i > 0 && anteriorEraPendiente && !esPendiente
+
+              return (
+                <div key={pago?.id_pago ?? ordenes[0].id_orden}>
+                  {mostrarDivisorPendientes && (
+                    <p className="text-xs font-bold text-amber-700 uppercase tracking-wide mb-2 flex items-center gap-1.5">
+                      <Clock size={12} /> Pendientes
+                    </p>
+                  )}
+                  {mostrarDivisorResto && (
+                    <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-2 mt-1">
+                      Resto
+                    </p>
+                  )}
+                  <TarjetaPago
+                    pago={pago}
+                    ordenes={ordenes}
+                    resueltosEnSesion={resueltosEnSesion}
+                    onVerificar={setOrdenSeleccionada}
+                    onAprobarTodo={handleAprobarTodo}
+                    aprobandoTodo={aprobandoTodoPagoId === pago?.id_pago}
+                  />
+                </div>
+              )
+            })}
 
             {gruposPorPago.length === 0 && (
               <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-12 text-center text-gray-500 text-sm">

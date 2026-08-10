@@ -51,6 +51,7 @@ import {
   CalendarRange,
   CheckCircle2,
   Info,
+  UserCog,
 } from 'lucide-react'
 
 const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
@@ -498,6 +499,264 @@ function InscribirJugadorModal({ categoria, temporada, onClose, onSave }) {
   )
 }
 
+// ─── Modal: Gestión de Técnicos de la categoría (solo admin_general) ───────────
+//
+// Asigna/quita técnicos a la categoría de forma PERMANENTE (sin temporada,
+// a diferencia de UsuarioCategoria) — es la fila en `tecnicos_categorias`
+// que habilita al 'personal_tecnico' a operar sobre esta categoría puntual
+// (ver _verificar_acceso_categoria en deportivo.py). Reservado a
+// admin_general: es una decisión estructural del club, no del técnico.
+
+function GestionTecnicosModal({ categoria, onClose }) {
+  const { token } = useAuth()
+
+  const [asignados, setAsignados] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+
+  const [busqueda, setBusqueda] = useState('')
+  const [disponibles, setDisponibles] = useState([])
+  const [cargandoDisponibles, setCargandoDisponibles] = useState(true)
+
+  const [asignando, setAsignando] = useState(null)   // id_usuario en curso
+  const [quitando, setQuitando] = useState(null)      // id_usuario en curso
+
+  const fetchAsignados = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const res = await fetch(
+        `${API}/deportivo/tecnicos-categorias?id_categoria=${categoria.id_categoria}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+      if (!res.ok) throw new Error('No se pudieron cargar los técnicos asignados.')
+      setAsignados(await res.json())
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }, [token, categoria.id_categoria])
+
+  useEffect(() => { fetchAsignados() }, [fetchAsignados])
+
+  // Trae TODOS los socios con rol personal_tecnico una sola vez al abrir el
+  // modal (el club tiene pocos técnicos) — el filtro por texto se hace acá
+  // en el cliente, no re-pegándole a la API en cada letra.
+  useEffect(() => {
+    (async () => {
+      setCargandoDisponibles(true)
+      try {
+        const res = await fetch(`${API}/deportivo/tecnicos/buscar`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        setDisponibles(res.ok ? await res.json() : [])
+      } catch {
+        setDisponibles([])
+      } finally {
+        setCargandoDisponibles(false)
+      }
+    })()
+  }, [token])
+
+  const idsYaAsignados = useMemo(
+    () => new Set(asignados.map(a => a.id_usuario)),
+    [asignados]
+  )
+
+  const resultados = useMemo(() => {
+    const q = busqueda.trim().toLowerCase()
+    const filtrados = !q
+      ? disponibles
+      : disponibles.filter(u =>
+          u.nombre?.toLowerCase().includes(q)
+          || u.apellido?.toLowerCase().includes(q)
+          || u.dni?.includes(q)
+        )
+
+    // No asignados primero (son los que el admin viene a buscar), ya
+    // asignados al final — dentro de cada grupo se respeta el orden
+    // alfabético que ya trae el backend.
+    return [...filtrados].sort((a, b) => {
+      const aAsignado = idsYaAsignados.has(a.id_usuario)
+      const bAsignado = idsYaAsignados.has(b.id_usuario)
+      if (aAsignado === bAsignado) return 0
+      return aAsignado ? 1 : -1
+    })
+  }, [disponibles, busqueda, idsYaAsignados])
+
+  const handleAsignar = async (usuario) => {
+    setAsignando(usuario.id_usuario)
+    setError(null)
+    try {
+      const res = await fetch(`${API}/deportivo/tecnicos-categorias`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id_usuario: usuario.id_usuario, id_categoria: categoria.id_categoria }),
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        throw new Error(body.detail ?? 'No se pudo asignar el técnico.')
+      }
+      setBusqueda('')
+      setResultados([])
+      await fetchAsignados()
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setAsignando(null)
+    }
+  }
+
+  const handleQuitar = async (asignacion) => {
+    setQuitando(asignacion.id_usuario)
+    setError(null)
+    try {
+      const res = await fetch(
+        `${API}/deportivo/tecnicos-categorias/${asignacion.id_usuario}/${categoria.id_categoria}`,
+        { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } }
+      )
+      if (!res.ok && res.status !== 204) {
+        const body = await res.json().catch(() => ({}))
+        throw new Error(body.detail ?? 'No se pudo quitar el técnico.')
+      }
+      await fetchAsignados()
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setQuitando(null)
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex justify-center items-center p-4"
+      onClick={e => { if (e.target === e.currentTarget) onClose() }}
+    >
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md flex flex-col max-h-[92dvh]">
+        <div className="p-6 border-b flex-shrink-0 flex items-start justify-between">
+          <div>
+            <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+              <UserCog size={20} className="text-gray-500" />
+              Gestión de Técnicos
+            </h2>
+            <p className="text-sm text-gray-500 mt-1">{categoria.nombre} · asignación permanente</p>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="p-6 space-y-5 overflow-y-auto flex-1">
+          {error && (
+            <div className="flex items-start gap-2 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
+              <AlertCircle size={15} className="flex-shrink-0 mt-0.5" />
+              <span>{error}</span>
+            </div>
+          )}
+
+          {/* Buscador para asignar */}
+          <div>
+            <div className="relative">
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                value={busqueda}
+                onChange={e => setBusqueda(e.target.value)}
+                placeholder="Buscar técnico por nombre o DNI…"
+                className="form-input pl-9"
+                autoFocus
+              />
+            </div>
+            <p className="text-xs text-gray-400 mt-1.5">
+              Todos los socios con el rol <b>personal_tecnico</b> — tocá uno para asignarlo a esta categoría.
+            </p>
+
+            <div className="space-y-1 mt-2 max-h-52 overflow-y-auto">
+              {cargandoDisponibles && (
+                <p className="text-sm text-gray-400 text-center py-3">Cargando técnicos…</p>
+              )}
+              {!cargandoDisponibles && resultados.length === 0 && (
+                <p className="text-sm text-gray-400 text-center py-3">
+                  {busqueda.trim()
+                    ? 'Ningún técnico coincide con la búsqueda.'
+                    : 'No hay socios con el rol personal_tecnico en el club todavía.'}
+                </p>
+              )}
+              {resultados.map(u => {
+                const yaAsignado = idsYaAsignados.has(u.id_usuario)
+                return (
+                  <button
+                    key={u.id_usuario}
+                    onClick={() => !yaAsignado && handleAsignar(u)}
+                    disabled={yaAsignado || asignando === u.id_usuario}
+                    className="w-full text-left px-4 py-2.5 rounded-lg hover:bg-emerald-50 border border-gray-100 transition-colors flex items-center justify-between disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                  >
+                    <span className="font-medium text-gray-800">{u.apellido}, {u.nombre}</span>
+                    <span className="text-xs text-gray-400 flex items-center gap-2">
+                      <span className="font-mono">DNI {u.dni}</span>
+                      {yaAsignado
+                        ? <span className="text-emerald-600 font-semibold">Ya asignado</span>
+                        : asignando === u.id_usuario
+                          ? <Loader2 size={13} className="animate-spin" />
+                          : <PlusCircle size={14} className="text-emerald-600" />
+                      }
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Lista de técnicos ya asignados */}
+          <div>
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+              Técnicos a cargo ({asignados.length})
+            </p>
+            {loading && <p className="text-sm text-gray-400 text-center py-3">Cargando…</p>}
+            {!loading && asignados.length === 0 && (
+              <p className="text-sm text-gray-400 text-center py-3">
+                Todavía no hay ningún técnico asignado a esta categoría.
+              </p>
+            )}
+            <div className="space-y-1.5">
+              {asignados.map(a => (
+                <div
+                  key={a.id_usuario}
+                  className="flex items-center justify-between px-4 py-2.5 rounded-lg bg-gray-50 border border-gray-100"
+                >
+                  <div className="min-w-0">
+                    <p className="font-medium text-gray-800 truncate">
+                      {a.usuario?.apellido}, {a.usuario?.nombre}
+                    </p>
+                    <p className="text-xs text-gray-400 font-mono">DNI {a.usuario?.dni}</p>
+                  </div>
+                  <button
+                    onClick={() => handleQuitar(a)}
+                    disabled={quitando === a.id_usuario}
+                    className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50 flex-shrink-0"
+                    title="Quitar de la categoría"
+                  >
+                    {quitando === a.id_usuario
+                      ? <Loader2 size={15} className="animate-spin" />
+                      : <Trash2 size={15} />
+                    }
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="p-4 bg-gray-50 rounded-b-2xl border-t flex justify-end flex-shrink-0">
+          <button onClick={onClose} className="px-4 py-2 rounded-lg text-gray-600 bg-gray-200 hover:bg-gray-300 font-semibold transition-colors">
+            Cerrar
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Modal: Autocompletar Plantel (solo admin_general) ─────────────────────────
 
 function AutocompletarModal({ categoria, temporada, onClose, onConfirm }) {
@@ -581,15 +840,27 @@ function VistaPlantel({ categoria, onVolver, onCategoriaActualizada }) {
 
   const [temporada, setTemporada] = useState(TEMPORADA_ACTUAL)
   const [jugadores, setJugadores] = useState([])
+  const [busquedaJugador, setBusquedaJugador] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [modalInscribirAbierto, setModalInscribirAbierto] = useState(false)
   const [modalAutocompletarAbierto, setModalAutocompletarAbierto] = useState(false)
   const [modalEditarAbierto, setModalEditarAbierto] = useState(false)
+  const [modalTecnicosAbierto, setModalTecnicosAbierto] = useState(false)
   const [resultadoAutocompletar, setResultadoAutocompletar] = useState(null)
   const [capitanEnCurso, setCapitanEnCurso] = useState(null) // id_usuario cuya capitanía se está actualizando
 
   const tieneCortesConfigurados = Boolean(categoria.fecha_corte_min && categoria.fecha_corte_max)
+
+  const jugadoresFiltrados = useMemo(() => {
+    const q = busquedaJugador.trim().toLowerCase()
+    if (!q) return jugadores
+    return jugadores.filter(j =>
+      j.usuario?.nombre?.toLowerCase().includes(q)
+      || j.usuario?.apellido?.toLowerCase().includes(q)
+      || j.usuario?.dni?.includes(q)
+    )
+  }, [jugadores, busquedaJugador])
 
   const fetchJugadores = useCallback(async () => {
     setLoading(true)
@@ -712,18 +983,24 @@ function VistaPlantel({ categoria, onVolver, onCategoriaActualizada }) {
           onSave={handleGuardarEdicion}
         />
       )}
+      {esAdminGeneral && modalTecnicosAbierto && (
+        <GestionTecnicosModal
+          categoria={categoria}
+          onClose={() => setModalTecnicosAbierto(false)}
+        />
+      )}
 
-      <div className="flex items-center gap-3 flex-wrap">
-        <button onClick={onVolver} className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors">
+      <div className="flex items-center gap-3">
+        <button onClick={onVolver} className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors flex-shrink-0">
           <ArrowLeft size={18} />
         </button>
-        <div className="flex-1 min-w-[160px]">
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            {categoria.nombre}
+        <div className="flex-1 min-w-0">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2">
+            <span className="truncate">{categoria.nombre}</span>
             {esAdminGeneral && (
               <button
                 onClick={() => setModalEditarAbierto(true)}
-                className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+                className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors flex-shrink-0"
                 title="Editar categoría"
               >
                 <Pencil size={15} />
@@ -732,10 +1009,14 @@ function VistaPlantel({ categoria, onVolver, onCategoriaActualizada }) {
           </h1>
           <p className="text-sm text-gray-500">Plantel · Temporada {temporada}</p>
         </div>
+      </div>
 
-        {/* Selector de temporada */}
-        <label className="flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm text-gray-600">
-          <CalendarRange size={15} className="text-gray-400" />
+      {/* Fila de filtros: temporada + buscador de jugador. Separada de los
+          botones de acción (fila siguiente) para que no se apriete en
+          mobile — mismo criterio de tamaño que los filtros de /admin/socios. */}
+      <div className="flex items-center gap-2">
+        <label className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-gray-200 bg-white text-xs sm:text-sm text-gray-600 flex-shrink-0">
+          <CalendarRange size={13} className="text-gray-400" />
           <select
             value={temporada}
             onChange={e => setTemporada(e.target.value)}
@@ -747,30 +1028,60 @@ function VistaPlantel({ categoria, onVolver, onCategoriaActualizada }) {
           </select>
         </label>
 
-        {/* Autocompletar — solo Admin General */}
-        {esAdminGeneral && (
-          <button
-            onClick={() => setModalAutocompletarAbierto(true)}
-            disabled={!tieneCortesConfigurados}
-            title={
-              tieneCortesConfigurados
-                ? 'Inscribir masivamente por fecha de nacimiento'
-                : 'Configurá los cortes de edad desde "Editar" antes de autocompletar'
-            }
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-purple-600 text-white font-semibold hover:bg-purple-700 disabled:bg-gray-200 disabled:text-gray-400 transition-colors shadow-sm"
-          >
-            <Wand2 size={16} />
-            Autocompletar
-          </button>
-        )}
+        <div className="relative flex-1">
+          <Search size={13} className="absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+          <input
+            type="text"
+            value={busquedaJugador}
+            onChange={e => setBusquedaJugador(e.target.value)}
+            placeholder="Buscar jugador por nombre o DNI..."
+            className="form-input pl-7 sm:pl-8 pr-3 py-1.5 text-xs sm:text-sm w-full"
+          />
+        </div>
+      </div>
 
-        <button
-          onClick={() => setModalInscribirAbierto(true)}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 transition-colors shadow-sm"
-        >
-          <PlusCircle size={16} />
-          Inscribir Jugador
-        </button>
+      {/* Fila de acciones — mismo criterio que /admin/socios: en mobile los
+          botones quedan solo con ícono, desde sm: se les suma el texto. */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2 ml-auto">
+          {/* Autocompletar — solo Admin General */}
+          {esAdminGeneral && (
+            <button
+              onClick={() => setModalAutocompletarAbierto(true)}
+              disabled={!tieneCortesConfigurados}
+              title={
+                tieneCortesConfigurados
+                  ? 'Inscribir masivamente por fecha de nacimiento'
+                  : 'Configurá los cortes de edad desde "Editar" antes de autocompletar'
+              }
+              className="inline-flex items-center justify-center sm:justify-start gap-2 p-2.5 sm:px-4 sm:py-2 rounded-xl bg-purple-600 text-white font-semibold hover:bg-purple-700 disabled:bg-gray-200 disabled:text-gray-400 transition-colors shadow-sm"
+            >
+              <Wand2 size={18} className="sm:w-4 sm:h-4" />
+              <span className="hidden sm:inline">Autocompletar</span>
+            </button>
+          )}
+
+          {/* Gestión de Técnicos — solo Admin General */}
+          {esAdminGeneral && (
+            <button
+              onClick={() => setModalTecnicosAbierto(true)}
+              title="Gestión Técnicos"
+              className="inline-flex items-center justify-center sm:justify-start gap-2 p-2.5 sm:px-4 sm:py-2 rounded-xl bg-slate-700 text-white font-semibold hover:bg-slate-800 transition-colors shadow-sm"
+            >
+              <UserCog size={18} className="sm:w-4 sm:h-4" />
+              <span className="hidden sm:inline">Gestión Técnicos</span>
+            </button>
+          )}
+
+          <button
+            onClick={() => setModalInscribirAbierto(true)}
+            title="Inscribir Jugador"
+            className="inline-flex items-center justify-center sm:justify-start gap-2 p-2.5 sm:px-4 sm:py-2 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 transition-colors shadow-sm"
+          >
+            <PlusCircle size={18} className="sm:w-4 sm:h-4" />
+            <span className="hidden sm:inline">Inscribir Jugador</span>
+          </button>
+        </div>
       </div>
 
       {esAdminGeneral && !tieneCortesConfigurados && (
@@ -810,7 +1121,61 @@ function VistaPlantel({ categoria, onVolver, onCategoriaActualizada }) {
         </div>
       )}
 
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-x-auto">
+      {/* Plantel — cards en mobile, tabla en desktop (mismo patrón que /admin/socios) */}
+      <div className="md:hidden bg-white rounded-2xl shadow-sm border border-gray-100 divide-y divide-gray-50">
+        {loading && [...Array(4)].map((_, i) => (
+          <div key={i} className="p-4"><div className="h-4 bg-gray-200 rounded-md animate-pulse" /></div>
+        ))}
+
+        {!loading && jugadoresFiltrados.map(j => (
+          <div key={j.id_usuario} className="p-4 space-y-3">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="font-medium text-gray-900 truncate">
+                  {j.usuario ? `${j.usuario.apellido}, ${j.usuario.nombre}` : `Usuario #${j.id_usuario}`}
+                </p>
+                <p className="text-xs text-gray-500 mt-0.5 font-mono">DNI {j.usuario?.dni ?? '—'}</p>
+              </div>
+              <span className="text-xs text-gray-400 flex-shrink-0 mt-0.5">
+                {j.usuario?.fecha_nacimiento ? new Date(j.usuario.fecha_nacimiento).getFullYear() : '—'}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-1 pt-2 border-t border-gray-50 -mx-1">
+              <button
+                onClick={() => handleToggleCapitan(j.id_usuario, j.es_capitan)}
+                disabled={capitanEnCurso === j.id_usuario}
+                className={`flex-1 inline-flex items-center justify-center gap-1.5 p-2 rounded-lg transition-colors text-xs font-medium disabled:opacity-50 ${
+                  j.es_capitan
+                    ? 'text-amber-700 hover:bg-amber-50'
+                    : 'text-gray-500 hover:text-amber-600 hover:bg-amber-50'
+                }`}
+              >
+                {capitanEnCurso === j.id_usuario ? (
+                  <Loader2 size={15} className="animate-spin" />
+                ) : (
+                  <Star size={15} className={j.es_capitan ? 'fill-amber-500 text-amber-500' : ''} />
+                )}
+                {j.es_capitan ? 'Capitán' : 'Nombrar capitán'}
+              </button>
+              <button
+                onClick={() => handleEliminar(j.id_usuario, j.usuario ? `${j.usuario.nombre} ${j.usuario.apellido}` : `#${j.id_usuario}`)}
+                className="flex-1 inline-flex items-center justify-center gap-1.5 p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors text-xs font-medium"
+              >
+                <Trash2 size={15} /> Sacar
+              </button>
+            </div>
+          </div>
+        ))}
+
+        {!loading && jugadoresFiltrados.length === 0 && (
+          <div className="text-center py-12 text-gray-500 text-sm px-4">
+            {busquedaJugador ? `Ningún jugador coincide con "${busquedaJugador}".` : `Todavía no hay jugadores inscriptos en esta categoría para la temporada ${temporada}.`}
+          </div>
+        )}
+      </div>
+
+      <div className="hidden md:block bg-white rounded-2xl shadow-sm border border-gray-100 overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-100">
           <thead className="bg-gray-50">
             <tr>
@@ -828,7 +1193,7 @@ function VistaPlantel({ categoria, onVolver, onCategoriaActualizada }) {
               </tr>
             ))}
 
-            {!loading && jugadores.map(j => (
+            {!loading && jugadoresFiltrados.map(j => (
               <tr key={j.id_usuario} className="hover:bg-gray-50/70 transition-colors">
                 <td className="px-6 py-4 font-medium text-gray-900">
                   {j.usuario ? `${j.usuario.apellido}, ${j.usuario.nombre}` : `Usuario #${j.id_usuario}`}
@@ -870,10 +1235,10 @@ function VistaPlantel({ categoria, onVolver, onCategoriaActualizada }) {
               </tr>
             ))}
 
-            {!loading && jugadores.length === 0 && (
+            {!loading && jugadoresFiltrados.length === 0 && (
               <tr>
                 <td colSpan="5" className="text-center py-12 text-gray-500">
-                  Todavía no hay jugadores inscriptos en esta categoría para la temporada {temporada}.
+                  {busquedaJugador ? `Ningún jugador coincide con "${busquedaJugador}".` : `Todavía no hay jugadores inscriptos en esta categoría para la temporada ${temporada}.`}
                 </td>
               </tr>
             )}
@@ -986,10 +1351,11 @@ export default function TecnicoPlanteles() {
           {esAdminGeneral && (
             <button
               onClick={() => setModalCategoriaAbierto(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 transition-colors shadow-sm"
+              title="Nueva Categoría"
+              className="inline-flex items-center justify-center sm:justify-start gap-2 p-2.5 sm:px-4 sm:py-2 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 transition-colors shadow-sm"
             >
-              <PlusCircle size={16} />
-              Nueva Categoría
+              <PlusCircle size={18} className="sm:w-4 sm:h-4" />
+              <span className="hidden sm:inline">Nueva Categoría</span>
             </button>
           )}
           <button onClick={fetchCategorias} disabled={loading} className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 disabled:opacity-40 transition-colors" title="Actualizar">
@@ -1008,13 +1374,12 @@ export default function TecnicoPlanteles() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
         {loading && [...Array(3)].map((_, i) => (
           <div key={i} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 h-28 animate-pulse" />
         ))}
 
         {!loading && categorias.map(cat => {
-          const tieneCortes = Boolean(cat.fecha_corte_min && cat.fecha_corte_max)
           return (
             <button
               key={cat.id_categoria}
@@ -1032,18 +1397,9 @@ export default function TecnicoPlanteles() {
               {cat.descripcion && (
                 <p className="text-sm text-gray-500 mt-1 line-clamp-2">{cat.descripcion}</p>
               )}
-              <div className="flex items-center justify-between mt-3">
-                <p className="text-xs text-blue-600 font-medium flex items-center gap-1.5">
-                  <Users size={13} /> Ver plantel
-                </p>
-                {tieneCortes ? (
-                  <span className="inline-flex items-center gap-1 text-[11px] font-medium text-purple-600" title="Tiene cortes de edad configurados">
-                    <Wand2 size={11} /> Autocompletar
-                  </span>
-                ) : (
-                  <span className="text-[11px] text-gray-300">Sin cortes</span>
-                )}
-              </div>
+              <p className="text-xs text-blue-600 font-medium flex items-center gap-1.5 mt-3">
+                <Users size={13} /> Ver plantel
+              </p>
             </button>
           )
         })}

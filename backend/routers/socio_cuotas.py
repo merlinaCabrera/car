@@ -60,8 +60,6 @@ router = APIRouter(
     tags=["Socio — Mis Cuotas"],
 )
 
-DESCUENTO_MENOR = Decimal("0.40")
-
 _ROLES_SOCIO = ("socio", "jugador")
 
 # ─── Configuración de subida de comprobantes ──────────────────────────────────
@@ -142,18 +140,31 @@ def _obtener_producto_cuota_social(db: Session) -> models.ProductoServicio:
     return producto
 
 
+def _obtener_descuento_menor_pct(db: Session) -> Decimal:
+    """
+    Único punto de lectura del % de descuento para menores — vive en
+    ConfiguracionGlobal (editable por el Admin General desde el Catálogo
+    de Productos), no hardcodeado. Fallback a 40 si todavía no hay fila
+    de configuración creada (mismo valor que estaba fijo antes de esto).
+    """
+    config = db.query(models.ConfiguracionGlobal).first()
+    return config.descuento_menor_pct if config else Decimal("40")
+
+
 def _calcular_precio_cuota(
     precio_base: Decimal,
     fecha_nacimiento: Optional[date],
+    db: Session,
 ) -> Decimal:
     """
     Calcula el precio final de la cuota.
-    Aplica DESCUENTO_MENOR si el socio tiene menos de 18 años.
+    Aplica el % de descuento configurado (ConfiguracionGlobal.descuento_menor_pct)
+    si el socio tiene menos de 18 años.
     """
     edad = _calcular_edad(fecha_nacimiento)
     if edad is not None and edad < 18:
-        # Aplica un 40% de descuento para menores
-        return precio_base * (Decimal("1") - DESCUENTO_MENOR)
+        descuento_pct = _obtener_descuento_menor_pct(db)
+        return precio_base * (Decimal("1") - descuento_pct / Decimal("100"))
     return precio_base
 
 
@@ -171,7 +182,7 @@ def obtener_estado_cuota(
     # Obtiene el producto base y calcula el precio real para este socio
     producto_cuota = _obtener_producto_cuota_social(db)
     precio_real_socio = _calcular_precio_cuota(
-        producto_cuota.precio_actual, socio.fecha_nacimiento
+        producto_cuota.precio_actual, socio.fecha_nacimiento, db
     )
 
     config = db.query(models.ConfiguracionGlobal).first()
@@ -279,7 +290,7 @@ def generar_orden_cuota(
     # descuento automáticamente, sin intervención del admin.
     producto_cuota = _obtener_producto_cuota_social(db)
     precio_congelado = _calcular_precio_cuota(
-        producto_cuota.precio_actual, socio.fecha_nacimiento
+        producto_cuota.precio_actual, socio.fecha_nacimiento, db
     )
 
     # Evitar duplicados: si ya hay una orden de cualquier cuota_social sin

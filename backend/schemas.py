@@ -89,6 +89,9 @@ class ConfiguracionGlobalBase(BaseModel):
     descuento_beneficio: Porcentaje = Field(
         description="Porcentaje de descuento en alquileres por antigüedad (0–100)."
     )
+    descuento_menor_pct: Porcentaje = Field(
+        description="Porcentaje de descuento en la cuota social para menores de 18 años (0–100)."
+    )
 
 
 class ConfiguracionGlobalUpdate(BaseModel):
@@ -102,6 +105,7 @@ class ConfiguracionGlobalUpdate(BaseModel):
     )
     meses_antiguedad_beneficio: Optional[int] = Field(default=None, ge=1)
     descuento_beneficio: Optional[Porcentaje] = None
+    descuento_menor_pct: Optional[Porcentaje] = None
 
 
 class ConfiguracionGlobalResponse(ConfiguracionGlobalBase):

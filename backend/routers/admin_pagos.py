@@ -53,12 +53,6 @@ router = APIRouter(
     prefix="/admin/pagos",
     tags=["Admin — Pagos y Cuotas Sociales"],
 )
-
-# Constante declarada como Decimal para que toda la aritmética subsiguiente
-# opere en Decimal y no mezcle float (lo que generaría resultados imprecisos
-# al escribir en columnas Numeric de PostgreSQL).
-DESCUENTO_MENOR: Decimal = Decimal("0.40")
-
 _ROLES_ADMIN_PAGOS = ("admin_general", "personal_administrativo")
 
 
@@ -204,20 +198,36 @@ def _obtener_producto_cuota_social(db: Session) -> models.ProductoServicio:
     return producto
 
 
+def _obtener_descuento_menor_pct(db: Session) -> Decimal:
+    """
+    Único punto de lectura del % de descuento para menores — vive en
+    ConfiguracionGlobal (editable por el Admin General desde el Catálogo
+    de Productos), no hardcodeado. Fallback a 40 si todavía no hay fila
+    de configuración creada (mismo valor que estaba fijo antes de esto).
+    Misma función que en socio_cuotas.py — ambas leen la misma fila de
+    ConfiguracionGlobal, así que nunca pueden desincronizarse entre sí.
+    """
+    config = db.query(models.ConfiguracionGlobal).first()
+    return config.descuento_menor_pct if config else Decimal("40")
+
+
 def _calcular_precio_cuota(
     precio_base: Decimal,
     fecha_nacimiento: Optional[date],
+    db: Session,
 ) -> Decimal:
     """
     Calcula el precio final de la cuota usando aritmética Decimal estricta.
-    Aplica DESCUENTO_MENOR (Decimal("0.40")) si el socio tiene menos de 18 años.
-    Al ser precio_base también Decimal (Numeric ORM → Decimal en Python) y
-    DESCUENTO_MENOR Decimal, toda la expresión opera en Decimal sin conversión
-    implícita a float, evitando errores de precisión en columnas Numeric(10,2).
+    Aplica el % de descuento configurado (ConfiguracionGlobal.descuento_menor_pct)
+    si el socio tiene menos de 18 años. Al ser precio_base también Decimal
+    (Numeric ORM → Decimal en Python), toda la expresión opera en Decimal
+    sin conversión implícita a float, evitando errores de precisión en
+    columnas Numeric(10,2).
     """
     edad = _calcular_edad(fecha_nacimiento)
     if edad is not None and edad < 18:
-        return precio_base * (Decimal("1") - DESCUENTO_MENOR)
+        descuento_pct = _obtener_descuento_menor_pct(db)
+        return precio_base * (Decimal("1") - descuento_pct / Decimal("100"))
     return precio_base
 
 
@@ -304,7 +314,7 @@ def listar_morosos(
     for u in socios:
         # La deuda estimada se calcula con la tarifa correcta para cada socio.
         precio_unitario = _calcular_precio_cuota(
-            producto_cuota_base.precio_actual, u.fecha_nacimiento
+            producto_cuota_base.precio_actual, u.fecha_nacimiento, db
         )
 
         resultado.append(
@@ -357,11 +367,11 @@ def registrar_pago_manual(
         )
 
     # 2 ── Seleccionar el producto y congelar el precio correcto para este socio
-    # _calcular_precio_cuota usa Decimal estricto: precio_base (Decimal del ORM)
-    # × (Decimal("1") - Decimal("0.40")), sin ninguna conversión a float.
+    # _calcular_precio_cuota usa Decimal estricto y lee el % de descuento
+    # desde ConfiguracionGlobal.descuento_menor_pct (editable, no hardcodeado).
     producto_cuota = _obtener_producto_cuota_social(db)
     precio_congelado: Decimal = _calcular_precio_cuota(
-        producto_cuota.precio_actual, usuario.fecha_nacimiento
+        producto_cuota.precio_actual, usuario.fecha_nacimiento, db
     )
     monto_total: Decimal = precio_congelado * Decimal(payload.meses_a_pagar)
 

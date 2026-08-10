@@ -39,6 +39,8 @@ import {
   CheckCircle2,
   Clock,
   XCircle,
+  ChevronDown,
+  ChevronUp,
   AlertTriangle,
 } from 'lucide-react'
 
@@ -1103,6 +1105,120 @@ function ComprasSocioModal({ socio, token, refreshTick, onClose, onCobrar }) {
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 
+// ─── Tarjeta de Socio — mobile ─────────────────────────────────────────────
+// Colapsada por defecto: solo DNI, nombre y estado (Al día / Moroso / Becado /
+// Inactivo) quedan siempre visibles. El resto (email, detalle de deuda, y las
+// acciones Compras/Editar/Baja) se despliega al tocar la tarjeta — mismo
+// patrón que las tarjetas de Pago en /admin/verificaciones, para no
+// desperdiciar espacio vertical en mobile.
+function TarjetaSocioMobile({
+  socio, precioCuota, diaVencimiento,
+  onVerCompras, onEditar, onReactivar, onDarBaja,
+}) {
+  const [expandido, setExpandido] = useState(false)
+
+  const hoyISO = new Date().toISOString().split('T')[0]
+  const socioBecaActiva = socio.es_becado && (!socio.becado_hasta || socio.becado_hasta >= hoyISO)
+  const { moroso: socioMorosoReal, mesesAdeudados: socioMesesAdeudadosReal } = calcularEstadoFinanciero(
+    socio.mes_cubierto_hasta,
+    socio.fecha_ingreso,
+    diaVencimiento
+  )
+  const socioMoroso = socioBecaActiva ? false : socioMorosoReal
+  const socioMesesAdeudados = socioBecaActiva ? 0 : socioMesesAdeudadosReal
+  const socioPrecioFinal = calcularPrecioFinal(precioCuota, socio.fecha_nacimiento)
+  const socioDeudaPesos = socioMesesAdeudados * socioPrecioFinal
+
+  return (
+    <div>
+      {/* Header — siempre visible. Clickeable: expande/colapsa el detalle. */}
+      <button
+        type="button"
+        onClick={() => setExpandido(e => !e)}
+        className="w-full text-left p-4 flex items-center justify-between gap-3 hover:bg-gray-50 transition-colors"
+      >
+        <div className="min-w-0 flex-1">
+          <div className="font-medium text-gray-900 flex items-center gap-1.5 flex-wrap">
+            {socio.apellido}, {socio.nombre}
+            {socio.es_becado && <span className="text-xs">🎓</span>}
+          </div>
+          <div className="text-xs text-gray-500 mt-0.5 font-mono">DNI {socio.dni}</div>
+        </div>
+
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {socio.fecha_baja ? (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+              <UserX size={11} /> Inactivo
+            </span>
+          ) : socioBecaActiva ? (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-teal-100 text-teal-800">
+              Becado
+            </span>
+          ) : socioMoroso ? (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+              Moroso
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+              Al día
+            </span>
+          )}
+          {expandido ? <ChevronUp size={16} className="text-gray-400" /> : <ChevronDown size={16} className="text-gray-400" />}
+        </div>
+      </button>
+
+      {/* Detalle — solo si está expandida */}
+      {expandido && (
+        <div className="px-4 pb-4 space-y-3 border-t border-gray-50 pt-3">
+          {socio.email && <div className="text-xs text-gray-400 truncate">{socio.email}</div>}
+
+          {!socio.fecha_baja && !socioBecaActiva && socioMoroso && (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+              {socioMesesAdeudados} mes{socioMesesAdeudados !== 1 ? 'es' : ''} adeudado{socioMesesAdeudados !== 1 ? 's' : ''} — {formatoMoneda.format(socioDeudaPesos)}
+            </span>
+          )}
+
+          <div className="flex items-center gap-1 pt-1 border-t border-gray-50 -mx-1">
+            {!socio.fecha_baja && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onVerCompras(socio) }}
+                className="flex-1 inline-flex items-center justify-center gap-1.5 p-2 text-gray-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors text-xs font-medium"
+                title="Ver compras y registrar pago"
+              >
+                <Receipt size={16} /> Compras
+              </button>
+            )}
+            <button
+              onClick={(e) => { e.stopPropagation(); onEditar(socio) }}
+              className="flex-1 inline-flex items-center justify-center gap-1.5 p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-100 rounded-lg transition-colors text-xs font-medium"
+              title="Editar Socio"
+            >
+              <Edit size={16} /> Editar
+            </button>
+            {socio.fecha_baja ? (
+              <button
+                onClick={(e) => { e.stopPropagation(); onReactivar(socio) }}
+                className="flex-1 inline-flex items-center justify-center gap-1.5 p-2 text-gray-500 hover:text-green-600 hover:bg-green-100 rounded-lg transition-colors text-xs font-medium"
+                title="Reactivar Socio"
+              >
+                <Undo2 size={16} /> Reactivar
+              </button>
+            ) : (
+              <button
+                onClick={(e) => { e.stopPropagation(); onDarBaja(socio) }}
+                className="flex-1 inline-flex items-center justify-center gap-1.5 p-2 text-gray-500 hover:text-red-600 hover:bg-red-100 rounded-lg transition-colors text-xs font-medium"
+                title="Dar de baja"
+              >
+                <Trash2 size={16} /> Baja
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function AdminSocios() {
   const { token } = useAuth()
 
@@ -1547,99 +1663,18 @@ export default function AdminSocios() {
       {/* Vista de tarjetas — mobile */}
       {!loading && (
         <div className="md:hidden bg-white rounded-2xl shadow-sm border border-gray-100 divide-y divide-gray-50">
-          {filteredSocios.map(socio => {
-            const hoyISO = new Date().toISOString().split('T')[0]
-            const socioBecaActiva = socio.es_becado && (!socio.becado_hasta || socio.becado_hasta >= hoyISO)
-            const { moroso: socioMorosoReal, mesesAdeudados: socioMesesAdeudadosReal } = calcularEstadoFinanciero(
-              socio.mes_cubierto_hasta,
-              socio.fecha_ingreso,
-              diaVencimiento
-            )
-            const socioMoroso = socioBecaActiva ? false : socioMorosoReal
-            const socioMesesAdeudados = socioBecaActiva ? 0 : socioMesesAdeudadosReal
-            const socioPrecioFinal = calcularPrecioFinal(precioCuota, socio.fecha_nacimiento)
-            const socioDeudaPesos = socioMesesAdeudados * socioPrecioFinal
-
-            return (
-              <div key={socio.id_usuario} className="p-4 space-y-3">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="font-medium text-gray-900 flex items-center gap-1.5 flex-wrap">
-                      {socio.apellido}, {socio.nombre}
-                      {socio.es_becado && (
-                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-teal-100 text-teal-700 border border-teal-200 flex-shrink-0">
-                          🎓 Becado
-                        </span>
-                      )}
-                    </div>
-                    <div className="text-xs text-gray-500 mt-0.5 font-mono">DNI {socio.dni}</div>
-                    {socio.email && <div className="text-xs text-gray-400 mt-0.5 truncate">{socio.email}</div>}
-                  </div>
-                  {socio.fecha_baja ? (
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 flex-shrink-0">
-                      <UserX size={12} /> Inactivo
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 flex-shrink-0">
-                      <UserCheck size={12} /> Activo
-                    </span>
-                  )}
-                </div>
-
-                <div>
-                  {socioBecaActiva ? (
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-teal-100 text-teal-800">
-                      🎓 Becado
-                    </span>
-                  ) : socioMoroso ? (
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
-                      {socioMesesAdeudados} mes{socioMesesAdeudados !== 1 ? 'es' : ''} — {formatoMoneda.format(socioDeudaPesos)}
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                      Al día
-                    </span>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-1 pt-2 border-t border-gray-50 -mx-1">
-                  {!socio.fecha_baja && (
-                    <button
-                      onClick={() => setSocioCompras(socio)}
-                      className="flex-1 inline-flex items-center justify-center gap-1.5 p-2 text-gray-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors text-xs font-medium"
-                      title="Ver compras y registrar pago"
-                    >
-                      <Receipt size={16} /> Compras
-                    </button>
-                  )}
-                  <button
-                    onClick={() => openModalForEdit(socio)}
-                    className="flex-1 inline-flex items-center justify-center gap-1.5 p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-100 rounded-lg transition-colors text-xs font-medium"
-                    title="Editar Socio"
-                  >
-                    <Edit size={16} /> Editar
-                  </button>
-                  {socio.fecha_baja ? (
-                    <button
-                      onClick={() => handleReactivateSocio(socio)}
-                      className="flex-1 inline-flex items-center justify-center gap-1.5 p-2 text-gray-500 hover:text-green-600 hover:bg-green-100 rounded-lg transition-colors text-xs font-medium"
-                      title="Reactivar Socio"
-                    >
-                      <Undo2 size={16} /> Reactivar
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => handleDeleteSocio(socio)}
-                      className="flex-1 inline-flex items-center justify-center gap-1.5 p-2 text-gray-500 hover:text-red-600 hover:bg-red-100 rounded-lg transition-colors text-xs font-medium"
-                      title="Dar de baja"
-                    >
-                      <Trash2 size={16} /> Baja
-                    </button>
-                  )}
-                </div>
-              </div>
-            )
-          })}
+          {filteredSocios.map(socio => (
+            <TarjetaSocioMobile
+              key={socio.id_usuario}
+              socio={socio}
+              precioCuota={precioCuota}
+              diaVencimiento={diaVencimiento}
+              onVerCompras={setSocioCompras}
+              onEditar={openModalForEdit}
+              onReactivar={handleReactivateSocio}
+              onDarBaja={handleDeleteSocio}
+            />
+          ))}
 
           {filteredSocios.length === 0 && (
             <div className="text-center py-12 text-gray-500 text-sm px-4">

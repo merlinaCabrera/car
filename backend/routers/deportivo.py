@@ -919,6 +919,57 @@ def buscar_jugadores(
 
 
 # ═════════════════════════════════════════════════════════════════════════════
+# BÚSQUEDA DE TÉCNICOS (para asignarlos a una categoría — solo Admin General)
+# ═════════════════════════════════════════════════════════════════════════════
+
+@router.get(
+    "/tecnicos/buscar",
+    response_model=List[schemas.JugadorBusquedaResponse],
+    summary="Buscar socios con rol 'personal_tecnico' para asignarlos a una categoría (solo Admin General)",
+)
+def buscar_tecnicos(
+    q: Optional[str] = Query(default=None, min_length=2, description="Busca por nombre, apellido o DNI. Sin este parámetro, devuelve todos los técnicos."),
+    db: Session = Depends(get_db),
+    _admin: models.Usuario = Depends(require_roles(*_ROLES_ADMIN_GENERAL)),
+) -> List[models.Usuario]:
+    """
+    Mismo patrón que /jugadores/buscar, pero filtrando por rol
+    'personal_tecnico' en vez de 'jugador', y reservado a admin_general
+    (gestionar quién dirige una categoría es una decisión estructural del
+    club, igual que crear la categoría o autocompletar el plantel).
+
+    `q` es opcional a propósito (a diferencia de /jugadores/buscar, donde el
+    universo de jugadores es grande y siempre conviene buscar): el club
+    tiene pocos técnicos, así que el frontend puede pedir la lista completa
+    de una sola vez al abrir el modal de asignación y filtrar en el cliente,
+    en vez de forzar al admin a escribir para recién ver quién existe.
+    """
+    query = (
+        db.query(models.Usuario)
+        .join(models.UsuarioRol, models.UsuarioRol.id_usuario == models.Usuario.id_usuario)
+        .join(models.Rol, models.Rol.id_rol == models.UsuarioRol.id_rol)
+        .filter(
+            models.Rol.nombre == "personal_tecnico",
+            models.Usuario.fecha_baja.is_(None),
+        )
+    )
+
+    if q:
+        patron = f"%{q.strip()}%"
+        query = query.filter(
+            models.Usuario.nombre.ilike(patron)
+            | models.Usuario.apellido.ilike(patron)
+            | models.Usuario.dni.ilike(patron)
+        )
+
+    query = query.distinct().order_by(models.Usuario.apellido.asc(), models.Usuario.nombre.asc())
+    if q:
+        query = query.limit(20)  # con búsqueda de texto sí acotamos, por las dudas
+
+    return query.all()
+
+
+# ═════════════════════════════════════════════════════════════════════════════
 # AUTOCOMPLETAR PLANTEL (masivo, por fecha_nacimiento — solo admin_general)
 # ═════════════════════════════════════════════════════════════════════════════
 

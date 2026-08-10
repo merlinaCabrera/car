@@ -58,6 +58,17 @@ class DiaVencimientoUpdatePayload(BaseModel):
     dia_vencimiento_cuota: int = Field(
         ge=1, le=28, description="Día de vencimiento (1-28)"
     )
+
+
+class DescuentoMenorResponse(BaseModel):
+    descuento_menor_pct: Decimal
+
+
+class DescuentoMenorUpdatePayload(BaseModel):
+    descuento_menor_pct: Decimal = Field(
+        ge=Decimal("0"), le=Decimal("100"),
+        description="Porcentaje (0-100) de descuento en la cuota social para menores de 18 años.",
+    )
     
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -231,6 +242,84 @@ def actualizar_dia_vencimiento(
         db=db, actor_id=admin.id_usuario, accion="EDITAR_CONFIG_GLOBAL",
         tabla_afectada="configuracion_global", registro_id=config.id,
         detalle={"antes": antes, "despues": {"dia_vencimiento_cuota": payload.dia_vencimiento_cuota}},
+        ip=_extraer_ip(request),
+    )
+    db.commit()
+    db.refresh(config)
+    return config
+
+
+@router.get(
+    "/configuracion/descuento-menor",
+    response_model=DescuentoMenorResponse,
+    summary="Obtener el % de descuento de cuota para socios menores de 18 años",
+    tags=["Admin — Configuración Global"],
+)
+def obtener_descuento_menor(
+    db: Session = Depends(get_db),
+    _admin: models.Usuario = Depends(require_roles(*_ROLES_ADMIN_PRODUCTOS)),
+) -> DescuentoMenorResponse:
+    """
+    Devuelve el porcentaje configurado globalmente para el descuento de
+    cuota social a menores de edad. Si no hay configuración, devuelve 40
+    por defecto (mismo valor que estaba hardcodeado antes de esta config).
+    """
+    config = db.query(models.ConfiguracionGlobal).first()
+    pct = config.descuento_menor_pct if config else Decimal("40")
+    return DescuentoMenorResponse(descuento_menor_pct=pct)
+
+
+@router.patch(
+    "/configuracion/descuento-menor",
+    response_model=schemas.ConfiguracionGlobalResponse,
+    summary="Actualizar el % de descuento de cuota para socios menores de 18 años",
+    tags=["Admin — Configuración Global"],
+)
+def actualizar_descuento_menor(
+    payload: DescuentoMenorUpdatePayload,
+    request: Request,
+    db: Session = Depends(get_db),
+    admin: models.Usuario = Depends(require_roles(*_ROLES_ADMIN_GENERAL)),
+) -> models.ConfiguracionGlobal:
+    """
+    Actualiza el % de descuento para menores. Si no existe una
+    configuración, la crea. Requiere rol 'admin_general'.
+
+    Efecto inmediato: socio_cuotas.py y admin_pagos.py leen este valor en
+    cada cálculo de precio de cuota (no hay caché) — el cambio aplica
+    desde la próxima vez que un socio menor consulte su estado o genere
+    una orden de pago, sin necesidad de reiniciar el backend.
+    """
+    config = db.query(models.ConfiguracionGlobal).first()
+
+    antes = {
+        "descuento_menor_pct": config.descuento_menor_pct if config else None
+    }
+
+    if config:
+        config.descuento_menor_pct = payload.descuento_menor_pct
+        config.actualizado_por = admin.id_usuario
+        config.actualizado_at = func.now()
+    else:
+        producto_cuota = db.query(models.ProductoServicio).filter(
+            models.ProductoServicio.categoria == "cuota_social",
+            models.ProductoServicio.es_activo.is_(True)
+        ).first()
+        valor_base = producto_cuota.precio_actual if producto_cuota else Decimal("10000.00")
+
+        config = models.ConfiguracionGlobal(
+            valor_cuota_base=valor_base,
+            descuento_menor_pct=payload.descuento_menor_pct,
+            actualizado_por=admin.id_usuario,
+            actualizado_at=func.now()
+        )
+        db.add(config)
+        db.flush()
+
+    _registrar_audit(
+        db=db, actor_id=admin.id_usuario, accion="EDITAR_CONFIG_GLOBAL",
+        tabla_afectada="configuracion_global", registro_id=config.id,
+        detalle={"antes": antes, "despues": {"descuento_menor_pct": str(payload.descuento_menor_pct)}},
         ip=_extraer_ip(request),
     )
     db.commit()

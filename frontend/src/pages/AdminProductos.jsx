@@ -35,6 +35,7 @@ import {
   CalendarDays,
   Save,
   Filter,
+  Percent,
 } from 'lucide-react'
 
 const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
@@ -334,6 +335,14 @@ export default function AdminProductos() {
   const [errorDia,       setErrorDia]       = useState(null)
   const [successDia,     setSuccessDia]     = useState(null)
 
+  // Estados para la configuración del % de descuento a menores de edad
+  const [descuentoMenor,      setDescuentoMenor]      = useState(40)
+  const [isEditingDescuento,  setIsEditingDescuento]  = useState(false)
+  const [nuevoDescuento,      setNuevoDescuento]      = useState(40)
+  const [isLoadingDescuento,  setIsLoadingDescuento]  = useState(true)
+  const [errorDescuento,      setErrorDescuento]      = useState(null)
+  const [successDescuento,    setSuccessDescuento]    = useState(null)
+
   const fetchProductos = useCallback(async () => {
     if (!token) return
     setLoading(true)
@@ -374,6 +383,65 @@ export default function AdminProductos() {
   }, [token])
 
   useEffect(() => { fetchDiaVencimiento() }, [fetchDiaVencimiento])
+
+  // ── Fetch de configuración global (% descuento menores) ────────────────────
+  const fetchDescuentoMenor = useCallback(async () => {
+    if (!token) return
+    setIsLoadingDescuento(true)
+    setErrorDescuento(null)
+    try {
+      const res = await fetch(`${API}/admin/productos/configuracion/descuento-menor`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!res.ok) throw new Error('No se pudo cargar la configuración.')
+      const data = await res.json()
+      setDescuentoMenor(data.descuento_menor_pct)
+      setNuevoDescuento(data.descuento_menor_pct)
+    } catch (err) {
+      setErrorDescuento(err.message)
+    } finally {
+      setIsLoadingDescuento(false)
+    }
+  }, [token])
+
+  useEffect(() => { fetchDescuentoMenor() }, [fetchDescuentoMenor])
+
+  // ── Guardar % descuento menores (PATCH) ─────────────────────────────────────
+  const handleSaveDescuentoMenor = async () => {
+    const valor = Number(nuevoDescuento)
+    if (Number.isNaN(valor) || valor < 0 || valor > 100) {
+      setErrorDescuento('El porcentaje debe estar entre 0 y 100.')
+      return
+    }
+    setIsLoadingDescuento(true)
+    setErrorDescuento(null)
+    setSuccessDescuento(null)
+
+    try {
+      const res = await fetch(`${API}/admin/productos/configuracion/descuento-menor`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ descuento_menor_pct: valor }),
+      })
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.detail ?? 'Error al actualizar.')
+      }
+
+      const data = await res.json()
+      setDescuentoMenor(data.descuento_menor_pct)
+      setIsEditingDescuento(false)
+      setSuccessDescuento('Descuento actualizado.')
+    } catch (err) {
+      setErrorDescuento(err.message)
+    } finally {
+      setIsLoadingDescuento(false)
+    }
+  }
 
   // ── Guardar día de vencimiento (PATCH) ──────────────────────────────────────
   const handleSaveDiaVencimiento = async () => {
@@ -551,34 +619,37 @@ export default function AdminProductos() {
         </div>
       )}
 
-      {/* Pedestales de Configuración Global */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Pedestales de Configuración Global — compactos, siempre 3 columnas
+          (incluso en mobile). El botón de editar pasa a ser un ícono chico
+          en la esquina en vez de un botón ancho abajo, y todo el bloque
+          (ícono, label, valor) se apila vertical y se achica bastante en
+          mobile — así las 3 cards entran sin apretarse ni ocupar media
+          pantalla cada una como antes. */}
+      <div className="grid grid-cols-3 gap-2 sm:gap-4">
         {/* Card 1: Valor de la Cuota Social */}
         {loading ? (
-          <div className="bg-gray-100 rounded-2xl p-6 h-40 animate-pulse" />
+          <div className="bg-gray-100 rounded-xl sm:rounded-2xl h-28 sm:h-36 animate-pulse" />
         ) : cuotaSocial ? (
-          <div className="bg-blue-50 border-2 border-blue-200 rounded-2xl p-4 sm:p-6 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-6">
-            <div className="flex items-center gap-4 sm:gap-5">
-              <div className="p-3 rounded-full bg-blue-100 text-blue-600 flex-shrink-0">
-                <Wallet size={28} />
-              </div>
-              <div className="min-w-0">
-                <h2 className="text-base sm:text-lg font-bold text-blue-900">Cuota Social Base</h2>
-                <p className="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight mt-1">
-                  {formatoMoneda.format(cuotaSocial.precio_actual)}
-                </p>
-              </div>
-            </div>
+          <div className="relative bg-blue-50 border-2 border-blue-200 rounded-xl sm:rounded-2xl p-2.5 sm:p-5 shadow-sm">
             <button
               onClick={() => openModalForEdit(cuotaSocial)}
-              className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-white border border-gray-300 text-gray-700 font-semibold hover:bg-gray-100 hover:border-gray-400 transition-colors shadow-sm w-full sm:w-auto"
+              className="absolute top-1.5 right-1.5 sm:top-3 sm:right-3 p-1 sm:p-1.5 rounded-md sm:rounded-lg text-blue-400 hover:text-blue-700 hover:bg-white/70 transition-colors"
+              title="Actualizar Valor"
             >
-              <Edit size={14} />
-              Actualizar Valor
+              <Edit size={13} className="sm:hidden" />
+              <Edit size={15} className="hidden sm:block" />
             </button>
+            <div className="w-7 h-7 sm:w-11 sm:h-11 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center mb-1.5 sm:mb-3">
+              <Wallet size={14} className="sm:hidden" />
+              <Wallet size={20} className="hidden sm:block" />
+            </div>
+            <h2 className="text-[10px] sm:text-sm font-bold text-blue-900 leading-tight">Cuota Social Base</h2>
+            <p className="text-base sm:text-2xl font-extrabold text-gray-900 tracking-tight mt-0.5 sm:mt-1 truncate">
+              {formatoMoneda.format(cuotaSocial.precio_actual)}
+            </p>
           </div>
         ) : (
-          <div className="flex items-center gap-3 p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-sm">
+          <div className="col-span-3 flex items-center gap-3 p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-sm">
             <AlertCircle size={18} className="flex-shrink-0" />
             <span className="flex-1 font-medium">
               No hay una cuota social configurada. Créala desde el botón '+ Nuevo Producto'.
@@ -588,73 +659,130 @@ export default function AdminProductos() {
 
         {/* Card 2: Día de Vencimiento */}
         {isLoadingDia ? (
-          <div className="bg-gray-100 rounded-2xl p-6 h-40 animate-pulse" />
+          <div className="bg-gray-100 rounded-xl sm:rounded-2xl h-28 sm:h-36 animate-pulse" />
         ) : (
-          <div className="bg-indigo-50 border-2 border-indigo-200 rounded-2xl p-4 sm:p-6 shadow-sm">
+          <div className="relative bg-indigo-50 border-2 border-indigo-200 rounded-xl sm:rounded-2xl p-2.5 sm:p-5 shadow-sm">
             {isEditingDia ? (
               <Fragment>
-                <h2 className="text-base sm:text-lg font-bold text-indigo-900">Editar Día de Vencimiento</h2>
-                <div className="mt-2 flex items-start gap-3">
-                  <div className="flex-1">
-                    <input
-                      type="number"
-                      min="1" max="28"
-                      value={nuevoDia}
-                      onChange={e => setNuevoDia(e.target.value)}
-                      className={`form-input ${errorDia ? 'border-red-500' : ''}`}
-                    />
-                    {errorDia && <p className="text-red-600 text-xs mt-1">{errorDia}</p>}
-                  </div>
-                  <div className="flex-shrink-0 flex items-center gap-2">
-                    <button
-                      onClick={handleSaveDiaVencimiento}
-                      disabled={isLoadingDia}
-                      className="p-2.5 rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 transition-colors"
-                      title="Guardar"
-                    >
-                      {isLoadingDia ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-                    </button>
-                    <button
-                      onClick={() => { setIsEditingDia(false); setErrorDia(null); }}
-                      className="p-2.5 rounded-lg text-gray-600 bg-gray-200 hover:bg-gray-300 transition-colors"
-                      title="Cancelar"
-                    >
-                      <X size={16} />
-                    </button>
-                  </div>
+                <p className="text-[10px] sm:text-xs font-bold text-indigo-900 leading-tight mb-1.5 sm:mb-2">Día de Venc.</p>
+                <input
+                  type="number"
+                  min="1" max="28"
+                  value={nuevoDia}
+                  onChange={e => setNuevoDia(e.target.value)}
+                  className={`form-input text-sm sm:text-base px-2 py-1 sm:px-3 sm:py-2 ${errorDia ? 'border-red-500' : ''}`}
+                  autoFocus
+                />
+                {errorDia && <p className="text-red-600 text-[10px] sm:text-xs mt-1">{errorDia}</p>}
+                <div className="flex items-center gap-1.5 mt-1.5 sm:mt-2">
+                  <button
+                    onClick={handleSaveDiaVencimiento}
+                    disabled={isLoadingDia}
+                    className="flex-1 flex items-center justify-center p-1.5 rounded-md sm:rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+                    title="Guardar"
+                  >
+                    {isLoadingDia ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                  </button>
+                  <button
+                    onClick={() => { setIsEditingDia(false); setErrorDia(null); }}
+                    className="flex-1 flex items-center justify-center p-1.5 rounded-md sm:rounded-lg text-gray-600 bg-gray-200 hover:bg-gray-300 transition-colors"
+                    title="Cancelar"
+                  >
+                    <X size={14} />
+                  </button>
                 </div>
               </Fragment>
             ) : (
               <Fragment>
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-6">
-                  <div className="flex items-center gap-4 sm:gap-5">
-                    <div className="p-3 rounded-full bg-indigo-100 text-indigo-600 flex-shrink-0">
-                      <CalendarDays size={28} />
-                    </div>
-                    <div className="min-w-0">
-                      <h2 className="text-base sm:text-lg font-bold text-indigo-900">Día de Vencimiento</h2>
-                      <p className="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight mt-1">
-                        Día {diaVencimiento}
-                      </p>
-                    </div>
-                  </div>
+                <button
+                  onClick={() => { setIsEditingDia(true); setNuevoDia(diaVencimiento); setErrorDia(null); setSuccessDia(null); }}
+                  className="absolute top-1.5 right-1.5 sm:top-3 sm:right-3 p-1 sm:p-1.5 rounded-md sm:rounded-lg text-indigo-400 hover:text-indigo-700 hover:bg-white/70 transition-colors"
+                  title="Editar"
+                >
+                  <Edit size={13} className="sm:hidden" />
+                  <Edit size={15} className="hidden sm:block" />
+                </button>
+                <div className="w-7 h-7 sm:w-11 sm:h-11 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center mb-1.5 sm:mb-3">
+                  <CalendarDays size={14} className="sm:hidden" />
+                  <CalendarDays size={20} className="hidden sm:block" />
+                </div>
+                <h2 className="text-[10px] sm:text-sm font-bold text-indigo-900 leading-tight">Día de Vencimiento</h2>
+                <p className="text-base sm:text-2xl font-extrabold text-gray-900 tracking-tight mt-0.5 sm:mt-1">
+                  Día {diaVencimiento}
+                </p>
+                {successDia && (
+                  <p className="text-[9px] sm:text-xs text-green-700 font-medium mt-1">{successDia}</p>
+                )}
+                {errorDia && (
+                  <p className="text-[9px] sm:text-xs text-red-700 font-medium mt-1">{errorDia}</p>
+                )}
+              </Fragment>
+            )}
+          </div>
+        )}
+
+        {/* Card 3: % Descuento a Menores de Edad */}
+        {isLoadingDescuento ? (
+          <div className="bg-gray-100 rounded-xl sm:rounded-2xl h-28 sm:h-36 animate-pulse" />
+        ) : (
+          <div className="relative bg-teal-50 border-2 border-teal-200 rounded-xl sm:rounded-2xl p-2.5 sm:p-5 shadow-sm">
+            {isEditingDescuento ? (
+              <Fragment>
+                <p className="text-[10px] sm:text-xs font-bold text-teal-900 leading-tight mb-1.5 sm:mb-2">% Desc. Menor</p>
+                <div className="relative">
+                  <input
+                    type="number"
+                    min="0" max="100" step="0.01"
+                    value={nuevoDescuento}
+                    onChange={e => setNuevoDescuento(e.target.value)}
+                    className={`form-input text-sm sm:text-base pl-2 pr-6 py-1 sm:pl-3 sm:pr-8 sm:py-2 ${errorDescuento ? 'border-red-500' : ''}`}
+                    autoFocus
+                  />
+                  <span className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs sm:text-sm pointer-events-none">%</span>
+                </div>
+                {errorDescuento && <p className="text-red-600 text-[10px] sm:text-xs mt-1">{errorDescuento}</p>}
+                <div className="flex items-center gap-1.5 mt-1.5 sm:mt-2">
                   <button
-                    onClick={() => { setIsEditingDia(true); setNuevoDia(diaVencimiento); setErrorDia(null); setSuccessDia(null); }}
-                    className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-white border border-gray-300 text-gray-700 font-semibold hover:bg-gray-100 hover:border-gray-400 transition-colors shadow-sm w-full sm:w-auto"
+                    onClick={handleSaveDescuentoMenor}
+                    disabled={isLoadingDescuento}
+                    className="flex-1 flex items-center justify-center p-1.5 rounded-md sm:rounded-lg text-white bg-teal-600 hover:bg-teal-700 disabled:opacity-50 transition-colors"
+                    title="Guardar"
                   >
-                    <Edit size={14} />
-                    Editar
+                    {isLoadingDescuento ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                  </button>
+                  <button
+                    onClick={() => { setIsEditingDescuento(false); setErrorDescuento(null); }}
+                    className="flex-1 flex items-center justify-center p-1.5 rounded-md sm:rounded-lg text-gray-600 bg-gray-200 hover:bg-gray-300 transition-colors"
+                    title="Cancelar"
+                  >
+                    <X size={14} />
                   </button>
                 </div>
-                {successDia && (
-                  <p className="text-sm text-green-700 font-medium mt-3 text-center">
-                    {successDia}
-                  </p>
+              </Fragment>
+            ) : (
+              <Fragment>
+                <button
+                  onClick={() => { setIsEditingDescuento(true); setNuevoDescuento(descuentoMenor); setErrorDescuento(null); setSuccessDescuento(null); }}
+                  className="absolute top-1.5 right-1.5 sm:top-3 sm:right-3 p-1 sm:p-1.5 rounded-md sm:rounded-lg text-teal-500 hover:text-teal-700 hover:bg-white/70 transition-colors"
+                  title="Editar"
+                >
+                  <Edit size={13} className="sm:hidden" />
+                  <Edit size={15} className="hidden sm:block" />
+                </button>
+                <div className="w-7 h-7 sm:w-11 sm:h-11 rounded-full bg-teal-100 text-teal-600 flex items-center justify-center mb-1.5 sm:mb-3">
+                  <Percent size={14} className="sm:hidden" />
+                  <Percent size={20} className="hidden sm:block" />
+                </div>
+                <h2 className="text-[10px] sm:text-sm font-bold text-teal-900 leading-tight">Desc. Menores</h2>
+                <p className="text-base sm:text-2xl font-extrabold text-gray-900 tracking-tight mt-0.5 sm:mt-1">
+                  {descuentoMenor}%
+                </p>
+                <p className="hidden sm:block text-xs text-gray-500 mt-0.5">Sobre la Cuota Base</p>
+                {successDescuento && (
+                  <p className="text-[9px] sm:text-xs text-green-700 font-medium mt-1">{successDescuento}</p>
                 )}
-                {errorDia && !isEditingDia && (
-                  <p className="text-sm text-red-700 font-medium mt-3 text-center">
-                    {errorDia}
-                  </p>
+                {errorDescuento && (
+                  <p className="text-[9px] sm:text-xs text-red-700 font-medium mt-1">{errorDescuento}</p>
                 )}
               </Fragment>
             )}

@@ -145,6 +145,18 @@ class ConfiguracionGlobal(Base):
         comment="Porcentaje (0–100) de descuento en alquileres por antigüedad.",
     )
 
+    # Cuota social — menores de edad
+    descuento_menor_pct: Mapped[Decimal] = mapped_column(
+        Numeric(5, 2), nullable=False, server_default=text("40"),
+        comment=(
+            "Porcentaje (0–100) de descuento en la cuota social para socios "
+            "menores de 18 años. Único lugar donde vive este valor — "
+            "socio_cuotas.py y admin_pagos.py lo leen de acá en vez de tener "
+            "cada uno su propia constante (así estaba antes, y era fácil "
+            "editar uno y olvidarse del otro, quedando desincronizados)."
+        ),
+    )
+
     # Auditoría de cambios
     actualizado_por: Mapped[Optional[int]] = mapped_column(
         ForeignKey("usuarios.id_usuario", ondelete="SET NULL", use_alter=True,

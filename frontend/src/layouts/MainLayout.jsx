@@ -122,13 +122,21 @@ export default function MainLayout({ userRole }) {
   const esAdminGeneral = userRoles.includes('admin_general');
   const esPersonalAdministrativo = userRoles.includes('personal_administrativo');
   const esAdminTemporal = userRoles.includes('admin_temporal');
-  const esAdmin = esAdminGeneral || esPersonalAdministrativo || esAdminTemporal;
+  // Nota: antes existía una variable `esAdmin` (esAdminGeneral ||
+  // esPersonalAdministrativo || esAdminTemporal) usada para OCULTAR el
+  // carrito/notificaciones. La sacamos: ver mostrarIconosCompra más abajo.
 
   const isSoloInvitado = userRoles.length > 0 && userRoles.every((role) => role === 'invitado');
 
   // El header (notificaciones/carrito) se oculta para perfiles puramente
   // administrativos o invitados, igual que antes.
-  const mostrarIconosCompra = !esAdmin && !isSoloInvitado;
+  // Antes esto era `!esAdmin && !isSoloInvitado`: un usuario multi-rol (socio
+  // + personal_administrativo, por ejemplo) tiene esAdmin=true y se quedaba
+  // SIN ícono de carrito/notificaciones aunque también fuera socio y quisiera
+  // comprar/reservar. Mejor preguntar por capacidad positiva: si puede
+  // comprar (es socio o jugador), mostrale los íconos — sin importar qué
+  // otros roles administrativos tenga además.
+  const mostrarIconosCompra = (esSocio || esJugador) && !isSoloInvitado;
   // -----------------------------------------
 
   useEffect(() => {

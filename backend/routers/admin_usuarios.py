@@ -19,7 +19,8 @@ from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from pydantic import BaseModel, ConfigDict, Field
-from sqlalchemy import delete, exists, or_
+from sqlalchemy import delete, exists, or_, func
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
 import models
@@ -356,6 +357,39 @@ def editar_socio(
         raise HTTPException(status_code=404, detail="Usuario no encontrado.")
 
     update_data = datos.model_dump(exclude_unset=True)
+
+    # Validación previa de unicidad — evita el 500 feo de Postgres y da un
+    # mensaje claro. El email es case-insensitive por convención del resto
+    # del sistema (auth.py normaliza a lower() al loguear).
+    nuevo_email = update_data.get("email")
+    if nuevo_email:
+        ya_existe = (
+            db.query(models.Usuario.id_usuario)
+            .filter(
+                models.Usuario.id_usuario != id_usuario,
+                func.lower(models.Usuario.email) == nuevo_email.lower(),
+            )
+            .first()
+        )
+        if ya_existe:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"Ya existe otro usuario registrado con el email '{nuevo_email}'.",
+            )
+
+    nuevo_dni = update_data.get("dni")
+    if nuevo_dni:
+        ya_existe_dni = (
+            db.query(models.Usuario.id_usuario)
+            .filter(models.Usuario.id_usuario != id_usuario, models.Usuario.dni == nuevo_dni)
+            .first()
+        )
+        if ya_existe_dni:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"Ya existe otro usuario registrado con el DNI '{nuevo_dni}'.",
+            )
+
     for campo, valor in update_data.items():
         setattr(usuario, campo, valor)
 
@@ -372,7 +406,18 @@ def editar_socio(
         registro_id=id_usuario,
         detalle={"cambios": update_data_serializable, "editado_por_dni": current_admin.dni},
     ))
-    db.commit()
+
+    try:
+        db.commit()
+    except IntegrityError:
+        # Red de seguridad por si hay una condición de carrera (dos requests
+        # casi simultáneos) que la validación de arriba no llegó a atrapar.
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="No se pudo guardar: el email o DNI ingresado ya está en uso por otro usuario.",
+        )
+
     db.refresh(usuario)
     return usuario
 

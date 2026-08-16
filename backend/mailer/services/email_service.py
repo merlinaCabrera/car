@@ -330,3 +330,12 @@ async def enviar_solicitud_recibida(email_destino: str, nombre_socio: str) -> No
         template_name="solicitud_recibida.html",
         body={"nombre_socio": nombre_socio},
     )
+
+
+async def enviar_solicitud_rechazada(email_destino: str, nombre_socio: str, motivo: "str | None") -> None:
+    await _enviar(
+        destinatarios=[email_destino],
+        asunto="Novedades sobre tu solicitud — Club Atlético Roberts",
+        template_name="solicitud_rechazada.html",
+        body={"nombre_socio": nombre_socio, "motivo": motivo},
+    )

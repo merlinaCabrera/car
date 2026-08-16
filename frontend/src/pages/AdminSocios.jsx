@@ -41,6 +41,8 @@ import {
   XCircle,
   ChevronDown,
   ChevronUp,
+  Mail,
+  Cake,
   AlertTriangle,
 } from 'lucide-react'
 
@@ -1219,6 +1221,101 @@ function TarjetaSocioMobile({
   )
 }
 
+// ─── Fila de solicitud pendiente — colapsable ──────────────────────────────
+// Colapsada: nombre, DNI y fecha de registro (igual que antes). Desplegada:
+// email, fecha de nacimiento, y las acciones Aprobar / Rechazar.
+function FilaSolicitudPendiente({ p, onAprobar, onRechazar, approvingId, rejectingId, motivoAbierto, setMotivoAbierto }) {
+  const [expandido, setExpandido] = useState(false)
+  const [motivo, setMotivo] = useState('')
+  const enProceso = approvingId === p.id_usuario || rejectingId === p.id_usuario
+  const pidiendoMotivo = motivoAbierto === p.id_usuario
+
+  return (
+    <div className="bg-white/70 rounded-xl overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setExpandido(e => !e)}
+        className="w-full text-left px-3 py-2.5 flex items-center justify-between gap-3 hover:bg-white transition-colors"
+      >
+        <div className="min-w-0 flex-1">
+          <p className="font-medium text-gray-800 truncate">{p.apellido}, {p.nombre}</p>
+          <p className="text-xs text-gray-500 mt-0.5 font-mono">
+            DNI {p.dni} · {new Date(p.creado_at).toLocaleDateString('es-AR')}
+          </p>
+        </div>
+        {expandido ? <ChevronUp size={16} className="text-gray-400 flex-shrink-0" /> : <ChevronDown size={16} className="text-gray-400 flex-shrink-0" />}
+      </button>
+
+      {expandido && (
+        <div className="px-3 pb-3 space-y-2 border-t border-amber-100 pt-2.5">
+          <div className="flex items-center gap-2 text-sm text-gray-600">
+            <Mail size={13} className="text-gray-400 flex-shrink-0" />
+            {p.email
+              ? <a href={`mailto:${p.email}`} className="hover:underline truncate">{p.email}</a>
+              : <span className="text-gray-300">Sin email registrado</span>
+            }
+          </div>
+          <div className="flex items-center gap-2 text-sm text-gray-600">
+            <Cake size={13} className="text-gray-400 flex-shrink-0" />
+            {p.fecha_nacimiento
+              ? new Date(p.fecha_nacimiento + 'T00:00:00').toLocaleDateString('es-AR', { day: '2-digit', month: 'long', year: 'numeric' })
+              : <span className="text-gray-300">Sin fecha de nacimiento</span>
+            }
+          </div>
+
+          {pidiendoMotivo ? (
+            <div className="pt-2 border-t border-amber-100 space-y-2">
+              <input
+                type="text"
+                value={motivo}
+                onChange={e => setMotivo(e.target.value)}
+                placeholder="Motivo del rechazo (opcional)"
+                className="form-input text-sm w-full"
+                autoFocus
+              />
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => onRechazar(p.id_usuario, motivo)}
+                  disabled={enProceso}
+                  className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 rounded-lg bg-red-600 hover:bg-red-700 disabled:opacity-60 text-white text-xs font-semibold transition-colors"
+                >
+                  {rejectingId === p.id_usuario ? 'Rechazando…' : 'Confirmar rechazo'}
+                </button>
+                <button
+                  onClick={() => { setMotivoAbierto(null); setMotivo('') }}
+                  disabled={enProceso}
+                  className="px-3 py-2 rounded-lg text-gray-500 hover:bg-gray-100 text-xs font-semibold transition-colors"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 pt-2 border-t border-amber-100">
+              <button
+                onClick={() => onAprobar(p.id_usuario)}
+                disabled={enProceso}
+                className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 rounded-lg bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white text-xs font-semibold transition-colors"
+              >
+                {approvingId === p.id_usuario ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle size={14} />}
+                {approvingId === p.id_usuario ? 'Aprobando…' : 'Aprobar'}
+              </button>
+              <button
+                onClick={() => setMotivoAbierto(p.id_usuario)}
+                disabled={enProceso}
+                className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 rounded-lg bg-red-50 hover:bg-red-100 disabled:opacity-60 text-red-700 text-xs font-semibold transition-colors"
+              >
+                <XCircle size={14} />
+                Rechazar
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function AdminSocios() {
   const { token } = useAuth()
 
@@ -1230,6 +1327,8 @@ export default function AdminSocios() {
   const [editingSocio, setEditingSocio] = useState(null)
   const [searchTerm,   setSearchTerm]   = useState('')
   const [approvingId,  setApprovingId]  = useState(null)
+  const [rejectingId,  setRejectingId]  = useState(null)
+  const [motivoRechazoAbierto, setMotivoRechazoAbierto] = useState(null) // id_usuario con el campo de motivo abierto
   const [rolFiltro,    setRolFiltro]    = useState('')       // tab activo
   const [estadoFiltro, setEstadoFiltro] = useState('')       // filtro de estado
   const [socioACobrar, setSocioACobrar] = useState(null)    // abre CobroModal
@@ -1425,6 +1524,30 @@ export default function AdminSocios() {
     }
   }
 
+  const handleRejectSocio = async (id_usuario, motivo) => {
+    setRejectingId(id_usuario)
+    try {
+      const res = await fetch(`${API}/admin/usuarios/${id_usuario}/rechazar-solicitud`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ motivo: motivo || null }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.detail ?? 'Error al rechazar la solicitud.')
+      }
+      setMotivoRechazoAbierto(null)
+      await fetchData()
+    } catch (err) {
+      window.alert(`Error: ${err.message}`)
+    } finally {
+      setRejectingId(null)
+    }
+  }
+
   const openModalForCreate = () => { setEditingSocio(null); setIsModalOpen(true) }
   const openModalForEdit   = (socio) => { setEditingSocio(socio); setIsModalOpen(true) }
   const closeModal         = () => setIsModalOpen(false)
@@ -1582,7 +1705,7 @@ export default function AdminSocios() {
 
       {/* Sección de Pendientes (no se filtra por rol) */}
       {!loading && pendientes.length > 0 && (
-        <div className="space-y-4 p-4 sm:p-5 rounded-2xl bg-amber-50 border-2 border-amber-200">
+        <div className="space-y-3 p-4 sm:p-5 rounded-2xl bg-amber-50 border-2 border-amber-200">
           <div className="flex items-center gap-2 sm:gap-3">
             <UserPlus size={20} className="text-amber-700 flex-shrink-0" />
             <h2 className="text-base sm:text-lg font-bold text-amber-900">
@@ -1590,60 +1713,19 @@ export default function AdminSocios() {
             </h2>
           </div>
 
-          {/* Vista de tarjetas — mobile */}
-          <div className="md:hidden divide-y divide-amber-200/70 -mx-1">
+          <div className="space-y-2">
             {pendientes.map(p => (
-              <div key={p.id_usuario} className="flex items-center justify-between gap-3 px-1 py-3">
-                <div className="min-w-0">
-                  <div className="font-medium text-gray-800 truncate">{p.apellido}, {p.nombre}</div>
-                  <div className="text-xs text-gray-500 mt-0.5 font-mono">
-                    DNI {p.dni} · {new Date(p.creado_at).toLocaleDateString()}
-                  </div>
-                </div>
-                <button
-                  onClick={() => handleApproveSocio(p.id_usuario)}
-                  disabled={approvingId === p.id_usuario}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-600 text-white text-xs font-semibold hover:bg-green-700 disabled:bg-green-400 transition-colors flex-shrink-0"
-                >
-                  {approvingId === p.id_usuario ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle size={14} />}
-                  <span>{approvingId === p.id_usuario ? 'Aprobando…' : 'Aprobar'}</span>
-                </button>
-              </div>
+              <FilaSolicitudPendiente
+                key={p.id_usuario}
+                p={p}
+                onAprobar={handleApproveSocio}
+                onRechazar={handleRejectSocio}
+                approvingId={approvingId}
+                rejectingId={rejectingId}
+                motivoAbierto={motivoRechazoAbierto}
+                setMotivoAbierto={setMotivoRechazoAbierto}
+              />
             ))}
-          </div>
-
-          {/* Vista de tabla — desktop */}
-          <div className="hidden md:block overflow-x-auto">
-            <table className="min-w-full">
-              <thead className="border-b border-amber-200">
-                <tr>
-                  {['Socio', 'DNI', 'Fecha de Registro', 'Acciones'].map(h => (
-                    <th key={h} className="px-4 py-2.5 text-left text-xs font-semibold text-amber-800/80 uppercase tracking-wider whitespace-nowrap">
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {pendientes.map(p => (
-                  <tr key={p.id_usuario} className="border-b border-amber-100 last:border-b-0">
-                    <td className="px-4 py-3"><div className="font-medium text-gray-800">{p.apellido}, {p.nombre}</div></td>
-                    <td className="px-4 py-3 font-mono text-sm text-gray-600">{p.dni}</td>
-                    <td className="px-4 py-3 text-sm text-gray-500">{new Date(p.creado_at).toLocaleDateString()}</td>
-                    <td className="px-4 py-3 text-right">
-                      <button
-                        onClick={() => handleApproveSocio(p.id_usuario)}
-                        disabled={approvingId === p.id_usuario}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-600 text-white text-xs font-semibold hover:bg-green-700 disabled:bg-green-400 transition-colors"
-                      >
-                        {approvingId === p.id_usuario ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle size={14} />}
-                        <span>{approvingId === p.id_usuario ? 'Aprobando…' : 'Aprobar Socio'}</span>
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
           </div>
         </div>
       )}

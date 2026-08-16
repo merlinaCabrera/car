@@ -292,3 +292,11 @@ async def task_solicitud_recibida(email_destino: str, nombre_socio: str) -> None
         logger.info(f"Mail 'solicitud_recibida' enviado a {email_destino}")
     except Exception:
         logger.exception(f"Fallo al enviar mail 'solicitud_recibida' a {email_destino}")
+
+
+async def task_solicitud_rechazada(email_destino: str, nombre_socio: str, motivo: "str | None" = None) -> None:
+    try:
+        await email_service.enviar_solicitud_rechazada(email_destino, nombre_socio, motivo)
+        logger.info(f"Mail 'solicitud_rechazada' enviado a {email_destino}")
+    except Exception:
+        logger.exception(f"Fallo al enviar mail 'solicitud_rechazada' a {email_destino}")

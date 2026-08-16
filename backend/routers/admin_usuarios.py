@@ -29,7 +29,7 @@ from database import get_db
 from dependencies import get_current_user, require_roles
 from security import get_password_hash
 from fastapi import BackgroundTasks 
-from mailer.services.email_tasks import task_cuenta_aprobada, task_socio_dado_de_baja, task_socio_reactivado
+from mailer.services.email_tasks import task_cuenta_aprobada, task_socio_dado_de_baja, task_socio_reactivado, task_solicitud_rechazada
 
 router = APIRouter(
     prefix="/admin/usuarios",
@@ -51,8 +51,13 @@ class UsuarioPendienteResponse(BaseModel):
     nombre:       str
     apellido:     str
     email:        Optional[str] = None
+    fecha_nacimiento: Optional[date] = None
     fecha_ingreso: date
     creado_at:    datetime
+
+
+class RechazarSolicitudPayload(BaseModel):
+    motivo: Optional[str] = Field(default=None, max_length=300)
 
 
 # ── Schemas de Roles ──────────────────────────────────────────────────────────
@@ -295,6 +300,74 @@ def aprobar_usuario(
         "mensaje": f"{usuario.nombre} {usuario.apellido} fue aprobado como socio.",
         "id_usuario": id_usuario,
         "rol_asignado": "socio",
+    }
+
+
+@router.delete(
+    "/{id_usuario}/rechazar-solicitud",
+    status_code=status.HTTP_200_OK,
+    summary="Rechazar una solicitud de alta pendiente",
+)
+def rechazar_solicitud(
+    id_usuario: int,
+    payload: RechazarSolicitudPayload,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    current_admin: models.Usuario = Depends(require_roles(*_ADMIN)),
+):
+    """
+    Distinto de DELETE /{id_usuario} (que es "dar de baja" a un socio ya
+    activo): esto es para una solicitud que TODAVÍA no tiene ningún rol
+    asignado. Como nunca llegó a ser socio (sin pagos, sin reservas, nada
+    que preservar), se borra el registro directamente en vez de marcarlo
+    con fecha_baja — así el DNI/email quedan libres si la persona se quiere
+    volver a registrar más adelante.
+    """
+    usuario = db.query(models.Usuario).filter(models.Usuario.id_usuario == id_usuario).first()
+    if not usuario:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado.")
+
+    tiene_rol_activo = any(
+        ur.rol and ur.rol.es_activo and (ur.valido_hasta is None or ur.valido_hasta > datetime.now(timezone.utc))
+        for ur in usuario.roles_asignados
+    )
+    if tiene_rol_activo:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Este usuario ya tiene un rol asignado — no es una solicitud pendiente. "
+                   "Para desactivarlo usá 'Dar de baja' en vez de rechazar.",
+        )
+
+    dni_rechazado = usuario.dni
+    nombre_completo = f"{usuario.nombre} {usuario.apellido}"
+    email_rechazado = usuario.email
+
+    db.add(models.AuditLog(
+        usuario_actor=current_admin.id_usuario,
+        accion="RECHAZAR_SOLICITUD_SOCIO",
+        tabla_afectada="usuarios",
+        registro_id=id_usuario,
+        detalle={
+            "solicitante_dni": dni_rechazado,
+            "solicitante_nombre": nombre_completo,
+            "motivo": payload.motivo,
+            "rechazado_por_dni": current_admin.dni,
+        },
+    ))
+    db.delete(usuario)
+    db.commit()
+
+    if email_rechazado:
+        background_tasks.add_task(
+            task_solicitud_rechazada,
+            email_destino=email_rechazado,
+            nombre_socio=nombre_completo,
+            motivo=payload.motivo,
+        )
+
+    return {
+        "ok": True,
+        "mensaje": f"Solicitud de {nombre_completo} rechazada.",
     }
 
 

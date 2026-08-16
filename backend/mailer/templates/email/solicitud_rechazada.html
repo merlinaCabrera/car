@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block content %}
+<h2 style="margin:0 0 16px; color:#c62828; font-size:20px; font-weight:700;">
+  Novedades sobre tu solicitud
+</h2>
+<p style="margin:0 0 12px; color:#333; font-size:15px; line-height:1.6;">
+  Hola <strong>{{ nombre_socio }}</strong>,
+</p>
+<p style="margin:0 0 12px; color:#333; font-size:15px; line-height:1.6;">
+  Tu solicitud de alta como socio del Club Atlético Roberts fue revisada y, por el momento,
+  no fue aprobada.
+</p>
+{% if motivo %}
+<p style="margin:0 0 20px; color:#333; font-size:15px; line-height:1.6;">
+  <strong>Motivo:</strong> {{ motivo }}
+</p>
+{% endif %}
+<p style="margin:0; color:#666; font-size:13px; line-height:1.6;">
+  Si creés que se trata de un error o querés volver a registrarte, comunicate con la
+  administración del club.
+</p>
+{% endblock %}

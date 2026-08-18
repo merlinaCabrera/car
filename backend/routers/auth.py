@@ -21,11 +21,21 @@ def login_for_access_token(payload: schemas.LoginPayload, db: Session = Depends(
     # 1. Buscar usuario por DNI
     user = db.query(models.Usuario).filter(models.Usuario.dni == payload.dni).first()
 
-    # 2. Validar que el usuario exista y la contraseña sea correcta
-    if not user or not verify_password(payload.password, user.password_hash):
+    # 2. Validar que el usuario exista y la contraseña sea correcta.
+    # Se distinguen los dos casos (a diferencia de un login normal, acá el
+    # riesgo de seguridad de revelar "el DNI no existe" es bajo: el propio
+    # formulario de alta de socio ya confirma o no si un DNI está registrado,
+    # así que ocultarlo acá no suma protección real y sí resta claridad).
+    if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="El DNI o la contraseña son incorrectos.",
+            detail="Ese DNI no está registrado en el sistema.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    if not verify_password(payload.password, user.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="La contraseña es incorrecta.",
             headers={"WWW-Authenticate": "Bearer"},
         )
     

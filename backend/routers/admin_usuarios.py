@@ -402,6 +402,16 @@ def crear_socio_manual(
         id_rol=rol_socio.id_rol,
         asignado_por=current_admin.id_usuario,
     ))
+
+    # Mismo criterio que al aprobar una solicitud normal: arranca al día,
+    # recién debe pagar el mes siguiente. Antes esto no se seteaba acá y el
+    # socio recién creado aparecía como moroso desde el primer día.
+    if nuevo_usuario.mes_cubierto_hasta is None:
+        hoy = date.today()
+        import calendar
+        ultimo_dia = calendar.monthrange(hoy.year, hoy.month)[1]
+        nuevo_usuario.mes_cubierto_hasta = date(hoy.year, hoy.month, ultimo_dia)
+
     db.add(models.AuditLog(
         usuario_actor=current_admin.id_usuario,
         accion="CREAR_SOCIO_MANUAL",
@@ -430,6 +440,15 @@ def editar_socio(
         raise HTTPException(status_code=404, detail="Usuario no encontrado.")
 
     update_data = datos.model_dump(exclude_unset=True)
+
+    # El DNI es dato sensible de identidad — solo admin_general puede
+    # corregirlo (ej: typo al registrarse). Personal Administrativo puede
+    # editar el resto del perfil, pero no esto.
+    if "dni" in update_data and "admin_general" not in _nombres_roles_activos(current_admin):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Solo un admin_general puede corregir el DNI de un socio.",
+        )
 
     # Validación previa de unicidad — evita el 500 feo de Postgres y da un
     # mensaje claro. El email es case-insensitive por convención del resto
@@ -511,6 +530,39 @@ def dar_baja_socio(
         raise HTTPException(status_code=404, detail="Usuario no encontrado.")
     if usuario.fecha_baja is not None:
         raise HTTPException(status_code=400, detail="El usuario ya se encuentra dado de baja.")
+
+    if usuario.id_usuario == current_admin.id_usuario:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No podés darte de baja a vos mismo. Pedile a otro admin_general que lo haga.",
+        )
+
+    # Si el usuario a dar de baja es admin_general, verificar que no sea el
+    # último activo — si lo fuera, el club se queda sin nadie que pueda
+    # administrar el sistema.
+    es_admin_general = any(
+        ur.rol and ur.rol.nombre == "admin_general" and ur.rol.es_activo
+        for ur in usuario.roles_asignados
+    )
+    if es_admin_general:
+        otros_admin_general_activos = (
+            db.query(models.Usuario.id_usuario)
+            .join(models.UsuarioRol, models.UsuarioRol.id_usuario == models.Usuario.id_usuario)
+            .join(models.Rol, models.Rol.id_rol == models.UsuarioRol.id_rol)
+            .filter(
+                models.Rol.nombre == "admin_general",
+                models.Rol.es_activo.is_(True),
+                models.Usuario.fecha_baja.is_(None),
+                models.Usuario.id_usuario != usuario.id_usuario,
+            )
+            .first()
+        )
+        if not otros_admin_general_activos:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No se puede dar de baja al último admin_general activo — el club "
+                       "quedaría sin nadie que pueda administrar el sistema.",
+            )
 
     usuario.fecha_baja = date.today()
     db.add(models.AuditLog(

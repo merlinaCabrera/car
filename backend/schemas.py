@@ -214,6 +214,10 @@ class UsuarioUpdate(BaseModel):
     """Todos los campos opcionales — PATCH parcial."""
     nombre: Optional[str] = Field(default=None, min_length=1, max_length=100)
     apellido: Optional[str] = Field(default=None, min_length=1, max_length=100)
+    dni: Optional[str] = Field(
+        default=None, min_length=7, max_length=10, pattern=r"^\d{7,10}$",
+        description="Solo editable por admin_general — ver validación en el endpoint.",
+    )
     email: Optional[EmailStr] = None
     telefono: Optional[str] = Field(default=None, max_length=30)
     direccion: Optional[str] = Field(default=None, max_length=200)

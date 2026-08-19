@@ -310,7 +310,7 @@ function SeccionRoles({ catalogoRoles, selectedRoles, onToggle, loadingRoles, er
 
 // ─── Modal de edición / creación de socio ─────────────────────────────────────
 
-function SocioFormModal({ socio, onClose, onSave, catalogoRoles, token }) {
+function SocioFormModal({ socio, onClose, onSave, catalogoRoles, token, esAdminGeneral }) {
   const [formData, setFormData] = useState({
     dni:       socio?.dni       ?? '',
     nombre:    socio?.nombre    ?? '',
@@ -485,6 +485,11 @@ function SocioFormModal({ socio, onClose, onSave, catalogoRoles, token }) {
           // Siempre incluir booleanos y la clave es_becado/becado_hasta
           if (k === 'es_becado') return true
           if (k === 'becado_hasta') return true  // null/'' → backend lo acepta como null
+          // El DNI viaja deshabilitado (mismo valor de siempre) para
+          // cualquiera que no sea admin_general — no mandarlo, o el backend
+          // lo interpreta como "intento de editar DNI" y bloquea TODO el
+          // guardado con 403, aunque no se haya tocado ese campo.
+          if (k === 'dni' && !esAdminGeneral) return false
           return v !== ''
         }))
       : { ...formData }
@@ -557,9 +562,12 @@ function SocioFormModal({ socio, onClose, onSave, catalogoRoles, token }) {
               <input
                 name="dni" value={formData.dni}
                 onChange={e => setFormData({ ...formData, dni: e.target.value })}
-                placeholder="DNI (sin puntos)" required disabled={isEditMode}
+                placeholder="DNI (sin puntos)" required disabled={isEditMode && !esAdminGeneral}
                 className={`form-input disabled:bg-gray-100 disabled:cursor-not-allowed ${formErrors.dni ? 'border-red-500' : ''}`}
               />
+              {isEditMode && !esAdminGeneral && (
+                <p className="text-xs text-gray-400 mt-1">Solo un admin_general puede corregir el DNI.</p>
+              )}
               {formErrors.dni && <p className="text-red-600 text-xs mt-1">{formErrors.dni}</p>}
             </div>
 
@@ -1363,7 +1371,11 @@ function FilaSolicitudPendiente({ p, onAprobar, onRechazar, approvingId, rejecti
 }
 
 export default function AdminSocios() {
-  const { token } = useAuth()
+  const { token, user } = useAuth()
+  const esAdminGeneral = !!user?.roles_asignados?.some(
+    ur => ur.rol?.nombre === 'admin_general' && ur.rol?.es_activo !== false &&
+          (!ur.valido_hasta || new Date(ur.valido_hasta) > new Date())
+  )
 
   const [socios,       setSocios]       = useState([])
   const [pendientes,   setPendientes]   = useState([])
@@ -1653,6 +1665,7 @@ export default function AdminSocios() {
           onSave={handleSaveSocio}
           catalogoRoles={catalogoRoles}
           token={token}
+          esAdminGeneral={esAdminGeneral}
         />
       )}
 

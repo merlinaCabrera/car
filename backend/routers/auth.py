@@ -32,18 +32,27 @@ def login_for_access_token(payload: schemas.LoginPayload, db: Session = Depends(
             detail="Ese DNI no está registrado en el sistema.",
             headers={"WWW-Authenticate": "Bearer"},
         )
+
+    # Chequeo de baja ANTES que la contraseña: si alguien que dejó el club
+    # hace tiempo no recuerda su contraseña vieja, no tiene sentido que se
+    # quede trabado en "contraseña incorrecta" sin enterarse de que existe
+    # la opción de pedir reactivación. El costo de seguridad de revelar
+    # esto sin password correcto es bajo (mismo criterio que con el DNI).
+    if user.fecha_baja is not None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "tipo": "dado_de_baja",
+                "mensaje": "Esta cuenta fue dada de baja del club.",
+                "id_usuario": user.id_usuario,
+            },
+        )
+
     if not verify_password(payload.password, user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="La contraseña es incorrecta.",
             headers={"WWW-Authenticate": "Bearer"},
-        )
-    
-    # 3. Validar que el usuario esté activo
-    if user.fecha_baja is not None:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Este usuario ha sido dado de baja y no puede iniciar sesión.",
         )
 
     # 4. Obtener roles activos del usuario

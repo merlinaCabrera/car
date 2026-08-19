@@ -27,7 +27,6 @@ import {
   Edit,
   Trash2,
   RefreshCw,
-  Search,
   AlertCircle,
   Store,
   UserCheck,
@@ -36,6 +35,9 @@ import {
   Loader2,
   Link2,
   Link2Off,
+  Search,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react'
 
 const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
@@ -221,6 +223,92 @@ function ComercioFormModal({ comercio, onClose, onSave, usuarios }) {
   )
 }
 
+// ─── Tarjeta de Comercio — mobile ───────────────────────────────────────────
+// Colapsada por defecto: solo nombre, rubro y estado (Activo/Inactivo)
+// quedan siempre visibles. El resto (beneficio, vínculo de acceso, y las
+// acciones Editar/Baja) se despliega al tocar la tarjeta — mismo patrón que
+// TarjetaSocioMobile en /admin/socios.
+function TarjetaComercioMobile({ comercio, onEditar, onReactivar, onDarBaja }) {
+  const [expandido, setExpandido] = useState(false)
+
+  return (
+    <div>
+      {/* Header — siempre visible. Clickeable: expande/colapsa el detalle. */}
+      <button
+        type="button"
+        onClick={() => setExpandido(e => !e)}
+        className="w-full text-left p-4 flex items-center justify-between gap-3 hover:bg-gray-50 transition-colors"
+      >
+        <div className="min-w-0 flex-1">
+          <div className="font-medium text-gray-900 truncate">{comercio.nombre_fantasia}</div>
+          <div className="text-xs text-gray-500 mt-0.5">{comercio.rubro ?? '—'}</div>
+        </div>
+
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {comercio.es_activo ? (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+              <UserCheck size={11} /> Activo
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+              <UserX size={11} /> Inactivo
+            </span>
+          )}
+          {expandido ? <ChevronUp size={16} className="text-gray-400" /> : <ChevronDown size={16} className="text-gray-400" />}
+        </div>
+      </button>
+
+      {/* Detalle — solo si está expandida */}
+      {expandido && (
+        <div className="px-4 pb-4 space-y-3 border-t border-gray-50 pt-3">
+          <p className="text-sm text-gray-600">{comercio.beneficio_ofrecido}</p>
+
+          <div className="text-sm">
+            {comercio.usuario_acceso ? (
+              <span className="inline-flex items-center gap-1.5 text-gray-700">
+                <Link2 size={13} className="text-blue-500 flex-shrink-0" />
+                {comercio.usuario_acceso.apellido}, {comercio.usuario_acceso.nombre}
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 text-gray-400">
+                <Link2Off size={13} />
+                Sin vincular
+              </span>
+            )}
+          </div>
+
+          <div className="flex items-center gap-1 pt-1 border-t border-gray-50 -mx-1">
+            <button
+              onClick={(e) => { e.stopPropagation(); onEditar(comercio) }}
+              className="flex-1 inline-flex items-center justify-center gap-1.5 p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-100 rounded-lg transition-colors text-xs font-medium"
+              title="Editar Comercio"
+            >
+              <Edit size={16} /> Editar
+            </button>
+            {comercio.es_activo ? (
+              <button
+                onClick={(e) => { e.stopPropagation(); onDarBaja(comercio) }}
+                className="flex-1 inline-flex items-center justify-center gap-1.5 p-2 text-gray-500 hover:text-red-600 hover:bg-red-100 rounded-lg transition-colors text-xs font-medium"
+                title="Dar de baja"
+              >
+                <Trash2 size={16} /> Baja
+              </button>
+            ) : (
+              <button
+                onClick={(e) => { e.stopPropagation(); onReactivar(comercio) }}
+                className="flex-1 inline-flex items-center justify-center gap-1.5 p-2 text-gray-500 hover:text-green-600 hover:bg-green-100 rounded-lg transition-colors text-xs font-medium"
+                title="Reactivar Comercio"
+              >
+                <Undo2 size={16} /> Reactivar
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─── Componente principal ─────────────────────────────────────────────────────
 
 export default function AdminComercios() {
@@ -231,10 +319,10 @@ export default function AdminComercios() {
   const [error,            setError]             = useState(null)
   const [isModalOpen,      setIsModalOpen]       = useState(false)
   const [editingComercio,  setEditingComercio]   = useState(null)
+  const [searchTerm,       setSearchTerm]        = useState('')
 
   // ── Catálogo de usuarios — fetch único al montar (para el selector) ────────
   const [usuarios, setUsuarios] = useState([])
-  const [searchTerm, setSearchTerm] = useState('')
 
   useEffect(() => {
     if (!token) return
@@ -265,13 +353,6 @@ export default function AdminComercios() {
   }, [token])
 
   useEffect(() => { fetchComercios() }, [fetchComercios])
-
-  // ── Filtro de búsqueda por nombre de comercio ──────────────────────────────
-  const comerciosFiltrados = useMemo(() => {
-    const termino = searchTerm.trim().toLowerCase()
-    if (!termino) return comercios
-    return comercios.filter(c => c.nombre_fantasia?.toLowerCase().includes(termino))
-  }, [comercios, searchTerm])
 
   // ── Guardar comercio (POST o PATCH) — fail-fast ────────────────────────────
   const handleSaveComercio = async (data, id) => {
@@ -343,6 +424,17 @@ export default function AdminComercios() {
   const openModalForEdit   = (comercio) => { setEditingComercio(comercio); setIsModalOpen(true) }
   const closeModal         = () => setIsModalOpen(false)
 
+  // ── Filtro local por nombre, rubro o beneficio ──────────────────────────────
+  const comerciosFiltrados = useMemo(() => {
+    const q = searchTerm.trim().toLowerCase()
+    if (!q) return comercios
+    return comercios.filter(c =>
+      c.nombre_fantasia.toLowerCase().includes(q) ||
+      (c.rubro ?? '').toLowerCase().includes(q) ||
+      c.beneficio_ofrecido.toLowerCase().includes(q)
+    )
+  }, [comercios, searchTerm])
+
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="p-4 sm:p-6 max-w-6xl mx-auto space-y-5 sm:space-y-6">
@@ -358,8 +450,8 @@ export default function AdminComercios() {
       )}
 
       {/* Header */}
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div className="min-w-0">
+      <div className="space-y-4">
+        <div>
           <h1 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2 sm:gap-3">
             <Store size={22} className="text-gray-500 flex-shrink-0" />
             Comercios Adheridos
@@ -368,17 +460,18 @@ export default function AdminComercios() {
             Alta, edición y baja de los comercios que ofrecen beneficios a los socios.
           </p>
         </div>
-        <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0 mt-1">
+        <div className="flex flex-nowrap items-center gap-1.5 sm:gap-3 overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 sm:overflow-visible">
           <button
             onClick={openModalForCreate}
-            className="inline-flex items-center justify-center p-2 sm:p-2.5 rounded-xl bg-blue-600 text-white hover:bg-blue-700 transition-colors shadow-sm flex-shrink-0"
+            className="flex-shrink-0 inline-flex items-center gap-2 px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-green-600 text-white font-semibold hover:bg-green-700 transition-colors shadow-sm text-sm"
             title="Nuevo Comercio"
           >
-            <PlusCircle size={18} />
+            <PlusCircle size={16} />
+            <span className="hidden sm:inline">Nuevo Comercio</span>
           </button>
           <button
             onClick={fetchComercios} disabled={loading}
-            className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 disabled:opacity-40 transition-colors flex-shrink-0"
+            className="flex-shrink-0 p-1.5 sm:p-2 rounded-lg text-gray-500 hover:bg-gray-100 disabled:opacity-40 transition-colors"
             title="Actualizar lista"
           >
             <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
@@ -391,9 +484,9 @@ export default function AdminComercios() {
         <Search size={13} className="absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
         <input
           type="text"
-          placeholder="Buscar por nombre del comercio..."
           value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
+          onChange={e => setSearchTerm(e.target.value)}
+          placeholder="Buscar por nombre del comercio…"
           className="form-input pl-7 sm:pl-8 pr-4 py-1.5 sm:py-2 text-xs sm:text-sm w-full"
         />
       </div>
@@ -425,71 +518,20 @@ export default function AdminComercios() {
       {!loading && (
         <div className="md:hidden bg-white rounded-2xl shadow-sm border border-gray-100 divide-y divide-gray-50">
           {comerciosFiltrados.map(comercio => (
-            <div key={comercio.id_comercio} className="p-4 space-y-3">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="font-medium text-gray-900 truncate">{comercio.nombre_fantasia}</div>
-                  <div className="text-xs text-gray-500 mt-0.5">{comercio.rubro ?? '—'}</div>
-                </div>
-                {comercio.es_activo ? (
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 flex-shrink-0">
-                    <UserCheck size={12} /> Activo
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 flex-shrink-0">
-                    <UserX size={12} /> Inactivo
-                  </span>
-                )}
-              </div>
-
-              <p className="text-sm text-gray-600">{comercio.beneficio_ofrecido}</p>
-
-              <div className="text-sm">
-                {comercio.usuario_acceso ? (
-                  <span className="inline-flex items-center gap-1.5 text-gray-700">
-                    <Link2 size={13} className="text-blue-500 flex-shrink-0" />
-                    {comercio.usuario_acceso.apellido}, {comercio.usuario_acceso.nombre}
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1.5 text-gray-400">
-                    <Link2Off size={13} />
-                    Sin vincular
-                  </span>
-                )}
-              </div>
-
-              <div className="flex items-center gap-1 pt-2 border-t border-gray-50 -mx-1">
-                <button
-                  onClick={() => openModalForEdit(comercio)}
-                  className="flex-1 inline-flex items-center justify-center gap-1.5 p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-100 rounded-lg transition-colors text-xs font-medium"
-                  title="Editar Comercio"
-                >
-                  <Edit size={16} /> Editar
-                </button>
-                {comercio.es_activo ? (
-                  <button
-                    onClick={() => handleDeleteComercio(comercio)}
-                    className="flex-1 inline-flex items-center justify-center gap-1.5 p-2 text-gray-500 hover:text-red-600 hover:bg-red-100 rounded-lg transition-colors text-xs font-medium"
-                    title="Dar de baja"
-                  >
-                    <Trash2 size={16} /> Baja
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => handleReactivarComercio(comercio)}
-                    className="flex-1 inline-flex items-center justify-center gap-1.5 p-2 text-gray-500 hover:text-green-600 hover:bg-green-100 rounded-lg transition-colors text-xs font-medium"
-                    title="Reactivar Comercio"
-                  >
-                    <Undo2 size={16} /> Reactivar
-                  </button>
-                )}
-              </div>
-            </div>
+            <TarjetaComercioMobile
+              key={comercio.id_comercio}
+              comercio={comercio}
+              onEditar={openModalForEdit}
+              onReactivar={handleReactivarComercio}
+              onDarBaja={handleDeleteComercio}
+            />
           ))}
 
           {comerciosFiltrados.length === 0 && (
             <div className="text-center py-12 text-gray-500 text-sm px-4">
-              {searchTerm ? `No hay comercios que coincidan con "${searchTerm}".` : 'No hay comercios asociados cargados todavía.'}
+              {searchTerm
+                ? 'Ningún comercio coincide con la búsqueda.'
+                : 'No hay comercios asociados cargados todavía.'}
             </div>
           )}
         </div>
@@ -581,7 +623,9 @@ export default function AdminComercios() {
             {!loading && comerciosFiltrados.length === 0 && (
               <tr>
                 <td colSpan="6" className="text-center py-12 text-gray-500">
-                  {searchTerm ? `No hay comercios que coincidan con "${searchTerm}".` : 'No hay comercios asociados cargados todavía.'}
+                  {searchTerm
+                    ? 'Ningún comercio coincide con la búsqueda.'
+                    : 'No hay comercios asociados cargados todavía.'}
                 </td>
               </tr>
             )}

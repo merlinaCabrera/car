@@ -37,6 +37,11 @@ router = APIRouter(
 )
 
 _ADMIN = ("admin_general", "personal_administrativo")
+_ADMIN_GENERAL = ("admin_general",)
+# CRUD de socios (crear, editar, aprobar, rechazar, baja, reactivar) queda
+# reservado solo a admin_general. Personal Administrativo tiene lectura
+# (listados, filtros, detalle) y gestión de cuotas, pero no puede alterar
+# el padrón de socios en sí.
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -182,6 +187,49 @@ def get_usuarios_pendientes(
 
 
 @router.get(
+    "/pendientes-reactivacion",
+    response_model=List[UsuarioPendienteResponse],
+    summary="Ex-socios dados de baja que pidieron reactivación",
+)
+def get_pendientes_reactivacion(
+    db: Session = Depends(get_db),
+    _: models.Usuario = Depends(require_roles(*_ADMIN_GENERAL)),
+):
+    """
+    Fuente de datos: el propio AuditLog (accion='SOLICITAR_REACTIVACION').
+    No hace falta una tabla nueva — un pedido se considera "resuelto" solo
+    con que el admin reactive la cuenta (fecha_baja vuelve a None), así que
+    alcanza con cruzar contra usuarios que SIGUEN dados de baja hoy.
+    """
+    ids_con_pedido = (
+        db.query(models.AuditLog.registro_id)
+        .filter(models.AuditLog.accion == "SOLICITAR_REACTIVACION")
+        .distinct()
+        .subquery()
+    )
+    usuarios = (
+        db.query(models.Usuario)
+        .filter(
+            models.Usuario.fecha_baja.isnot(None),
+            models.Usuario.id_usuario.in_(db.query(ids_con_pedido)),
+        )
+        .order_by(models.Usuario.fecha_baja.desc())
+        .all()
+    )
+    # UsuarioPendienteResponse espera fecha_ingreso/creado_at — reusamos
+    # fecha_baja como "creado_at" acá, para que la tarjeta muestre cuándo
+    # se dio de baja (más relevante que la fecha de alta original).
+    return [
+        UsuarioPendienteResponse(
+            id_usuario=u.id_usuario, dni=u.dni, nombre=u.nombre, apellido=u.apellido,
+            email=u.email, fecha_nacimiento=u.fecha_nacimiento,
+            fecha_ingreso=u.fecha_ingreso, creado_at=u.fecha_baja,
+        )
+        for u in usuarios
+    ]
+
+
+@router.get(
     "/activos",
     response_model=list[schemas.UsuarioListResponse],
     summary="Listado de socios activos (usuarios con rol 'socio')",
@@ -232,7 +280,7 @@ def aprobar_usuario(
     id_usuario: int,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
-    current_admin: models.Usuario = Depends(require_roles(*_ADMIN)),
+    current_admin: models.Usuario = Depends(require_roles(*_ADMIN_GENERAL)),
 ):
     usuario = db.query(models.Usuario).filter(models.Usuario.id_usuario == id_usuario).first()
     if not usuario:
@@ -313,7 +361,7 @@ def rechazar_solicitud(
     payload: RechazarSolicitudPayload,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
-    current_admin: models.Usuario = Depends(require_roles(*_ADMIN)),
+    current_admin: models.Usuario = Depends(require_roles(*_ADMIN_GENERAL)),
 ):
     """
     Distinto de DELETE /{id_usuario} (que es "dar de baja" a un socio ya
@@ -380,7 +428,7 @@ def rechazar_solicitud(
 def crear_socio_manual(
     usuario_in: schemas.UsuarioCreate,
     db: Session = Depends(get_db),
-    current_admin: models.Usuario = Depends(require_roles(*_ADMIN)),
+    current_admin: models.Usuario = Depends(require_roles(*_ADMIN_GENERAL)),
 ):
     if db.query(models.Usuario).filter(models.Usuario.dni == usuario_in.dni).first():
         raise HTTPException(status_code=400, detail="El DNI ya está registrado.")
@@ -433,7 +481,7 @@ def editar_socio(
     id_usuario: int,
     datos: schemas.UsuarioUpdate,
     db: Session = Depends(get_db),
-    current_admin: models.Usuario = Depends(require_roles(*_ADMIN)),
+    current_admin: models.Usuario = Depends(require_roles(*_ADMIN_GENERAL)),
 ):
     usuario = db.query(models.Usuario).filter(models.Usuario.id_usuario == id_usuario).first()
     if not usuario:
@@ -523,7 +571,7 @@ def dar_baja_socio(
     id_usuario: int,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
-    current_admin: models.Usuario = Depends(require_roles(*_ADMIN)),
+    current_admin: models.Usuario = Depends(require_roles(*_ADMIN_GENERAL)),
 ):
     usuario = db.query(models.Usuario).filter(models.Usuario.id_usuario == id_usuario).first()
     if not usuario:
@@ -597,7 +645,7 @@ def reactivar_socio(
     id_usuario: int,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
-    current_admin: models.Usuario = Depends(require_roles(*_ADMIN)),
+    current_admin: models.Usuario = Depends(require_roles(*_ADMIN_GENERAL)),
 ):
     usuario = db.query(models.Usuario).filter(models.Usuario.id_usuario == id_usuario).first()
     if not usuario:

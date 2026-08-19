@@ -339,3 +339,23 @@ async def enviar_solicitud_rechazada(email_destino: str, nombre_socio: str, moti
         template_name="solicitud_rechazada.html",
         body={"nombre_socio": nombre_socio, "motivo": motivo},
     )
+
+
+async def enviar_aviso_admin_solicitud_reactivacion(nombre_socio: str, dni_socio: str) -> None:
+    await _enviar(
+        destinatarios=[CLUB_EMAIL],
+        asunto=f"↩️ Pedido de reactivación: {nombre_socio}",
+        template_name="aviso_admin_solicitud_reactivacion.html",
+        body={"nombre_socio": nombre_socio, "dni_socio": dni_socio,
+              "admin_url": f"{FRONTEND_URL}/admin/socios"},
+    )
+
+
+async def enviar_aviso_admin_solicitud_reactivacion(nombre_socio: str, dni_socio: str) -> None:
+    await _enviar(
+        destinatarios=[CLUB_EMAIL],
+        asunto=f"🔄 Pedido de reactivación: {nombre_socio}",
+        template_name="aviso_admin_solicitud_reactivacion.html",
+        body={"nombre_socio": nombre_socio, "dni_socio": dni_socio,
+              "admin_url": f"{FRONTEND_URL}/admin/socios"},
+    )

@@ -42,6 +42,7 @@ from routers import notificaciones
 from routers import deportivo
 from routers import webhooks_mercadopago
 from routers import admin_dashboard
+from routers import admin_auditoria
 
 import scheduler
 
@@ -93,6 +94,7 @@ app.include_router(notificaciones.router)
 app.include_router(deportivo.router)
 app.include_router(webhooks_mercadopago.router)
 app.include_router(admin_dashboard.router)
+app.include_router(admin_auditoria.router)
 
 
 @app.get("/")

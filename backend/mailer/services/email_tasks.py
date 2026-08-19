@@ -300,3 +300,11 @@ async def task_solicitud_rechazada(email_destino: str, nombre_socio: str, motivo
         logger.info(f"Mail 'solicitud_rechazada' enviado a {email_destino}")
     except Exception:
         logger.exception(f"Fallo al enviar mail 'solicitud_rechazada' a {email_destino}")
+
+
+async def task_aviso_admin_solicitud_reactivacion(nombre_socio: str, dni_socio: str) -> None:
+    try:
+        await email_service.enviar_aviso_admin_solicitud_reactivacion(nombre_socio, dni_socio)
+        logger.info(f"Mail 'aviso_admin_solicitud_reactivacion' enviado al club (DNI {dni_socio})")
+    except Exception:
+        logger.exception(f"Fallo al enviar mail 'aviso_admin_solicitud_reactivacion' al club (DNI {dni_socio})")

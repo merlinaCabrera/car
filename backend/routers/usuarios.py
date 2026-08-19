@@ -70,7 +70,22 @@ def crear_usuario(
     Queda como 'pendiente' hasta que el admin lo apruebe desde /admin/usuarios/{id}/aprobar.
     """
     # DNI duplicado
-    if db.query(models.Usuario).filter(models.Usuario.dni == usuario.dni).first():
+    existente = db.query(models.Usuario).filter(models.Usuario.dni == usuario.dni).first()
+    if existente:
+        if existente.fecha_baja is not None:
+            # Caso distinto de "ya registrado y activo": esta persona YA fue
+            # socia y la dieron de baja. En vez del error genérico, el
+            # frontend puede detectar este caso puntual (structured detail,
+            # no un simple string) y ofrecerle pedir la reactivación en vez
+            # de un callejón sin salida.
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "tipo": "dado_de_baja",
+                    "mensaje": "Esta cuenta fue dada de baja del club.",
+                    "id_usuario": existente.id_usuario,
+                },
+            )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="El DNI ya está registrado en el sistema.",
@@ -110,6 +125,48 @@ def crear_usuario(
         )
 
     return nuevo_usuario
+
+
+# ─── POST /usuarios/{id}/solicitar-reactivacion ────────────────────────────
+# Pública (sin auth): la persona está dada de baja, no tiene forma de
+# loguearse para pedir esto desde adentro. Sin formulario — un solo botón
+# de confirmación en /registro cuando el sistema detecta el caso.
+
+@router.post(
+    "/{id_usuario}/solicitar-reactivacion",
+    status_code=status.HTTP_200_OK,
+    summary="Pedir la reactivación de una cuenta dada de baja",
+)
+def solicitar_reactivacion(
+    id_usuario: int,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+):
+    usuario = db.query(models.Usuario).filter(models.Usuario.id_usuario == id_usuario).first()
+    if not usuario:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado.")
+    if usuario.fecha_baja is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Esta cuenta no está dada de baja — no hay nada que reactivar.",
+        )
+
+    db.add(models.AuditLog(
+        usuario_actor=None,  # lo pide la propia persona, sin sesión — no hay actor admin
+        accion="SOLICITAR_REACTIVACION",
+        tabla_afectada="usuarios",
+        registro_id=id_usuario,
+        detalle={"dni": usuario.dni, "nombre": f"{usuario.nombre} {usuario.apellido}"},
+    ))
+    db.commit()
+
+    background_tasks.add_task(
+        email_tasks.task_aviso_admin_solicitud_reactivacion,
+        nombre_socio=f"{usuario.nombre} {usuario.apellido}",
+        dni_socio=usuario.dni,
+    )
+
+    return {"ok": True, "mensaje": "Tu pedido de reactivación fue enviado al club."}
 
 
 # ─── GET /usuarios/me ────────────────────────────────────────────────────────

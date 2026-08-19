@@ -1,13 +1,2 @@
-Sistema de Gestión de Socios & E-commerce — Club Atlético
-
-Plataforma full stack para la gestión integral de un club: socios, cuotas, reservas de instalaciones, eventos deportivos, e-commerce y control de acceso vía QR.
-
-Arquitectura
-
-Stack:
-
-Backend: FastAPI
-Base de datos: PostgreSQL + SQLAlchemy
-Frontend: React + Vite
-Pagos: Integración con MercadoPago (checkout, webhooks)
-Infraestructura: Docker
+Empezamos con una Aplicación Web responsive (priorizando la vista móvil para los accesos ágiles en puertas) apuntando a una base inicial de 100 a 500 usuarios, contemplando la posibilidad de migrar a una aplicación móvil nativa/híbrida.
+La plataforma cuenta con una “vidriera pública” institucional y un botón accesible de “Ingresar a mi cuenta” (que incluye la opción de “Crear cuenta” para enviar una Solicitud de Alta de Socio al backoffice). Aporta identidad y pertenencia porque cualquiera puede ver el escudo, colores, historia, fotos. Hasta podemos poner ahí el calendario, una sección de novedades, como información centralizada para el público general. 

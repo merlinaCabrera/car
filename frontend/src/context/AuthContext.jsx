@@ -51,9 +51,13 @@ export function AuthProvider({ children }) {
         });
 
         if (!res.ok) {
-            // El backend ahora puede devolver errores más específicos (ej: 403 pendiente)
+            // El backend ahora puede devolver errores más específicos (ej: 403 pendiente,
+            // o el caso "dado_de_baja" con un objeto en vez de un string plano).
             const errorData = await res.json().catch(() => ({ detail: "DNI o contraseña incorrectos" }));
-            throw new Error(errorData.detail);
+            const esObjeto = errorData.detail && typeof errorData.detail === 'object';
+            const err = new Error(esObjeto ? errorData.detail.mensaje : errorData.detail);
+            if (esObjeto) err.detail = errorData.detail; // Login.jsx lo usa para el botón de reactivación
+            throw err;
         }
 
         const data = await res.json();

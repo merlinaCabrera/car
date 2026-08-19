@@ -5,6 +5,7 @@ import { useCart } from '../context/CartContext';
 import {
   Menu,
   Home,
+  History,
   CreditCard,
   ShoppingBag,
   Package,
@@ -63,6 +64,7 @@ const NAV_PERSONAL_ADMINISTRATIVO = [
   { name: 'Verificaciones', path: '/admin/verificaciones', icon: Wallet },
   { name: 'Comercios Adheridos', path: '/admin/comercios', icon: Store },
   { name: 'Agenda de Reservas', path: '/admin/reservas', icon: Calendar },
+  { name: 'Historial', path: '/admin/auditoria', icon: History },
 ];
 
 // Menú REAL de un usuario personal_administrativo (no admin_general).
@@ -73,6 +75,7 @@ const NAV_PERSONAL_ADMINISTRATIVO_PROPIO = [
   { name: 'Socios', path: '/admin/socios', icon: Users },
   { name: 'Comercios Adheridos', path: '/admin/comercios', icon: Store },
   { name: 'Agenda de Reservas', path: '/admin/reservas', icon: Calendar },
+  { name: 'Historial', path: '/admin/auditoria', icon: History },
 ];
 
 const NAV_ADMIN_TEMPORAL = [
@@ -287,6 +290,9 @@ export default function MainLayout({ userRole }) {
               </Link>
               <Link to="/admin/comercios" onClick={closeMenu} className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors">
                 <Store size={18} /><span>Comercios</span>
+              </Link>
+              <Link to="/admin/auditoria" onClick={closeMenu} className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors">
+                <History size={18} /><span>Historial</span>
               </Link>
             </div>
           )}

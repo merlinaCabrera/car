@@ -19,6 +19,12 @@ export default function Registro() {
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
+    // Caso especial: el DNI pertenece a una cuenta dada de baja — en vez del
+    // error genérico, se ofrece pedir la reactivación con un solo botón.
+    const [pedidoReactivacion, setPedidoReactivacion] = useState(null) // { idUsuario, nombre }
+    const [enviandoReactivacion, setEnviandoReactivacion] = useState(false)
+    const [reactivacionEnviada, setReactivacionEnviada] = useState(false)
+
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
@@ -62,6 +68,16 @@ export default function Registro() {
 
             if (!response.ok) {
                 const errorData = await response.json();
+                // El backend manda un objeto (no un string) solo para el
+                // caso "esta cuenta fue dada de baja" — el resto de los
+                // errores siguen siendo un string plano como antes.
+                if (errorData.detail && typeof errorData.detail === 'object' && errorData.detail.tipo === 'dado_de_baja') {
+                    setPedidoReactivacion({
+                        idUsuario: errorData.detail.id_usuario,
+                        nombre: formData.nombre,
+                    });
+                    return;
+                }
                 throw new Error(errorData.detail || 'Ocurrió un error al registrar la solicitud.');
             }
 
@@ -78,6 +94,67 @@ export default function Registro() {
             setLoading(false);
         }
     };
+
+    const handleSolicitarReactivacion = async () => {
+        if (!pedidoReactivacion) return;
+        setEnviandoReactivacion(true);
+        try {
+            const response = await fetch(
+                `${import.meta.env.VITE_API_URL ?? 'http://localhost:8000'}/usuarios/${pedidoReactivacion.idUsuario}/solicitar-reactivacion`,
+                { method: 'POST' }
+            );
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.detail || 'No se pudo enviar el pedido.');
+            }
+            setReactivacionEnviada(true);
+        } catch (err) {
+            setError(err.message);
+            setPedidoReactivacion(null);
+        } finally {
+            setEnviandoReactivacion(false);
+        }
+    };
+
+    if (reactivacionEnviada) {
+        return (
+            <div className="max-w-md mx-auto mt-10 p-8 bg-white rounded-lg shadow-xl text-center">
+                <h2 className="text-2xl font-bold text-green-600 mb-4">¡Pedido enviado!</h2>
+                <p className="text-slate-600">Le avisamos al club que querés reactivar tu cuenta. Te van a contactar para confirmarlo.</p>
+                <Link to="/login" className="mt-6 inline-block bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors">
+                    Volver al Login
+                </Link>
+            </div>
+        );
+    }
+
+    if (pedidoReactivacion) {
+        return (
+            <div className="max-w-md mx-auto mt-10 p-8 bg-white rounded-lg shadow-xl text-center">
+                <h2 className="text-2xl font-bold text-amber-600 mb-4">Esta cuenta fue dada de baja</h2>
+                <p className="text-slate-600 mb-6">
+                    Ya existe una cuenta registrada con ese DNI, pero está dada de baja del club.
+                    Si querés volver, podés pedirle al club que la reactive.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                    <button
+                        onClick={handleSolicitarReactivacion}
+                        disabled={enviandoReactivacion}
+                        className="bg-green-600 hover:bg-green-700 disabled:opacity-60 text-white font-bold py-2 px-5 rounded-lg transition-colors"
+                    >
+                        {enviandoReactivacion ? 'Enviando…' : 'Solicitar reactivación'}
+                    </button>
+                    <button
+                        onClick={() => setPedidoReactivacion(null)}
+                        disabled={enviandoReactivacion}
+                        className="text-slate-500 hover:text-slate-700 font-semibold py-2 px-5"
+                    >
+                        Cancelar
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     if (success) {
         return (

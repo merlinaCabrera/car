@@ -168,6 +168,7 @@ const TABS_ESTADO = [
   { label: 'Todos',    value: ''        },
   { label: 'Al día',   value: 'al_dia'  },
   { label: 'Morosos',  value: 'moroso'  },
+  { label: 'Becados',  value: 'becado'  },
   { label: 'Activos',  value: 'activo'  },
   { label: 'De baja',  value: 'baja'    },
 ]
@@ -1224,6 +1225,51 @@ function TarjetaSocioMobile({
 // ─── Fila de solicitud pendiente — colapsable ──────────────────────────────
 // Colapsada: nombre, DNI y fecha de registro (igual que antes). Desplegada:
 // email, fecha de nacimiento, y las acciones Aprobar / Rechazar.
+// ─── Fila de pedido de reactivación ─────────────────────────────────────────
+// Más simple que FilaSolicitudPendiente: no hay "rechazar" (si el admin no
+// quiere reactivar, simplemente no hace nada — el pedido no vence ni molesta).
+function FilaReactivacionPendiente({ p, onReactivar }) {
+  const [expandido, setExpandido] = useState(false)
+  const [reactivando, setReactivando] = useState(false)
+
+  return (
+    <div className="bg-white/70 rounded-xl overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setExpandido(e => !e)}
+        className="w-full text-left px-3 py-2.5 flex items-center justify-between gap-3 hover:bg-white transition-colors"
+      >
+        <div className="min-w-0 flex-1">
+          <p className="font-medium text-gray-800 truncate">{p.apellido}, {p.nombre}</p>
+          <p className="text-xs text-gray-500 mt-0.5 font-mono">
+            DNI {p.dni} · dado de baja el {new Date(p.creado_at).toLocaleDateString('es-AR')}
+          </p>
+        </div>
+        {expandido ? <ChevronUp size={16} className="text-gray-400 flex-shrink-0" /> : <ChevronDown size={16} className="text-gray-400 flex-shrink-0" />}
+      </button>
+
+      {expandido && (
+        <div className="px-3 pb-3 space-y-2 border-t border-blue-100 pt-2.5">
+          {p.email && (
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <Mail size={13} className="text-gray-400 flex-shrink-0" />
+              <a href={`mailto:${p.email}`} className="hover:underline truncate">{p.email}</a>
+            </div>
+          )}
+          <button
+            onClick={async () => { setReactivando(true); await onReactivar(); setReactivando(false) }}
+            disabled={reactivando}
+            className="w-full inline-flex items-center justify-center gap-1.5 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white text-xs font-semibold transition-colors"
+          >
+            <Undo2 size={14} />
+            {reactivando ? 'Reactivando…' : 'Reactivar cuenta'}
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function FilaSolicitudPendiente({ p, onAprobar, onRechazar, approvingId, rejectingId, motivoAbierto, setMotivoAbierto }) {
   const [expandido, setExpandido] = useState(false)
   const [motivo, setMotivo] = useState('')
@@ -1321,6 +1367,7 @@ export default function AdminSocios() {
 
   const [socios,       setSocios]       = useState([])
   const [pendientes,   setPendientes]   = useState([])
+  const [pendientesReactivacion, setPendientesReactivacion] = useState([])
   const [loading,      setLoading]      = useState(true)
   const [error,        setError]        = useState(null)
   const [isModalOpen,  setIsModalOpen]  = useState(false)
@@ -1374,9 +1421,13 @@ export default function AdminSocios() {
     try {
       const filtroRol = rolFiltro ? `rol=${encodeURIComponent(rolFiltro)}&` : ''
       const params = `?${filtroRol}limit=2000`
-      const [sociosRes, pendientesRes] = await Promise.all([
+      const [sociosRes, pendientesRes, reactivacionRes] = await Promise.all([
         fetch(`${API}/admin/usuarios/${params}`, { headers: { Authorization: `Bearer ${token}` } }),
         fetch(`${API}/admin/usuarios/pendientes`, { headers: { Authorization: `Bearer ${token}` } }),
+        // Solo admin_general puede reactivar — para Personal Administrativo
+        // este endpoint devuelve 403, y eso está bien: simplemente no le
+        // mostramos la sección, no es un error de carga real.
+        fetch(`${API}/admin/usuarios/pendientes-reactivacion`, { headers: { Authorization: `Bearer ${token}` } }),
       ])
 
       if (!sociosRes.ok) throw new Error(`Error ${sociosRes.status}: No se pudo cargar la lista de socios.`)
@@ -1384,10 +1435,12 @@ export default function AdminSocios() {
 
       setSocios(await sociosRes.json())
       setPendientes(await pendientesRes.json())
+      setPendientesReactivacion(reactivacionRes.ok ? await reactivacionRes.json() : [])
     } catch (err) {
       setError(err.message)
       setSocios([])
       setPendientes([])
+      setPendientesReactivacion([])
     } finally {
       setLoading(false)
     }
@@ -1567,6 +1620,12 @@ export default function AdminSocios() {
       if (estadoFiltro === 'baja')   return !!s.fecha_baja
       if (estadoFiltro === 'activo') return !s.fecha_baja
 
+      if (estadoFiltro === 'becado') {
+        if (s.fecha_baja) return false
+        const hoyISO = new Date().toISOString().split('T')[0]
+        return s.es_becado && (!s.becado_hasta || s.becado_hasta >= hoyISO)
+      }
+
       if (estadoFiltro === 'al_dia' || estadoFiltro === 'moroso') {
         if (s.fecha_baja) return false
         // Socios becados nunca son morosos
@@ -1724,6 +1783,29 @@ export default function AdminSocios() {
                 rejectingId={rejectingId}
                 motivoAbierto={motivoRechazoAbierto}
                 setMotivoAbierto={setMotivoRechazoAbierto}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Sección de pedidos de reactivación — solo admin_general las ve
+          (el backend ya filtra por rol; acá solo se oculta si vino vacía) */}
+      {!loading && pendientesReactivacion.length > 0 && (
+        <div className="space-y-3 p-4 sm:p-5 rounded-2xl bg-blue-50 border-2 border-blue-200">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <Undo2 size={20} className="text-blue-700 flex-shrink-0" />
+            <h2 className="text-base sm:text-lg font-bold text-blue-900">
+              Solicitudes de Reactivación ({pendientesReactivacion.length})
+            </h2>
+          </div>
+
+          <div className="space-y-2">
+            {pendientesReactivacion.map(p => (
+              <FilaReactivacionPendiente
+                key={p.id_usuario}
+                p={p}
+                onReactivar={() => handleReactivateSocio(p)}
               />
             ))}
           </div>

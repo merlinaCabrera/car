@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Eye, EyeOff } from 'lucide-react';
 
@@ -16,6 +16,7 @@ export default function Login() {
     const [enviandoReactivacion, setEnviandoReactivacion] = useState(false);
     const [reactivacionEnviada, setReactivacionEnviada] = useState(false);
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
     const { login } = useAuth();
     const [showPassword, setShowPassword] = useState(false);
 
@@ -46,6 +47,13 @@ export default function Login() {
             if (roles.includes('admin_general')) {
                 destino = '/admin';
             }
+
+            // Si venía de un link que la mandó acá por no tener sesión
+            // (ej: el link "Revisar Solicitudes" del mail al club), la
+            // llevamos a donde quería ir en vez del destino genérico por rol.
+            const next = searchParams.get('next');
+            if (next) destino = next;
+
             navigate(destino, { replace: true });
         } catch (err) {
             // Caso especial: cuenta dada de baja — en vez de un error plano,

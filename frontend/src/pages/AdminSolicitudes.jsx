@@ -1,5 +1,6 @@
 // frontend/src/pages/AdminSolicitudes.jsx
 import { useState, useEffect, useCallback } from 'react'
+import ConfirmDialog from '../components/ConfirmDialog'
 import { useAuth } from '../context/AuthContext'
 import {
   CheckCircle,
@@ -259,9 +260,15 @@ const fetchPendientes = useCallback(async () => {
   }, [token, fetchPendientes])
 
   // ── Aprobar usuario ────────────────────────────────────────────────────────
-  const aprobar = async (id_usuario, nombreCompleto) => {
-    if (!window.confirm(`¿Confirmar aprobación de ${nombreCompleto} como socio?`)) return
+  const [confirmAprobar, setConfirmAprobar] = useState(null) // { id_usuario, nombreCompleto }
 
+  const aprobar = (id_usuario, nombreCompleto) => {
+    setConfirmAprobar({ id_usuario, nombreCompleto })
+  }
+
+  const ejecutarAprobacion = async () => {
+    if (!confirmAprobar) return
+    const { id_usuario } = confirmAprobar
     setAprobando(id_usuario)
     try {
       const res = await fetch(`${API}/admin/usuarios/${id_usuario}/aprobar`, {
@@ -277,6 +284,7 @@ const fetchPendientes = useCallback(async () => {
       // Quitar de la lista local optimísticamente
       setAprobados(prev => [...prev, id_usuario])
       setPendientes(prev => prev.filter(u => u.id_usuario !== id_usuario))
+      setConfirmAprobar(null)
     } catch (err) {
       window.alert(`No se pudo aprobar: ${err.message}`)
     } finally {
@@ -314,6 +322,18 @@ const fetchPendientes = useCallback(async () => {
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="p-4 sm:p-6 max-w-4xl mx-auto space-y-5 sm:space-y-6">
+
+      {/* Confirmación de aprobar — reemplaza al window.confirm() nativo */}
+      {confirmAprobar && (
+        <ConfirmDialog
+          titulo={`¿Aprobar a ${confirmAprobar.nombreCompleto} como socio?`}
+          mensaje="Se le asigna el rol de socio y ya puede ingresar al portal."
+          confirmLabel="Aprobar"
+          cargando={aprobando === confirmAprobar.id_usuario}
+          onConfirm={ejecutarAprobacion}
+          onCancel={() => setConfirmAprobar(null)}
+        />
+      )}
 
       {/* Header */}
       <div className="flex items-start justify-between gap-4">

@@ -351,6 +351,15 @@ async def enviar_aviso_admin_solicitud_reactivacion(nombre_socio: str, dni_socio
     )
 
 
+async def enviar_bienvenida_alta_manual(email_destino: str, nombre_socio: str) -> None:
+    await _enviar(
+        destinatarios=[email_destino],
+        asunto="¡Bienvenido al Club Atlético Roberts! 🎉",
+        template_name="bienvenida_alta_manual.html",
+        body={"nombre_socio": nombre_socio, "frontend_url": FRONTEND_URL},
+    )
+
+
 async def enviar_aviso_admin_solicitud_reactivacion(nombre_socio: str, dni_socio: str) -> None:
     await _enviar(
         destinatarios=[CLUB_EMAIL],

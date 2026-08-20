@@ -13,6 +13,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useAuth } from '../context/AuthContext'
+import ConfirmDialog from '../components/ConfirmDialog'
 import {
   PlusCircle,
   Edit,
@@ -1530,61 +1531,75 @@ export default function AdminSocios() {
   }
 
   // ── Handlers de tabla ──────────────────────────────────────────────────────
-  const handleDeleteSocio = async (socio) => {
-    if (!window.confirm(
-      `¿Dar de baja a ${socio.nombre} ${socio.apellido}? Esta acción es lógica y no borra el historial.`
-    )) return
+  // Antes cada uno usaba window.confirm() nativo — inconsistente con el
+  // patrón de Rechazar (que ya tenía su propia confirmación in-card). Ahora
+  // todos arman/disparan la misma acción a través de confirmAccion +
+  // ConfirmDialog, y la ejecución real queda en ejecutarAccionConfirmada().
+  const [confirmAccion, setConfirmAccion] = useState(null)
+  // { tipo: 'baja' | 'reactivar' | 'aprobar', socio?, idUsuario? }
 
-    try {
-      const res = await fetch(`${API}/admin/usuarios/${socio.id_usuario}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        throw new Error(err.detail ?? 'Error al dar de baja al socio.')
-      }
-      fetchData()
-    } catch (err) {
-      window.alert(`Error: ${err.message}`)
-    }
+  const handleDeleteSocio = (socio) => {
+    setConfirmAccion({ tipo: 'baja', socio })
   }
 
-  const handleReactivateSocio = async (socio) => {
-    if (!window.confirm(`¿Reactivar a ${socio.nombre} ${socio.apellido}?`)) return
-
-    try {
-      const res = await fetch(`${API}/admin/usuarios/${socio.id_usuario}/reactivar`, {
-        method: 'PATCH',
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        throw new Error(err.detail ?? 'Error al reactivar al socio.')
-      }
-      fetchData()
-    } catch (err) {
-      window.alert(`Error: ${err.message}`)
-    }
+  const handleReactivateSocio = (socio) => {
+    setConfirmAccion({ tipo: 'reactivar', socio })
   }
 
-  const handleApproveSocio = async (id_usuario) => {
-    if (!window.confirm('¿Aprobar a este usuario y asignarle el rol de "socio"?')) return
+  const handleApproveSocio = (id_usuario) => {
+    setConfirmAccion({ tipo: 'aprobar', idUsuario: id_usuario })
+  }
 
-    setApprovingId(id_usuario)
+  const [ejecutandoConfirm, setEjecutandoConfirm] = useState(false)
+
+  const ejecutarAccionConfirmada = async () => {
+    if (!confirmAccion) return
+    setEjecutandoConfirm(true)
     try {
-      const res = await fetch(`${API}/admin/usuarios/${id_usuario}/aprobar`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        throw new Error(err.detail ?? 'Error al aprobar al socio.')
+      if (confirmAccion.tipo === 'baja') {
+        const socio = confirmAccion.socio
+        const res = await fetch(`${API}/admin/usuarios/${socio.id_usuario}`, {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}))
+          throw new Error(err.detail ?? 'Error al dar de baja al socio.')
+        }
+        fetchData()
       }
-      await fetchData()
+
+      if (confirmAccion.tipo === 'reactivar') {
+        const socio = confirmAccion.socio
+        const res = await fetch(`${API}/admin/usuarios/${socio.id_usuario}/reactivar`, {
+          method: 'PATCH',
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}))
+          throw new Error(err.detail ?? 'Error al reactivar al socio.')
+        }
+        fetchData()
+      }
+
+      if (confirmAccion.tipo === 'aprobar') {
+        setApprovingId(confirmAccion.idUsuario)
+        const res = await fetch(`${API}/admin/usuarios/${confirmAccion.idUsuario}/aprobar`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}))
+          throw new Error(err.detail ?? 'Error al aprobar al socio.')
+        }
+        await fetchData()
+      }
+
+      setConfirmAccion(null)
     } catch (err) {
       window.alert(`Error: ${err.message}`)
     } finally {
+      setEjecutandoConfirm(false)
       setApprovingId(null)
     }
   }
@@ -1666,6 +1681,31 @@ export default function AdminSocios() {
           catalogoRoles={catalogoRoles}
           token={token}
           esAdminGeneral={esAdminGeneral}
+        />
+      )}
+
+      {/* Confirmación de Aprobar / Baja / Reactivar — reemplaza al window.confirm() nativo */}
+      {confirmAccion && (
+        <ConfirmDialog
+          titulo={
+            confirmAccion.tipo === 'baja'
+              ? `¿Dar de baja a ${confirmAccion.socio.nombre} ${confirmAccion.socio.apellido}?`
+              : confirmAccion.tipo === 'reactivar'
+                ? `¿Reactivar a ${confirmAccion.socio.nombre} ${confirmAccion.socio.apellido}?`
+                : '¿Aprobar a este usuario como socio?'
+          }
+          mensaje={
+            confirmAccion.tipo === 'baja'
+              ? 'Esta acción es lógica y no borra el historial — se puede reactivar después.'
+              : confirmAccion.tipo === 'reactivar'
+                ? 'Vuelve a tener acceso normal al portal con sus credenciales de siempre.'
+                : 'Se le asigna el rol de socio y ya puede ingresar al portal.'
+          }
+          confirmLabel={confirmAccion.tipo === 'baja' ? 'Dar de baja' : confirmAccion.tipo === 'reactivar' ? 'Reactivar' : 'Aprobar'}
+          variante={confirmAccion.tipo === 'baja' ? 'peligro' : 'default'}
+          cargando={ejecutandoConfirm}
+          onConfirm={ejecutarAccionConfirmada}
+          onCancel={() => setConfirmAccion(null)}
         />
       )}
 

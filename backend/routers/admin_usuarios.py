@@ -29,7 +29,7 @@ from database import get_db
 from dependencies import get_current_user, require_roles
 from security import get_password_hash
 from fastapi import BackgroundTasks 
-from mailer.services.email_tasks import task_cuenta_aprobada, task_socio_dado_de_baja, task_socio_reactivado, task_solicitud_rechazada
+from mailer.services.email_tasks import task_cuenta_aprobada, task_socio_dado_de_baja, task_socio_reactivado, task_solicitud_rechazada, task_bienvenida_alta_manual
 
 router = APIRouter(
     prefix="/admin/usuarios",
@@ -427,6 +427,7 @@ def rechazar_solicitud(
 )
 def crear_socio_manual(
     usuario_in: schemas.UsuarioCreate,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_admin: models.Usuario = Depends(require_roles(*_ADMIN_GENERAL)),
 ):
@@ -469,6 +470,14 @@ def crear_socio_manual(
     ))
     db.commit()
     db.refresh(nuevo_usuario)
+
+    if nuevo_usuario.email:
+        background_tasks.add_task(
+            task_bienvenida_alta_manual,
+            email_destino=nuevo_usuario.email,
+            nombre_socio=nuevo_usuario.nombre,
+        )
+
     return nuevo_usuario
 
 
@@ -530,8 +539,27 @@ def editar_socio(
                 detail=f"Ya existe otro usuario registrado con el DNI '{nuevo_dni}'.",
             )
 
+    becado_antes = usuario.es_becado
+
     for campo, valor in update_data.items():
         setattr(usuario, campo, valor)
+
+    # Notificación in-app al socio si cambió su condición de becado —
+    # decisión tomada: nada de mail para esto (saturaría), pero sí vale un
+    # aviso dentro de la app ya que le cambia cuánto paga.
+    if "es_becado" in update_data and usuario.es_becado != becado_antes:
+        db.add(models.Notificacion(
+            id_usuario=usuario.id_usuario,
+            tipo="beca_actualizada",
+            titulo="¡Te asignaron una beca!" if usuario.es_becado else "Tu beca fue dada de baja",
+            cuerpo=(
+                "A partir de ahora tenés un descuento en tu cuota social."
+                if usuario.es_becado else
+                "Ya no contás con el descuento por beca en tu cuota social."
+            ),
+            referencia_id=usuario.id_usuario,
+            referencia_tabla="usuarios",
+        ))
 
     # Convertir tipos no serializables (date, datetime) a string para el audit log
     update_data_serializable = {

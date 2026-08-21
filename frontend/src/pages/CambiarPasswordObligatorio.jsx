@@ -44,7 +44,7 @@ export default function CambiarPasswordObligatorio() {
     setLoading(true)
     try {
       const res = await fetch(`${API}/usuarios/me/password`, {
-        method: 'PATCH',
+        method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',

@@ -577,13 +577,17 @@ def editar_socio(
 
     try:
         db.commit()
-    except IntegrityError:
-        # Red de seguridad por si hay una condición de carrera (dos requests
-        # casi simultáneos) que la validación de arriba no llegó a atrapar.
+    except IntegrityError as e:
+        # Antes acá había un mensaje genérico ("email o DNI ya está en uso")
+        # sin importar qué constraint violó en realidad — lo cual llevó a un
+        # diagnóstico equivocado en un caso real (falló editando la beca,
+        # sin tocar ni el DNI ni el email). Ahora exponemos el detalle crudo
+        # de Postgres para saber la causa real la próxima vez.
         db.rollback()
+        detalle_pg = str(getattr(e, "orig", e))
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="No se pudo guardar: el email o DNI ingresado ya está en uso por otro usuario.",
+            detail=f"No se pudo guardar el cambio. Detalle de la base: {detalle_pg}",
         )
 
     db.refresh(usuario)

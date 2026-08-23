@@ -617,15 +617,26 @@ def editar_socio(
     # decisión tomada: nada de mail para esto (saturaría), pero sí vale un
     # aviso dentro de la app ya que le cambia cuánto paga.
     if "es_becado" in update_data and usuario.es_becado != becado_antes:
+        if usuario.es_becado:
+            if usuario.becado_hasta:
+                vigencia = f"hasta el {usuario.becado_hasta.strftime('%d/%m/%Y')}"
+            else:
+                vigencia = "sin fecha de vencimiento definida por ahora"
+            cuerpo = (
+                f"Tenés eximición total de la cuota social ({vigencia}). "
+                "No cubre alquileres ni compras en la tienda del club. "
+                "Podés ver el detalle en Gestión de Cuotas."
+            )
+        else:
+            cuerpo = (
+                "Ya no contás con el descuento por beca en tu cuota social — "
+                "volvés a pagarla con normalidad. Podés ver el detalle en Gestión de Cuotas."
+            )
         db.add(models.Notificacion(
             id_usuario=usuario.id_usuario,
             tipo="beca_actualizada",
             titulo="¡Te asignaron una beca!" if usuario.es_becado else "Tu beca fue dada de baja",
-            cuerpo=(
-                "A partir de ahora tenés un descuento en tu cuota social."
-                if usuario.es_becado else
-                "Ya no contás con el descuento por beca en tu cuota social."
-            ),
+            cuerpo=cuerpo,
             referencia_id=usuario.id_usuario,
             referencia_tabla="usuarios",
         ))

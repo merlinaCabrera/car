@@ -13,6 +13,7 @@ import {
   Receipt,
   ChevronDown,
   ChevronUp,
+  GraduationCap,
 } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL;
@@ -38,6 +39,7 @@ function formatRelativeTime(isoString) {
 const NOTIFICATION_ICONS = {
   orden_aprobada: { Icon: CheckCircle2, color: 'text-emerald-600' },
   orden_rechazada: { Icon: XCircle, color: 'text-red-600' },
+  beca_actualizada: { Icon: GraduationCap, color: 'text-teal-600' },
   sistema: { Icon: Info, color: 'text-blue-600' },
   default: { Icon: Bell, color: 'text-gray-500' },
 };
@@ -50,6 +52,7 @@ function NotificationCard({ notificacion, isExpanded, onToggleExpand }) {
 
   const isLongText = notificacion.cuerpo && notificacion.cuerpo.length > 120;
   const hasAction = notificacion.referencia_id && notificacion.referencia_tabla === 'ordenes';
+  const hasAccionBeca = notificacion.referencia_tabla === 'usuarios' && notificacion.tipo === 'beca_actualizada';
 
   return (
     <div
@@ -77,7 +80,7 @@ function NotificationCard({ notificacion, isExpanded, onToggleExpand }) {
           </p>
         )}
         
-        {(isLongText || hasAction) && (
+        {(isLongText || hasAction || hasAccionBeca) && (
           <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
             {isLongText && (
               <button
@@ -96,6 +99,16 @@ function NotificationCard({ notificacion, isExpanded, onToggleExpand }) {
               >
                 <Receipt size={14} />
                 Ver detalle de compra
+              </Link>
+            )}
+
+            {hasAccionBeca && (
+              <Link
+                to="/socio/cuotas"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-gray-200 hover:bg-gray-100 hover:border-gray-300 text-xs font-semibold text-gray-700 transition-colors shadow-sm"
+              >
+                <GraduationCap size={14} />
+                Ver en Gestión de Cuotas
               </Link>
             )}
           </div>

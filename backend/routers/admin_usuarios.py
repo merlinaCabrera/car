@@ -197,21 +197,58 @@ def get_pendientes_reactivacion(
 ):
     """
     Fuente de datos: el propio AuditLog (accion='SOLICITAR_REACTIVACION').
-    No hace falta una tabla nueva — un pedido se considera "resuelto" solo
-    con que el admin reactive la cuenta (fecha_baja vuelve a None), así que
-    alcanza con cruzar contra usuarios que SIGUEN dados de baja hoy.
+
+    OJO con un caso real que se encontró en testing: un pedido viejo, ya
+    resuelto en un ciclo anterior (reactivado y luego dado de baja de
+    nuevo), NO debe reaparecer solo porque "alguna vez" hubo un pedido con
+    ese id_usuario. Por eso acá comparamos contra la ÚLTIMA baja (y el
+    último descarte) registrados en el AuditLog, no contra la existencia
+    del pedido en abstracto.
     """
-    ids_con_pedido = (
-        db.query(models.AuditLog.registro_id)
+    ultimo_pedido = (
+        db.query(
+            models.AuditLog.registro_id.label("uid"),
+            func.max(models.AuditLog.created_at).label("fecha_pedido"),
+        )
         .filter(models.AuditLog.accion == "SOLICITAR_REACTIVACION")
-        .distinct()
+        .group_by(models.AuditLog.registro_id)
         .subquery()
     )
+    ultima_baja = (
+        db.query(
+            models.AuditLog.registro_id.label("uid"),
+            func.max(models.AuditLog.created_at).label("fecha_baja_log"),
+        )
+        .filter(models.AuditLog.accion == "BAJA_SOCIO")
+        .group_by(models.AuditLog.registro_id)
+        .subquery()
+    )
+    ultimo_descarte = (
+        db.query(
+            models.AuditLog.registro_id.label("uid"),
+            func.max(models.AuditLog.created_at).label("fecha_descarte"),
+        )
+        .filter(models.AuditLog.accion == "DESCARTAR_REACTIVACION")
+        .group_by(models.AuditLog.registro_id)
+        .subquery()
+    )
+
     usuarios = (
         db.query(models.Usuario)
+        .join(ultimo_pedido, ultimo_pedido.c.uid == models.Usuario.id_usuario)
+        .outerjoin(ultima_baja, ultima_baja.c.uid == models.Usuario.id_usuario)
+        .outerjoin(ultimo_descarte, ultimo_descarte.c.uid == models.Usuario.id_usuario)
         .filter(
             models.Usuario.fecha_baja.isnot(None),
-            models.Usuario.id_usuario.in_(db.query(ids_con_pedido)),
+            # El pedido tiene que ser de ESTE ciclo de baja (posterior a la
+            # última vez que se lo dio de baja) — si no hay registro de
+            # cuándo fue la baja (bajas viejas, previas a esta auditoría),
+            # se lo deja pasar por compatibilidad.
+            (ultima_baja.c.fecha_baja_log.is_(None))
+            | (ultimo_pedido.c.fecha_pedido >= ultima_baja.c.fecha_baja_log),
+            # Y que no haya sido descartado ya (el admin lo "rechazó").
+            (ultimo_descarte.c.fecha_descarte.is_(None))
+            | (ultimo_pedido.c.fecha_pedido > ultimo_descarte.c.fecha_descarte),
         )
         .order_by(models.Usuario.fecha_baja.desc())
         .all()
@@ -227,6 +264,38 @@ def get_pendientes_reactivacion(
         )
         for u in usuarios
     ]
+
+
+@router.post(
+    "/{id_usuario}/descartar-reactivacion",
+    status_code=status.HTTP_200_OK,
+    summary="Descartar un pedido de reactivación sin reactivar la cuenta",
+)
+def descartar_reactivacion(
+    id_usuario: int,
+    db: Session = Depends(get_db),
+    current_admin: models.Usuario = Depends(require_roles(*_ADMIN_GENERAL)),
+):
+    """
+    Distinto de rechazar una solicitud de alta (que borra el usuario): acá
+    el socio ya existe y sigue dado de baja — simplemente dejamos de
+    mostrar su pedido en la lista, sin tocar su cuenta. Si vuelve a pedirlo
+    más adelante, reaparece (el filtro de arriba solo excluye pedidos
+    anteriores a este descarte).
+    """
+    usuario = db.query(models.Usuario).filter(models.Usuario.id_usuario == id_usuario).first()
+    if not usuario:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado.")
+
+    db.add(models.AuditLog(
+        usuario_actor=current_admin.id_usuario,
+        accion="DESCARTAR_REACTIVACION",
+        tabla_afectada="usuarios",
+        registro_id=id_usuario,
+        detalle={"dni": usuario.dni, "nombre": f"{usuario.nombre} {usuario.apellido}"},
+    ))
+    db.commit()
+    return {"ok": True, "mensaje": "Pedido de reactivación descartado."}
 
 
 @router.get(

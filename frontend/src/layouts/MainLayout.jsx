@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link, Outlet, useNavigate } from 'react-router-dom';
+import { Link, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import {
@@ -94,7 +94,7 @@ export default function MainLayout({ userRole }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [seccionesAbiertas, setSeccionesAbiertas] = useState({});
-  const { user, logout } = useAuth();
+  const { user, token, logout } = useAuth();
   const navigate = useNavigate();
   const { cart } = useCart();
 
@@ -142,9 +142,14 @@ export default function MainLayout({ userRole }) {
   const mostrarIconosCompra = (esSocio || esJugador) && !isSoloInvitado;
   // -----------------------------------------
 
+  const location = useLocation();
+
   useEffect(() => {
     const fetchNotifications = async () => {
-      const token = localStorage.getItem('token');
+      // BUG viejo: acá se leía localStorage.getItem('token'), pero
+      // AuthContext guarda el token bajo la clave 'authToken' — esa clave
+      // nunca existió, así que esto cortaba antes de intentar nada y el
+      // contador de no-leídas quedaba en 0 para siempre.
       if (!token) return;
 
       try {
@@ -165,7 +170,10 @@ export default function MainLayout({ userRole }) {
     if (user) {
       fetchNotifications();
     }
-  }, [user]);
+    // Re-consultar también al volver de /notificaciones (donde se marcan
+    // como leídas) — así el numerito baja apenas la persona las vio, sin
+    // esperar a un refresh completo de la página.
+  }, [user, token, location.pathname]);
 
   const handleLogout = () => {
     logout();

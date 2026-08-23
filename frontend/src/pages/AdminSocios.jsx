@@ -1237,9 +1237,10 @@ function TarjetaSocioMobile({
 // ─── Fila de pedido de reactivación ─────────────────────────────────────────
 // Más simple que FilaSolicitudPendiente: no hay "rechazar" (si el admin no
 // quiere reactivar, simplemente no hace nada — el pedido no vence ni molesta).
-function FilaReactivacionPendiente({ p, onReactivar }) {
+function FilaReactivacionPendiente({ p, onReactivar, onDescartar }) {
   const [expandido, setExpandido] = useState(false)
   const [reactivando, setReactivando] = useState(false)
+  const [descartando, setDescartando] = useState(false)
 
   return (
     <div className="bg-white/70 rounded-xl overflow-hidden">
@@ -1267,11 +1268,19 @@ function FilaReactivacionPendiente({ p, onReactivar }) {
           )}
           <button
             onClick={async () => { setReactivando(true); await onReactivar(); setReactivando(false) }}
-            disabled={reactivando}
+            disabled={reactivando || descartando}
             className="w-full inline-flex items-center justify-center gap-1.5 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white text-xs font-semibold transition-colors"
           >
             <Undo2 size={14} />
             {reactivando ? 'Reactivando…' : 'Reactivar cuenta'}
+          </button>
+          <button
+            onClick={async () => { setDescartando(true); await onDescartar(); setDescartando(false) }}
+            disabled={reactivando || descartando}
+            className="w-full inline-flex items-center justify-center gap-1.5 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 disabled:opacity-50 text-gray-600 text-xs font-semibold transition-colors"
+            title="El socio sigue dado de baja, solo deja de aparecer este pedido"
+          >
+            {descartando ? 'Descartando…' : 'Descartar pedido'}
           </button>
         </div>
       )}
@@ -1544,6 +1553,22 @@ export default function AdminSocios() {
 
   const handleReactivateSocio = (socio) => {
     setConfirmAccion({ tipo: 'reactivar', socio })
+  }
+
+  const handleDescartarReactivacion = async (id_usuario) => {
+    try {
+      const res = await fetch(`${API}/admin/usuarios/${id_usuario}/descartar-reactivacion`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.detail ?? 'Error al descartar el pedido.')
+      }
+      setPendientesReactivacion(prev => prev.filter(p => p.id_usuario !== id_usuario))
+    } catch (err) {
+      window.alert(`Error: ${err.message}`)
+    }
   }
 
   const handleApproveSocio = (id_usuario) => {
@@ -1859,6 +1884,7 @@ export default function AdminSocios() {
                 key={p.id_usuario}
                 p={p}
                 onReactivar={() => handleReactivateSocio(p)}
+                onDescartar={() => handleDescartarReactivacion(p.id_usuario)}
               />
             ))}
           </div>

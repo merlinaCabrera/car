@@ -51,8 +51,16 @@ export default function Login() {
             // Si venía de un link que la mandó acá por no tener sesión
             // (ej: el link "Revisar Solicitudes" del mail al club), la
             // llevamos a donde quería ir en vez del destino genérico por rol.
+            // El 'next' viene de RutaPrivada (ej: se armó cuando alguien sin
+            // sesión clickeó el link "Revisar Solicitudes" del mail). Pero
+            // ese query param queda pegado en la URL del navegador — si
+            // DESPUÉS se loguea una cuenta distinta (ej: un socio común) en
+            // esa misma pestaña, no tiene sentido mandarla a una pantalla
+            // de admin a la que ni siquiera tiene acceso. Solo lo honramos
+            // si además la cuenta que acaba de loguear es admin.
+            const esAdmin = roles.includes('admin_general') || roles.includes('personal_administrativo');
             const next = searchParams.get('next');
-            if (next) destino = next;
+            if (next && next.startsWith('/admin') && esAdmin) destino = next;
 
             navigate(destino, { replace: true });
         } catch (err) {

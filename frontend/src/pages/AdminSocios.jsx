@@ -170,6 +170,7 @@ const TABS_ESTADO = [
   { label: 'Al día',   value: 'al_dia'  },
   { label: 'Morosos',  value: 'moroso'  },
   { label: 'Becados',  value: 'becado'  },
+  { label: 'Menores',  value: 'menor'   },
   { label: 'Activos',  value: 'activo'  },
   { label: 'De baja',  value: 'baja'    },
 ]
@@ -1676,6 +1677,11 @@ export default function AdminSocios() {
         if (s.fecha_baja) return false
         const hoyISO = new Date().toISOString().split('T')[0]
         return s.es_becado && (!s.becado_hasta || s.becado_hasta >= hoyISO)
+      }
+
+      if (estadoFiltro === 'menor') {
+        const edad = calcularEdad(s.fecha_nacimiento)
+        return edad !== null && edad < 18
       }
 
       if (estadoFiltro === 'al_dia' || estadoFiltro === 'moroso') {

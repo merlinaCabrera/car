@@ -1123,6 +1123,31 @@ def actualizar_roles_usuario(
         )
     )
 
+    # ── 5b. Notificación in-app al socio — mismo criterio que la beca: nada
+    #        de mail (saturaría en un club con movimiento normal de roles),
+    #        pero sí un aviso dentro de la app resumiendo qué cambió.
+    _ETIQUETAS_ROL = {
+        "jugador": "Jugador", "personal_tecnico": "Personal Técnico",
+        "personal_administrativo": "Personal Administrativo",
+        "admin_temporal": "Admin Temporal", "invitado": "Invitado",
+    }
+    agregados = sorted(set(roles_nuevos_nombres) - set(roles_anteriores))
+    quitados  = sorted(set(roles_anteriores) - set(roles_nuevos_nombres))
+    if agregados or quitados:
+        partes = []
+        if agregados:
+            partes.append("te asignaron: " + ", ".join(_ETIQUETAS_ROL.get(r, r) for r in agregados))
+        if quitados:
+            partes.append("te sacaron: " + ", ".join(_ETIQUETAS_ROL.get(r, r) for r in quitados))
+        db.add(models.Notificacion(
+            id_usuario=usuario.id_usuario,
+            tipo="rol_asignado" if agregados and not quitados else "rol_removido" if quitados and not agregados else "sistema",
+            titulo="Tus roles cambiaron",
+            cuerpo=("En el club " + " y ".join(partes) + ".").capitalize(),
+            referencia_id=usuario.id_usuario,
+            referencia_tabla="usuarios",
+        ))
+
     # ── 6. Commit único (todo o nada) ─────────────────────────────────────────
     db.commit()
 

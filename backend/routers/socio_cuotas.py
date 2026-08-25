@@ -54,7 +54,21 @@ import schemas
 from database import get_db
 from dependencies import get_current_user, require_roles
 from mailer.services import email_tasks
-from utils.s3 import subir_archivo, eliminar_archivo
+from utils.s3 import subir_archivo, eliminar_archivo, generar_presigned_url
+
+
+def _resolver_url_archivo(valor: str | None) -> str | None:
+    """
+    Convierte un valor de DB a URL navegable:
+    - Si es None → None
+    - Si empieza con '/' → es ruta local legacy, se devuelve tal cual
+    - Si no → es un key de S3, se genera una Presigned URL
+    """
+    if not valor:
+        return None
+    if valor.startswith("/"):
+        return valor  # ruta local legacy, el frontend la maneja como antes
+    return generar_presigned_url(valor)
 
 router = APIRouter(
     prefix="/socio/cuotas",
@@ -266,7 +280,7 @@ def obtener_historial_pagos(
             cantidad_meses=d.cantidad,
             monto_pagado=d.precio_unitario_historico * d.cantidad,
             mes_referencia=d.mes_referencia,
-            comprobante_url=d.orden.pago.comprobante_url if d.orden.pago else None,
+            comprobante_url=_resolver_url_archivo(d.orden.pago.comprobante_url) if d.orden.pago else None,
         )
         for d in detalles
     ]
@@ -639,5 +653,5 @@ async def subir_comprobante(
 
     return schemas.ComprobanteUploadResponse(
         id_pago=pago.id_pago,
-        comprobante_url=pago.comprobante_url,
+        comprobante_url=_resolver_url_archivo(pago.comprobante_url),
     )

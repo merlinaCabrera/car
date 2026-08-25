@@ -25,7 +25,15 @@ from dependencies import get_current_user, require_roles
 from security import get_password_hash, verify_password
 from mailer.services import email_tasks
 from mailer.services.email_tasks import task_aviso_admin_nuevo_socio, task_solicitud_recibida
-from utils.s3 import subir_archivo, eliminar_archivo
+from utils.s3 import subir_archivo, eliminar_archivo, generar_presigned_url
+
+
+def _resolver_url_archivo(valor: str | None) -> str | None:
+    if not valor:
+        return None
+    if valor.startswith("/"):
+        return valor
+    return generar_presigned_url(valor)
 
 router = APIRouter(
     prefix="/usuarios",
@@ -183,7 +191,9 @@ def get_mi_perfil(
     Retorna todos los datos del usuario autenticado incluyendo roles activos.
     El get_current_user ya hace eager load de roles_asignados → rol.
     """
-    return current_user
+    usuario_resp = current_user.__dict__.copy()
+    usuario_resp["foto_perfil_url"] = _resolver_url_archivo(current_user.foto_perfil_url)
+    return usuario_resp
 
 
 # ─── PATCH /usuarios/{id_usuario} ────────────────────────────────────────────
@@ -310,7 +320,10 @@ async def subir_foto_perfil(
     if foto_anterior and not foto_anterior.startswith("/"):
         eliminar_archivo(foto_anterior)
 
-    return current_user
+    # Devolver usuario con URL navegable (no el key de S3 crudo)
+    usuario_resp = current_user.__dict__.copy()
+    usuario_resp["foto_perfil_url"] = _resolver_url_archivo(s3_key)
+    return usuario_resp
 
 
 # ─── POST /usuarios/me/password ──────────────────────────────────────────────

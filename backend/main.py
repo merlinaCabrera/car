@@ -103,3 +103,21 @@ def read_root():
         "mensaje": "¡Bienvenida a la API del Club Atlético! El servidor está corriendo perfectamente.",
         "bd_host": _db_host,
     }
+
+
+@app.get("/health")
+def health_check():
+    """
+    Endpoint de salud para monitoreo (UptimeRobot, etc).
+    Verifica que el servidor y la base de datos respondan correctamente.
+    """
+    from sqlalchemy import text
+    from database import SessionLocal
+    db = SessionLocal()
+    try:
+        db.execute(text("SELECT 1"))
+        return {"status": "ok", "db": "ok"}
+    except Exception as e:
+        return {"status": "error", "db": str(e)}
+    finally:
+        db.close()

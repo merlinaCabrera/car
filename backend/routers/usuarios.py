@@ -25,6 +25,7 @@ from dependencies import get_current_user, require_roles
 from security import get_password_hash, verify_password
 from mailer.services import email_tasks
 from mailer.services.email_tasks import task_aviso_admin_nuevo_socio, task_solicitud_recibida
+from utils.s3 import subir_archivo, eliminar_archivo
 
 router = APIRouter(
     prefix="/usuarios",
@@ -42,8 +43,7 @@ _CAMPOS_EDITABLES_SOCIO = {"telefono", "direccion", "foto_perfil_url", "push_tok
 # Fotos de perfil: se guardan localmente y se sirven como archivo estático.
 # Reutiliza la misma carpeta base "uploads/" que ya monta main.py en "/uploads"
 # (junto a uploads/comprobantes) — no requiere ningún mount nuevo.
-_DIR_FOTOS_PERFIL = Path("uploads/fotos_perfil")
-_DIR_FOTOS_PERFIL.mkdir(parents=True, exist_ok=True)
+
 _TIPOS_IMAGEN_PERMITIDOS = {
     "image/jpeg": ".jpg",
     "image/png": ".png",
@@ -295,18 +295,20 @@ async def subir_foto_perfil(
 
     extension = _TIPOS_IMAGEN_PERMITIDOS[archivo.content_type]
     nombre_archivo = f"{uuid4().hex}{extension}"
-    destino = _DIR_FOTOS_PERFIL / nombre_archivo
-    destino.write_bytes(contenido)
+
+    # Subir a S3
+    s3_key = f"fotos_perfil/{current_user.id_usuario}/{nombre_archivo}"
+    subir_archivo(contenido, s3_key, archivo.content_type)
 
     foto_anterior = current_user.foto_perfil_url
-    current_user.foto_perfil_url = f"/uploads/fotos_perfil/{nombre_archivo}"
+    # Guardar el key de S3 en DB
+    current_user.foto_perfil_url = s3_key
     db.commit()
     db.refresh(current_user)
 
-    if foto_anterior and foto_anterior.startswith("/uploads/fotos_perfil/"):
-        archivo_anterior = Path("." + foto_anterior)
-        if archivo_anterior.is_file():
-            archivo_anterior.unlink(missing_ok=True)
+    # Eliminar foto anterior de S3 si existía (ignorar rutas locales viejas)
+    if foto_anterior and not foto_anterior.startswith("/"):
+        eliminar_archivo(foto_anterior)
 
     return current_user
 

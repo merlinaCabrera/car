@@ -12,3 +12,4 @@ APScheduler==3.10.4
 httpx
 jinja2
 mercadopago
+boto3

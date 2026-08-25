@@ -31,10 +31,10 @@ Decisiones técnicas:
 
 from __future__ import annotations
 
+import os
 import uuid
 from datetime import date
 from decimal import Decimal
-from pathlib import Path
 from typing import List, Optional
 
 from fastapi import (
@@ -54,6 +54,7 @@ import schemas
 from database import get_db
 from dependencies import get_current_user, require_roles
 from mailer.services import email_tasks
+from utils.s3 import subir_archivo, eliminar_archivo
 
 router = APIRouter(
     prefix="/socio/cuotas",
@@ -63,7 +64,6 @@ router = APIRouter(
 _ROLES_SOCIO = ("socio", "jugador")
 
 # ─── Configuración de subida de comprobantes ──────────────────────────────────
-UPLOAD_DIR = Path("uploads/comprobantes")
 _EXTENSIONES_PERMITIDAS = {".jpg", ".jpeg", ".png", ".pdf", ".webp"}
 _CONTENT_TYPES_PERMITIDOS = {
     "image/jpeg",
@@ -563,7 +563,7 @@ async def subir_comprobante(
         )
 
     nombre_original = file.filename or ""
-    extension = Path(nombre_original).suffix.lower()
+    extension = os.path.splitext(nombre_original)[-1].lower()
 
     if extension not in _EXTENSIONES_PERMITIDAS:
         raise HTTPException(
@@ -582,43 +582,32 @@ async def subir_comprobante(
 
     nombre_archivo = f"{uuid.uuid4().hex}{extension}"
 
-    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-    destino = UPLOAD_DIR / nombre_archivo
+    # Leer contenido completo para validar tamaño antes de subir a S3
+    contenido = await file.read()
+    await file.close()
 
-    tamano_escrito = 0
-    try:
-        with destino.open("wb") as buffer:
-            while chunk := await file.read(1024 * 1024):
-                tamano_escrito += len(chunk)
-                if tamano_escrito > _TAMANO_MAXIMO_BYTES:
-                    buffer.close()
-                    destino.unlink(missing_ok=True)
-                    raise HTTPException(
-                        status_code=status.HTTP_400_BAD_REQUEST,
-                        detail="El archivo supera el tamaño máximo permitido (10 MB).",
-                    )
-                buffer.write(chunk)
-    except HTTPException:
-        raise
-    except Exception:
-        destino.unlink(missing_ok=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="No se pudo guardar el comprobante. Intentá nuevamente.",
-        )
-    finally:
-        await file.close()
-
-    if tamano_escrito == 0:
-        destino.unlink(missing_ok=True)
+    if len(contenido) == 0:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="El archivo recibido está vacío.",
         )
+    if len(contenido) > _TAMANO_MAXIMO_BYTES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="El archivo supera el tamaño máximo permitido (10 MB).",
+        )
 
-    comprobante_url = f"/uploads/comprobantes/{nombre_archivo}"
+    # Subir a S3 — el key es la ruta dentro del bucket
+    s3_key = f"comprobantes/{pago.id_pago}/{nombre_archivo}"
+    subir_archivo(contenido, s3_key, file.content_type)
+
     comprobante_anterior = pago.comprobante_url
-    pago.comprobante_url = comprobante_url
+    # Guardar el key de S3 en DB (no una ruta local)
+    pago.comprobante_url = s3_key
+
+    # Eliminar comprobante anterior de S3 si existía
+    if comprobante_anterior and not comprobante_anterior.startswith("/"):
+        eliminar_archivo(comprobante_anterior)
 
     _registrar_audit(
         db=db,
@@ -627,10 +616,10 @@ async def subir_comprobante(
         tabla_afectada="pagos",
         registro_id=pago.id_pago,
         detalle={
-            "comprobante_url": comprobante_url,
+            "comprobante_url": s3_key,
             "comprobante_anterior": comprobante_anterior,
             "nombre_original": nombre_original,
-            "tamano_bytes": tamano_escrito,
+            "tamano_bytes": len(contenido),
         },
         ip=_extraer_ip(request),
     )
@@ -645,7 +634,7 @@ async def subir_comprobante(
         dni_socio=socio.dni,
         numero_pago=pago.id_pago,
         monto=str(pago.monto_total),
-        comprobante_url=comprobante_url,
+        comprobante_url=s3_key,
     )
 
     return schemas.ComprobanteUploadResponse(

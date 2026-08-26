@@ -7,12 +7,12 @@ services:
     restart: always
     environment:
       POSTGRES_USER: admin_car
-      POSTGRES_PASSWORD: password123
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: club_roberts_db
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./init-db:/docker-entrypoint-initdb.d  # <--- ESTA ES LA LÍNEA MÁGICA
+      - ./init-db:/docker-entrypoint-initdb.d  
 volumes:
   postgres_data:

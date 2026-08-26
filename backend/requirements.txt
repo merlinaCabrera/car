@@ -1,15 +1,18 @@
-fastapi
-uvicorn
-bcrypt>=4.0.1
-sqlalchemy
-psycopg2-binary
-pydantic[email]
-pydantic-settings
-python-jose[cryptography]
-python-multipart
-python-dotenv
-APScheduler==3.10.4
-httpx
-jinja2
-mercadopago
-boto3
+
+# bcrypt fijado a 3.2.2 a propósito: passlib rompe con bcrypt>=4.1
+# (pierde el atributo __about__.__version__ que passlib usa para detectar la versión).
+fastapi==0.138.2
+uvicorn==0.49.0
+bcrypt==3.2.2
+sqlalchemy==2.0.51
+psycopg2-binary==2.9.12
+pydantic[email]==2.13.4
+pydantic-settings==2.14.2
+python-jose[cryptography]==3.5.0
+python-multipart==0.0.32
+python-dotenv==1.2.2
+APScheduler==3.11.3
+httpx==0.28.1
+jinja2==3.1.6
+mercadopago==3.3.0
+boto3==1.43.79

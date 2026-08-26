@@ -188,7 +188,7 @@ def recordatorio_comprobante_pendiente():
     db = SessionLocal()
     try:
         ahora = datetime.now(timezone.utc)
-        ventana_inicio = ahora + timedelta(hours=23)
+        ventana_inicio = ahora + timedelta(hours=20)
         ventana_fin    = ahora + timedelta(hours=24)
 
         ordenes = (
@@ -418,11 +418,11 @@ scheduler = BackgroundScheduler(timezone="UTC")
 scheduler.add_job(
     cerrar_eventos_vencidos,
     trigger="interval",
-    minutes=5,
+    hours=12,
     id="cerrar_eventos_vencidos",
     replace_existing=True,
-    misfire_grace_time=60,
-    jitter=30,
+    misfire_grace_time=300,
+    jitter=120,
 )
 
 scheduler.add_job(
@@ -438,21 +438,21 @@ scheduler.add_job(
 scheduler.add_job(
     expirar_ordenes_vencidas,
     trigger="interval",
-    hours=1,
+    hours=4,
     id="expirar_ordenes_vencidas",
     replace_existing=True,
     misfire_grace_time=300,
-    jitter=60,
+    jitter=120,
 )
 
 scheduler.add_job(
     recordatorio_comprobante_pendiente,
     trigger="interval",
-    hours=1,
+    hours=4,
     id="recordatorio_comprobante_pendiente",
     replace_existing=True,
     misfire_grace_time=300,
-    jitter=60,
+    jitter=120,
 )
 
 scheduler.add_job(
@@ -467,4 +467,4 @@ scheduler.add_job(
 )
 
 scheduler.start()
-logger.info("[scheduler] APScheduler iniciado — revisión cada 5 minutos.")
+logger.info("[scheduler] APScheduler iniciado — frecuencias ajustadas para Neon free tier.")

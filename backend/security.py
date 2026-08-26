@@ -3,7 +3,7 @@ from typing import Optional
 import bcrypt
 from jose import JWTError, jwt
 
-SECRET_KEY = "***SECRET_KEY_REMOVED***"
+SECRET_KEY = os.environ["SECRET_KEY"]
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 8
 

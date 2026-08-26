@@ -635,3 +635,4 @@ export default function AdminComercios() {
     </div>
   )
 }
+

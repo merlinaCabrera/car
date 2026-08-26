@@ -13,7 +13,7 @@
  *
  * Mejoras aplicadas respecto a la versión anterior:
  *   1. resolverFotoUrl — normaliza URLs absolutas y relativas; funciona
- *      igual en localhost y en producción (Render + Vercel).
+ *      igual en localhost y en producción (Render).
  *   2. AvatarUploader — muestra preview local inmediato antes de que
  *      termine la subida, evitando la sensación de que "no pasó nada".
  *   3. Validación de tipo MIME en cliente antes de hacer el fetch.

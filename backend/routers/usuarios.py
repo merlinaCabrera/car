@@ -12,6 +12,7 @@ Cambios respecto a la versión anterior:
   - POST /usuarios/me/foto  → nuevo. Sube la foto de perfil del usuario logueado
     a uploads/fotos_perfil/ (reutiliza el mount /uploads que ya existe en main.py).
 """
+from datetime import datetime, timezone
 from pathlib import Path
 from uuid import uuid4
 
@@ -351,6 +352,7 @@ def cambiar_password(
 
     current_user.password_hash = get_password_hash(datos.password_nuevo)
     current_user.requiere_cambio_password = False
+    current_user.password_actualizada_en = datetime.now(timezone.utc)
     db.commit()
 
     return {"mensaje": "Contraseña actualizada correctamente."}

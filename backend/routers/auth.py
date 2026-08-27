@@ -16,6 +16,10 @@ router = APIRouter(
     tags=["Autenticación"]
 )
 
+MAX_INTENTOS_FALLIDOS = 5
+MINUTOS_BLOQUEO = 15
+
+
 @router.post("/login", response_model=schemas.TokenResponse)
 def login_for_access_token(payload: schemas.LoginPayload, db: Session = Depends(get_db)):
     # 1. Buscar usuario por DNI
@@ -48,12 +52,28 @@ def login_for_access_token(payload: schemas.LoginPayload, db: Session = Depends(
             },
         )
 
+    # Chequeo de bloqueo por intentos fallidos (rate limiting de login)
+    if user.bloqueado_hasta and user.bloqueado_hasta > datetime.now(timezone.utc):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Demasiados intentos fallidos. Probá de nuevo en unos minutos.",
+        )
+
     if not verify_password(payload.password, user.password_hash):
+        user.intentos_fallidos += 1
+        if user.intentos_fallidos >= MAX_INTENTOS_FALLIDOS:
+            user.bloqueado_hasta = datetime.now(timezone.utc) + timedelta(minutes=MINUTOS_BLOQUEO)
+        db.commit()
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="La contraseña es incorrecta.",
             headers={"WWW-Authenticate": "Bearer"},
         )
+
+    # Login exitoso: resetear contador de intentos fallidos
+    user.intentos_fallidos = 0
+    user.bloqueado_hasta = None
+    db.commit()
 
     # 4. Obtener roles activos del usuario
     active_roles = [
@@ -162,6 +182,7 @@ def resetear_password(
     usuario.token_recuperacion = None
     usuario.token_recuperacion_expira = None
     usuario.requiere_cambio_password = False
+    usuario.password_actualizada_en = datetime.now(timezone.utc)
     db.commit()
 
     return {"ok": True}

@@ -32,6 +32,7 @@ def get_current_user(
     """
     Decodifica el JWT y retorna el Usuario ORM completo con roles cargados.
     Lanza 401 si el token es inválido/expirado.
+    Lanza 401 si el token fue emitido antes del último cambio de password.
     Lanza 403 si el usuario está dado de baja.
     """
     exc_401 = HTTPException(
@@ -64,6 +65,14 @@ def get_current_user(
 
     if user is None:
         raise exc_401
+
+    # Si la contraseña se cambió después de emitido el token, el token queda inválido
+    iat = payload.get("iat")
+    if user.password_actualizada_en and iat:
+        iat_dt = datetime.fromtimestamp(iat, tz=timezone.utc)
+        if iat_dt < user.password_actualizada_en:
+            raise exc_401
+
     if user.fecha_baja is not None:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

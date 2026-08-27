@@ -260,6 +260,19 @@ class Usuario(Base):
     )
     ultimo_login_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
 
+    # Rate limiting de login
+    intentos_fallidos: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text('0'))
+    bloqueado_hasta: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True,
+        comment='Si tiene valor futuro, el login queda bloqueado hasta esta fecha por intentos fallidos.',
+    )
+
+    # Invalidación de tokens por cambio de password
+    password_actualizada_en: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True,
+        comment='Timestamp del último cambio de password. Tokens emitidos antes de esta fecha se rechazan.',
+    )
+
     # QR dinámico — gestionado por trigger trg_rotar_qr
     qr_token: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),

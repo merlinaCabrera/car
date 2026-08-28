@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import jugadoresImg from '../../assets/jugadores.PNG';
 import InfiniteCarousel from './InfiniteCarousel';
 
@@ -35,6 +36,16 @@ export default function Historia() {
             </div>
           )}
         />
+      </div>
+
+      <div className="flex justify-center mt-8">
+        <Link
+          to="/galeria"
+          className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full border-2 border-blue-900 text-blue-900 font-semibold hover:bg-blue-900 hover:text-white transition-colors duration-300"
+        >
+          Ver galería completa
+          <span aria-hidden="true">→</span>
+        </Link>
       </div>
     </section>
   );

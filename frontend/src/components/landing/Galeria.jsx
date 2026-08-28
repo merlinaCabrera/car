@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import jugadoresImg from '../../assets/jugadores.PNG';
 import InfiniteCarousel from './InfiniteCarousel';
 
@@ -7,7 +8,7 @@ const placeholders = [1, 2, 3, 4];
 
 export default function Galeria() {
   return (
-    <section className="pt-16 pb-6 bg-slate-50">
+    <section className="pt-16 pb-10 bg-slate-50">
       <InfiniteCarousel
         items={placeholders}
         bgClassName="from-slate-50"
@@ -25,6 +26,16 @@ export default function Galeria() {
           </div>
         )}
       />
+
+      <div className="flex justify-center mt-8">
+        <Link
+          to="/galeria"
+          className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full border-2 border-blue-900 text-blue-900 font-semibold hover:bg-blue-900 hover:text-white transition-colors duration-300"
+        >
+          Ver galería completa
+          <span aria-hidden="true">→</span>
+        </Link>
+      </div>
     </section>
   );
 }

@@ -2,6 +2,7 @@ import Hero from '../components/landing/Hero';
 import Historia from '../components/landing/Historia';
 import Galeria from '../components/landing/Galeria';
 import Calendario from '../components/landing/Calendario';
+import Sponsors from '../components/landing/Sponsors';
 import Footer from '../components/landing/Footer';
 import { useAuth } from '../context/AuthContext';
 
@@ -31,6 +32,7 @@ export default function Landing() {
       <Historia />
       <Galeria />
       <Calendario />
+      <Sponsors />
       <Footer />
     </div>
   );

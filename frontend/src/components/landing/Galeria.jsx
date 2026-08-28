@@ -7,7 +7,7 @@ const placeholders = [1, 2, 3, 4];
 
 export default function Galeria() {
   return (
-    <section className="py-16 bg-slate-50">
+    <section className="pt-16 pb-6 bg-slate-50">
       <InfiniteCarousel
         items={placeholders}
         bgClassName="from-slate-50"

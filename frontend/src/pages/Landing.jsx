@@ -30,7 +30,6 @@ export default function Landing() {
     <div className="flex flex-col min-h-screen bg-white">
       <Hero ctaProps={ctaProps} />
       <Historia />
-      <Galeria />
       <Calendario />
       <Sponsors />
       <Footer />

@@ -1,6 +1,5 @@
 import { Link } from 'react-router-dom';
 import heroBg from '../../assets/hero-bg.PNG';
-import escudoCar from '../../assets/escudo-car.PNG';
 import { useAuth } from '../../context/AuthContext';
 
 export default function Hero() {
@@ -14,10 +13,8 @@ export default function Hero() {
       {/* Capa de superposición oscura */}
       <div className="absolute inset-0 bg-black/60 z-0"></div>
 
-      <header className="relative z-10 w-full p-6 lg:px-12">
-        <div className="max-w-7xl mx-auto">
-          <img src={escudoCar} alt="Escudo C.A. Roberts" className="h-12 w-auto object-contain drop-shadow-lg" />
-        </div>
+      <header className="relative z-10 w-full p-6 lg:px-12 flex justify-center">
+        <img src="/escudo-car-1.png" alt="Escudo C.A. Roberts" className="h-28 sm:h-32 lg:h-36 w-auto object-contain drop-shadow-lg" />
       </header>
 
       <main className="relative z-10 flex-grow flex items-center justify-center px-4 sm:px-6 lg:px-8">

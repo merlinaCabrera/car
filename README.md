@@ -16,6 +16,7 @@ El proyecto está dividido en dos aplicaciones principales y se apoya en servici
 - **Multi-Rol:** Un mismo usuario puede tener múltiples roles simultáneos (puede ser Socio, Jugador y Personal Técnico al mismo tiempo).
 - **Código QR:** Cada socio posee un QR único. El token subyacente rota automáticamente si hay cambios en su estado financiero.
 - **Control en Puerta:** Interfaz para escanear códigos QR (o buscar por DNI), permitiendo autorizar o denegar el acceso instantáneamente según si el socio está al día o es moroso.
+<img width="1162" height="648" alt="image" src="https://github.com/user-attachments/assets/d286391a-b276-4744-8035-5141bcd53671" />
 
 ### 2. Finanzas y E-Commerce
 - **Motor de Cuotas:** El cálculo de deudas no se guarda en pesos históricos, sino en "cantidad de meses adeudados". Si el valor de la cuota se actualiza globalmente, la deuda de los morosos se indexa de forma automática.

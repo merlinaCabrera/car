@@ -41,10 +41,11 @@ El proyecto está dividido en dos aplicaciones principales y se apoya en servici
 - **Correos:** Para flujos de alta/baja de usuarios o de compras (en general, de un tipo de ítem o mixtas, es decir: cuotas, indumentaria y alquileres) están establecidas notificaciones por correo electrónico, para lo cual se utiliza la plataforma Resend.
 
 
-📦 car
+```text
+📦 club-atletico-erp
  ┣ 📂 backend
  ┃ ┣ 📂 alembic       # Migraciones de base de datos
- ┃ ┣ 📂 routers       # Endpoints segregados por rol (admin, socio, etc.)
+ ┃ ┣ 📂 routers       # Endpoints segregados por rol
  ┃ ┣ 📜 models.py     # Modelos de SQLAlchemy
  ┃ ┗ 📜 schemas.py    # Esquemas de validación de Pydantic
  ┗ 📂 frontend
@@ -53,3 +54,4 @@ El proyecto está dividido en dos aplicaciones principales y se apoya en servici
    ┃ ┣ 📂 context     # Estado global (Auth, Carrito)
    ┃ ┗ 📂 pages       # Vistas de la aplicación
    ┗ 📜 package.json
+```

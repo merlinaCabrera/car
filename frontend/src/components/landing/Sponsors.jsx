@@ -14,30 +14,57 @@ const SPONSORS = [
   { img: '/sponsor11.png', url: 'https://', alt: 'Sponsor 11' },
 ];
 
+// Duplicamos la lista para que el loop sea continuo (cuando la primera copia
+// termina de salir por la izquierda, la segunda copia ya está ocupando su
+// lugar exacto — no hay salto ni corte visible).
+const SPONSORS_LOOP = [...SPONSORS, ...SPONSORS];
+
 export default function Sponsors() {
   return (
-    <section className="py-16 bg-slate-50 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto">
+    <section className="py-16 bg-slate-50 overflow-hidden">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <h2 className="text-3xl font-bold mb-10 text-center text-blue-900">Sponsors</h2>
+      </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
-          {SPONSORS.map((sponsor) => (
+      {/* Contenedor sin padding horizontal: el carrusel necesita ocupar
+          todo el ancho de la pantalla para que el loop se vea prolijo. */}
+      <div className="group relative w-full overflow-hidden">
+        {/* Degradados en los bordes para que las cards no corten en seco */}
+        <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-12 sm:w-24 bg-gradient-to-r from-slate-50 to-transparent z-10" />
+        <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-12 sm:w-24 bg-gradient-to-l from-slate-50 to-transparent z-10" />
+
+        <div className="flex w-max animate-sponsors-scroll group-hover:[animation-play-state:paused]">
+          {SPONSORS_LOOP.map((sponsor, i) => (
             <a
-              key={sponsor.img}
+              key={`${sponsor.img}-${i}`}
               href={sponsor.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="bg-blue-900 rounded-lg shadow-md p-6 flex items-center justify-center aspect-square hover:shadow-xl hover:scale-105 hover:bg-blue-950 transition-all duration-300"
+              className="mx-3 sm:mx-4 flex-shrink-0 w-28 h-28 sm:w-36 sm:h-36 md:w-40 md:h-40 bg-blue-900 rounded-lg shadow-md p-3 sm:p-4 md:p-6 flex items-center justify-center hover:shadow-xl hover:bg-blue-950 transition-all duration-300"
             >
               <img
                 src={sponsor.img}
                 alt={sponsor.alt}
                 className="max-w-full max-h-full object-contain"
+                draggable={false}
               />
             </a>
           ))}
         </div>
       </div>
+
+      {/* Animación del carrusel. Duración proporcional a la cantidad de
+          sponsors para que la velocidad se sienta igual sin importar
+          cuántos haya (si mañana son 20, no hace falta tocar esto). */}
+      <style>{`
+        @keyframes sponsors-scroll {
+          from { transform: translateX(0); }
+          to { transform: translateX(-50%); }
+        }
+        .animate-sponsors-scroll {
+          animation: sponsors-scroll ${SPONSORS.length * 4}s linear infinite;
+        }
+      `}</style>
     </section>
   );
 }

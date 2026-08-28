@@ -1,8 +1,13 @@
 # ERP - Club Deportivo
 
 Este repositorio contiene el código fuente de una plataforma integral para la administración y operación de un club deportivo. El sistema combina una landing para el público general con un portal privado altamente modular, diseñado para resolver las necesidades financieras, administrativas y deportivas de la institución.
-
 El proyecto está dividido en dos aplicaciones principales y se apoya en servicios en la nube para garantizar escalabilidad y persistencia.
+
+![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi)
+![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white)
+![AWS](https://img.shields.io/badge/AWS-%23FF9900.svg?style=for-the-badge&logo=amazon-web-services&logoColor=white)
 
 ## Stack Tecnológico
 
@@ -34,3 +39,17 @@ El proyecto está dividido en dos aplicaciones principales y se apoya en servici
 - **Configuración Global:** Un único registro en la base de datos permite al administrador modificar el valor base de la cuota, beneficios por antigüedad y días de vencimiento, impactando en toda la plataforma al instante.
 - **Audit Log:** Tabla inmutable que registra cada acción sensible dentro del sistema (quién aprobó un pago, quién dio de baja a un socio, etc.) asegurando la trazabilidad total.
 - **Correos:** Para flujos de alta/baja de usuarios o de compras (en general, de un tipo de ítem o mixtas, es decir: cuotas, indumentaria y alquileres) están establecidas notificaciones por correo electrónico, para lo cual se utiliza la plataforma Resend.
+
+
+📦 car
+ ┣ 📂 backend
+ ┃ ┣ 📂 alembic       # Migraciones de base de datos
+ ┃ ┣ 📂 routers       # Endpoints segregados por rol (admin, socio, etc.)
+ ┃ ┣ 📜 models.py     # Modelos de SQLAlchemy
+ ┃ ┗ 📜 schemas.py    # Esquemas de validación de Pydantic
+ ┗ 📂 frontend
+   ┣ 📂 src
+   ┃ ┣ 📂 components  # Componentes modulares
+   ┃ ┣ 📂 context     # Estado global (Auth, Carrito)
+   ┃ ┗ 📂 pages       # Vistas de la aplicación
+   ┗ 📜 package.json

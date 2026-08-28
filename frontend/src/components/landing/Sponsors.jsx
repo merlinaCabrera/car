@@ -27,7 +27,7 @@ export default function Sponsors() {
               href={sponsor.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="bg-slate-100 border border-slate-200 rounded-lg shadow-md p-6 flex items-center justify-center aspect-square hover:shadow-xl hover:scale-105 hover:bg-white transition-all duration-300"
+              className="bg-blue-900 rounded-lg shadow-md p-6 flex items-center justify-center aspect-square hover:shadow-xl hover:scale-105 hover:bg-blue-950 transition-all duration-300"
             >
               <img
                 src={sponsor.img}

@@ -2,9 +2,8 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import MainLayout from './layouts/MainLayout';
-import RutaPrivada from './components/RutaPrivada';
-import CambiarPasswordObligatorio from './pages/CambiarPasswordObligatorio';
 import Landing from './pages/Landing';
+import GaleriaCompleta from './pages/GaleriaCompleta';
 import Registro from './pages/Registro';
 import RecuperarPassword from './pages/RecuperarPassword';
 import Login from './pages/Login';
@@ -43,18 +42,12 @@ function App() {
           <Routes>
             {/* Rutas públicas */}
             <Route path="/" element={<Landing />} />
+            <Route path="/galeria" element={<GaleriaCompleta />} />
             <Route path="/registro" element={<Registro />} />
             <Route path="/recuperar-password" element={<RecuperarPassword />} />
             <Route path="/login" element={<Login />} />
 
-            {/* Rutas privadas envueltas en el Layout del Portal.
-                RutaPrivada primero: si no hay sesión, redirige a /login?next=...
-                en vez de renderizar la página protegida rota. */}
-            <Route element={<RutaPrivada />}>
-            {/* Standalone (sin MainLayout / sin menú) — no queremos que la
-                persona pueda navegar a otro lado antes de cambiar la
-                contraseña temporal. */}
-            <Route path="/cambiar-password-obligatorio" element={<CambiarPasswordObligatorio />} />
+            {/* Rutas privadas envueltas en el Layout del Portal */}
             <Route element={<MainLayout userRole="socio" />}>
               {/* Socio */}
               <Route path="/socio" element={<SocioInicio />} />
@@ -93,7 +86,6 @@ function App() {
               <Route path="/admin/tienda" element={<Navigate to="/admin/verificaciones?tipo=compra" replace />} />
               <Route path="/admin/alquileres" element={<Navigate to="/admin/verificaciones?tipo=alquiler" replace />} />
               <Route path="/admin/estadisticas" element={<AdminEstadisticas />} />
-            </Route>
             </Route>
           </Routes>
         </BrowserRouter>

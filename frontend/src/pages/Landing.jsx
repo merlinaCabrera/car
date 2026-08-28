@@ -3,6 +3,7 @@ import Historia from '../components/landing/Historia';
 import Galeria from '../components/landing/Galeria';
 import Calendario from '../components/landing/Calendario';
 import Sponsors from '../components/landing/Sponsors';
+import Beneficios from '../components/landing/Beneficios';
 import Footer from '../components/landing/Footer';
 import { useAuth } from '../context/AuthContext';
 
@@ -32,6 +33,7 @@ export default function Landing() {
       <Historia />
       <Calendario />
       <Sponsors />
+      <Beneficios />
       <Footer />
     </div>
   );

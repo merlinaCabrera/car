@@ -6,9 +6,11 @@ El proyecto está dividido en dos aplicaciones principales y se apoya en servici
 
 ## Stack Tecnológico
 
-- **Frontend:** Desarrollado con React.js y empaquetado con Vite. 
-- **Backend:** API REST construida con Python y FastAPI.
-- **Base de Datos:** PostgreSQL. Se utiliza SQLAlchemy 2.0 como ORM y Alembic para el control de migraciones.
+| Capa | Tecnología | Detalles |
+| :--- | :--- | :--- |
+| **Frontend** | React.js + Vite | SPA responsiva, alojada en AWS S3 + CloudFront. |
+| **Backend** | Python + FastAPI | API REST, validación con Pydantic v2. |
+| **Base de Datos**| PostgreSQL | ORM SQLAlchemy 2.0, control de migraciones con Alembic. |
 
 ## Módulos Principales
 

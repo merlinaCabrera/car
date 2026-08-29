@@ -32,8 +32,8 @@ export default function Landing() {
       <Hero ctaProps={ctaProps} />
       <Historia />
       <Calendario />
+      <Beneficios />      
       <Sponsors />
-      <Beneficios />
       <Footer />
     </div>
   );

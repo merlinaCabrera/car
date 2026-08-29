@@ -71,6 +71,8 @@ from __future__ import annotations
 
 import uuid
 from datetime import date, datetime
+
+from utils.s3 import url_publica
 from decimal import Decimal
 from typing import List, Optional
 
@@ -1489,6 +1491,12 @@ class ComercioAsociado(Base):
         rubro: Mapped[str | None] = mapped_column(String(100))
         beneficio_ofrecido: Mapped[str] = mapped_column(String(200), nullable=False)
         es_activo: Mapped[bool] = mapped_column(default=True)
+        imagen_key: Mapped[str | None] = mapped_column(Text, nullable=True)
 
         id_usuario_acceso: Mapped[int | None] = mapped_column(ForeignKey('usuarios.id_usuario'))
         usuario_acceso: Mapped["Usuario"] = relationship()
+
+        @property
+        def imagen_url(self) -> str | None:
+            """Se muestra en la sección 'Beneficios' de la landing (solo si tiene foto)."""
+            return url_publica(self.imagen_key) if self.imagen_key else None

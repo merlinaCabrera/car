@@ -45,6 +45,7 @@ from routers import admin_dashboard
 from routers import admin_auditoria
 from routers import admin_sponsors
 from routers import sponsors as sponsors_publico
+from routers import beneficios
 
 import scheduler
 
@@ -97,6 +98,7 @@ app.include_router(admin_dashboard.router)
 app.include_router(admin_auditoria.router)
 app.include_router(admin_sponsors.router)
 app.include_router(sponsors_publico.router)
+app.include_router(beneficios.router)
 
 
 @app.get("/")

@@ -576,6 +576,27 @@ class AuditLog(Base):
 # MÓDULO 3 · E-COMMERCE & FINANZAS
 # ─────────────────────────────────────────────────────────────────────────────
 
+class Sponsor(Base):
+    """
+    Sponsors mostrados en el carrusel de la landing pública.
+    imagen_key es el object key del bucket público car-sponsors-produccion
+    (ver utils/s3.py) — la URL se construye en el momento con url_publica(),
+    no se persiste, para no tener que hacer backfill si el día de mañana
+    cambia el bucket o se pone CloudFront adelante.
+    """
+    __tablename__ = "sponsors"
+
+    id_sponsor: Mapped[int] = mapped_column(Integer, primary_key=True)
+    nombre: Mapped[str] = mapped_column(String(150), nullable=False)
+    imagen_key: Mapped[str] = mapped_column(Text, nullable=False)
+    url_destino: Mapped[str] = mapped_column(Text, nullable=False)
+    orden: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    activo: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
+    creado_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now(),
+    )
+
+
 class ProductoServicio(Base):
     """
     Catálogo unificado: cuotas, alquileres e indumentaria.

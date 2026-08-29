@@ -43,6 +43,8 @@ from routers import deportivo
 from routers import webhooks_mercadopago
 from routers import admin_dashboard
 from routers import admin_auditoria
+from routers import admin_sponsors
+from routers import sponsors as sponsors_publico
 
 import scheduler
 
@@ -93,6 +95,8 @@ app.include_router(deportivo.router)
 app.include_router(webhooks_mercadopago.router)
 app.include_router(admin_dashboard.router)
 app.include_router(admin_auditoria.router)
+app.include_router(admin_sponsors.router)
+app.include_router(sponsors_publico.router)
 
 
 @app.get("/")

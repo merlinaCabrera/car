@@ -38,7 +38,10 @@ import {
   Search,
   ChevronDown,
   ChevronUp,
+  Image,
 } from 'lucide-react'
+
+import SponsorsBlock from '../components/admin/SponsorsBlock'
 
 const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 
@@ -321,6 +324,12 @@ export default function AdminComercios() {
   const [editingComercio,  setEditingComercio]   = useState(null)
   const [searchTerm,       setSearchTerm]        = useState('')
 
+  // Ambos bloques son desplegables — no son secciones que se toquen a
+  // diario. Comercios arranca abierto (contenido principal de la página),
+  // Sponsors arranca cerrado (más nuevo, secundario).
+  const [comerciosAbierto, setComerciosAbierto]  = useState(true)
+  const [sponsorsAbierto,  setSponsorsAbierto]   = useState(false)
+
   // ── Catálogo de usuarios — fetch único al montar (para el selector) ────────
   const [usuarios, setUsuarios] = useState([])
 
@@ -449,8 +458,12 @@ export default function AdminComercios() {
         />
       )}
 
-      {/* Header */}
-      <div className="space-y-4">
+      {/* ═══ Bloque: Comercios Adheridos (desplegable) ═══ */}
+      <button
+        type="button"
+        onClick={() => setComerciosAbierto(o => !o)}
+        className="w-full flex items-start justify-between gap-3 text-left"
+      >
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2 sm:gap-3">
             <Store size={22} className="text-gray-500 flex-shrink-0" />
@@ -460,6 +473,13 @@ export default function AdminComercios() {
             Alta, edición y baja de los comercios que ofrecen beneficios a los socios.
           </p>
         </div>
+        {comerciosAbierto
+          ? <ChevronUp size={20} className="text-gray-400 flex-shrink-0 mt-1" />
+          : <ChevronDown size={20} className="text-gray-400 flex-shrink-0 mt-1" />}
+      </button>
+
+      {comerciosAbierto && (
+      <div className="space-y-4 sm:space-y-5">
         <div className="flex flex-nowrap items-center gap-1.5 sm:gap-3 overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 sm:overflow-visible">
           <button
             onClick={openModalForCreate}
@@ -477,7 +497,6 @@ export default function AdminComercios() {
             <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
           </button>
         </div>
-      </div>
 
       {/* Buscador */}
       <div className="relative">
@@ -632,7 +651,36 @@ export default function AdminComercios() {
           </tbody>
         </table>
       </div>
+      </div>
+      )}
+
+      {/* ═══ Bloque: Sponsors (desplegable) ═══ */}
+      <div className="pt-2 border-t border-gray-100">
+        <button
+          type="button"
+          onClick={() => setSponsorsAbierto(o => !o)}
+          className="w-full flex items-start justify-between gap-3 text-left pt-4"
+        >
+          <div>
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2 sm:gap-3">
+              <Image size={22} className="text-gray-500 flex-shrink-0" />
+              Sponsors
+            </h2>
+            <p className="text-xs sm:text-sm text-gray-500 mt-1">
+              Logos e imágenes del carrusel de sponsors en la landing pública.
+            </p>
+          </div>
+          {sponsorsAbierto
+            ? <ChevronUp size={20} className="text-gray-400 flex-shrink-0 mt-1" />
+            : <ChevronDown size={20} className="text-gray-400 flex-shrink-0 mt-1" />}
+        </button>
+
+        {sponsorsAbierto && (
+          <div className="mt-4">
+            <SponsorsBlock />
+          </div>
+        )}
+      </div>
     </div>
   )
 }
-

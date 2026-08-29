@@ -1,4 +1,5 @@
 import camotiAzul from '../../assets/camoti-azul.PNG';
+import { Link } from 'react-router-dom';
 
 // lucide-react no incluye logos de marca (Facebook/Instagram/YouTube) a
 // propósito — son solo íconos genéricos de UI. Por eso estos van inline,
@@ -62,6 +63,9 @@ export default function Footer() {
           <a href="https://clubatleticoroberts.com" className="text-blue-400 hover:text-blue-300 transition-colors font-medium">
             clubatleticoroberts.com
           </a>
+          <Link to="/ayuda" className="text-sm text-slate-300 hover:text-white transition-colors underline underline-offset-4">
+            Ayuda y Contacto
+          </Link>
         </div>
       </div>
     </footer>

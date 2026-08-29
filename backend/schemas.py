@@ -1609,6 +1609,49 @@ class BeneficioPublico(BaseModel):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# FAQ (preguntas frecuentes) + Contacto
+# ─────────────────────────────────────────────────────────────────────────────
+
+class FaqEntryBase(BaseModel):
+    categoria: str = Field(min_length=1, max_length=80)
+    pregunta: str = Field(min_length=1, max_length=300)
+    respuesta: str = Field(min_length=1)
+    es_publica: bool = Field(
+        default=False,
+        description="TRUE = visible sin login en /ayuda. FALSE = solo para socios logueados.",
+    )
+    es_activa: bool = True
+    orden: int = Field(default=0, description="Orden de aparición dentro de su categoría.")
+
+
+class FaqEntryCreate(FaqEntryBase):
+    pass
+
+
+class FaqEntryUpdate(BaseModel):
+    """Todos los campos son opcionales — PATCH parcial."""
+    categoria: Optional[str] = Field(default=None, min_length=1, max_length=80)
+    pregunta: Optional[str] = Field(default=None, min_length=1, max_length=300)
+    respuesta: Optional[str] = Field(default=None, min_length=1)
+    es_publica: Optional[bool] = None
+    es_activa: Optional[bool] = None
+    orden: Optional[int] = None
+
+
+class FaqEntryResponse(FaqEntryBase):
+    model_config = ConfigDict(from_attributes=True)
+
+    id_faq: int
+
+
+class ContactoPayload(BaseModel):
+    """Formulario de contacto de /ayuda — no requiere estar logueado."""
+    email: EmailStr
+    nombre: Optional[str] = Field(default=None, max_length=150)
+    mensaje: str = Field(min_length=1, max_length=2000)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # QR AUTH
 # ─────────────────────────────────────────────────────────────────────────────
 

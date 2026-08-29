@@ -11,6 +11,7 @@ import {
   Package,
   Settings,
   LogOut,
+  HelpCircle,
   X,
   ScanLine,
   ShoppingCart,
@@ -390,6 +391,10 @@ export default function MainLayout({ userRole }) {
         </nav>
 
         <div className="p-6 border-t border-slate-800 bg-slate-950">
+          <Link to="/ayuda" onClick={closeMenu} className="w-full flex items-center justify-center gap-2 px-4 py-3 mb-3 border border-slate-700 text-slate-300 rounded-xl hover:text-white hover:bg-slate-800 transition-colors font-semibold">
+            <HelpCircle size={18} />
+            <span>Ayuda</span>
+          </Link>
           <button onClick={handleLogout} className="w-full flex items-center justify-center gap-2 px-4 py-3 border border-red-500/30 text-red-400 rounded-xl hover:text-white hover:bg-red-600 transition-colors font-bold">
             <LogOut size={18} />
             Cerrar Sesión

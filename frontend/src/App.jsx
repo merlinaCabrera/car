@@ -5,6 +5,7 @@ import MainLayout from './layouts/MainLayout';
 import RutaPrivada from './components/RutaPrivada';
 import CambiarPasswordObligatorio from './pages/CambiarPasswordObligatorio';
 import Landing from './pages/Landing';
+import Ayuda from './pages/Ayuda';
 import Registro from './pages/Registro';
 import RecuperarPassword from './pages/RecuperarPassword';
 import Login from './pages/Login';
@@ -43,6 +44,7 @@ function App() {
           <Routes>
             {/* Rutas públicas */}
             <Route path="/" element={<Landing />} />
+            <Route path="/ayuda" element={<Ayuda />} />
             <Route path="/registro" element={<Registro />} />
             <Route path="/recuperar-password" element={<RecuperarPassword />} />
             <Route path="/login" element={<Login />} />

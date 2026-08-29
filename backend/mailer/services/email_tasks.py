@@ -316,3 +316,11 @@ async def task_bienvenida_alta_manual(email_destino: str, nombre_socio: str) -> 
         logger.info(f"Mail 'bienvenida_alta_manual' enviado a {email_destino}")
     except Exception:
         logger.exception(f"Fallo al enviar mail 'bienvenida_alta_manual' a {email_destino}")
+
+
+async def task_contacto_publico(email: str, nombre: str, mensaje: str) -> None:
+    try:
+        await email_service.enviar_contacto_publico(email, nombre, mensaje)
+        logger.info(f"Mail 'contacto_publico' enviado al club (de {email})")
+    except Exception:
+        logger.exception(f"Fallo al enviar mail 'contacto_publico' al club (de {email})")

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, ArrowLeft } from 'lucide-react';
 
 const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8000';
 
@@ -98,7 +98,14 @@ export default function Login() {
     };
 
     return (
-        <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
+        <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4 relative">
+            <Link
+                to="/"
+                className="absolute top-4 left-4 sm:top-6 sm:left-6 p-2 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-200 transition-colors"
+                title="Volver al inicio"
+            >
+                <ArrowLeft size={22} />
+            </Link>
             <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 space-y-6">
                 <div className="text-center">
                     <h1 className="text-3xl font-bold text-slate-800">Iniciar Sesión</h1>

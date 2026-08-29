@@ -13,6 +13,7 @@ import {
   Clock,
   Wallet,
 } from 'lucide-react';
+import Beneficios from '../components/landing/Beneficios';
 
 const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8000';
 const REFRESH_INTERVAL_SEC = 55; // Rotamos antes de que el token expire en el backend (60s)
@@ -341,6 +342,27 @@ export default function SocioInicio() {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Acceso rápido a Beneficios — mensaje contextual según estado financiero */}
+      <div className="pt-2">
+        {esMoroso ? (
+          <div className="flex items-center gap-3 p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-800">
+            <AlertTriangle size={20} className="flex-shrink-0" />
+            <p className="text-sm">
+              <span className="font-bold">Regularizá tu cuenta</span> para acceder a los descuentos y beneficios exclusivos de nuestros comercios adheridos.{' '}
+              <Link to="/socio/cuotas" className="underline font-semibold">Pagar ahora</Link>
+            </p>
+          </div>
+        ) : (
+          <div className="flex items-center gap-3 p-4 rounded-2xl bg-green-50 border border-green-200 text-green-800">
+            <CheckCircle size={20} className="flex-shrink-0" />
+            <p className="text-sm">
+              <span className="font-bold">¡Estás al día!</span> Aprovechá tus beneficios de socio en los comercios adheridos al club.
+            </p>
+          </div>
+        )}
+        <Beneficios />
       </div>
     </div>
   );

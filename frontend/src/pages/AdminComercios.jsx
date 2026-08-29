@@ -39,9 +39,11 @@ import {
   ChevronDown,
   ChevronUp,
   Image,
+  HelpCircle,
 } from 'lucide-react'
 
 import SponsorsBlock from '../components/admin/SponsorsBlock'
+import FaqBlock from '../components/admin/FaqBlock'
 
 const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 
@@ -364,6 +366,7 @@ export default function AdminComercios() {
   // diario. Arrancan cerrados los dos.
   const [comerciosAbierto, setComerciosAbierto]  = useState(false)
   const [sponsorsAbierto,  setSponsorsAbierto]   = useState(false)
+  const [faqAbierto,       setFaqAbierto]        = useState(false)
 
   // ── Catálogo de usuarios — fetch único al montar (para el selector) ────────
   const [usuarios, setUsuarios] = useState([])
@@ -716,6 +719,34 @@ export default function AdminComercios() {
         {sponsorsAbierto && (
           <div className="mt-4">
             <SponsorsBlock />
+          </div>
+        )}
+      </div>
+
+      {/* ═══ Bloque: Preguntas Frecuentes (desplegable) ═══ */}
+      <div className="pt-2 border-t border-gray-100">
+        <button
+          type="button"
+          onClick={() => setFaqAbierto(o => !o)}
+          className="w-full flex items-start justify-between gap-3 text-left pt-4"
+        >
+          <div>
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2 sm:gap-3">
+              <HelpCircle size={22} className="text-gray-500 flex-shrink-0" />
+              Preguntas Frecuentes
+            </h2>
+            <p className="text-xs sm:text-sm text-gray-500 mt-1">
+              Contenido de la página de Ayuda — separado en preguntas públicas (sin login) y privadas (solo socios).
+            </p>
+          </div>
+          {faqAbierto
+            ? <ChevronUp size={20} className="text-gray-400 flex-shrink-0 mt-1" />
+            : <ChevronDown size={20} className="text-gray-400 flex-shrink-0 mt-1" />}
+        </button>
+
+        {faqAbierto && (
+          <div className="mt-4">
+            <FaqBlock />
           </div>
         )}
       </div>

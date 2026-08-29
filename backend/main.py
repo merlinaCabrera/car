@@ -29,6 +29,7 @@ from fastapi.staticfiles import StaticFiles
 
 from routers import usuarios, auth, admin_usuarios
 from routers import qr_auth
+from routers import faq
 from routers import admin_comercios
 from routers import admin_pagos
 from routers import socio_cuotas
@@ -82,6 +83,7 @@ app.include_router(usuarios.router)
 app.include_router(auth.router)
 app.include_router(admin_usuarios.router)
 app.include_router(qr_auth.router)
+app.include_router(faq.router)
 app.include_router(admin_comercios.router)
 app.include_router(admin_pagos.router)
 app.include_router(socio_cuotas.router)

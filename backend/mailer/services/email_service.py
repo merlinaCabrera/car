@@ -368,3 +368,16 @@ async def enviar_aviso_admin_solicitud_reactivacion(nombre_socio: str, dni_socio
         body={"nombre_socio": nombre_socio, "dni_socio": dni_socio,
               "admin_url": f"{FRONTEND_URL}/admin/socios"},
     )
+
+
+async def enviar_contacto_publico(email: str, nombre: str, mensaje: str) -> None:
+    """
+    Formulario de contacto de /ayuda (sin login). Va directo al mail del
+    club — no se guarda en base de datos, es un mensaje de una sola vía.
+    """
+    await _enviar(
+        destinatarios=[CLUB_EMAIL],
+        asunto=f"✉️ Contacto desde la web: {nombre}",
+        template_name="contacto_publico.html",
+        body={"nombre": nombre, "email": email, "mensaje": mensaje},
+    )

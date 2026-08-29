@@ -81,6 +81,28 @@ def get_current_user(
     return user
 
 
+# HTTPBearer con auto_error=False: no lanza 403 si falta el header — así
+# get_current_user_optional puede distinguir "no vino token" (devuelve None)
+# de "vino un token roto" (sigue lanzando 401, no lo tapamos).
+_bearer_opcional = HTTPBearer(auto_error=False)
+
+
+def get_current_user_optional(
+    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer_opcional),
+    db: Session = Depends(get_db),
+) -> models.Usuario | None:
+    """
+    Igual que get_current_user, pero para endpoints públicos que se
+    comportan distinto si hay sesión (ej: /faq muestra más preguntas si
+    hay un socio logueado). Sin header Authorization → None, sin error.
+    Con header presente pero inválido/expirado → sigue lanzando 401
+    (no queremos ocultar un token roto como si fuera "usuario anónimo").
+    """
+    if credentials is None:
+        return None
+    return get_current_user(credentials=credentials, db=db)
+
+
 def _roles_activos(user: models.Usuario) -> set[str]:
     """Devuelve el conjunto de nombres de roles vigentes (sin expirar)."""
     now = datetime.now(timezone.utc)

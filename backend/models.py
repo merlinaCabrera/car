@@ -1500,3 +1500,35 @@ class ComercioAsociado(Base):
         def imagen_url(self) -> str | None:
             """Se muestra en la sección 'Beneficios' de la landing (solo si tiene foto)."""
             return url_publica(self.imagen_key) if self.imagen_key else None
+
+
+class FaqEntry(Base):
+    """
+    Preguntas frecuentes editables por el Admin General, sin tocar código.
+
+    Se gestionan desde un bloque dentro de /admin/comercios (junto con
+    Comercios Adheridos y Sponsors — todo lo que es "cara pública/ayuda"
+    del club vive agrupado ahí).
+
+    Se muestran en /ayuda:
+    - Visitante sin sesión: solo filas con es_publica=True.
+    - Socio logueado: todas las filas activas (públicas + privadas).
+
+    `categoria` es texto libre (no un catálogo aparte) a propósito — es
+    editable por el admin y no vale la pena una tabla extra para algo que
+    cambia poco y no tiene lógica de negocio asociada.
+    """
+    __tablename__ = "faq_entries"
+
+    id_faq: Mapped[int] = mapped_column(primary_key=True, index=True)
+    categoria: Mapped[str] = mapped_column(String(80), nullable=False)
+    pregunta: Mapped[str] = mapped_column(String(300), nullable=False)
+    respuesta: Mapped[str] = mapped_column(Text, nullable=False)
+    es_publica: Mapped[bool] = mapped_column(default=False)
+    es_activa: Mapped[bool] = mapped_column(default=True)
+    orden: Mapped[int] = mapped_column(default=0)
+
+    creado_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    actualizado_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(),
+    )

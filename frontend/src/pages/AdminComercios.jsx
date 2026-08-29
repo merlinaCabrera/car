@@ -47,7 +47,7 @@ const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 
 // ─── Modal principal ──────────────────────────────────────────────────────────
 
-function ComercioFormModal({ comercio, onClose, onSave, usuarios }) {
+function ComercioFormModal({ comercio, onClose, onSave, usuarios, token }) {
   const [formData, setFormData] = useState({
     nombre_fantasia:     comercio?.nombre_fantasia     ?? '',
     rubro:               comercio?.rubro               ?? '',
@@ -57,11 +57,20 @@ function ComercioFormModal({ comercio, onClose, onSave, usuarios }) {
       ? String(comercio.id_usuario_acceso)
       : '',
   })
+  const [imagenFile, setImagenFile] = useState(null)
+  const [preview,    setPreview]    = useState(comercio?.imagen_url ?? null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [apiError,     setApiError]     = useState(null)
   const [formErrors,   setFormErrors]   = useState({})
 
   const isEditMode = !!comercio
+
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setImagenFile(file)
+    setPreview(URL.createObjectURL(file))
+  }
 
   // Cuentas con rol 'invitado' primero, después el resto (por si se quiere
   // vincular directamente a un socio existente).
@@ -94,7 +103,18 @@ function ComercioFormModal({ comercio, onClose, onSave, usuarios }) {
     }
 
     try {
-      await onSave(payload, comercio?.id_comercio ?? null)
+      const saved = await onSave(payload, comercio?.id_comercio ?? null)
+      if (imagenFile) {
+        const id = comercio?.id_comercio ?? saved?.id_comercio
+        const formDataImg = new FormData()
+        formDataImg.append('imagen', imagenFile)
+        const resImg = await fetch(`${API}/admin/comercios/${id}/imagen`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+          body: formDataImg,
+        })
+        if (!resImg.ok) throw new Error((await resImg.json().catch(() => ({}))).detail || 'El comercio se guardó, pero la foto no se pudo subir.')
+      }
       onClose()
     } catch (err) {
       setApiError(err.message)
@@ -152,6 +172,22 @@ function ComercioFormModal({ comercio, onClose, onSave, usuarios }) {
                 placeholder="Rubro (ej: Indumentaria deportiva)"
                 className="form-input"
               />
+            </div>
+
+            {/* ── Foto (para la sección Beneficios de la landing) ────── */}
+            <div>
+              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1.5">
+                Foto (opcional — sin foto no aparece en Beneficios de la landing)
+              </label>
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                onChange={handleFileChange}
+                className="w-full text-sm text-gray-600 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-blue-50 file:text-blue-700 file:text-sm file:font-medium hover:file:bg-blue-100"
+              />
+              {preview && (
+                <img src={preview} alt="Vista previa" className="mt-3 w-28 h-28 object-cover rounded-lg border border-gray-200" />
+              )}
             </div>
 
             <div>
@@ -325,9 +361,8 @@ export default function AdminComercios() {
   const [searchTerm,       setSearchTerm]        = useState('')
 
   // Ambos bloques son desplegables — no son secciones que se toquen a
-  // diario. Comercios arranca abierto (contenido principal de la página),
-  // Sponsors arranca cerrado (más nuevo, secundario).
-  const [comerciosAbierto, setComerciosAbierto]  = useState(true)
+  // diario. Arrancan cerrados los dos.
+  const [comerciosAbierto, setComerciosAbierto]  = useState(false)
   const [sponsorsAbierto,  setSponsorsAbierto]   = useState(false)
 
   // ── Catálogo de usuarios — fetch único al montar (para el selector) ────────
@@ -383,7 +418,9 @@ export default function AdminComercios() {
       throw new Error(err.detail ?? `Error al ${isEdit ? 'actualizar' : 'crear'} el comercio.`)
     }
 
+    const saved = await res.json()
     fetchComercios()
+    return saved
   }
 
   // ── Handlers de tabla ───────────────────────────────────────────────────────
@@ -455,6 +492,7 @@ export default function AdminComercios() {
           onClose={closeModal}
           onSave={handleSaveComercio}
           usuarios={usuarios}
+          token={token}
         />
       )}
 

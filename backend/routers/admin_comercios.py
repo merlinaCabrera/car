@@ -24,13 +24,14 @@ from __future__ import annotations
 
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile, status
 from sqlalchemy.orm import Session, joinedload
 
 import models
 import schemas
 from database import get_db
 from dependencies import get_current_user, require_roles
+from utils.s3 import eliminar_archivo_publico, subir_archivo_publico
 
 router = APIRouter(
     prefix="/admin/comercios",
@@ -180,6 +181,61 @@ def crear_comercio(
     return _obtener_comercio_o_404(db, nuevo.id_comercio)
 
 
+# ─── ENDPOINT: Subir/reemplazar foto del comercio ─────────────────────────────
+
+_CONTENT_TYPES_IMAGEN = {"image/png", "image/jpeg", "image/jpg", "image/webp"}
+_MAX_TAMANO_IMAGEN = 3 * 1024 * 1024  # 3MB
+
+
+@router.post(
+    "/{id_comercio}/imagen",
+    response_model=schemas.ComercioAsociadoResponse,
+    summary="Subir o reemplazar la foto del comercio (se muestra en Beneficios de la landing)",
+)
+async def subir_imagen_comercio(
+    id_comercio: int,
+    request: Request,
+    imagen: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    admin: models.Usuario = Depends(require_roles(*_ROLES_ADMIN_COMERCIOS)),
+) -> models.ComercioAsociado:
+    comercio = _obtener_comercio_o_404(db, id_comercio)
+
+    if imagen.content_type not in _CONTENT_TYPES_IMAGEN:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Formato de imagen no soportado. Usá PNG, JPG o WEBP.",
+        )
+    contenido = await imagen.read()
+    if len(contenido) > _MAX_TAMANO_IMAGEN:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="La imagen no puede pesar más de 3MB.",
+        )
+
+    extension = (imagen.filename or "").rsplit(".", 1)[-1].lower() if "." in (imagen.filename or "") else "png"
+    nueva_key = f"comercios/{id_comercio}/foto.{extension}"
+    subir_archivo_publico(contenido, nueva_key, imagen.content_type)
+
+    # Si cambió la extensión, la key vieja queda huérfana en S3 — la borramos.
+    if comercio.imagen_key and comercio.imagen_key != nueva_key:
+        eliminar_archivo_publico(comercio.imagen_key)
+
+    comercio.imagen_key = nueva_key
+
+    _registrar_audit(
+        db=db,
+        actor_id=admin.id_usuario,
+        accion="SUBIR_IMAGEN_COMERCIO",
+        registro_id=comercio.id_comercio,
+        detalle={"nombre_fantasia": comercio.nombre_fantasia},
+        ip=_extraer_ip(request),
+    )
+    db.commit()
+    db.refresh(comercio)
+    return _obtener_comercio_o_404(db, comercio.id_comercio)
+
+
 # ─── ENDPOINT: Editar comercio (PATCH parcial) ────────────────────────────────
 
 @router.patch(
@@ -251,6 +307,8 @@ def eliminar_comercio(
     comercio = _obtener_comercio_o_404(db, id_comercio)
 
     if fisica:
+        if comercio.imagen_key:
+            eliminar_archivo_publico(comercio.imagen_key)
         _registrar_audit(
             db=db,
             actor_id=admin.id_usuario,

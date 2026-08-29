@@ -1591,8 +1591,21 @@ class ComercioAsociadoResponse(ComercioAsociadoBase):
     model_config = ConfigDict(from_attributes=True)
 
     id_comercio: int
+    imagen_url: Optional[str] = None  # calculado en el modelo desde imagen_key, no es una columna
     id_usuario_acceso: Optional[int] = None
     usuario_acceso: Optional[UsuarioAccesoSimple] = None
+
+
+class BeneficioPublico(BaseModel):
+    """Versión reducida para la landing pública — sin datos internos como
+    id_usuario_acceso (cuenta del escáner, no es asunto del público)."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id_comercio: int
+    nombre_fantasia: str
+    rubro: Optional[str] = None
+    beneficio_ofrecido: str
+    imagen_url: Optional[str] = None
 
 
 # ─────────────────────────────────────────────────────────────────────────────

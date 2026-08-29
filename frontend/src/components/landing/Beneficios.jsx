@@ -1,37 +1,49 @@
-import { Store } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import InfiniteCarousel from './InfiniteCarousel';
 
-// Comercios adheridos con beneficios para socios. Por ahora esto NO viene
-// de la base de datos (los comercios sí se gestionan por DB vía admin, pero
-// todavía no tienen logo asignado) — es un placeholder puramente visual,
-// mismo patrón que Sponsors. Cuando el admin pueda cargar logo por comercio,
-// este array se reemplaza por datos reales desde la API.
-const BENEFICIOS = [
-  { nombre: 'Comercio 1' },
-  { nombre: 'Comercio 2' },
-  { nombre: 'Comercio 3' },
-  { nombre: 'Comercio 4' },
-  { nombre: 'Comercio 5' },
-  { nombre: 'Comercio 6' },
-];
+const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8000';
 
 export default function Beneficios() {
+  const [beneficios, setBeneficios] = useState([]);
+  const [cargado, setCargado] = useState(false);
+
+  useEffect(() => {
+    fetch(`${API}/beneficios`)
+      .then((res) => res.json())
+      .then((data) => setBeneficios(data))
+      .catch(() => setBeneficios([]))
+      .finally(() => setCargado(true));
+  }, []);
+
+  if (!cargado || beneficios.length === 0) return null;
+
   return (
-    <section className="pt-6 pb-16 bg-white">
+    <section className="py-16 bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <h2 className="text-3xl font-bold mb-10 text-center text-blue-900">Beneficios</h2>
       </div>
-      
+
       <InfiniteCarousel
-        items={BENEFICIOS}
+        items={beneficios}
         bgClassName="from-white"
         renderItem={(beneficio, i) => (
           <div
-            key={`${beneficio.nombre}-${i}`}
-            className="mx-3 sm:mx-4 flex-shrink-0 w-40 h-40 sm:w-52 sm:h-52 md:w-64 md:h-64 bg-slate-50 border-2 border-dashed border-slate-300 rounded-lg shadow-sm p-4 flex flex-col items-center justify-center gap-3 hover:shadow-md hover:border-blue-300 transition-all duration-300"
+            key={`${beneficio.id_comercio}-${i}`}
+            className="mx-3 sm:mx-4 flex-shrink-0 w-56 sm:w-64 rounded-xl shadow-lg overflow-hidden bg-slate-50 border border-slate-100"
           >
-            <Store className="w-10 h-10 sm:w-12 sm:h-12 text-slate-400" />
-            <span className="text-sm sm:text-base font-medium text-slate-500 text-center">{beneficio.nombre}</span>
+            <img
+              src={beneficio.imagen_url}
+              alt={beneficio.nombre_fantasia}
+              className="w-full h-36 sm:h-40 object-cover"
+              draggable={false}
+            />
+            <div className="p-4">
+              <h3 className="font-bold text-blue-900 text-sm sm:text-base">{beneficio.nombre_fantasia}</h3>
+              {beneficio.rubro && (
+                <p className="text-xs text-slate-400 mb-1">{beneficio.rubro}</p>
+              )}
+              <p className="text-sm text-slate-600">{beneficio.beneficio_ofrecido}</p>
+            </div>
           </div>
         )}
       />

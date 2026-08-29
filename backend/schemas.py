@@ -438,6 +438,31 @@ class AuditLogFiltros(BaseModel):
 CATEGORIAS_PRODUCTO = ("cuota_social", "alquiler", "indumentaria", "otro")
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# SPONSORS (landing pública)
+# ─────────────────────────────────────────────────────────────────────────────
+
+class SponsorUpdate(BaseModel):
+    """PATCH: solo metadata. Para cambiar la imagen, usar el endpoint dedicado
+    (es un multipart, no encaja en un body JSON)."""
+    nombre: Optional[str] = Field(default=None, min_length=1, max_length=150)
+    url_destino: Optional[str] = Field(default=None, min_length=1)
+    orden: Optional[int] = None
+    activo: Optional[bool] = None
+
+
+class SponsorResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id_sponsor: int
+    nombre: str
+    imagen_url: str  # se arma en el endpoint con url_publica(imagen_key), no viene de un campo del modelo
+    url_destino: str
+    orden: int
+    activo: bool
+    creado_at: datetime
+
+
 class ProductoServicioBase(BaseModel):
     nombre: str = Field(min_length=1, max_length=150)
     categoria: str = Field(description="cuota_social | alquiler | indumentaria | otro")

@@ -111,3 +111,56 @@ def es_key_s3(url: str) -> bool:
     (no una ruta local /uploads/...).
     """
     return url is not None and not url.startswith("/")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Bucket PÚBLICO (car-sponsors-produccion) — distinto del bucket privado de
+# arriba. Se usa para archivos que necesitan ser accesibles por URL directa,
+# sin presigned URLs (ej: logos de sponsors en la landing). NO usar este
+# bucket para nada que tenga datos sensibles — cualquiera con el link puede
+# verlo, para siempre, sin expiración.
+# ─────────────────────────────────────────────────────────────────────────────
+
+BUCKET_PUBLICO = os.getenv("S3_BUCKET_PUBLICO", "car-sponsors-produccion")
+
+
+def subir_archivo_publico(contenido: bytes, key: str, content_type: str) -> str:
+    """
+    Sube bytes al bucket público y devuelve el object key.
+    El bucket entero es de lectura pública vía bucket policy (no se necesita
+    ACL por objeto) — ver la policy configurada en car-sponsors-produccion.
+
+    Returns:
+        El object key (para guardar en DB junto con url_publica(key))
+    """
+    try:
+        _s3.upload_fileobj(
+            io.BytesIO(contenido),
+            BUCKET_PUBLICO,
+            key,
+            ExtraArgs={"ContentType": content_type},
+        )
+        return key
+    except ClientError:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="No se pudo guardar la imagen en S3. Intentá nuevamente.",
+        )
+
+
+def eliminar_archivo_publico(key: str) -> None:
+    """Elimina un archivo del bucket público. No lanza excepción si no existe."""
+    try:
+        _s3.delete_object(Bucket=BUCKET_PUBLICO, Key=key)
+    except ClientError:
+        pass
+
+
+def url_publica(key: str) -> str:
+    """
+    Construye la URL pública directa de un objeto del bucket público.
+    No hay presigned URL acá a propósito: es contenido público (logos de
+    sponsors), no hace falta firmarlo ni que expire.
+    """
+    region = os.getenv("AWS_REGION", "sa-east-1")
+    return f"https://{BUCKET_PUBLICO}.s3.{region}.amazonaws.com/{key}"

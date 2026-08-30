@@ -144,6 +144,36 @@ function calcularEstadoFinanciero(mesCubiertoHastaISO, fechaIngresoISO, diaVenci
   return { moroso: true, mesesAdeudados }
 }
 
+/** Suma (o resta) meses enteros a una fecha, con clamp de fin de mes. */
+function sumarMesesLocal(fecha, meses) {
+  const totalMeses = fecha.getMonth() + meses
+  const anio = fecha.getFullYear() + Math.floor(totalMeses / 12)
+  const mes = ((totalMeses % 12) + 12) % 12
+  const ultimoDia = new Date(anio, mes + 1, 0).getDate()
+  return new Date(anio, mes, Math.min(fecha.getDate(), ultimoDia))
+}
+
+/**
+ * Lista las fechas de vencimiento de cada período adeudado (para mostrarle
+ * al admin CUÁLES meses puntuales debe, no solo cuántos). Mismo criterio
+ * que calcularEstadoFinanciero — si cambia una, cambia la otra.
+ */
+function listarMesesAdeudados(mesCubiertoHastaISO, fechaIngresoISO, diaVencimiento = 10) {
+  const { moroso, mesesAdeudados } = calcularEstadoFinanciero(mesCubiertoHastaISO, fechaIngresoISO, diaVencimiento)
+  if (!moroso) return []
+
+  let fechaBase = parsearISO(mesCubiertoHastaISO)
+  if (!fechaBase) {
+    const ingreso = parsearISO(fechaIngresoISO)
+    const ultimoDiaMes = new Date(ingreso.getFullYear(), ingreso.getMonth() + 1, 0).getDate()
+    fechaBase = fechaLocal(ingreso.getFullYear(), ingreso.getMonth() + 1, Math.min(diaVencimiento, ultimoDiaMes))
+  }
+
+  const periodos = []
+  for (let i = 1; i <= mesesAdeudados; i++) periodos.push(sumarMesesLocal(fechaBase, i))
+  return periodos
+}
+
 /** Precio final de la cuota para un socio puntual, aplicando el descuento de menor si corresponde. */
 function calcularPrecioFinal(precioCuota, fechaNacimientoISO) {
   if (!Number.isFinite(precioCuota)) return 0
@@ -312,7 +342,7 @@ function SeccionRoles({ catalogoRoles, selectedRoles, onToggle, loadingRoles, er
 
 // ─── Modal de edición / creación de socio ─────────────────────────────────────
 
-function SocioFormModal({ socio, onClose, onSave, catalogoRoles, token, esAdminGeneral }) {
+function SocioFormModal({ socio, onClose, onSave, catalogoRoles, token, esAdminGeneral, diaVencimiento = 10 }) {
   const [formData, setFormData] = useState({
     dni:       socio?.dni       ?? '',
     nombre:    socio?.nombre    ?? '',
@@ -341,6 +371,18 @@ function SocioFormModal({ socio, onClose, onSave, catalogoRoles, token, esAdminG
   const [selectedRoles, setSelectedRoles] = useState([])
   const [loadingRoles,  setLoadingRoles]  = useState(false)
   const [errorRoles,    setErrorRoles]    = useState(false)
+
+  // ── Cobertura de cuota (mes_cubierto_hasta / fecha_ingreso) ─────────────────
+  const [mesCubiertoHastaActual, setMesCubiertoHastaActual] = useState(null)
+  const [fechaIngresoActual,     setFechaIngresoActual]     = useState(null)
+  const [fechaIngresoInput,      setFechaIngresoInput]      = useState('')
+  const [modoCobertura,          setModoCobertura]          = useState(null) // 'meses' | 'monto' | 'fecha'
+  const [mesesInput,             setMesesInput]             = useState('')
+  const [montoInput,             setMontoInput]             = useState('')
+  const [fechaDirectaInput,      setFechaDirectaInput]      = useState('')
+  const [guardandoCobertura,     setGuardandoCobertura]     = useState(false)
+  const [coberturaError,         setCoberturaError]         = useState(null)
+  const [coberturaExito,         setCoberturaExito]         = useState(null)
 
   const isEditMode = !!socio
 
@@ -380,6 +422,11 @@ function SocioFormModal({ socio, onClose, onSave, catalogoRoles, token, esAdminG
         const saldo = parseFloat(data.saldo_a_favor ?? 0)
         setSaldoActual(saldo)
         setNuevoSaldo(saldo.toFixed(2))
+
+        // 4. Inicializar cobertura de cuota
+        setMesCubiertoHastaActual(data.mes_cubierto_hasta ?? null)
+        setFechaIngresoActual(data.fecha_ingreso ?? null)
+        setFechaIngresoInput(data.fecha_ingreso ? String(data.fecha_ingreso).split('T')[0] : '')
       } catch (err) {
         setErrorRoles(true)
         setApiError(err.message)
@@ -447,6 +494,60 @@ function SocioFormModal({ socio, onClose, onSave, catalogoRoles, token, esAdminG
       setSaldoError(err.message)
     } finally {
       setGuardandoSaldo(false)
+    }
+  }
+
+  const handleGuardarCobertura = async () => {
+    setCoberturaError(null)
+    setCoberturaExito(null)
+
+    const payload = {}
+
+    if (modoCobertura === 'meses') {
+      const n = parseInt(mesesInput, 10)
+      if (isNaN(n) || n < 0) { setCoberturaError('Ingresá una cantidad de meses válida (0 o más).'); return }
+      payload.meses_adeudados = n
+    } else if (modoCobertura === 'monto') {
+      const m = parseFloat(montoInput)
+      if (isNaN(m) || m < 0) { setCoberturaError('Ingresá un monto válido.'); return }
+      payload.monto_adeudado = m
+    } else if (modoCobertura === 'fecha') {
+      if (!fechaDirectaInput) { setCoberturaError('Elegí una fecha.'); return }
+      payload.mes_cubierto_hasta = fechaDirectaInput
+    }
+
+    if (fechaIngresoInput && fechaIngresoInput !== (fechaIngresoActual ? String(fechaIngresoActual).split('T')[0] : '')) {
+      payload.fecha_ingreso = fechaIngresoInput
+    }
+
+    if (Object.keys(payload).length === 0) {
+      setCoberturaError('No hay cambios para guardar.')
+      return
+    }
+
+    setGuardandoCobertura(true)
+    try {
+      const res = await fetch(`${API}/admin/usuarios/${socio.id_usuario}/cobertura`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.detail ?? 'No se pudo actualizar la cobertura.')
+
+      setMesCubiertoHastaActual(data.mes_cubierto_hasta ?? null)
+      setFechaIngresoActual(data.fecha_ingreso ?? null)
+      setFechaIngresoInput(data.fecha_ingreso ? String(data.fecha_ingreso).split('T')[0] : '')
+      setMesesInput('')
+      setMontoInput('')
+      setFechaDirectaInput('')
+      setModoCobertura(null)
+      setCoberturaExito('Cobertura actualizada correctamente.')
+      setTimeout(() => setCoberturaExito(null), 4000)
+    } catch (err) {
+      setCoberturaError(err.message)
+    } finally {
+      setGuardandoCobertura(false)
     }
   }
 
@@ -742,6 +843,146 @@ function SocioFormModal({ socio, onClose, onSave, catalogoRoles, token, esAdminG
                 >
                   {guardandoSaldo && <Loader2 size={14} className="animate-spin" />}
                   {guardandoSaldo ? 'Guardando…' : 'Guardar saldo'}
+                </button>
+              </div>
+            )}
+
+            {isEditMode && esAdminGeneral && (
+              <div className="space-y-3 p-4 rounded-xl border-2 border-blue-200 bg-blue-50">
+                <div>
+                  <p className="text-sm font-bold text-blue-900 flex items-center gap-2">
+                    📅 Cobertura de Cuota
+                  </p>
+                  <p className="text-xs text-blue-700 mt-0.5">
+                    Corrección manual para socios traspapelados en la carga por planilla,
+                    o ajustes puntuales. Todo termina escribiendo la misma fecha de cobertura
+                    — no hay dos números que puedan desincronizarse.
+                  </p>
+                </div>
+
+                {/* Estado actual */}
+                {(() => {
+                  const estado = calcularEstadoFinanciero(mesCubiertoHastaActual, fechaIngresoActual, diaVencimiento)
+                  const detalle = listarMesesAdeudados(mesCubiertoHastaActual, fechaIngresoActual, diaVencimiento)
+                  return (
+                    <div className="bg-white rounded-lg px-4 py-2.5 border border-blue-200 space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-blue-800 font-medium">Estado actual</span>
+                        <span className={`text-sm font-bold ${estado.moroso ? 'text-red-600' : 'text-green-600'}`}>
+                          {estado.moroso ? `MOROSO — ${estado.mesesAdeudados} mes(es)` : 'AL DÍA'}
+                        </span>
+                      </div>
+                      {detalle.length > 0 && (
+                        <p className="text-xs text-blue-600">
+                          Debe: {detalle.map(d => d.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' })).join(', ')}
+                        </p>
+                      )}
+                      <p className="text-xs text-blue-400">
+                        Cobertura hasta: {mesCubiertoHastaActual ? String(mesCubiertoHastaActual).split('T')[0] : 'sin cobertura (nunca pagó)'}
+                      </p>
+                    </div>
+                  )
+                })()}
+
+                {/* Selector de modo — mutuamente excluyentes */}
+                <div className="flex gap-1.5 text-xs">
+                  {[
+                    { id: 'meses', label: 'En meses' },
+                    { id: 'monto', label: 'En dinero' },
+                    { id: 'fecha', label: 'Fecha exacta' },
+                  ].map(opt => (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => setModoCobertura(prev => prev === opt.id ? null : opt.id)}
+                      className={`flex-1 py-1.5 rounded-lg font-semibold transition-colors ${
+                        modoCobertura === opt.id
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-white text-blue-700 border border-blue-200 hover:bg-blue-100'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+
+                {modoCobertura === 'meses' && (
+                  <div>
+                    <label className="text-xs font-semibold text-blue-800 uppercase tracking-wider">
+                      Meses que debe (a día de hoy)
+                    </label>
+                    <input
+                      type="number" min="0" step="1"
+                      value={mesesInput}
+                      onChange={e => setMesesInput(e.target.value)}
+                      className="form-input mt-1.5 border-blue-300 focus:ring-blue-400 focus:border-blue-400"
+                      placeholder="Ej: 3"
+                    />
+                  </div>
+                )}
+
+                {modoCobertura === 'monto' && (
+                  <div>
+                    <label className="text-xs font-semibold text-blue-800 uppercase tracking-wider">
+                      Monto que debe ($) — se convierte a meses con el precio vigente
+                    </label>
+                    <input
+                      type="number" min="0" step="0.01"
+                      value={montoInput}
+                      onChange={e => setMontoInput(e.target.value)}
+                      className="form-input mt-1.5 border-blue-300 focus:ring-blue-400 focus:border-blue-400"
+                      placeholder="Ej: 15000"
+                    />
+                  </div>
+                )}
+
+                {modoCobertura === 'fecha' && (
+                  <div>
+                    <label className="text-xs font-semibold text-blue-800 uppercase tracking-wider">
+                      Cobertura hasta (fecha exacta)
+                    </label>
+                    <input
+                      type="date"
+                      value={fechaDirectaInput}
+                      onChange={e => setFechaDirectaInput(e.target.value)}
+                      className="form-input mt-1.5 border-blue-300 focus:ring-blue-400 focus:border-blue-400"
+                    />
+                  </div>
+                )}
+
+                {/* Fecha de ingreso — independiente, se puede combinar con cualquiera de arriba */}
+                <div>
+                  <label className="text-xs font-semibold text-blue-800 uppercase tracking-wider">
+                    Fecha de alta al club <span className="font-normal normal-case text-blue-600">(independiente — corrige socios traspapelados de la planilla)</span>
+                  </label>
+                  <input
+                    type="date"
+                    value={fechaIngresoInput}
+                    onChange={e => setFechaIngresoInput(e.target.value)}
+                    className="form-input mt-1.5 border-blue-300 focus:ring-blue-400 focus:border-blue-400"
+                  />
+                </div>
+
+                {coberturaError && (
+                  <div className="flex items-start gap-2 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-xs">
+                    <AlertCircle size={13} className="flex-shrink-0 mt-0.5" />
+                    <span>{coberturaError}</span>
+                  </div>
+                )}
+                {coberturaExito && (
+                  <div className="flex items-center gap-2 p-3 rounded-lg bg-green-50 border border-green-200 text-green-700 text-xs font-medium">
+                    ✓ {coberturaExito}
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={handleGuardarCobertura}
+                  disabled={guardandoCobertura}
+                  className="w-full py-2.5 rounded-xl bg-blue-600 text-white font-bold text-sm hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+                >
+                  {guardandoCobertura && <Loader2 size={14} className="animate-spin" />}
+                  {guardandoCobertura ? 'Guardando…' : 'Guardar cobertura'}
                 </button>
               </div>
             )}
@@ -1712,6 +1953,7 @@ export default function AdminSocios() {
           catalogoRoles={catalogoRoles}
           token={token}
           esAdminGeneral={esAdminGeneral}
+          diaVencimiento={diaVencimiento}
         />
       )}
 

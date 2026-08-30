@@ -287,7 +287,11 @@ class Usuario(Base):
         DateTime(timezone=True), nullable=False, server_default=func.now(),
     )
 
-    # Estado financiero (cacheado; la deuda real = deuda_historica_meses × cuota_vigente)
+    # Estado financiero — mes_cubierto_hasta es la ÚNICA fuente de verdad.
+    # Los meses adeudados (cantidad y cuáles puntualmente) se derivan de acá
+    # en tiempo real vía utils/cuotas_periodos.calcular_estado_financiero(),
+    # nunca se guardan como contador aparte (ver docstring de ese módulo:
+    # existió un campo deuda_historica_meses que quedaba desincronizado).
     mes_cubierto_hasta: Mapped[Optional[date]] = mapped_column(
         Date,
         comment=(
@@ -295,16 +299,15 @@ class Usuario(Base):
             "NULL = nunca pagó (socio nuevo o sin cuotas aprobadas). "
             "Evaluación de estado: CURRENT_DATE <= mes_cubierto_hasta → 'al_dia'. "
             "El backend calcula esta fecha al aprobar una orden de cuota_social: "
-            "  nueva_fecha = MAX(mes_cubierto_hasta_actual, hoy) "
+            "  nueva_fecha = mes_cubierto_hasta_actual (SIN clamp a hoy) "
             "              + meses_pagados meses "
             "              con día = dia_vencimiento_cuota de ConfiguracionGlobal. "
-            "Si el socio pagó por adelantado, queda inmune a aumentos de precio "
-            "hasta esta fecha (el precio ya fue congelado en precio_unitario_historico)."
+            "Un pago nunca 'saltea' al día de hoy: extiende la cobertura desde "
+            "donde el socio se quedó, para no perdonar en silencio la deuda "
+            "acumulada. Si el socio pagó por adelantado, queda inmune a "
+            "aumentos de precio hasta esta fecha (precio ya congelado en "
+            "precio_unitario_historico)."
         ),
-    )
-    deuda_historica_meses: Mapped[int] = mapped_column(
-        Integer, nullable=False, server_default=text("0"),
-        comment="Meses adeudados en cantidad, NUNCA en pesos.",
     )
 
     # Billetera interna (reintegros QR, suspensiones por lluvia, etc.)
@@ -470,7 +473,6 @@ class Usuario(Base):
         ),
         Index("idx_usuarios_qr_token",   "qr_token"),
         Index("idx_usuarios_search",     "nombre_completo_search", postgresql_using="gin"),
-        CheckConstraint("deuda_historica_meses >= 0", name="chk_deuda_no_negativa"),
     )
 
     def __repr__(self) -> str:

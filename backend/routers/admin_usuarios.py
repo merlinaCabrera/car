@@ -30,6 +30,10 @@ from dependencies import get_current_user, require_roles
 from security import get_password_hash
 from fastapi import BackgroundTasks 
 from mailer.services.email_tasks import task_cuenta_aprobada, task_socio_dado_de_baja, task_socio_reactivado, task_solicitud_rechazada, task_bienvenida_alta_manual
+from utils.cuotas_periodos import (
+    calcular_estado_financiero,
+    fecha_cubierta_para_meses_adeudados,
+)
 
 router = APIRouter(
     prefix="/admin/usuarios",
@@ -42,6 +46,47 @@ _ADMIN_GENERAL = ("admin_general",)
 # reservado solo a admin_general. Personal Administrativo tiene lectura
 # (listados, filtros, detalle) y gestión de cuotas, pero no puede alterar
 # el padrón de socios en sí.
+
+
+# ─── Helpers de precio de cuota (duplicado intencional de admin_pagos.py /
+# socio_cuotas.py — cada router administrativo es un módulo independiente
+# en este proyecto). Usados solo por editar_cobertura_socio() para
+# convertir un monto en pesos a una cantidad de meses. ─────────────────────
+
+def _calcular_edad(fecha_nacimiento: Optional[date]) -> Optional[int]:
+    if fecha_nacimiento is None:
+        return None
+    hoy = date.today()
+    return (
+        hoy.year - fecha_nacimiento.year
+        - ((hoy.month, hoy.day) < (fecha_nacimiento.month, fecha_nacimiento.day))
+    )
+
+
+def _obtener_producto_cuota_social(db: Session) -> models.ProductoServicio:
+    producto = (
+        db.query(models.ProductoServicio)
+        .filter(
+            models.ProductoServicio.categoria == "cuota_social",
+            models.ProductoServicio.es_activo.is_(True),
+        )
+        .first()
+    )
+    if producto is None:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="No existe ningún producto activo con categoria='cuota_social'.",
+        )
+    return producto
+
+
+def _calcular_precio_cuota(precio_base: Decimal, fecha_nacimiento: Optional[date], db: Session) -> Decimal:
+    edad = _calcular_edad(fecha_nacimiento)
+    if edad is not None and edad < 18:
+        config = db.query(models.ConfiguracionGlobal).first()
+        descuento_pct = config.descuento_menor_pct if config else Decimal("40")
+        return precio_base * (Decimal("1") - descuento_pct / Decimal("100"))
+    return precio_base
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -670,6 +715,106 @@ def editar_socio(
             detail=f"No se pudo guardar el cambio. Detalle de la base: {detalle_pg}",
         )
 
+    db.refresh(usuario)
+    return usuario
+
+
+@router.patch(
+    "/{id_usuario}/cobertura",
+    response_model=schemas.UsuarioResponse,
+    summary="Corregir manualmente la cobertura de cuota de un socio (admin_general)",
+)
+def editar_cobertura_socio(
+    id_usuario: int,
+    datos: schemas.EditarCoberturaPayload,
+    db: Session = Depends(get_db),
+    current_admin: models.Usuario = Depends(require_roles(*_ADMIN_GENERAL)),
+):
+    """
+    Pensado para socios traspapelados en la carga por planilla (DBeaver) o
+    correcciones puntuales de deuda/fecha de alta. TODO termina escribiendo
+    mes_cubierto_hasta — no existe un contador de deuda aparte que pueda
+    desincronizarse (ver utils/cuotas_periodos.py).
+
+    Se puede mandar COMO MUCHO UNO de {meses_adeudados, monto_adeudado,
+    mes_cubierto_hasta} — son tres formas alternativas de decir lo mismo,
+    mandar más de uno sería ambiguo (¿cuál manda?). fecha_ingreso es
+    independiente y se puede combinar con cualquiera de los anteriores.
+    """
+    usuario = db.query(models.Usuario).filter(models.Usuario.id_usuario == id_usuario).first()
+    if not usuario:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado.")
+
+    campos_cobertura = [
+        c for c in ("meses_adeudados", "monto_adeudado", "mes_cubierto_hasta")
+        if getattr(datos, c) is not None
+    ]
+    if len(campos_cobertura) > 1:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                f"Mandaste más de un campo de cobertura a la vez ({', '.join(campos_cobertura)}). "
+                "Elegí uno solo: meses, monto, o la fecha directa."
+            ),
+        )
+    if not campos_cobertura and datos.fecha_ingreso is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No mandaste ningún campo para editar.",
+        )
+
+    config = db.query(models.ConfiguracionGlobal).first()
+    dia_vencimiento = config.dia_vencimiento_cuota if config else 10
+
+    mes_cubierto_hasta_antes = usuario.mes_cubierto_hasta
+    fecha_ingreso_antes = usuario.fecha_ingreso
+
+    if datos.fecha_ingreso is not None:
+        usuario.fecha_ingreso = datos.fecha_ingreso
+
+    if datos.mes_cubierto_hasta is not None:
+        usuario.mes_cubierto_hasta = datos.mes_cubierto_hasta
+
+    elif datos.meses_adeudados is not None:
+        usuario.mes_cubierto_hasta = fecha_cubierta_para_meses_adeudados(
+            datos.meses_adeudados, dia_vencimiento
+        )
+
+    elif datos.monto_adeudado is not None:
+        producto_cuota = _obtener_producto_cuota_social(db)
+        precio_socio = _calcular_precio_cuota(producto_cuota.precio_actual, usuario.fecha_nacimiento, db)
+        if precio_socio <= 0:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="El precio de la cuota social es $0 — no se puede convertir un monto a meses.",
+            )
+        n_meses = round(datos.monto_adeudado / precio_socio)
+        usuario.mes_cubierto_hasta = fecha_cubierta_para_meses_adeudados(n_meses, dia_vencimiento)
+
+    estado_despues = calcular_estado_financiero(usuario.mes_cubierto_hasta, usuario.fecha_ingreso, dia_vencimiento)
+
+    db.add(models.AuditLog(
+        usuario_actor=current_admin.id_usuario,
+        accion="EDITAR_COBERTURA_SOCIO",
+        tabla_afectada="usuarios",
+        registro_id=id_usuario,
+        detalle={
+            "payload": {
+                "meses_adeudados": datos.meses_adeudados,
+                "monto_adeudado": str(datos.monto_adeudado) if datos.monto_adeudado is not None else None,
+                "mes_cubierto_hasta": datos.mes_cubierto_hasta.isoformat() if datos.mes_cubierto_hasta else None,
+                "fecha_ingreso": datos.fecha_ingreso.isoformat() if datos.fecha_ingreso else None,
+            },
+            "mes_cubierto_hasta_antes": mes_cubierto_hasta_antes.isoformat() if mes_cubierto_hasta_antes else None,
+            "mes_cubierto_hasta_despues": usuario.mes_cubierto_hasta.isoformat() if usuario.mes_cubierto_hasta else None,
+            "fecha_ingreso_antes": fecha_ingreso_antes.isoformat() if fecha_ingreso_antes else None,
+            "fecha_ingreso_despues": usuario.fecha_ingreso.isoformat() if usuario.fecha_ingreso else None,
+            "meses_adeudados_resultante": [d.isoformat() for d in estado_despues.meses_adeudados],
+            "editado_por_dni": current_admin.dni,
+        },
+    ))
+
+    db.commit()
     db.refresh(usuario)
     return usuario
 

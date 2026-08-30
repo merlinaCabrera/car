@@ -35,7 +35,6 @@ Decisiones técnicas:
 
 from __future__ import annotations
 
-import calendar
 from datetime import date
 from decimal import Decimal
 from typing import List, Optional
@@ -48,6 +47,7 @@ import models
 import schemas
 from database import get_db
 from dependencies import get_current_user, require_roles
+from utils.cuotas_periodos import calcular_estado_financiero, calcular_nuevo_mes_cubierto
 
 router = APIRouter(
     prefix="/admin/pagos",
@@ -57,69 +57,6 @@ _ROLES_ADMIN_PAGOS = ("admin_general", "personal_administrativo")
 
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
-
-# ─── Motor de cálculo de períodos de cobertura ───────────────────────────────
-# (Duplicado intencionalmente de admin_ordenes.py: cada router administrativo
-# es un módulo independiente en este proyecto — mismo patrón que _extraer_ip
-# y _registrar_audit, ya duplicados entre routers. Si en el futuro se agrega
-# un tercer punto de entrada que toque mes_cubierto_hasta, conviene moverlo a
-# un módulo compartido, p.ej. backend/services/cobertura.py.)
-
-def _sumar_meses(base: date, meses: int) -> date:
-    """
-    Suma `meses` enteros positivos a `base` usando únicamente la stdlib
-    (calendar + datetime.date). Evita los errores clásicos de overflow de mes
-    (ej: 31 de enero + 1 mes ≠ 31 de febrero).
-    """
-    total_meses = base.month - 1 + meses
-    anio = base.year + total_meses // 12
-    mes = total_meses % 12 + 1
-    dia = min(base.day, calendar.monthrange(anio, mes)[1])
-    return date(anio, mes, dia)
-
-
-def _calcular_nuevo_mes_cubierto(
-    usuario: models.Usuario,
-    meses_a_pagar: int,
-    dia_vencimiento_cuota: int,
-) -> date:
-    """
-    Calcula la nueva fecha de cobertura del socio tras un pago de cuota.
-
-    REGLA DE NEGOCIO ESTRICTA (corrige el bug de "amnistía de deuda"):
-      · Base = usuario.mes_cubierto_hasta, SIEMPRE que no sea None — sin
-        importar si esa fecha ya está vencida en el pasado. Un pago nunca
-        "saltea" al día de hoy: extiende la cobertura desde donde el socio
-        se quedó, llenando cronológicamente los meses adeudados. Usar
-        MAX(mes_cubierto_hasta, hoy) perdona en silencio toda la deuda
-        acumulada, porque ancla el nuevo período en el presente en vez de
-        continuar la secuencia real de meses impagos.
-      · Si mes_cubierto_hasta es None (el socio nunca tuvo una cuota
-        aprobada), la base es usuario.fecha_ingreso. Si también fuera None
-        (no debería pasar — la columna es NOT NULL — pero se cubre
-        defensivamente), se usa date.today() como última red de seguridad.
-      · La base se normaliza al día `dia_vencimiento_cuota` dentro de su
-        propio mes/año.
-      · Se suman `meses_a_pagar` meses mediante _sumar_meses() (aritmética
-        de calendario correcta, sin errores de overflow de 30/31 días).
-      · El día final se fuerza a `dia_vencimiento_cuota`, con clamp al
-        último día del mes destino (relevante para febrero).
-    """
-    if usuario.mes_cubierto_hasta is not None:
-        base = usuario.mes_cubierto_hasta
-    elif usuario.fecha_ingreso is not None:
-        base = usuario.fecha_ingreso
-    else:
-        base = date.today()
-
-    dia_normalizado = min(dia_vencimiento_cuota, calendar.monthrange(base.year, base.month)[1])
-    base_normalizada = base.replace(day=dia_normalizado)
-
-    nueva_fecha = _sumar_meses(base_normalizada, meses_a_pagar)
-
-    dia_final = min(dia_vencimiento_cuota, calendar.monthrange(nueva_fecha.year, nueva_fecha.month)[1])
-    return nueva_fecha.replace(day=dia_final)
-
 
 def _obtener_dia_vencimiento(db: Session) -> int:
     """
@@ -246,33 +183,29 @@ def obtener_estadisticas(
     # como referencia del tablero — una cifra de orientación global.
     producto_cuota_base = _obtener_producto_cuota_social(db)
     dia_vencimiento = _obtener_dia_vencimiento(db)
+    hoy = date.today()
 
-    total_al_dia = (
-        db.query(func.count(models.Usuario.id_usuario))
-        .filter(
-            models.Usuario.fecha_baja.is_(None),
-            models.Usuario.deuda_historica_meses == 0,
-        )
-        .scalar()
-    ) or 0
+    # "Al día" incluye tanto a quien nunca debió nada como a quien está
+    # becado con cobertura vigente — mismo criterio que el resto del sistema
+    # (QR, deportivo). Se resuelve en Python porque la becas interactúan
+    # con la fecha, no es un simple WHERE de una columna.
+    socios_activos = (
+        db.query(models.Usuario)
+        .filter(models.Usuario.fecha_baja.is_(None))
+        .all()
+    )
 
-    total_morosos = (
-        db.query(func.count(models.Usuario.id_usuario))
-        .filter(
-            models.Usuario.fecha_baja.is_(None),
-            models.Usuario.deuda_historica_meses > 0,
-        )
-        .scalar()
-    ) or 0
+    total_al_dia = 0
+    total_morosos = 0
+    suma_meses_adeudados = 0
 
-    suma_meses_adeudados = (
-        db.query(func.coalesce(func.sum(models.Usuario.deuda_historica_meses), 0))
-        .filter(
-            models.Usuario.fecha_baja.is_(None),
-            models.Usuario.deuda_historica_meses > 0,
-        )
-        .scalar()
-    ) or 0
+    for u in socios_activos:
+        estado = calcular_estado_financiero(u.mes_cubierto_hasta, u.fecha_ingreso, dia_vencimiento, hoy)
+        if estado.moroso:
+            total_morosos += 1
+            suma_meses_adeudados += estado.cantidad_meses
+        else:
+            total_al_dia += 1
 
     deuda_total = Decimal(suma_meses_adeudados) * producto_cuota_base.precio_actual
 
@@ -298,24 +231,22 @@ def listar_morosos(
 ) -> List[schemas.MorosoResponse]:
     # Se listan todos los socios activos, no solo los morosos, para permitir
     # el pago por adelantado desde la ventanilla.
+    dia_vencimiento = _obtener_dia_vencimiento(db)
+    hoy = date.today()
     socios = (
         db.query(models.Usuario)
         .filter(models.Usuario.fecha_baja.is_(None))
-        .order_by(
-            models.Usuario.deuda_historica_meses.desc(),
-            models.Usuario.apellido,
-            models.Usuario.nombre,
-        )
+        .order_by(models.Usuario.apellido, models.Usuario.nombre)
         .all()
     )
 
     producto_cuota_base = _obtener_producto_cuota_social(db)
     resultado = []
     for u in socios:
-        # La deuda estimada se calcula con la tarifa correcta para cada socio.
         precio_unitario = _calcular_precio_cuota(
             producto_cuota_base.precio_actual, u.fecha_nacimiento, db
         )
+        estado = calcular_estado_financiero(u.mes_cubierto_hasta, u.fecha_ingreso, dia_vencimiento, hoy)
 
         resultado.append(
             schemas.MorosoResponse(
@@ -327,11 +258,13 @@ def listar_morosos(
                 telefono=u.telefono,
                 fecha_ingreso=u.fecha_ingreso,
                 mes_cubierto_hasta=u.mes_cubierto_hasta,
-                deuda_historica_meses=u.deuda_historica_meses,
-                deuda_estimada=Decimal(u.deuda_historica_meses) * precio_unitario,
+                meses_adeudados=estado.meses_adeudados,
+                deuda_estimada=Decimal(estado.cantidad_meses) * precio_unitario,
             )
         )
 
+    # Peor deuda primero (más meses adeudados), luego alfabético.
+    resultado.sort(key=lambda m: (-len(m.meses_adeudados), m.apellido, m.nombre))
     return resultado
 
 
@@ -375,7 +308,9 @@ def registrar_pago_manual(
     )
     monto_total: Decimal = precio_congelado * Decimal(payload.meses_a_pagar)
 
-    deuda_antes = usuario.deuda_historica_meses
+    deuda_antes = calcular_estado_financiero(
+        usuario.mes_cubierto_hasta, usuario.fecha_ingreso, _obtener_dia_vencimiento(db)
+    )
     mes_cubierto_hasta_antes: Optional[date] = usuario.mes_cubierto_hasta
     es_menor = (
         _calcular_edad(usuario.fecha_nacimiento) is not None
@@ -423,19 +358,13 @@ def registrar_pago_manual(
     )
     db.add(detalle)
 
-    # 6 ── Actualizar la deuda del usuario, sin bajar de 0 ──────────────────
-    usuario.deuda_historica_meses = max(
-        0, usuario.deuda_historica_meses - payload.meses_a_pagar
-    )
-
-    # 6b ── Calcular y actualizar mes_cubierto_hasta con el motor de períodos
-    # (mismo motor que admin_ordenes.py — ver _calcular_nuevo_mes_cubierto).
-    # Se lee usuario.mes_cubierto_hasta ANTES de esta línea (todavía no fue
-    # tocado arriba), así que la base sigue siendo la cobertura real previa,
-    # esté vencida o no.
+    # 6 ── Calcular y actualizar mes_cubierto_hasta con el motor de períodos
+    # compartido (utils/cuotas_periodos.py — la deuda se deriva de esta fecha,
+    # no hay contador aparte que decrementar).
     dia_vencimiento = _obtener_dia_vencimiento(db)
-    mes_cubierto_hasta_nuevo = _calcular_nuevo_mes_cubierto(
-        usuario=usuario,
+    mes_cubierto_hasta_nuevo = calcular_nuevo_mes_cubierto(
+        mes_cubierto_hasta=usuario.mes_cubierto_hasta,
+        fecha_ingreso=usuario.fecha_ingreso,
         meses_a_pagar=payload.meses_a_pagar,
         dia_vencimiento_cuota=dia_vencimiento,
     )
@@ -457,8 +386,7 @@ def registrar_pago_manual(
             "es_menor": es_menor,
             "precio_unitario_historico": str(precio_congelado),
             "monto_total": str(monto_total),
-            "deuda_antes": deuda_antes,
-            "deuda_despues": usuario.deuda_historica_meses,
+            "meses_adeudados_antes": [d.isoformat() for d in deuda_antes.meses_adeudados],
             "mes_cubierto_hasta_antes": (
                 mes_cubierto_hasta_antes.isoformat() if mes_cubierto_hasta_antes else None
             ),
@@ -491,10 +419,13 @@ def registrar_pago_manual(
     db.refresh(nueva_orden)
     db.refresh(usuario)
 
+    estado_despues = calcular_estado_financiero(
+        usuario.mes_cubierto_hasta, usuario.fecha_ingreso, dia_vencimiento
+    )
     return schemas.RegistrarPagoManualResponse(
         id_orden=nueva_orden.id_orden,
         id_usuario=usuario.id_usuario,
         meses_pagados=payload.meses_a_pagar,
         monto_total=monto_total,
-        deuda_restante_meses=usuario.deuda_historica_meses,
+        meses_adeudados_restante=estado_despues.meses_adeudados,
     )

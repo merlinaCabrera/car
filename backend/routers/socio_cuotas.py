@@ -55,6 +55,7 @@ from database import get_db
 from dependencies import get_current_user, require_roles
 from mailer.services import email_tasks
 from utils.s3 import subir_archivo, eliminar_archivo, generar_presigned_url
+from utils.cuotas_periodos import calcular_estado_financiero
 
 
 def _resolver_url_archivo(valor: str | None) -> str | None:
@@ -214,7 +215,7 @@ def obtener_estado_cuota(
     if beca_activa:
         return schemas.EstadoCuotaSocioResponse(
             id_producto=producto_cuota.id_producto,
-            deuda_historica_meses=0,
+            meses_adeudados=[],
             mes_cubierto_hasta=socio.mes_cubierto_hasta,  # se expone para transparencia
             precio_cuota_actual=precio_real_socio,
             deuda_total_pesos=Decimal("0"),
@@ -224,12 +225,13 @@ def obtener_estado_cuota(
             becado_hasta=socio.becado_hasta,
         )
 
+    estado = calcular_estado_financiero(socio.mes_cubierto_hasta, socio.fecha_ingreso, dia_vencimiento, hoy)
     return schemas.EstadoCuotaSocioResponse(
         id_producto=producto_cuota.id_producto,
-        deuda_historica_meses=socio.deuda_historica_meses,
+        meses_adeudados=estado.meses_adeudados,
         mes_cubierto_hasta=socio.mes_cubierto_hasta,
         precio_cuota_actual=precio_real_socio,
-        deuda_total_pesos=Decimal(socio.deuda_historica_meses) * precio_real_socio,
+        deuda_total_pesos=Decimal(estado.cantidad_meses) * precio_real_socio,
         dia_vencimiento_cuota=dia_vencimiento,
         fecha_ingreso=socio.fecha_ingreso,
         es_becado=False,

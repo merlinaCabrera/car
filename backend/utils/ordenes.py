@@ -15,7 +15,6 @@ si algo falla a mitad de camino.
 """
 from __future__ import annotations
 
-import calendar
 from datetime import date, datetime, timezone
 from typing import Optional
 
@@ -26,47 +25,7 @@ import models
 import schemas
 from mailer.services import email_tasks
 from utils.audit import registrar_audit
-
-
-# ─── Motor de cálculo de períodos de cobertura ───────────────────────────────
-# (idéntico al original de admin_ordenes.py, sin cambios de comportamiento)
-
-def _sumar_meses(base: date, meses: int) -> date:
-    """
-    Suma `meses` enteros positivos a `base` usando únicamente la stdlib.
-    Evita el error clásico de overflow de mes (31 de enero + 1 mes ≠ 31 feb).
-    """
-    total_meses = base.month - 1 + meses
-    anio = base.year + total_meses // 12
-    mes = total_meses % 12 + 1
-    dia = min(base.day, calendar.monthrange(anio, mes)[1])
-    return date(anio, mes, dia)
-
-
-def _calcular_nuevo_mes_cubierto(
-    usuario: models.Usuario,
-    meses_a_pagar: int,
-    dia_vencimiento_cuota: int,
-) -> date:
-    """
-    Base = usuario.mes_cubierto_hasta SIEMPRE que no sea None, sin importar
-    si está vencida — un pago nunca "saltea" a hoy, extiende la cobertura
-    desde donde el socio se quedó (evita perdonar deuda histórica en silencio).
-    """
-    if usuario.mes_cubierto_hasta is not None:
-        base = usuario.mes_cubierto_hasta
-    elif usuario.fecha_ingreso is not None:
-        base = usuario.fecha_ingreso
-    else:
-        base = date.today()
-
-    dia_normalizado = min(dia_vencimiento_cuota, calendar.monthrange(base.year, base.month)[1])
-    base_normalizada = base.replace(day=dia_normalizado)
-
-    nueva_fecha = _sumar_meses(base_normalizada, meses_a_pagar)
-
-    dia_final = min(dia_vencimiento_cuota, calendar.monthrange(nueva_fecha.year, nueva_fecha.month)[1])
-    return nueva_fecha.replace(day=dia_final)
+from utils.cuotas_periodos import calcular_estado_financiero, calcular_nuevo_mes_cubierto
 
 
 def obtener_dia_vencimiento(db: Session) -> int:
@@ -284,7 +243,6 @@ def procesar_aprobacion_orden(
     """
     socio = orden.usuario
 
-    deuda_antes = socio.deuda_historica_meses
     mes_cubierto_hasta_antes: Optional[date] = socio.mes_cubierto_hasta
 
     meses_cuota_descontados = 0
@@ -349,13 +307,12 @@ def procesar_aprobacion_orden(
                 )
             detalle.reserva.estado = "confirmada"
 
-    # ── Paso 4: deuda y cobertura ─────────────────────────────────────────────
+    # ── Paso 4: cobertura (la deuda se deriva de mes_cubierto_hasta, no hay
+    # contador aparte que decrementar — ver utils/cuotas_periodos.py) ──────────
     if meses_cuota_descontados > 0:
-        socio.deuda_historica_meses = max(
-            0, socio.deuda_historica_meses - meses_cuota_descontados
-        )
-        mes_cubierto_hasta_nuevo = _calcular_nuevo_mes_cubierto(
-            usuario=socio,
+        mes_cubierto_hasta_nuevo = calcular_nuevo_mes_cubierto(
+            mes_cubierto_hasta=socio.mes_cubierto_hasta,
+            fecha_ingreso=socio.fecha_ingreso,
             meses_a_pagar=meses_cuota_descontados,
             dia_vencimiento_cuota=dia_vencimiento,
         )
@@ -384,8 +341,6 @@ def procesar_aprobacion_orden(
         registro_id=orden.id_orden,
         detalle={
             "id_usuario": socio.id_usuario,
-            "deuda_historica_meses_antes": deuda_antes,
-            "deuda_historica_meses_despues": socio.deuda_historica_meses,
             "meses_cuota_descontados": meses_cuota_descontados,
             "meses_corregidos_aplicados": meses_corregidos_aplicados,
             "mes_cubierto_hasta_antes": (
@@ -427,12 +382,18 @@ def procesar_aprobacion_orden(
     # en esa misma request. Esa función arma UN solo mail con el detalle completo del
     # Pago (todas sus órdenes/categorías), en vez de un mail partido por cada Orden.
 
+    estado_financiero = calcular_estado_financiero(
+        socio.mes_cubierto_hasta, socio.fecha_ingreso, dia_vencimiento
+    )
     return schemas.OrdenAprobarResponse(
         id_orden=orden.id_orden,
         estado=orden.estado,
         aprobada_por=orden.aprobada_por,
         aprobada_at=orden.aprobada_at,
-        deuda_historica_meses_restante=(
-            socio.deuda_historica_meses if meses_cuota_descontados > 0 else None
+        cantidad_meses_adeudados=(
+            estado_financiero.cantidad_meses if meses_cuota_descontados > 0 else None
+        ),
+        meses_adeudados_restante=(
+            estado_financiero.meses_adeudados if meses_cuota_descontados > 0 else None
         ),
     )

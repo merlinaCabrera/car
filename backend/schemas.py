@@ -207,7 +207,25 @@ class UsuarioCreateMigracion(UsuarioBase):
     'car' + últimos 5 dígitos del DNI y se envía por email.
     """
     fecha_ingreso: Optional[date] = None
-    deuda_historica_meses: int = Field(default=0, ge=0)
+
+
+class EditarCoberturaPayload(BaseModel):
+    """
+    Corrección manual de la cobertura de cuota de un socio — pensado para
+    socios traspapelados en la carga por planilla, o correcciones puntuales.
+    Todo termina escribiendo mes_cubierto_hasta (única fuente de verdad,
+    ver utils/cuotas_periodos.py): no hay dos números que puedan
+    desincronizarse entre sí.
+
+    De {meses_adeudados, monto_adeudado, mes_cubierto_hasta} se puede
+    mandar COMO MUCHO UNO (son tres formas alternativas de decir lo mismo).
+    fecha_ingreso es independiente y se puede mandar sola o junto a
+    cualquiera de los anteriores.
+    """
+    meses_adeudados: Optional[int] = Field(default=None, ge=0)
+    monto_adeudado: Optional[Decimal] = Field(default=None, ge=0)
+    mes_cubierto_hasta: Optional[date] = None
+    fecha_ingreso: Optional[date] = None
 
 
 class UsuarioUpdate(BaseModel):
@@ -298,7 +316,6 @@ class UsuarioResponse(UsuarioBase):
             "ConfiguracionGlobal.dia_vencimiento_cuota."
         ),
     )
-    deuda_historica_meses: int
     fecha_ingreso: date
     fecha_baja: Optional[date] = None
     is_directivo: bool
@@ -321,7 +338,6 @@ class UsuarioListResponse(BaseModel):
     apellido: str
     email: Optional[str] = None
     fecha_baja: Optional[date] = None
-    deuda_historica_meses: int
     mes_cubierto_hasta: Optional[date] = Field(
         default=None,
         description="Fecha de cobertura vigente (ISO 8601). NULL = sin cobertura activa.",
@@ -932,9 +948,15 @@ class OrdenAprobarResponse(BaseModel):
     estado: str
     aprobada_por: int
     aprobada_at: datetime
-    deuda_historica_meses_restante: Optional[int] = Field(
+    cantidad_meses_adeudados: Optional[int] = Field(
         default=None,
         description="Solo se completa si la orden tenía ítems de categoría 'cuota_social'.",
+    )
+    meses_adeudados_restante: Optional[List[date]] = Field(
+        default=None,
+        description="Fechas de vencimiento de los períodos que siguen adeudados "
+                    "tras esta aprobación, calculados en tiempo real desde "
+                    "mes_cubierto_hasta (no un contador aparte). Vacío = al día.",
     )
 
 
@@ -956,8 +978,8 @@ class EstadisticasPagosResponse(BaseModel):
     total_socios_morosos: int
     precio_cuota_actual: Decimal
     deuda_total_estimada: Decimal = Field(
-        description="Suma de deuda_historica_meses de todos los morosos, "
-                     "multiplicada por el precio_actual vigente del producto 'cuota_social'.",
+        description="Suma de meses adeudados (calculados desde mes_cubierto_hasta) "
+                     "de todos los morosos, × el precio_actual vigente del producto 'cuota_social'.",
     )
     dia_vencimiento_cuota: int
 
@@ -979,9 +1001,12 @@ class MorosoResponse(BaseModel):
         default=None,
         description="Último período cubierto por un pago. NULL si nunca pagó.",
     )
-    deuda_historica_meses: int
+    meses_adeudados: List[date] = Field(
+        description="Fecha de vencimiento de cada período adeudado, en orden "
+                     "cronológico. Calculado en tiempo real desde mes_cubierto_hasta."
+    )
     deuda_estimada: Decimal = Field(
-        description="deuda_historica_meses × precio_actual de la cuota social."
+        description="cantidad de meses_adeudados × precio_actual de la cuota social."
     )
 
 
@@ -1018,7 +1043,9 @@ class RegistrarPagoManualResponse(BaseModel):
     id_usuario: int
     meses_pagados: int
     monto_total: Decimal
-    deuda_restante_meses: int
+    meses_adeudados_restante: List[date] = Field(
+        description="Vacío = quedó al día. Si no, fechas de los períodos que siguen debiendo."
+    )
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1061,7 +1088,9 @@ class EstadoCuotaSocioResponse(BaseModel):
     id_producto: int = Field(
         description="ID del ProductoServicio de categoría 'cuota_social' vigente."
     )
-    deuda_historica_meses: int
+    meses_adeudados: List[date] = Field(
+        description="Fecha de vencimiento de cada período adeudado, orden cronológico. Vacío = al día."
+    )
     mes_cubierto_hasta: Optional[date] = Field(
         default=None,
         description=(
@@ -1072,7 +1101,7 @@ class EstadoCuotaSocioResponse(BaseModel):
     )
     precio_cuota_actual: Decimal
     deuda_total_pesos: Decimal = Field(
-        description="deuda_historica_meses × precio_cuota_actual."
+        description="cantidad de meses_adeudados × precio_cuota_actual."
     )
     dia_vencimiento_cuota: int = Field(
         description=(

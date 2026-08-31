@@ -384,6 +384,13 @@ function SocioFormModal({ socio, onClose, onSave, catalogoRoles, token, esAdminG
   const [coberturaError,         setCoberturaError]         = useState(null)
   const [coberturaExito,         setCoberturaExito]         = useState(null)
 
+  // ── Bloques desplegables (todos cerrados por default, no son cosas que
+  // se toquen a diario — igual que en Comercios/Sponsors) ────────────────────
+  const [becaAbierta,      setBecaAbierta]      = useState(false)
+  const [saldoAbierto,     setSaldoAbierto]     = useState(false)
+  const [coberturaAbierta, setCoberturaAbierta] = useState(false)
+  const [rolesAbiertos,    setRolesAbiertos]    = useState(false)
+
   const isEditMode = !!socio
 
   useEffect(() => {
@@ -729,14 +736,27 @@ function SocioFormModal({ socio, onClose, onSave, catalogoRoles, token, esAdminG
 
             {/* ── Sección Beca (solo en modo edición) ─────────────────────── */}
             {isEditMode && (
-              <div className="space-y-3 p-4 rounded-xl border-2 border-teal-200 bg-teal-50">
-                <div className="flex items-center justify-between">
+              <div className="rounded-xl border-2 border-teal-200 bg-teal-50 overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setBecaAbierta(o => !o)}
+                  className="w-full flex items-center justify-between gap-3 p-4 text-left"
+                >
                   <div>
                     <p className="text-sm font-bold text-teal-900">Socio Becado</p>
                     <p className="text-xs text-teal-700 mt-0.5">
-                      El socio no paga cuota y nunca aparece como moroso mientras la beca esté activa.
+                      {formData.es_becado ? '✓ Beca activa' : 'Sin beca'}
                     </p>
                   </div>
+                  {becaAbierta ? <ChevronUp size={18} className="text-teal-500 flex-shrink-0" /> : <ChevronDown size={18} className="text-teal-500 flex-shrink-0" />}
+                </button>
+
+                {becaAbierta && (
+                <div className="px-4 pb-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-teal-700">
+                    El socio no paga cuota y nunca aparece como moroso mientras la beca esté activa.
+                  </p>
                   <button
                     type="button"
                     onClick={() => setFormData(prev => ({
@@ -769,21 +789,36 @@ function SocioFormModal({ socio, onClose, onSave, catalogoRoles, token, esAdminG
                     />
                   </div>
                 )}
+                </div>
+                )}
               </div>
             )}
 
             {/* ── Sección Saldo a Favor (solo en modo edición, solo admin_general) ── */}
             {isEditMode && (
-              <div className="space-y-3 p-4 rounded-xl border-2 border-amber-200 bg-amber-50">
-                <div>
-                  <p className="text-sm font-bold text-amber-900 flex items-center gap-2">
-                    💰 Saldo a Favor
-                  </p>
-                  <p className="text-xs text-amber-700 mt-0.5">
-                    El saldo se aplica automáticamente en el checkout. Ajustalo acá por reintegros manuales,
-                    correcciones o cortesías del club.
-                  </p>
-                </div>
+              <div className="rounded-xl border-2 border-amber-200 bg-amber-50 overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setSaldoAbierto(o => !o)}
+                  className="w-full flex items-center justify-between gap-3 p-4 text-left"
+                >
+                  <div>
+                    <p className="text-sm font-bold text-amber-900 flex items-center gap-2">
+                      💰 Saldo a Favor
+                    </p>
+                    <p className="text-xs text-amber-700 mt-0.5">
+                      ${saldoActual.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                    </p>
+                  </div>
+                  {saldoAbierto ? <ChevronUp size={18} className="text-amber-500 flex-shrink-0" /> : <ChevronDown size={18} className="text-amber-500 flex-shrink-0" />}
+                </button>
+
+                {saldoAbierto && (
+                <div className="px-4 pb-4 space-y-3">
+                <p className="text-xs text-amber-700">
+                  El saldo se aplica automáticamente en el checkout. Ajustalo acá por reintegros manuales,
+                  correcciones o cortesías del club.
+                </p>
 
                 {/* Saldo actual */}
                 <div className="flex items-center justify-between bg-white rounded-lg px-4 py-2.5 border border-amber-200">
@@ -844,21 +879,39 @@ function SocioFormModal({ socio, onClose, onSave, catalogoRoles, token, esAdminG
                   {guardandoSaldo && <Loader2 size={14} className="animate-spin" />}
                   {guardandoSaldo ? 'Guardando…' : 'Guardar saldo'}
                 </button>
+                </div>
+                )}
               </div>
             )}
 
             {isEditMode && esAdminGeneral && (
-              <div className="space-y-3 p-4 rounded-xl border-2 border-blue-200 bg-blue-50">
-                <div>
-                  <p className="text-sm font-bold text-blue-900 flex items-center gap-2">
-                    📅 Cobertura de Cuota
-                  </p>
-                  <p className="text-xs text-blue-700 mt-0.5">
-                    Corrección manual para socios traspapelados en la carga por planilla,
-                    o ajustes puntuales. Todo termina escribiendo la misma fecha de cobertura
-                    — no hay dos números que puedan desincronizarse.
-                  </p>
-                </div>
+              <div className="rounded-xl border-2 border-blue-200 bg-blue-50 overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setCoberturaAbierta(o => !o)}
+                  className="w-full flex items-center justify-between gap-3 p-4 text-left"
+                >
+                  <div>
+                    <p className="text-sm font-bold text-blue-900 flex items-center gap-2">
+                      📅 Cobertura de Cuota
+                    </p>
+                    <p className="text-xs text-blue-700 mt-0.5">
+                      {(() => {
+                        const e = calcularEstadoFinanciero(mesCubiertoHastaActual, fechaIngresoActual, diaVencimiento)
+                        return e.moroso ? `Moroso — ${e.mesesAdeudados} mes(es)` : 'Al día'
+                      })()}
+                    </p>
+                  </div>
+                  {coberturaAbierta ? <ChevronUp size={18} className="text-blue-500 flex-shrink-0" /> : <ChevronDown size={18} className="text-blue-500 flex-shrink-0" />}
+                </button>
+
+                {coberturaAbierta && (
+                <div className="px-4 pb-4 space-y-3">
+                <p className="text-xs text-blue-700">
+                  Corrección manual para socios traspapelados en la carga por planilla,
+                  o ajustes puntuales. Todo termina escribiendo la misma fecha de cobertura
+                  — no hay dos números que puedan desincronizarse.
+                </p>
 
                 {/* Estado actual */}
                 {(() => {
@@ -984,17 +1037,36 @@ function SocioFormModal({ socio, onClose, onSave, catalogoRoles, token, esAdminG
                   {guardandoCobertura && <Loader2 size={14} className="animate-spin" />}
                   {guardandoCobertura ? 'Guardando…' : 'Guardar cobertura'}
                 </button>
+                </div>
+                )}
               </div>
             )}
 
             {isEditMode && (
-              <SeccionRoles
-                catalogoRoles={catalogoRoles}
-                selectedRoles={selectedRoles}
-                onToggle={toggleRol}
-                loadingRoles={loadingRoles}
-                errorRoles={errorRoles}
-              />
+              <div className="rounded-xl border-2 border-indigo-200 bg-indigo-50 overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setRolesAbiertos(o => !o)}
+                  className="w-full flex items-center justify-between gap-3 p-4 text-left"
+                >
+                  <p className="text-sm font-bold text-indigo-900 flex items-center gap-2">
+                    <ShieldCheck size={16} /> Roles del Usuario
+                  </p>
+                  {rolesAbiertos ? <ChevronUp size={18} className="text-indigo-500 flex-shrink-0" /> : <ChevronDown size={18} className="text-indigo-500 flex-shrink-0" />}
+                </button>
+
+                {rolesAbiertos && (
+                <div className="px-4 pb-4">
+                  <SeccionRoles
+                    catalogoRoles={catalogoRoles}
+                    selectedRoles={selectedRoles}
+                    onToggle={toggleRol}
+                    loadingRoles={loadingRoles}
+                    errorRoles={errorRoles}
+                  />
+                </div>
+                )}
+              </div>
             )}
           </div>
 

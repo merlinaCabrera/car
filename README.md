@@ -17,13 +17,14 @@ El proyecto está dividido en dos aplicaciones principales y se apoya en servici
 | **Backend** | Python + FastAPI | API REST, validación con Pydantic v2. |
 | **Base de Datos**| PostgreSQL | ORM SQLAlchemy 2.0, control de migraciones con Alembic. |
 
+<img width="706" height="518" alt="image" src="https://github.com/user-attachments/assets/6fc809cd-b54e-485e-900c-10d762ce1080" />
+
 ## Módulos Principales
 
 ### 1. Identidad y Control de Accesos
 - **Multi-Rol:** Un mismo usuario puede tener múltiples roles simultáneos (puede ser Socio, Jugador y Personal Técnico al mismo tiempo).
 - **Código QR:** Cada socio posee un QR único. El token subyacente rota automáticamente si hay cambios en su estado financiero.
 - **Control en Puerta:** Interfaz para escanear códigos QR (o buscar por DNI), permitiendo autorizar o denegar el acceso instantáneamente según si el socio está al día o es moroso.
-<img width="1162" height="648" alt="image" src="https://github.com/user-attachments/assets/d286391a-b276-4744-8035-5141bcd53671" />
 
 ### 2. Finanzas y E-Commerce
 - **Motor de Cuotas:** El cálculo de deudas no se guarda en pesos históricos, sino en "cantidad de meses adeudados". Si el valor de la cuota se actualiza globalmente, la deuda de los morosos se indexa de forma automática.

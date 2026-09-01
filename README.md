@@ -17,9 +17,8 @@ El proyecto está dividido en dos aplicaciones principales y se apoya en servici
 | **Backend** | Python + FastAPI | API REST, validación con Pydantic v2. |
 | **Base de Datos**| PostgreSQL | ORM SQLAlchemy 2.0, control de migraciones con Alembic. |
 
-<div align="center">
-  <img width="500" alt="image" src="https://github.com/user-attachments/assets/6fc809cd-b54e-485e-900c-10d762ce1080" />
-</div>
+<img width="320" height="981" alt="image" src="https://github.com/user-attachments/assets/a5245dfe-04a7-483d-97c6-6d0c43210f35" />
+
 
 ## Módulos Principales
 

@@ -17,10 +17,10 @@ El proyecto está dividido en dos aplicaciones principales y se apoya en servici
 | **Backend** | Python + FastAPI | API REST, validación con Pydantic v2. |
 | **Base de Datos**| PostgreSQL | ORM SQLAlchemy 2.0, control de migraciones con Alembic. |
 
-<img width="320" height="981" alt="image" src="https://github.com/user-attachments/assets/a5245dfe-04a7-483d-97c6-6d0c43210f35" />
-
 
 ## Módulos Principales
+
+<img align="left" width="280" src="https://github.com/user-attachments/assets/a5245dfe-04a7-483d-97c6-6d0c43210f35" />
 
 ### 1. Identidad y Control de Accesos
 - **Multi-Rol:** Un mismo usuario puede tener múltiples roles simultáneos (puede ser Socio, Jugador y Personal Técnico al mismo tiempo).
@@ -42,18 +42,4 @@ El proyecto está dividido en dos aplicaciones principales y se apoya en servici
 - **Audit Log:** Tabla inmutable que registra cada acción sensible dentro del sistema (quién aprobó un pago, quién dio de baja a un socio, etc.) asegurando la trazabilidad total.
 - **Correos:** Para flujos de alta/baja de usuarios o de compras (en general, de un tipo de ítem o mixtas, es decir: cuotas, indumentaria y alquileres) están establecidas notificaciones por correo electrónico, para lo cual se utiliza la plataforma Resend.
 
-
-```text
-📦 club-atletico-erp
- ┣ 📂 backend
- ┃ ┣ 📂 alembic       # Migraciones de base de datos
- ┃ ┣ 📂 routers       # Endpoints segregados por rol
- ┃ ┣ 📜 models.py     # Modelos de SQLAlchemy
- ┃ ┗ 📜 schemas.py    # Esquemas de validación de Pydantic
- ┗ 📂 frontend
-   ┣ 📂 src
-   ┃ ┣ 📂 components  # Componentes modulares
-   ┃ ┣ 📂 context     # Estado global (Auth, Carrito)
-   ┃ ┗ 📂 pages       # Vistas de la aplicación
-   ┗ 📜 package.json
-```
+<br clear="left"/>

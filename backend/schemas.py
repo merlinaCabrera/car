@@ -316,6 +316,18 @@ class UsuarioResponse(UsuarioBase):
             "ConfiguracionGlobal.dia_vencimiento_cuota."
         ),
     )
+    dia_vencimiento_cuota: Optional[int] = Field(
+        default=None,
+        description=(
+            "Copia de ConfiguracionGlobal.dia_vencimiento_cuota al momento de la "
+            "respuesta — solo GET /usuarios/me la completa; en el resto de los "
+            "endpoints que reusan este schema (PATCH de perfil, subir foto) queda "
+            "en None porque no es relevante ahí. Sin esto, el frontend no tiene "
+            "forma de saber el día real de corte y termina asumiendo 10 siempre, "
+            "lo que puede desalinear el estado 'al_dia'/'moroso' mostrado si el "
+            "club alguna vez cambia ese valor."
+        ),
+    )
     fecha_ingreso: date
     fecha_baja: Optional[date] = None
     is_directivo: bool
@@ -965,6 +977,13 @@ class OrdenRechazarResponse(BaseModel):
     id_orden: int
     estado: str
     motivo_rechazo: str
+
+
+class OrdenReabrirResponse(BaseModel):
+    """Confirmación de reapertura de una orden expirada."""
+    id_orden: int
+    estado: str
+    expira_at: datetime
 
 
 

@@ -12,7 +12,6 @@ Cambios respecto a la versión anterior:
   - POST /usuarios/me/foto  → nuevo. Sube la foto de perfil del usuario logueado
     a uploads/fotos_perfil/ (reutiliza el mount /uploads que ya existe en main.py).
 """
-from datetime import datetime, timezone
 from pathlib import Path
 from uuid import uuid4
 
@@ -187,6 +186,7 @@ def solicitar_reactivacion(
 )
 def get_mi_perfil(
     current_user: models.Usuario = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ):
     """
     Retorna todos los datos del usuario autenticado incluyendo roles activos.
@@ -194,6 +194,13 @@ def get_mi_perfil(
     """
     usuario_resp = current_user.__dict__.copy()
     usuario_resp["foto_perfil_url"] = _resolver_url_archivo(current_user.foto_perfil_url)
+
+    # Sin esto, el frontend (SocioInicio.jsx) no tenía forma de saber el día
+    # real de vencimiento configurado y asumía 10 siempre — inconsistente
+    # con /socio/cuotas/estado y el escáner de la puerta, que sí lo traen.
+    config = db.query(models.ConfiguracionGlobal).first()
+    usuario_resp["dia_vencimiento_cuota"] = config.dia_vencimiento_cuota if config else 10
+
     return usuario_resp
 
 
@@ -352,7 +359,6 @@ def cambiar_password(
 
     current_user.password_hash = get_password_hash(datos.password_nuevo)
     current_user.requiere_cambio_password = False
-    current_user.password_actualizada_en = datetime.now(timezone.utc)
     db.commit()
 
     return {"mensaje": "Contraseña actualizada correctamente."}

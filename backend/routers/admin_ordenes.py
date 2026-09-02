@@ -28,6 +28,7 @@ manejo de stock, reservas, etc.).
 
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request, status
@@ -511,4 +512,131 @@ def rechazar_orden(
         id_orden=orden.id_orden,
         estado=orden.estado,
         motivo_rechazo=orden.motivo_rechazo,
+    )
+
+
+# ─── ENDPOINT: Reabrir orden expirada ──────────────────────────────────────────
+
+@router.post(
+    "/{id_orden}/reabrir",
+    response_model=schemas.OrdenReabrirResponse,
+    summary="Reabrir una orden expirada que tiene comprobante — la deja lista para aprobar/rechazar de nuevo",
+)
+def reabrir_orden(
+    id_orden: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    admin: models.Usuario = Depends(require_roles(*_ROLES_ADMIN)),
+) -> schemas.OrdenReabrirResponse:
+    """
+    El job del scheduler (expirar_ordenes_vencidas) marca 'expirada' toda
+    orden pendiente_verificacion cuyas 48hs vencieron, devuelve stock y
+    libera reservas — pero el comprobante que el socio subió NO se pierde
+    (sigue en Pago.comprobante_url, en S3). Este endpoint reabre esa orden
+    para que un admin la pueda aprobar/rechazar como si nunca hubiera
+    expirado, siempre que:
+      - Tenga comprobante cargado (si no, no hay nada que revisar).
+      - Haya stock suficiente para volver a reservarlo (alguien pudo haber
+        comprado el último de un producto mientras estaba expirada).
+      - El turno de cancha/salón (si aplica) siga libre (alguien más pudo
+        haberlo tomado mientras tanto).
+    Si cualquiera de esas dos últimas condiciones falla, se rechaza el
+    reabrir por completo (no hay reapertura parcial) y el admin tiene que
+    resolverlo a mano con el socio (reintegro, turno alternativo, etc.).
+    """
+    orden = _obtener_orden_o_404(db, id_orden)
+
+    if orden.estado != "expirada":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                f"La orden #{orden.id_orden} está en estado '{orden.estado}', no 'expirada'. "
+                "Solo se pueden reabrir órdenes expiradas."
+            ),
+        )
+
+    if orden.pago is None or not orden.pago.comprobante_url:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "Esta orden no tiene comprobante cargado — no hay nada que revisar. "
+                "El socio tiene que generar el pedido de nuevo."
+            ),
+        )
+
+    # ── Chequeo 1: stock suficiente (se devolvió al expirar) ──────────────────
+    for detalle in orden.detalles:
+        producto = detalle.producto
+        if (
+            producto is not None
+            and producto.categoria not in ("cuota_social", "alquiler")
+            and producto.stock is not None
+            and producto.stock < detalle.cantidad
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=(
+                    f"No se puede reabrir: '{producto.nombre}' ya no tiene stock suficiente "
+                    f"(quedan {producto.stock}, la orden pedía {detalle.cantidad}). "
+                    "Alguien pudo haberlo comprado mientras la orden estaba expirada."
+                ),
+            )
+
+    # ── Chequeo 2: el turno de cancha/salón sigue libre (se liberó al expirar) ─
+    for detalle in orden.detalles:
+        reserva = detalle.reserva
+        if reserva is not None and reserva.estado == "liberada":
+            conflicto = (
+                db.query(models.ReservaInstalacion.id_reserva)
+                .filter(
+                    models.ReservaInstalacion.id_reserva != reserva.id_reserva,
+                    models.ReservaInstalacion.instalacion == reserva.instalacion,
+                    models.ReservaInstalacion.estado.in_(("bloqueada", "confirmada")),
+                    models.ReservaInstalacion.fecha_inicio < reserva.fecha_fin,
+                    models.ReservaInstalacion.fecha_fin > reserva.fecha_inicio,
+                )
+                .first()
+            )
+            if conflicto is not None:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail=(
+                        f"No se puede reabrir: el turno de '{reserva.instalacion}' ya fue tomado "
+                        "por otro socio mientras esta orden estaba expirada. Hay que resolverlo "
+                        "manualmente con el socio (reintegro o reasignar otro turno)."
+                    ),
+                )
+
+    # ── Todo libre — reabrir de verdad ──────────────────────────────────────
+    for detalle in orden.detalles:
+        producto = detalle.producto
+        if (
+            producto is not None
+            and producto.categoria not in ("cuota_social", "alquiler")
+            and producto.stock is not None
+        ):
+            producto.stock -= detalle.cantidad
+        if detalle.reserva is not None and detalle.reserva.estado == "liberada":
+            detalle.reserva.estado = "bloqueada"
+
+    orden.estado = "pendiente_verificacion"
+    orden.expira_at = datetime.now(timezone.utc) + timedelta(hours=48)
+
+    _registrar_audit(
+        db=db,
+        actor_id=admin.id_usuario,
+        accion="REABRIR_ORDEN_EXPIRADA",
+        tabla_afectada="ordenes",
+        registro_id=orden.id_orden,
+        detalle={"nuevo_expira_at": orden.expira_at.isoformat()},
+        ip=_extraer_ip(request),
+    )
+
+    db.commit()
+    db.refresh(orden)
+
+    return schemas.OrdenReabrirResponse(
+        id_orden=orden.id_orden,
+        estado=orden.estado,
+        expira_at=orden.expira_at,
     )

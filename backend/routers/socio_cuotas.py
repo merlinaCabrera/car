@@ -33,7 +33,7 @@ from __future__ import annotations
 
 import os
 import uuid
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from typing import List, Optional
 
@@ -620,6 +620,18 @@ async def subir_comprobante(
     comprobante_anterior = pago.comprobante_url
     # Guardar el key de S3 en DB (no una ruta local)
     pago.comprobante_url = s3_key
+
+    # ── Reiniciar el reloj de expiración ────────────────────────────────────
+    # Las 48hs de expira_at arrancan a contar desde el checkout, no desde que
+    # se sube el comprobante — un socio que tarda en conseguir/subir la foto
+    # de la transferencia le dejaba al admin una ventana real mucho más
+    # corta que 48hs para revisarla (a veces solo un par de horas). Al subir
+    # el comprobante, le damos a cada orden hermana pendiente_verificacion
+    # una ventana completa y fresca de 48hs desde este momento.
+    nuevo_vencimiento = datetime.now(timezone.utc) + timedelta(hours=48)
+    for orden_hermana in pago.ordenes:
+        if orden_hermana.estado == "pendiente_verificacion":
+            orden_hermana.expira_at = nuevo_vencimiento
 
     # Eliminar comprobante anterior de S3 si existía
     if comprobante_anterior and not comprobante_anterior.startswith("/"):

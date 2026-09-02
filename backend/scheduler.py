@@ -21,6 +21,8 @@ from apscheduler.schedulers.background import BackgroundScheduler
 
 from database import SessionLocal
 import models
+from utils.ordenes import finalizar_pago_si_corresponde
+from fastapi import BackgroundTasks
 from mailer.services.email_service import (
     enviar_orden_expirada,
     enviar_recordatorio_comprobante,
@@ -134,8 +136,12 @@ def expirar_ordenes_vencidas():
         if not ordenes:
             return
 
+        pagos_afectados = set()
+
         for orden in ordenes:
             orden.estado = "expirada"
+            if orden.id_pago:
+                pagos_afectados.add(orden.id_pago)
 
             # Devolver stock de indumentaria/otros (no cuota ni alquiler)
             for detalle in orden.detalles:
@@ -168,6 +174,24 @@ def expirar_ordenes_vencidas():
 
         db.commit()
 
+        # Un Pago mixto (cuota + tienda) puede tener una orden hermana ya
+        # aprobada por un admin mientras esta se expiraba sola acá. Sin este
+        # paso, ese Pago quedaba huérfano para siempre: el socio nunca
+        # recibía el mail de "compra confirmada" de la parte que sí se
+        # aprobó, aunque la cobertura de cuota ya hubiera quedado bien
+        # actualizada del otro lado.
+        for id_pago in pagos_afectados:
+            pago = db.query(models.Pago).filter(models.Pago.id_pago == id_pago).first()
+            if pago is None:
+                continue
+            bg = BackgroundTasks()
+            finalizar_pago_si_corresponde(db=db, pago=pago, background_tasks=bg)
+            try:
+                asyncio.run(bg())
+            except Exception as bg_exc:
+                logger.error(f"[scheduler] Finalización de pago #{id_pago} falló: {bg_exc}")
+        db.commit()
+
     except Exception as exc:
         db.rollback()
         logger.error(f"[scheduler] Error en expirar_ordenes_vencidas: {exc}", exc_info=True)
@@ -188,7 +212,7 @@ def recordatorio_comprobante_pendiente():
     db = SessionLocal()
     try:
         ahora = datetime.now(timezone.utc)
-        ventana_inicio = ahora + timedelta(hours=20)
+        ventana_inicio = ahora + timedelta(hours=23)
         ventana_fin    = ahora + timedelta(hours=24)
 
         ordenes = (
@@ -418,11 +442,11 @@ scheduler = BackgroundScheduler(timezone="UTC")
 scheduler.add_job(
     cerrar_eventos_vencidos,
     trigger="interval",
-    hours=12,
+    minutes=5,
     id="cerrar_eventos_vencidos",
     replace_existing=True,
-    misfire_grace_time=300,
-    jitter=120,
+    misfire_grace_time=60,
+    jitter=30,
 )
 
 scheduler.add_job(
@@ -438,21 +462,21 @@ scheduler.add_job(
 scheduler.add_job(
     expirar_ordenes_vencidas,
     trigger="interval",
-    hours=4,
+    hours=1,
     id="expirar_ordenes_vencidas",
     replace_existing=True,
     misfire_grace_time=300,
-    jitter=120,
+    jitter=60,
 )
 
 scheduler.add_job(
     recordatorio_comprobante_pendiente,
     trigger="interval",
-    hours=4,
+    hours=1,
     id="recordatorio_comprobante_pendiente",
     replace_existing=True,
     misfire_grace_time=300,
-    jitter=120,
+    jitter=60,
 )
 
 scheduler.add_job(
@@ -467,4 +491,4 @@ scheduler.add_job(
 )
 
 scheduler.start()
-logger.info("[scheduler] APScheduler iniciado — frecuencias ajustadas para Neon free tier.")
+logger.info("[scheduler] APScheduler iniciado — revisión cada 5 minutos.")

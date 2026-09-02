@@ -793,6 +793,29 @@ def editar_cobertura_socio(
 
     estado_despues = calcular_estado_financiero(usuario.mes_cubierto_hasta, usuario.fecha_ingreso, dia_vencimiento)
 
+    # Notificación in-app al socio — a diferencia de un pago, esto es una
+    # corrección administrativa, así que el texto lo aclara explícitamente
+    # para que no se confunda con un comprobante o recibo.
+    if estado_despues.moroso:
+        cuerpo_notif = (
+            f"Un administrador ajustó tu cobertura de cuota. Estado actual: "
+            f"debés {estado_despues.cantidad_meses} mes(es). Esto es una corrección "
+            f"administrativa, no un pago — si tenés dudas, contactá al club."
+        )
+    else:
+        cuerpo_notif = (
+            "Un administrador ajustó tu cobertura de cuota. Estado actual: al día. "
+            "Esto es una corrección administrativa, no un pago — si tenés dudas, "
+            "contactá al club."
+        )
+    db.add(models.Notificacion(
+        id_usuario=usuario.id_usuario,
+        tipo="sistema",
+        titulo="Tu cobertura de cuota fue ajustada",
+        cuerpo=cuerpo_notif,
+        referencia_id=usuario.id_usuario,
+    ))
+
     db.add(models.AuditLog(
         usuario_actor=current_admin.id_usuario,
         accion="EDITAR_COBERTURA_SOCIO",

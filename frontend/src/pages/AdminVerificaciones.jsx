@@ -184,6 +184,26 @@ function VerificacionModal({ orden, onClose, onActionSuccess, token }) {
     }
   }
 
+  const handleReabrir = async () => {
+    setIsSubmitting(true)
+    setApiError(null)
+    try {
+      const res = await fetch(`${API}/admin/ordenes/${orden.id_orden}/reabrir`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.detail ?? 'Error al reabrir la orden.')
+      }
+      onActionSuccess(orden.id_orden, 'pendiente_verificacion')
+    } catch (err) {
+      setApiError(err.message)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
   const handleRechazar = async () => {
     if (!motivoRechazo.trim()) {
       setApiError('Debés ingresar un motivo para el rechazo.')
@@ -346,7 +366,23 @@ function VerificacionModal({ orden, onClose, onActionSuccess, token }) {
         </div>
 
         <div className="p-4 bg-gray-50 rounded-b-2xl border-t flex justify-between items-center gap-3 flex-shrink-0">
-          {showRechazoInput ? (
+          {orden.estado === 'expirada' ? (
+            <div className="w-full flex items-center justify-between gap-3">
+              <p className="text-xs text-gray-500">
+                {orden.pago?.comprobante_url
+                  ? 'Reabrir le da otras 48hs para revisarla, como si nunca hubiera expirado.'
+                  : 'No tiene comprobante — no hay nada que reabrir.'}
+              </p>
+              <button
+                onClick={handleReabrir}
+                disabled={isSubmitting || !orden.pago?.comprobante_url}
+                className="flex-shrink-0 px-4 py-2 rounded-lg text-white bg-blue-600 hover:bg-blue-700 font-semibold disabled:opacity-50 transition-colors flex items-center gap-2"
+              >
+                {isSubmitting && <Loader2 size={14} className="animate-spin" />}
+                <RefreshCw size={14} /> Reabrir Orden
+              </button>
+            </div>
+          ) : showRechazoInput ? (
             <>
               <button onClick={() => setShowRechazoInput(false)} className="text-sm font-medium text-gray-600 hover:text-gray-800">
                 Cancelar

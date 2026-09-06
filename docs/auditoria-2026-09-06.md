@@ -2,11 +2,11 @@
 
 _Fecha: 2026-09-06 · Método: lectura de código (no se ejecutaron exploits) · Foco: manejo de dinero y control de acceso por rol._
 
-> **Estado de corrección (2026-09-06):** los 5 hallazgos **ALTA (A1–A5) están corregidos**
-> en el working tree — falta commit + testeo. Cambios en `routers/usuarios.py`,
-> `routers/qr_auth.py`, `routers/socio_carrito.py`, `routers/admin_ordenes.py`,
-> `routers/socio_cuotas.py`, `utils/ordenes.py`, `scheduler.py`. MEDIA y BAJA siguen pendientes.
-> Ver "Detalle de la corrección de ALTA" al final.
+> **Estado de corrección (2026-09-06):** rama `seguridad/auditoria-alta`.
+> **ALTA (A1–A5): corregidos** — commit `8ca42a2`.
+> **MEDIA M1–M6: corregidos** — commit `4acc926`.
+> Pendientes: **M7–M11** y toda la lista **BAJA**. Falta testeo con base real.
+> Ver "Detalle de la corrección" al final.
 
 Cubre: `backend/` completo (routers, `utils/`, `models.py`, `schemas.py`, `security.py`,
 `dependencies.py`, `scheduler.py`, `main.py`) y el ruteo del frontend
@@ -137,7 +137,9 @@ cosechar nombre + foto + si está moroso de todo el padrón.
 
 ## MEDIA
 
-### M1 · Webhook de MP: no verifica el monto
+> M1–M6 ✅ corregidos (commit `4acc926`). M7–M11 pendientes.
+
+### M1 ✅ · Webhook de MP: no verifica el monto
 **Dónde:** `routers/webhooks_mercadopago.py::recibir_webhook_mercadopago`.
 
 Aprueba el `Pago` con solo `estado_mp == "approved"` + `external_reference == id_pago`.
@@ -145,7 +147,7 @@ Nunca compara `pago_mp["transaction_amount"]` contra `pago.monto_total`.
 
 **Fix:** antes de aprobar, `assert Decimal(str(pago_mp["transaction_amount"])) >= pago.monto_total`.
 
-### M2 · La preferencia de MP ignora el `saldo_a_favor` aplicado
+### M2 ✅ · La preferencia de MP ignora el `saldo_a_favor` aplicado
 **Dónde:** `routers/socio_carrito.py::_crear_preferencia_mercado_pago` + `checkout_carrito`.
 
 La preference se arma con `items_resueltos` a precio completo. Si el socio hizo
@@ -160,7 +162,7 @@ Además, con `saldo_cubre_todo=True` + `metodo_pago="mercado_pago"`, la línea 4
 ítem "Compra CAR" por `pago.monto_total`) — o prohibir `usar_saldo` + `mercado_pago` juntos.
 Y cortar el branch de MP cuando `saldo_cubre_todo`.
 
-### M3 · La firma del webhook de MP se saltea según un flag del propio body
+### M3 ✅ · La firma del webhook de MP se saltea según un flag del propio body
 **Dónde:** `routers/webhooks_mercadopago.py` (~149): `es_live = body.get("live_mode", False)`;
 la firma solo se valida si `es_live`. El atacante controla el body → manda `live_mode:false`
 y no hay validación. Además `_validar_firma` devuelve `True` si `MP_WEBHOOK_SECRET` no está
@@ -169,7 +171,7 @@ seteado. (Mitiga bastante que igual se consulta la API real de MP, pero es débi
 **Fix:** validar firma siempre que `MP_WEBHOOK_SECRET` esté seteado; controlar el modo
 sandbox con una env var, no con el body. Verificar que `MP_WEBHOOK_SECRET` esté en Render.
 
-### M4 · Carreras por falta de lock en transiciones de estado (plata / stock / billetera)
+### M4 ✅ · Carreras por falta de lock en transiciones de estado (plata / stock / billetera)
 Mismo patrón en varios lados: `SELECT` y después mutar en Python bajo READ COMMITTED, sin
 `with_for_update()`. Bajo concurrencia (dos admins, o admin + webhook de MP, o doble-submit):
 
@@ -187,7 +189,7 @@ Mismo patrón en varios lados: `SELECT` y después mutar en Python bajo READ COM
 principio de cada uno de estos handlers, o `UPDATE ... WHERE estado = :esperado` con chequeo
 de `rowcount`.
 
-### M5 · Cambiar la contraseña desde la app no invalida los JWT viejos
+### M5 ✅ · Cambiar la contraseña desde la app no invalida los JWT viejos
 **Dónde:** `routers/usuarios.py::cambiar_password`.
 
 Setea `password_hash` y `requiere_cambio_password=False` pero **no** `password_actualizada_en`
@@ -199,7 +201,7 @@ emitidos antes del cambio. `auth.py::resetear_password` sí lo setea.
 
 **Fix:** en `cambiar_password`, `current_user.password_actualizada_en = datetime.now(timezone.utc)`.
 
-### M6 · No se exige el cambio de contraseña a nivel API
+### M6 ✅ · No se exige el cambio de contraseña a nivel API
 `dependencies.get_current_user` no mira `requiere_cambio_password`. Una cuenta con clave
 provisoria (`car` + últimos 5 del DNI, adivinable para un DNI puntual) recibe un token de
 8 h y puede llamar cualquier endpoint por API; solo la SPA bloquea la navegación.
@@ -387,3 +389,72 @@ checkout −1 · (rechazo/cancelación/expiración) +1 · reabrir −1 · aproba
   hacer búsqueda manual por DNI en el escáner. Si algún comercio realmente lo necesita, hay
   que darle otro rol o un endpoint acotado. Conviene además ocultar el input de DNI en
   `AdminScanner.jsx` para operadores `invitado`.
+
+---
+
+## Detalle de la corrección de MEDIA M1–M6 (2026-09-06 · commit `4acc926`)
+
+### M1 ✅ — `routers/webhooks_mercadopago.py`
+Antes de aprobar, compara `transaction_amount` (traído de la API de MP) contra
+`pago.monto_total` con tolerancia de 1 centavo. Si MP cobró menos → no aprueba, guarda el
+`mp_payment_id` y devuelve `{"status": "monto_no_coincide", ...}` para revisión manual.
+
+### M2 ✅ — `routers/socio_carrito.py`
+- `_crear_preferencia_mercado_pago`: si la suma de ítems ≠ `pago.monto_total` (= se aplicó
+  saldo a favor), la preference se colapsa a **un solo ítem** por `pago.monto_total`. Antes
+  MP cobraba el bruto mientras la billetera ya se había debitado.
+- `checkout_carrito`: `metodo = "saldo_a_favor" if saldo_cubre_todo else payload.metodo_pago`
+  → cuando el saldo cubre todo, ya no se genera link de MP ni se dispara el aviso de
+  "efectivo" ni el mail de "orden generada" (el Pago ya se auto-aprobó y salió el de
+  "compra confirmada").
+
+### M3 ✅ — `routers/webhooks_mercadopago.py`
+Se elimina el gate `body["live_mode"]`. La firma se valida **siempre** que
+`MP_WEBHOOK_SECRET` esté seteado (`_validar_firma` solo hace skip si el secret está vacío,
+para sandbox local). ⚠️ **En Render, `MP_WEBHOOK_SECRET` DEBE estar configurado** — sin él,
+el webhook queda sin autenticar.
+
+### M4 ✅ — `with_for_update()` en 6 puntos
+| Función | Fila(s) lockeada(s) | Carrera que cubre |
+|---|---|---|
+| `utils/ordenes.procesar_aprobacion_orden` | socio | admin + webhook MP / doble aprobación → doble avance de `mes_cubierto_hasta` |
+| `admin_ordenes._obtener_orden_o_404(lock=True)` (aprobar/rechazar/reabrir) | orden | doble aprobación, aprobar-vs-rechazar, cancelar-socio-vs-aprobar |
+| `admin_pagos.registrar_pago_manual` | socio | dos cobros de ventanilla / cobro + aprobación de pendiente |
+| `admin_reservas.suspender_reserva` | reserva + responsable | dos admins suspendiendo por lluvia → doble crédito de saldo |
+| `admin_reservas.definir_forma_reintegro` | reintegro + socio | doble `forma=saldo_a_favor` / reintegros hermanos del mismo socio |
+
+Análisis de deadlock: el único orden de adquisición con dos filas es orden→socio (aprobar).
+Ningún camino toma socio→orden. Sin ciclo. Los locks no se sostienen sobre llamadas de red
+(las de MP van antes del lock o después del commit).
+
+### M5 ✅ — `routers/usuarios.py::cambiar_password`
+Setea `password_actualizada_en = now(utc)` → `get_current_user` rechaza los JWT emitidos
+antes del cambio. **Efecto para el usuario:** al cambiar la contraseña desde el perfil, la
+sesión actual se corta y hay que volver a loguear. El frontend debería manejar el 401
+posterior con un redirect limpio a `/login` en vez de mostrar un error.
+
+### M6 ✅ — `dependencies.py::get_current_user`
+Si `requiere_cambio_password` es True, cualquier ruta que no sea `GET /usuarios/me` o
+`POST /usuarios/me/password` responde `403 {"tipo": "requiere_cambio_password"}`. Antes esto
+solo lo bloqueaba la SPA; con un token de clave provisoria (`car`+DNI, adivinable) se podía
+operar toda la API por fuera. `get_current_user` y `get_current_user_optional` ahora reciben
+`Request` para conocer la ruta.
+
+---
+
+## Testing pendiente (necesita base real)
+
+1. **Stock (A3/A4):** comprar→aprobar (stock −1, no −2), comprar→rechazar (vuelve), comprar→
+   expirar (vuelve), reabrir (vuelve a salir). Verificar contra el stock inicial.
+2. **Saldo (A2/M4):** dos checkouts casi simultáneos con `usar_saldo` → solo uno consume.
+3. **Registro (A1):** `POST /usuarios/` con `{"es_becado": true, "id_titular": 1}` → se ignora,
+   el socio queda no-becado y sin titular.
+4. **QR invitado (A5):** login como `invitado` → `validar-token` devuelve respuesta recortada;
+   `validar-dni` responde 403.
+5. **Primer ingreso (M6):** login con `requiere_cambio_password=True` → `GET /socio/cuotas/estado`
+   responde 403 `requiere_cambio_password`; `POST /usuarios/me/password` funciona; después
+   todo normal.
+6. **Cambio de clave (M5):** cambiar desde `/perfil` → la request siguiente con el token viejo
+   responde 401.
+7. **MP (M1/M2/M3):** webhook sin firma con `MP_WEBHOOK_SECRET` seteado → 401. Checkout con
+   saldo parcial + MP → el link de MP cobra el neto.

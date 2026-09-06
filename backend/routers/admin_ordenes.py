@@ -41,7 +41,12 @@ from database import get_db
 from dependencies import require_roles
 from mailer.services import email_tasks
 from utils.audit import registrar_audit as _registrar_audit, extraer_ip as _extraer_ip
-from utils.ordenes import procesar_aprobacion_orden, verificar_pendiente, finalizar_pago_si_corresponde
+from utils.ordenes import (
+    procesar_aprobacion_orden,
+    verificar_pendiente,
+    finalizar_pago_si_corresponde,
+    restaurar_stock_orden,
+)
 
 router = APIRouter(
     prefix="/admin/ordenes",
@@ -429,6 +434,11 @@ def rechazar_orden(
 
     orden.estado = "rechazada"
     orden.motivo_rechazo = payload.motivo_rechazo
+
+    # ── Devolver el stock que el checkout había descontado ────────────────────
+    # El pago no se concretó → la indumentaria/otros vuelven al catálogo.
+    # (cuota_social y alquiler no tienen stock; ver restaurar_stock_orden.)
+    restaurar_stock_orden(orden)
 
     # ── Liberar reservas de alquiler asociadas ────────────────────────────────
     # Si la orden tenía turnos bloqueados, hay que devolverlos a la agenda:

@@ -21,7 +21,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 
 from database import SessionLocal
 import models
-from utils.ordenes import finalizar_pago_si_corresponde
+from utils.ordenes import finalizar_pago_si_corresponde, restaurar_stock_orden
 from fastapi import BackgroundTasks
 from mailer.services.email_service import (
     enviar_orden_expirada,
@@ -143,14 +143,9 @@ def expirar_ordenes_vencidas():
             if orden.id_pago:
                 pagos_afectados.add(orden.id_pago)
 
-            # Devolver stock de indumentaria/otros (no cuota ni alquiler)
-            for detalle in orden.detalles:
-                if (
-                    detalle.producto is not None
-                    and detalle.producto.categoria not in ("cuota_social", "alquiler")
-                    and detalle.producto.stock is not None
-                ):
-                    detalle.producto.stock += detalle.cantidad
+            # Devolver stock de indumentaria/otros (no cuota ni alquiler).
+            # Misma lógica que usa el rechazo y la cancelación del socio.
+            restaurar_stock_orden(orden)
 
             # Liberar reservas asociadas
             for reserva in orden.reservas:

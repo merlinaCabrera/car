@@ -56,6 +56,7 @@ from dependencies import get_current_user, require_roles
 from mailer.services import email_tasks
 from utils.s3 import subir_archivo, eliminar_archivo, generar_presigned_url
 from utils.cuotas_periodos import calcular_estado_financiero
+from utils.ordenes import restaurar_stock_orden
 
 
 def _resolver_url_archivo(valor: str | None) -> str | None:
@@ -464,6 +465,7 @@ def cancelar_orden_pendiente(
     """
     orden = (
         db.query(models.Orden)
+        .options(joinedload(models.Orden.detalles).joinedload(models.DetalleOrden.producto))
         .filter(
             models.Orden.id_orden == id_orden,
             models.Orden.id_usuario == socio.id_usuario,
@@ -487,6 +489,11 @@ def cancelar_orden_pendiente(
         )
 
     orden.estado = "cancelada_socio"
+
+    # Devolver el stock que el checkout había descontado (indumentaria/otros).
+    # Este endpoint es principalmente para cuotas (sin stock), pero un socio
+    # podría pasar el id de una orden de tienda propia — cubrimos ese caso.
+    restaurar_stock_orden(orden)
 
     # ── Resolver el Pago padre si se quedó sin órdenes activas ──────────────
     pago = orden.pago

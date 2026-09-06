@@ -15,7 +15,7 @@ Cambios respecto a la versión anterior:
 from pathlib import Path
 from uuid import uuid4
 
-from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Query, UploadFile, status
 from sqlalchemy.orm import Session, joinedload
 
 import models
@@ -108,6 +108,15 @@ def crear_usuario(
 
     hashed_password = get_password_hash(usuario.password)
     user_data = usuario.model_dump(exclude={"password"})
+
+    # Seguridad: el alta pública NO puede auto-asignar beneficios ni vínculos.
+    # `UsuarioCreate` hereda estos campos de `UsuarioBase` (que reusa el admin),
+    # pero acá se descartan siempre — la beca y la familia solo las toca un
+    # admin_general desde PATCH /admin/usuarios/{id}. Sin esto, cualquiera podía
+    # registrarse con {"es_becado": true} y quedar exento de cuota tras la
+    # aprobación (que revisa nombre/DNI, no ese flag).
+    for campo_privilegiado in ("es_becado", "becado_hasta", "id_titular"):
+        user_data.pop(campo_privilegiado, None)
 
     nuevo_usuario = models.Usuario(**user_data, password_hash=hashed_password)
     db.add(nuevo_usuario)
@@ -369,14 +378,18 @@ def cambiar_password(
 @router.get(
     "/",
     response_model=list[schemas.UsuarioListResponse],
-    summary="Listado de usuarios activos (requiere auth)",
+    summary="Listado de usuarios activos (solo staff)",
 )
 def listar_usuarios(
     skip: int = 0,
-    limit: int = 100,
+    limit: int = Query(default=100, ge=1, le=500),
     db: Session = Depends(get_db),
-    _: models.Usuario = Depends(get_current_user),  # cualquier usuario logueado
+    _: models.Usuario = Depends(require_roles("admin_general", "personal_administrativo")),
 ):
+    # Antes: get_current_user (cualquier logueado) → devolvía DNI, email y
+    # estado de cobertura de TODO el padrón a cualquier usuario, incluido el rol
+    # 'invitado' (comercios externos). Ahora solo staff. El frontend usa
+    # /admin/usuarios/* para esto; este endpoint no lo consume ninguna pantalla.
     return (
         db.query(models.Usuario)
         .filter(models.Usuario.fecha_baja.is_(None))

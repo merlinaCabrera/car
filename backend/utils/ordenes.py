@@ -48,6 +48,30 @@ def verificar_pendiente(orden: models.Orden) -> None:
         )
 
 
+def restaurar_stock_orden(orden: models.Orden) -> None:
+    """
+    Devuelve al catálogo el stock que el checkout descontó, para órdenes que YA
+    no se van a concretar (rechazadas por el admin, canceladas por el socio,
+    expiradas por el scheduler).
+
+    - cuota_social nunca tiene stock (stock=None) → se ignora.
+    - alquiler no usa stock (usa el estado de la ReservaInstalacion) → se ignora.
+    - La IDEMPOTENCIA la garantiza el llamador: invocar SOLO en la transición a
+      rechazada/cancelada/expirada, una única vez por orden.
+
+    Único lugar donde vive esta lógica — antes estaba duplicada (y divergía:
+    el rechazo se olvidaba de restaurar, la aprobación descontaba de más).
+    """
+    for detalle in orden.detalles:
+        producto = detalle.producto
+        if (
+            producto is not None
+            and producto.categoria not in ("cuota_social", "alquiler")
+            and producto.stock is not None
+        ):
+            producto.stock += detalle.cantidad
+
+
 # ─── Mail único de "Compra confirmada" a nivel Pago ──────────────────────────
 # Reemplaza a los viejos mails partidos por Orden (orden_aprobada_cuota /
 # orden_aprobada_tienda), que hacían que un socio que pagaba cuota + tienda
@@ -274,24 +298,20 @@ def procesar_aprobacion_orden(
     dia_vencimiento = obtener_dia_vencimiento(db)
 
     # ── Paso 3: procesar cada detalle ────────────────────────────────────────
+    # NOTA STOCK: el stock ya se descontó en el checkout (socio_carrito.py) — NO
+    # se vuelve a tocar acá. El ciclo de vida del stock es: checkout descuenta →
+    # (rechazo / cancelación / expiración) restauran vía restaurar_stock_orden() →
+    # reabrir vuelve a descontar. Aprobar NO mueve stock (ya estaba reservado).
+    # Antes este paso hacía un segundo `stock -= cantidad`, lo que descontaba el
+    # doble en el camino feliz y podía tirar 400 "stock insuficiente" en una
+    # aprobación legítima (incluido el webhook de Mercado Pago, que quedaba
+    # reintentando para siempre).
     for detalle in orden.detalles:
         if detalle.producto is None:
             continue
 
         if detalle.producto.categoria == "cuota_social":
             meses_cuota_descontados += detalle.cantidad
-
-        elif detalle.producto.stock is not None:
-            if detalle.producto.stock < detalle.cantidad:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=(
-                        f"Stock insuficiente para '{detalle.producto.nombre}': "
-                        f"disponible {detalle.producto.stock}, solicitado {detalle.cantidad}. "
-                        f"No se puede aprobar la orden #{orden.id_orden}."
-                    ),
-                )
-            detalle.producto.stock -= detalle.cantidad
 
         if detalle.producto.categoria == "alquiler" and detalle.reserva is not None:
             if detalle.reserva.estado != "bloqueada":

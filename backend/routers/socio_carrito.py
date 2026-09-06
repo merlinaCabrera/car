@@ -307,6 +307,17 @@ def checkout_carrito(
     saldo_aplicado = Decimal("0")
     saldo_cubre_todo = False
 
+    if payload.usar_saldo:
+        # Lock pesimista de la fila del socio ANTES de leer/escribir saldo_a_favor.
+        # Sin esto, dos checkouts concurrentes (doble-tap del botón, dos pestañas,
+        # dos dispositivos) leen el mismo saldo y lo gastan los dos → doble gasto.
+        # El lock se libera en el commit del paso 8. `with_for_update` devuelve la
+        # MISMA instancia de identity-map que `current_user`, pero con la fila
+        # bloqueada y el atributo refrescado desde la DB.
+        db.query(models.Usuario).filter(
+            models.Usuario.id_usuario == current_user.id_usuario
+        ).populate_existing().with_for_update().one()
+
     if payload.usar_saldo and current_user.saldo_a_favor > Decimal("0"):
         saldo_disponible = current_user.saldo_a_favor
         if saldo_disponible >= monto_total_global:

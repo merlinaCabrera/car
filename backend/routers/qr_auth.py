@@ -67,6 +67,35 @@ router = APIRouter(
 
 _ROLES_SCANNER = ("admin_general", "personal_administrativo", "admin_temporal", "invitado")
 
+# El fallback por DNI NO lo puede usar el rol 'invitado' (comercios adheridos):
+# tipear DNIs arbitrarios permite enumerar el padrón y cosechar nombre + foto +
+# estado de morosidad de cualquier socio. El comercio valida el beneficio
+# escaneando el QR que el socio muestra en su teléfono (/qr/validar-token).
+_ROLES_SCANNER_DNI = ("admin_general", "personal_administrativo", "admin_temporal")
+
+
+def _es_solo_invitado(operador: models.Usuario) -> bool:
+    """True si el operador tiene 'invitado' como único rol activo."""
+    roles = set(_roles_activos_list(operador))
+    return roles == {"invitado"}
+
+
+def _minimizar_para_invitado(
+    respuesta: "schemas.UsuarioQRValidacionResponse",
+) -> "schemas.UsuarioQRValidacionResponse":
+    """
+    Recorta la respuesta cuando el operador es un comercio adherido (rol
+    'invitado'): solo necesita saber si el socio está habilitado y su nombre
+    para validar identidad. No expone foto, roles, ni el detalle de morosidad.
+    """
+    respuesta.foto_perfil_url = None
+    respuesta.roles_activos = []
+    respuesta.meses_adeudados = 0
+    respuesta.antiguedad_meses = 0
+    if not respuesta.es_valido:
+        respuesta.estado_financiero = "no_habilitado"
+    return respuesta
+
 # ─── Payloads locales (extienden los de schemas.py sin modificarlos) ──────────
 
 class ValidarTokenPayload(BaseModel):
@@ -476,6 +505,8 @@ def validar_qr_token(
     # 6 — Commit único para asistencia + audit_log
     db.commit()
 
+    if _es_solo_invitado(operador):
+        respuesta = _minimizar_para_invitado(respuesta)
     return respuesta
 
 
@@ -490,7 +521,7 @@ def validar_dni(
     payload: ValidarDNIPayload,
     request: Request,
     db: Session = Depends(get_db),
-    operador: models.Usuario = Depends(require_roles(*_ROLES_SCANNER)),
+    operador: models.Usuario = Depends(require_roles(*_ROLES_SCANNER_DNI)),
 ) -> schemas.UsuarioQRValidacionResponse:
     """
     Plan B de contingencia. Usa el mismo motor de estado financiero que

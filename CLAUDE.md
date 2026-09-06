@@ -2,6 +2,8 @@
 
 Guía de contexto para Claude Code. Leer antes de tocar cualquier archivo.
 
+_Última actualización: 2026-09-06._
+
 ---
 
 ## Qué es este proyecto
@@ -22,12 +24,13 @@ son desde el celular (porteros en puertas, socios en el campo).
 - **Framework:** FastAPI + Uvicorn
 - **ORM:** SQLAlchemy 2.x (con `Mapped`/`mapped_column` — ORM moderno)
 - **BD:** PostgreSQL en Neon (serverless, plan gratuito)
-- **Auth:** JWT con `python-jose`, bcrypt 3.2.2 (⚠️ fijado — passlib rompe con >=4.1)
+- **Auth:** JWT con `python-jose`. Hashing con **bcrypt puro** en `security.py` (no usa passlib; trunca a 72 bytes a mano). `bcrypt==3.2.2` fijado en `requirements.txt` — el comentario del pin menciona passlib por historia, pero passlib ya no se importa.
+- **Migraciones:** Alembic (`backend/alembic/`, ~30 revisiones). El schema real se maneja con migraciones; `models.py` es la fuente de verdad para autogenerar. `alembic/env.py` toma la URL de la env var `DATABASE_URL`.
 - **Jobs:** APScheduler (BackgroundScheduler, no async)
 - **Mail:** Resend vía HTTP directo (templates Jinja2 en `mailer/templates/`)
-- **Archivos:** Amazon S3 (`boto3`) — bucket `car-archivos-produccion` (sa-east-1)
+- **Archivos:** Amazon S3 (`boto3`) — bucket privado `car-archivos-produccion` + bucket público `car-sponsors-produccion` (`S3_BUCKET_PUBLICO`), ambos `sa-east-1`
 - **Pagos:** MercadoPago SDK (webhooks implementados, flujo manual de comprobantes activo)
-- **Config:** `pydantic-settings` — todas las env vars centralizadas en `backend/config.py`
+- **Config:** parcialmente en `backend/config.py` (`pydantic-settings`: solo MP, `SISTEMA_USER_ID`, `FRONTEND_URL`, `BACKEND_URL`). El resto (`DATABASE_URL`, `SECRET_KEY`, `AWS_*`, `RESEND_API_KEY`, `S3_BUCKET_*`, `MAIL_*`) se lee con `os.environ` / `os.getenv` en `database.py`, `security.py`, `utils/s3.py` y `mailer/services/email_service.py`. ⚠️ Pendiente: centralizar todo en `config.py`.
 
 ### Frontend
 - **Framework:** React 18 + Vite
@@ -43,16 +46,24 @@ son desde el celular (porteros en puertas, socios en el campo).
 ## Estructura del repositorio
 
 ```
-car-main/
+car/
+├── docker-compose.yml           # Postgres 15 local para dev (usa ./init-db para el seed)
+├── init-db/                     # SQL de bootstrap del Postgres local
+├── .env                         # Solo POSTGRES_PASSWORD para docker-compose (gitignoreado)
 ├── backend/
-│   ├── main.py                  # FastAPI app, CORS, include_router de todos los routers
-│   ├── models.py                # Todos los modelos SQLAlchemy (fuente de verdad del schema)
+│   ├── main.py                  # FastAPI app, CORS, include_router de todos los routers, /health
+│   ├── models.py                # Todos los modelos SQLAlchemy (fuente de verdad para autogenerar migraciones)
 │   ├── schemas.py               # Todos los schemas Pydantic (request/response)
-│   ├── config.py                # Variables de entorno (pydantic-settings)
+│   ├── config.py                # pydantic-settings — solo un subconjunto de env vars (ver Stack)
 │   ├── dependencies.py          # require_roles(), get_current_user(), get_db()
 │   ├── scheduler.py             # Jobs de APScheduler (5 jobs activos)
-│   ├── security.py              # hash/verify password, crear JWT
-│   ├── database.py              # Engine SQLAlchemy, SessionLocal
+│   ├── security.py              # hash/verify password (bcrypt puro), crear JWT
+│   ├── database.py              # Engine SQLAlchemy, SessionLocal — lee DATABASE_URL de os.environ
+│   ├── alembic.ini              # Config de Alembic — sqlalchemy.url vacío (se inyecta desde env)
+│   ├── alembic/                 # env.py + versions/ (~30 revisiones)
+│   ├── scripts/
+│   │   └── seed_usuario_sistema.py   # Crea el usuario "sistema" (SISTEMA_USER_ID)
+│   ├── static/ , uploads/       # Archivos servidos/subidos en local (en prod va todo a S3)
 │   ├── routers/                 # Un archivo por dominio
 │   │   ├── auth.py              # Login, logout, refresh, recuperar password
 │   │   ├── usuarios.py          # Perfil propio del socio (/usuarios/me, foto, password)
@@ -71,15 +82,17 @@ car-main/
 │   │   ├── deportivo.py         # Categorías, planteles, eventos, convocatorias
 │   │   ├── qr_auth.py           # Verificación de QR en escáneres
 │   │   ├── notificaciones.py    # Notificaciones in-app
+│   │   ├── beneficios.py        # Beneficios en comercios adheridos (validación por QR)
+│   │   ├── faq.py               # FAQ público + CRUD admin de entradas
 │   │   ├── webhooks_mercadopago.py
 │   │   ├── admin_sponsors.py    # CRUD sponsors (admin)
-│   │   └── sponsors_publico.py  # Lectura pública de sponsors (landing)
+│   │   └── sponsors.py          # Lectura pública de sponsors (landing) — se importa `as sponsors_publico`
 │   ├── mailer/
 │   │   ├── services/email_service.py   # Envío vía Resend
 │   │   ├── services/email_tasks.py     # Funciones de alto nivel por evento
 │   │   └── templates/email/            # Templates HTML con Jinja2
 │   └── utils/
-│       ├── s3.py        # upload_file_to_s3(), delete_file_from_s3()
+│       ├── s3.py        # upload_file_to_s3(), delete_file_from_s3(), presigned URLs, bucket público de sponsors
 │       ├── audit.py     # registrar_audit() — wrapper para AuditLog
 │       └── ordenes.py   # Helpers del ciclo de vida de órdenes
 │
@@ -94,7 +107,9 @@ car-main/
 │       │   ├── CalendarioMensual.jsx    # Grilla mensual reutilizable (eventos + reservas)
 │       │   ├── ReservaCalendar.jsx      # Grilla de turnos por instalación
 │       │   ├── ConfirmDialog.jsx        # Reemplaza window.confirm()
-│       │   └── admin/MetricCard.jsx     # Card del panel admin (acepta valorColor prop)
+│       │   ├── RutaPrivada.jsx          # Wrapper de rutas protegidas (chequea auth + roles)
+│       │   ├── landing/                 # Bloques de la landing pública
+│       │   └── admin/                   # MetricCard, CategoriaOrdenBadge, FaqBlock, SponsorsBlock
 │       ├── hooks/
 │       │   ├── useAdminResource.js      # Fetch genérico con loading/error/data
 │       │   ├── useExportarConvocatoria.js  # PDF de lista de convocados (jsPDF dinámico)
@@ -107,9 +122,12 @@ car-main/
 ## Variables de entorno
 
 ### Backend (Render — en dashboard de Render, NO en el repo)
+
+⚠️ **Nunca pegar valores reales en este archivo ni en ningún archivo versionado.** Solo nombres y formato.
+
 ```
-DATABASE_URL=postgresql://...neon.tech/...
-SECRET_KEY=...
+DATABASE_URL=postgresql://...-pooler.sa-east-1.aws.neon.tech/neondb?sslmode=require
+SECRET_KEY=...                     # firma de JWT (security.py)
 MP_ACCESS_TOKEN=...
 MP_WEBHOOK_SECRET=...
 SISTEMA_USER_ID=1
@@ -118,17 +136,32 @@ BACKEND_URL=https://club-atletico-api.onrender.com
 AWS_ACCESS_KEY_ID=...
 AWS_SECRET_ACCESS_KEY=...
 AWS_REGION=sa-east-1
-S3_BUCKET_NAME=car-archivos-produccion
+S3_BUCKET_NAME=car-archivos-produccion        # bucket privado (fotos, comprobantes)
+S3_BUCKET_PUBLICO=car-sponsors-produccion     # bucket público (logos de sponsors)
 RESEND_API_KEY=...
+MAIL_FROM=...                      # opcional, default onboarding@resend.dev
+MAIL_FROM_NAME=Club Atlético Roberts
+CLUB_EMAIL=clubatleticoroberts1@gmail.com
 ```
+
+`alembic/env.py` también lee `DATABASE_URL` de la env var (o del `.env` local) — `alembic.ini` ya no lleva la URL.
 
 ### Frontend (GitHub Actions secrets → Vite build)
 ```
 VITE_API_URL=https://club-atletico-api.onrender.com
 ```
 
+El workflow `.github/workflows/deploy.yml` además usa los secrets `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` y `CLOUDFRONT_DISTRIBUTION_ID` para el `s3 sync` + invalidación.
+
 ⚠️ `FRONTEND_URL` en el backend se usa para armar links en los mails.
 Si está mal configurada, todos los links de los mails apuntan a la URL equivocada.
+
+### ⚠️ Secretos filtrados en el historial de git (rotar)
+
+Estos valores estuvieron hardcodeados en archivos versionados y siguen en el historial de git aunque ya se limpiaron del working tree. **Rotar sí o sí antes del MVP:**
+
+- `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` — estaban en `CLAUDE.md`.
+- `DATABASE_URL` de Neon (usuario `neondb_owner` + password) — estaba en `backend/alembic.ini`.
 
 ---
 
@@ -206,7 +239,8 @@ staff = Depends(require_roles("admin_general", "personal_administrativo"))
 | `/admin` | Panel: métricas, pendientes, accesos rápidos |
 | `/admin/solicitudes` | Aprobar/rechazar solicitudes de alta |
 | `/admin/socios` | CRUD socios, filtros, roles, beca, saldo |
-| `/admin/verificaciones` | Bandeja de comprobantes pendientes |
+| `/admin/verificaciones` | Bandeja de comprobantes pendientes (filtra por `?tipo=cuota\|compra\|alquiler`) |
+| `/admin/pagos`, `/admin/tienda`, `/admin/alquileres` | Redirects a `/admin/verificaciones?tipo=...` (no son páginas propias) |
 | `/admin/reservas` | Agenda de canchas y quincho |
 | `/admin/escaner` | Escáner QR general (portero) |
 | `/admin/escaner-evento` | Escáner QR para eventos deportivos |
@@ -267,9 +301,9 @@ Cinco jobs en `backend/scheduler.py`. Todos usan `BackgroundScheduler` (no async
 
 ## Archivos en S3
 
-- **Bucket:** `car-archivos-produccion` (región `sa-east-1`)
-- **Carpetas:** `fotos_perfil/` y `comprobantes/`
-- **Helper:** `utils/s3.py` — `upload_file_to_s3(file, folder)` → devuelve URL pública
+- **Bucket privado:** `car-archivos-produccion` (`S3_BUCKET_NAME`, región `sa-east-1`) — carpetas `fotos_perfil/` y `comprobantes/`
+- **Bucket público:** `car-sponsors-produccion` (`S3_BUCKET_PUBLICO`) — logos de sponsors, servidos por URL directa
+- **Helper:** `utils/s3.py` — `upload_file_to_s3(file, folder)` (privado, devuelve URL/presigned) + helpers separados para el bucket público de sponsors
 - **⚠️ Bug conocido:** Al subir foto de perfil, el backend sube a S3 correctamente pero la URL guardada en DB puede ser la ruta local (`/fotos_perfil/...`) en lugar de la URL de S3. El frontend usa `resolverFotoUrl()` en `SocioPerfil.jsx` para normalizar URLs relativas y absolutas.
 
 ---
@@ -278,14 +312,14 @@ Cinco jobs en `backend/scheduler.py`. Todos usan `BackgroundScheduler` (no async
 
 Servicio: Resend. Templates en `mailer/templates/email/` (Jinja2 + HTML).
 
-Los templates usan `FRONTEND_URL` del backend para armar links. Si `FRONTEND_URL` está mal (apunta a Vercel en lugar de clubatleticoroberts.com), todos los links del mail van al lugar equivocado.
+Los templates usan `FRONTEND_URL` del backend para armar links (lo lee `mailer/services/email_service.py` con `os.getenv`, default `http://localhost:5173`). Si `FRONTEND_URL` está mal en Render, todos los links del mail van al lugar equivocado.
 
 Templates existentes:
 `solicitud_recibida`, `cuenta_aprobada`, `solicitud_rechazada`, `socio_dado_de_baja`, `socio_reactivado`, `bienvenida_alta_manual`, `orden_generada`, `orden_aprobada`, `orden_aprobada_cuota`, `orden_aprobada_tienda`, `orden_rechazada`, `orden_expirada`, `recordatorio_comprobante`, `cuota_vencida`, `recuperar_password`, `convocatoria`, `reserva_suspendida`, `aviso_admin_nuevo_socio`, `aviso_admin_solicitud_reactivacion`, `aviso_admin_jugador_categoria`, `aviso_club_comprobante`, `aviso_club_pago`, `compra_confirmada`
 
 ---
 
-## Estado actual de módulos (Agosto 2026)
+## Estado actual de módulos (Septiembre 2026)
 
 | Módulo | Estado | Notas |
 |--------|--------|-------|
@@ -300,7 +334,9 @@ Templates existentes:
 
 ---
 
-## Bugs conocidos (pre-corrección)
+## Bugs conocidos
+
+Lista viva. Algunos ítems de cuotas pueden estar ya resueltos por commits recientes (`fix cuotas`, `correlatividad pagos`, `4b7d46a`) — verificar contra el código antes de darlos por abiertos.
 
 1. **Cuotas — pagar N meses muestra N-1:** El pago manual via admin contabiliza el mes actual como parte de los N meses. La lógica de `mes_cubierto_hasta` arranca desde el mes en curso en lugar del próximo mes pendiente.
 2. **Cuotas — socio queda moroso al agregar al carrito:** Al crear la orden (estado `pendiente_verificacion`), el frontend muestra al socio como moroso antes de que el admin apruebe. El QR lo refleja antes que el calendario.
@@ -308,7 +344,7 @@ Templates existentes:
 4. **Redirect post-login:** Al hacer login, algunos usuarios son redirigidos a `/admin/auditoria` en lugar de `/socio`.
 5. **Error 405 en cambio de contraseña obligatorio:** El endpoint `POST /usuarios/me/password` devuelve 405 en algunos contextos del primer ingreso.
 6. **Ícono de notificaciones sin leer no aparece:** El badge del ícono de campana no se actualiza cuando hay notificaciones nuevas.
-7. **Links en mails:** Si `FRONTEND_URL` no está correctamente configurada en Render, los links de los mails apuntan a la URL de Vercel en lugar de `clubatleticoroberts.com`.
+7. **Links en mails:** Si `FRONTEND_URL` no está configurada en Render, `email_service.py` cae al default `http://localhost:5173` y todos los links de los mails quedan rotos. (La migración desde Vercel ya está hecha; no quedan referencias a Vercel en el código.)
 8. **Alta manual genera socio moroso:** Corregido en historial 19/08 — un alta manual ahora arranca al día igual que una solicitud aprobada.
 9. **URL de foto de perfil en DB:** La URL guardada puede ser ruta local en lugar de URL S3. Workaround en frontend con `resolverFotoUrl()`.
 
@@ -349,6 +385,8 @@ Al cargar socios existentes masivamente (migración desde Excel):
 - Los schemas de respuesta viven en `schemas.py` — nunca devolver modelos SQLAlchemy directos
 - `joinedload()` explícito en queries que necesiten relaciones — no lazy loading
 - Transacciones explícitas: `db.flush()` antes de `db.commit()` cuando necesitás el ID generado
+- ⚠️ **Orden de imports en `main.py` y en cualquier script:** `load_dotenv()` tiene que correr ANTES de importar `database`, `config` o cualquier módulo que lea env vars al importarse (los imports ejecutan el módulo la primera vez). `main.py` tiene un bloque comentado explicando esto; los scripts de `scripts/` hacen `load_dotenv()` antes de `from database import ...`.
+- Nunca hardcodear credenciales ni connection strings en archivos versionados (incluye `alembic.ini`, `CLAUDE.md`, tests). Todo por env var.
 
 ### Frontend
 - `useAdminResource(path)` para fetches admin con loading/error/data estándar
@@ -361,13 +399,23 @@ Al cargar socios existentes masivamente (migración desde Excel):
 
 ## Cómo correr en local
 
+### Base de datos local (opcional, alternativa a Neon dev)
+```bash
+# Desde la raíz. Levanta Postgres 15 en localhost:5432 con el seed de ./init-db
+docker compose up -d db
+# .env de la raíz solo necesita: POSTGRES_PASSWORD=...
+```
+
 ### Backend
 ```bash
 cd backend
 python -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
-# Crear .env con las variables de arriba (apuntar a Neon de dev)
+# Crear backend/.env con las variables de la sección "Variables de entorno"
+# (DATABASE_URL apuntando a Neon dev o al Postgres de docker-compose)
+alembic upgrade head                       # aplicar migraciones
+python -m scripts.seed_usuario_sistema     # crear el usuario "sistema" (SISTEMA_USER_ID)
 uvicorn main:app --reload --port 8000
 ```
 
@@ -394,9 +442,10 @@ npm run dev
 | Dominio | Namecheap → CloudFront | ~USD 12/año | clubatleticoroberts1@gmail.com |
 
 **Pendiente antes del MVP:**
-- Rotar todas las claves (AWS, MP, Resend, SECRET_KEY del backend)
-- Configurar UptimeRobot para alertas de caída
+- Rotar todas las claves (AWS, MP, Resend, `SECRET_KEY`, password de Neon) — ver "Secretos filtrados en el historial de git". Idealmente también limpiar el historial (`git filter-repo`) o asumir que quedan expuestas y rotar.
+- Configurar UptimeRobot para alertas de caída (ya existe el endpoint `/health`)
 - Migrar Render y Neon a cuenta del club (clubatleticoroberts1@gmail.com)
+- Centralizar todas las env vars en `config.py` (hoy están repartidas entre `config.py` y `os.getenv` sueltos)
 
 ---
 

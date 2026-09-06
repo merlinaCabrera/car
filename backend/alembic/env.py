@@ -22,6 +22,13 @@ import os
 # Aseguramos que Python lea la carpeta backend correctamente
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+# La URL de la base se toma de la env var DATABASE_URL (mismo valor que usa la
+# app). alembic.ini NO debe contener credenciales — su sqlalchemy.url queda vacío
+# y se completa acá en runtime.
+_db_url = os.environ.get("DATABASE_URL")
+if _db_url:
+    config.set_main_option("sqlalchemy.url", _db_url)
+
 import models
 from database import Base
 

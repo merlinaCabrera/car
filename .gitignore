@@ -1,3 +1,14 @@
+# Python
 backend/venv/
 backend/__pycache__/
+**/__pycache__/
+*.pyc
+
+# Entorno
 .env
+backend/.env
+frontend/.env.local
+
+# Artefactos de tooling (graphify) — no versionar
+graphify-out/
+backend/graphify-out/

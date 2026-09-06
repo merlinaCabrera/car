@@ -3,10 +3,9 @@
 _Fecha: 2026-09-06 · Método: lectura de código (no se ejecutaron exploits) · Foco: manejo de dinero y control de acceso por rol._
 
 > **Estado de corrección (2026-09-06):** rama `seguridad/auditoria-alta`.
-> **ALTA (A1–A5): corregidos** — commit `8ca42a2`.
-> **MEDIA M1–M6: corregidos** — commit `4acc926`.
-> Pendientes: **M7–M11** y toda la lista **BAJA**. Falta testeo con base real.
-> Ver "Detalle de la corrección" al final.
+> **ALTA A1–A5** — `8ca42a2` · **MEDIA M1–M6** — `4acc926` · **MEDIA M7–M11 + BAJA B2** — `5a8ee19`.
+> Todos los hallazgos de seguridad/plata están corregidos. Falta testeo con base real.
+> Pendiente: BAJA B1, B3–B14 (hygiene/robustez/UX — no bloquean el MVP). Ver "Veredicto" al final.
 
 Cubre: `backend/` completo (routers, `utils/`, `models.py`, `schemas.py`, `security.py`,
 `dependencies.py`, `scheduler.py`, `main.py`) y el ruteo del frontend
@@ -137,7 +136,7 @@ cosechar nombre + foto + si está moroso de todo el padrón.
 
 ## MEDIA
 
-> M1–M6 ✅ corregidos (commit `4acc926`). M7–M11 pendientes.
+> M1–M6 ✅ `4acc926` · M7–M11 ✅ `5a8ee19`.
 
 ### M1 ✅ · Webhook de MP: no verifica el monto
 **Dónde:** `routers/webhooks_mercadopago.py::recibir_webhook_mercadopago`.
@@ -209,7 +208,7 @@ provisoria (`car` + últimos 5 del DNI, adivinable para un DNI puntual) recibe u
 **Fix:** en `get_current_user` (o en un dependency aparte para las rutas sensibles), si
 `requiere_cambio_password` es True, permitir solo `GET /usuarios/me` y `POST /usuarios/me/password`.
 
-### M7 · `personal_administrativo` puede reescribir los meses de cuota al aprobar
+### M7 ✅ · `personal_administrativo` puede reescribir los meses de cuota al aprobar
 **Dónde:** `routers/admin_ordenes.py::aprobar_orden` (`_ROLES_ADMIN` incluye `personal_administrativo`) + `utils/ordenes.py::procesar_aprobacion_orden` (paso 1).
 
 `payload.meses_corregidos` (validado solo `gt=0`, sin tope) sobreescribe `detalle.cantidad`
@@ -222,7 +221,7 @@ quedan mal.
 parámetro a un endpoint `admin_general`); poner tope (`le=`); y actualizar `pago.monto_total`
 cuando se corrige.
 
-### M8 · `admin_temporal` mueve plata en el flujo de reintegros
+### M8 ✅ · `admin_temporal` mueve plata en el flujo de reintegros
 **Dónde:** `routers/admin_reservas.py::definir_forma_reintegro` (`_ROLES_ESCANEO` = incluye `admin_temporal`).
 
 `admin_temporal` es "solo lector QR/DNI en puertas" según el diseño, pero puede hacer
@@ -234,7 +233,7 @@ debita). `configurar_reparto` (`_ROLES_ADMIN`, incluye `personal_administrativo`
 **Fix:** `definir_forma_reintegro` → `_ROLES_ADMIN`; validar `monto_reintegro_unitario >= 0`
 y `<= precio_total` en `configurar_reparto`.
 
-### M9 · Endpoints públicos sin rate limiting / anti-abuso
+### M9 ✅ · Endpoints públicos sin rate limiting / anti-abuso
 - `POST /usuarios/` — registro masivo → spam de la bandeja del admin + mails
   `solicitud_recibida` / `aviso_admin_nuevo_socio` a direcciones arbitrarias desde el
   dominio Resend del club (riesgo de reputación del dominio).
@@ -250,7 +249,7 @@ y `<= precio_total` en `configurar_reparto`.
 sanitizar/validar el `email` de contacto; resetear `intentos_fallidos` cuando pasa
 `bloqueado_hasta`.
 
-### M10 · `uploads/` servido sin auth + `foto_perfil_url` editable como string libre
+### M10 ✅ · `uploads/` servido sin auth + `foto_perfil_url` editable como string libre
 **Dónde:** `main.py` (`app.mount("/uploads", StaticFiles(...))`) · `routers/usuarios.py::actualizar_perfil` (`_CAMPOS_EDITABLES_SOCIO` incluye `foto_perfil_url`).
 
 En prod los archivos van a S3, pero el bug conocido #9 (fallback a ruta local) dejaría
@@ -261,7 +260,7 @@ arbitraria o URL externa).
 **Fix:** quitar el mount de `/uploads` en prod (o ponerlo detrás de auth); sacar
 `foto_perfil_url` del whitelist del socio (ya existe `POST /usuarios/me/foto` dedicado).
 
-### M11 · Chequeo de tamaño de upload después de leer todo el archivo en memoria
+### M11 ✅ · Chequeo de tamaño de upload después de leer todo el archivo en memoria
 **Dónde:** `socio_cuotas.py::subir_comprobante` (10 MB) y `usuarios.py::subir_foto_perfil` (5 MB).
 
 `contenido = await file.read()` antes de validar el tamaño → un POST grande puede reventar
@@ -458,3 +457,110 @@ operar toda la API por fuera. `get_current_user` y `get_current_user_optional` a
    responde 401.
 7. **MP (M1/M2/M3):** webhook sin firma con `MP_WEBHOOK_SECRET` seteado → 401. Checkout con
    saldo parcial + MP → el link de MP cobra el neto.
+
+---
+
+## Detalle de la corrección de MEDIA M7–M11 + B2 (2026-09-06 · commit `5a8ee19`)
+
+### M7 ✅ — `routers/admin_ordenes.py` + `utils/ordenes.py`
+- `aprobar_orden`: si viene `meses_corregidos`, exige que el operador tenga rol
+  `admin_general` (Personal Administrativo solo aprueba/rechaza tal cual).
+- `procesar_aprobacion_orden`: al corregir meses, ajusta `pago.monto_total` el
+  mismo delta que `orden.monto_total` → se mantiene `Pago.monto_total == Σ Orden.monto_total`.
+
+### M8 ✅ — `routers/admin_reservas.py` + `schemas.py`
+- `definir_forma_reintegro`: pasar un reintegro a `saldo_a_favor` (acredita
+  billetera) exige `admin_general`/`personal_administrativo`. `admin_temporal`
+  sigue pudiendo registrar `efectivo`/`transferencia`/`ya_descontado`.
+- `ConfigurarRepartoPayload`: `monto_reintegro_unitario` ahora **está declarado**
+  en el schema (accederlo tiraba `AttributeError` → 500) con `ge=0, le=999999.99`.
+  `num_socios_esperados` con `le=500`.
+
+### M9 ✅ — `utils/ratelimit.py` (nuevo) + `usuarios.py` / `auth.py` / `faq.py`
+- Rate limiter in-memory por IP, sin dependencia nueva. Se aplica como
+  **dependencia** de FastAPI (corre antes de validar el body):
+  `POST /usuarios/` 5/h · `POST /auth/recuperar-password` 5/h · `POST /faq/contacto` 3/h.
+- `login`: al vencer `bloqueado_hasta` se resetea `intentos_fallidos` (antes
+  quedaba en 5 y cualquier typo posterior re-bloqueaba 15 min).
+- **Inyección de headers vía `/contacto`: NO aplica** — el mail sale por la API
+  HTTP de Resend (`httpx`, `json=`), no por SMTP; el `nombre` en el Subject es
+  un campo JSON, no una línea de header.
+- ⚠️ El estado del limiter vive en memoria del proceso → se reinicia en cada
+  deploy/spin-down y no se comparte entre instancias. Es un mitigador, no una
+  garantía. Suficiente para el MVP (Render free, 1 instancia).
+
+### M10 ✅ — `main.py` + `usuarios.py`
+- `main.py` monta **solo** `/uploads/fotos_perfil` (baja sensibilidad + URLs
+  locales legacy en DB). **Nunca** `/uploads/comprobantes` — en prod van a S3
+  (bucket privado + presigned) y las rutas locales legacy solo se ven detrás de
+  la verificación del admin.
+  ⚠️ Si hay comprobantes viejos guardados como ruta local en la DB, en la
+  pantalla de verificaciones se verán rotos → migrarlos a S3 o resolver a mano.
+- `foto_perfil_url` sale de `_CAMPOS_EDITABLES_SOCIO` (era string libre que el
+  socio podía apuntar a cualquier ruta). Se cambia por `POST /usuarios/me/foto`.
+  Verificado: el frontend (`SocioPerfil.jsx`) manda solo `{telefono, direccion}`
+  en el PATCH → no se rompe nada.
+
+### M11 ✅ — `socio_cuotas.py` + `usuarios.py`
+`subir_comprobante` y `subir_foto_perfil` leen con `await file.read(limite + 1)`
+→ nunca se carga en RAM más que el límite + 1 byte, aunque el cliente mienta en
+Content-Length. 413 si excede.
+
+### B2 ✅ — `schemas.py`
+`le=`: `meses_a_pagar` (60), `cantidad` de ítem de carrito (100),
+`meses_corregidos` (60), `num_socios_esperados` (500).
+
+---
+
+## Veredicto (2026-09-06)
+
+**Seguridad y manejo de dinero: cerrado para el MVP.** Los 5 hallazgos ALTA y los
+11 MEDIA están corregidos. No queda ninguna vía conocida de: alta gratis, doble
+gasto de saldo, doble movimiento de stock, doble crédito de billetera, aprobación
+de MP sin verificar monto/firma, escalada de privilegios, ni exposición del
+padrón/estado financiero a roles que no corresponden.
+
+**Falta antes de abrir a los 300:**
+
+1. **Testeo con base real** — checklist de 7 escenarios abajo. Sin esto no se
+   puede dar por bueno ningún fix (varios son de concurrencia y de flujo de plata).
+2. **B4 — zona horaria (recomendado).** `date.today()` y el scheduler corren en
+   UTC; entre las 21 y 24 hs ARG el backend adelanta un día → un socio figura
+   moroso ~3 h antes de tiempo en su último día cubierto, y el descuento de
+   menor puede quedar off-by-one el día del cumpleaños. `qr_auth.py` ya usa
+   `America/Argentina/Buenos_Aires`; hay que llevar ese criterio a
+   `utils/cuotas_periodos`, `scheduler.py`, `admin_pagos.py`, `admin_usuarios.py`.
+   Es correctness visible para el socio, no seguridad.
+3. **B1 — gate de rol en el frontend (recomendado).** `RutaPrivada` solo mira el
+   token. Cualquier logueado puede navegar a `/admin/*`; el backend rechaza los
+   datos (verificado) pero la página se ve rota → es la causa probable del bug
+   #4 y de carga de soporte. Es un `<RequireRole>` envolviendo los grupos de
+   rutas admin/técnico/jugador.
+
+**Se puede diferir a post-MVP:** B3, B5–B14 (N+1 en morosos, `bd_host` en `/`,
+hash del token de recuperación, auditar el PATCH admin de perfil, etc.). Ninguno
+es riesgo de plata ni de acceso.
+
+**Mi recomendación:** un sprint corto B1 + B4 + los one-liners (B3, B5, B6, B7,
+B8, B12) — 1 a 2 días — y con eso el backend queda listo para el testeo end-to-end
+del checklist de QA. B1 se puede hacer en paralelo con el QA manual.
+
+---
+
+## Testing pendiente (necesita base real) — actualizado
+
+1. **Stock (A3/A4):** comprar→aprobar (−1, no −2), comprar→rechazar (vuelve),
+   comprar→expirar (vuelve), reabrir (vuelve a salir).
+2. **Saldo (A2/M4):** dos checkouts casi simultáneos con `usar_saldo` → uno solo consume.
+3. **Registro (A1):** `POST /usuarios/` con `es_becado:true`, `id_titular:1` → ignorado.
+4. **QR invitado (A5):** `validar-token` recortado; `validar-dni` → 403.
+5. **Primer ingreso (M6):** token con `requiere_cambio_password` → 403 en cualquier
+   ruta salvo `GET /usuarios/me` y `POST /usuarios/me/password`.
+6. **Cambio de clave (M5):** cambiar desde `/perfil` → request siguiente con el
+   token viejo → 401. **El frontend debe redirigir a /login, no mostrar error.**
+7. **MP (M1/M2/M3):** webhook sin firma con secret seteado → 401; checkout con
+   saldo parcial + MP → el link cobra el neto.
+8. **M7:** Personal Administrativo aprobando con `meses_corregidos` → 403.
+9. **M8:** `admin_temporal` haciendo `definir_forma_reintegro?forma=saldo_a_favor` → 403.
+10. **M9:** 6º `POST /usuarios/` desde la misma IP en una hora → 429.
+11. **M11:** subir un archivo de 20 MB como comprobante → 413, sin picos de RAM.

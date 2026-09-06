@@ -35,6 +35,7 @@ import schemas
 from database import get_db
 from dependencies import get_current_user_optional, require_roles
 from mailer.services.email_tasks import task_contacto_publico
+from utils.ratelimit import rate_limit
 
 router = APIRouter(tags=["FAQ y Contacto"])
 
@@ -86,7 +87,11 @@ def listar_faq(
     return query.order_by(models.FaqEntry.categoria.asc(), models.FaqEntry.orden.asc()).all()
 
 
-@router.post("/contacto", status_code=status.HTTP_202_ACCEPTED)
+@router.post(
+    "/contacto",
+    status_code=status.HTTP_202_ACCEPTED,
+    dependencies=[Depends(rate_limit("contacto", maximo=3, ventana_seg=3600))],
+)
 def enviar_contacto(
     payload: schemas.ContactoPayload,
     background_tasks: BackgroundTasks,
@@ -96,6 +101,7 @@ def enviar_contacto(
     pública de Ayuda. Se manda por mail al club en background; no se
     persiste en base de datos porque es un mensaje de una sola vía, sin
     necesidad de historial ni de que el club "responda" desde el sistema.
+    Rate limit: 3 mensajes por hora por IP.
     """
     background_tasks.add_task(
         task_contacto_publico,

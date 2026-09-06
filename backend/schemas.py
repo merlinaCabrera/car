@@ -591,7 +591,15 @@ class ReservaAdminListResponse(BaseModel):
     escaneos_realizados: int = 0
 
 class ConfigurarRepartoPayload(BaseModel):
-    num_socios_esperados: int = Field(gt=0)
+    num_socios_esperados: int = Field(gt=0, le=500)
+    monto_reintegro_unitario: Optional[Decimal] = Field(
+        default=None, ge=0, le=Decimal("999999.99"),
+        description=(
+            "Monto fijo por socio que escanea. Si se omite, se calcula como "
+            "precio_total × 20% / num_socios_esperados. Cota superior para que "
+            "no se pueda cargar un reintegro absurdo (queda en audit_log igual)."
+        ),
+    )
 
 
 class CrearReservaManualPayload(BaseModel):
@@ -798,7 +806,7 @@ class PagoResponse(BaseModel):
 class DetalleOrdenCreate(BaseModel):
     """Un ítem dentro del carrito. El precio se resuelve en el backend."""
     id_producto: int
-    cantidad: int = Field(default=1, ge=1)
+    cantidad: int = Field(default=1, ge=1, le=100)
     mes_referencia: Optional[date] = Field(
         default=None,
         description="Para cuotas: primer día del mes a pagar (ej: 2025-06-01).",
@@ -871,6 +879,7 @@ class OrdenAprobar(BaseModel):
     meses_corregidos: Optional[int] = Field(
         default=None,
         gt=0,
+        le=60,
         description=(
             "Si se especifica, sobreescribe la cantidad de meses del ítem de cuota_social "
             "y recalcula el monto_total de la orden antes de aprobarla. "
@@ -1053,7 +1062,7 @@ class ReservaAdminResponse(BaseModel):
 class RegistrarPagoManualPayload(BaseModel):
     """Payload para que el admin registre un cobro por ventanilla (efectivo/transferencia)."""
     id_usuario: int
-    meses_a_pagar: int = Field(gt=0, description="Cantidad de meses que se están saldando.")
+    meses_a_pagar: int = Field(gt=0, le=60, description="Cantidad de meses que se están saldando.")
 
 
 class RegistrarPagoManualResponse(BaseModel):
@@ -1164,7 +1173,7 @@ class HistorialPagoCuotaResponse(BaseModel):
 
 class GenerarOrdenCuotaPayload(BaseModel):
     """El socio pide generar una orden de pago por N meses de cuota."""
-    meses_a_pagar: int = Field(gt=0, description="Cantidad de meses que quiere abonar.")
+    meses_a_pagar: int = Field(gt=0, le=60, description="Cantidad de meses que quiere abonar.")
 
 
 class GenerarOrdenCuotaResponse(BaseModel):

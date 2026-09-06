@@ -605,8 +605,10 @@ async def subir_comprobante(
 
     nombre_archivo = f"{uuid.uuid4().hex}{extension}"
 
-    # Leer contenido completo para validar tamaño antes de subir a S3
-    contenido = await file.read()
+    # Lectura acotada a (límite + 1): no cargamos en memoria un archivo enorme
+    # aunque el cliente mienta en Content-Length (la instancia de Render tiene
+    # 512 MB). Antes era file.read() sin tope.
+    contenido = await file.read(_TAMANO_MAXIMO_BYTES + 1)
     await file.close()
 
     if len(contenido) == 0:
@@ -616,7 +618,7 @@ async def subir_comprobante(
         )
     if len(contenido) > _TAMANO_MAXIMO_BYTES:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
             detail="El archivo supera el tamaño máximo permitido (10 MB).",
         )
 

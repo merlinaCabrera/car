@@ -562,6 +562,24 @@ def definir_forma_reintegro(
     if forma not in ("efectivo", "transferencia", "saldo_a_favor", "ya_descontado"):
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Forma inválida.")
 
+    # 'saldo_a_favor' acredita la billetera interna del socio → es una acción
+    # de plata. El operador de puerta (admin_temporal) puede registrar el
+    # reintegro como efectivo/transferencia/ya_descontado, pero acreditar saldo
+    # lo tiene que hacer un rol administrativo.
+    if forma == "saldo_a_favor":
+        roles_op = {
+            ur.rol.nombre for ur in admin.roles_asignados
+            if ur.rol.es_activo and (ur.valido_hasta is None or ur.valido_hasta > datetime.now(timezone.utc))
+        }
+        if not roles_op.intersection(("admin_general", "personal_administrativo")):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=(
+                    "Acreditar saldo a favor requiere un rol administrativo. "
+                    "Registrá el reintegro como efectivo o transferencia."
+                ),
+            )
+
     reintegro = (
         db.query(models.ReintegroQR)
         .filter(models.ReintegroQR.id_reintegro == id_reintegro)

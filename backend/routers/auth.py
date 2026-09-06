@@ -10,6 +10,7 @@ import os
 from database import get_db
 from security import ACCESS_TOKEN_EXPIRE_MINUTES, create_access_token, verify_password, get_password_hash
 from mailer.services.email_service import enviar_recuperar_password
+from utils.ratelimit import rate_limit
 
 router = APIRouter(
     prefix="/auth",
@@ -53,11 +54,18 @@ def login_for_access_token(payload: schemas.LoginPayload, db: Session = Depends(
         )
 
     # Chequeo de bloqueo por intentos fallidos (rate limiting de login)
-    if user.bloqueado_hasta and user.bloqueado_hasta > datetime.now(timezone.utc):
+    ahora = datetime.now(timezone.utc)
+    if user.bloqueado_hasta and user.bloqueado_hasta > ahora:
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail="Demasiados intentos fallidos. Probá de nuevo en unos minutos.",
         )
+    # El bloqueo ya venció: arrancar el contador de cero. Sin esto,
+    # intentos_fallidos quedaba en 5 y el primer error posterior re-bloqueaba
+    # de una — un solo typo dejaba al usuario dando vueltas.
+    if user.bloqueado_hasta and user.bloqueado_hasta <= ahora:
+        user.intentos_fallidos = 0
+        user.bloqueado_hasta = None
 
     if not verify_password(payload.password, user.password_hash):
         user.intentos_fallidos += 1
@@ -110,6 +118,7 @@ def login_for_access_token(payload: schemas.LoginPayload, db: Session = Depends(
     "/recuperar-password",
     status_code=status.HTTP_200_OK,
     summary="Solicitar link de recuperación de contraseña",
+    dependencies=[Depends(rate_limit("recuperar_password", maximo=5, ventana_seg=3600))],
 )
 async def solicitar_recuperacion(
     payload: schemas.RecuperarPasswordRequest,
@@ -120,6 +129,7 @@ async def solicitar_recuperacion(
     si el usuario existe en el sistema.
     Genera un token de un solo uso con 1 hora de vigencia y
     envía el mail con el link de reset.
+    Rate limit: 5 pedidos por hora por IP (anti mail-bombing).
     """
     identificador = payload.identificador.strip()
 

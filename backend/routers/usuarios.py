@@ -27,6 +27,7 @@ from security import get_password_hash, verify_password
 from mailer.services import email_tasks
 from mailer.services.email_tasks import task_aviso_admin_nuevo_socio, task_solicitud_recibida
 from utils.s3 import subir_archivo, eliminar_archivo, generar_presigned_url
+from utils.ratelimit import rate_limit
 
 
 def _resolver_url_archivo(valor: str | None) -> str | None:
@@ -47,7 +48,10 @@ router = APIRouter(
 # actualizar_perfil() más abajo. UsuarioUpdate declara más campos que estos
 # porque el mismo schema también lo usa el admin; la restricción se aplica acá,
 # no en el schema.
-_CAMPOS_EDITABLES_SOCIO = {"telefono", "direccion", "foto_perfil_url", "push_token"}
+# foto_perfil_url NO está: es un string libre y el socio lo podía apuntar a
+# cualquier ruta/URL. La foto se cambia por POST /usuarios/me/foto (valida tipo,
+# tamaño y sube a S3 con key controlado).
+_CAMPOS_EDITABLES_SOCIO = {"telefono", "direccion", "push_token"}
 
 # Fotos de perfil: se guardan localmente y se sirven como archivo estático.
 # Reutiliza la misma carpeta base "uploads/" que ya monta main.py en "/uploads"
@@ -68,6 +72,7 @@ _TAMANIO_MAXIMO_BYTES = 5 * 1024 * 1024  # 5 MB
     response_model=schemas.UsuarioResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Registrar nuevo usuario (solicitud de alta)",
+    dependencies=[Depends(rate_limit("registro", maximo=5, ventana_seg=3600))],
 )
 def crear_usuario(
     usuario: schemas.UsuarioCreate,
@@ -77,6 +82,9 @@ def crear_usuario(
     """
     Crea el usuario SIN asignarle rol.
     Queda como 'pendiente' hasta que el admin lo apruebe desde /admin/usuarios/{id}/aprobar.
+
+    Rate limit: 5 altas por hora por IP (anti-spam de la bandeja del admin y de
+    mails salientes desde el dominio del club).
     """
     # DNI duplicado
     existente = db.query(models.Usuario).filter(models.Usuario.dni == usuario.dni).first()
@@ -309,10 +317,13 @@ async def subir_foto_perfil(
             detail="Formato no soportado. Subí una imagen JPG, PNG o WEBP.",
         )
 
-    contenido = await archivo.read()
+    # Lectura acotada: nunca cargamos en memoria más de (límite + 1 byte),
+    # aunque el cliente mienta en Content-Length. Antes se hacía archivo.read()
+    # sin tope → un POST grande podía tumbar la instancia de 512 MB por RAM.
+    contenido = await archivo.read(_TAMANIO_MAXIMO_BYTES + 1)
     if len(contenido) > _TAMANIO_MAXIMO_BYTES:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
             detail="La imagen no puede pesar más de 5 MB.",
         )
     if not contenido:

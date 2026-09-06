@@ -51,8 +51,8 @@ from routers import beneficios
 import scheduler
 
 
-UPLOAD_DIR = "uploads/comprobantes"
-os.makedirs(UPLOAD_DIR, exist_ok=True)
+os.makedirs("uploads/comprobantes", exist_ok=True)
+os.makedirs("uploads/fotos_perfil", exist_ok=True)
 
 app = FastAPI(
     title="Club Atlético API",
@@ -77,7 +77,13 @@ app.add_middleware(
     expose_headers=["*"],
 )
 
-app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+# Solo se sirven estáticamente las FOTOS DE PERFIL (baja sensibilidad; hay URLs
+# locales legacy en DB). Los COMPROBANTES nunca se exponen sin auth: en prod van
+# a S3 (bucket privado + presigned URL) y las rutas locales legacy solo se ven
+# detrás de la verificación del admin, no de un mount estático. Antes se montaba
+# todo "uploads/" en "/uploads" → cualquier comprobante escrito localmente
+# quedaba world-readable.
+app.mount("/uploads/fotos_perfil", StaticFiles(directory="uploads/fotos_perfil"), name="fotos_perfil")
 
 app.include_router(usuarios.router)
 app.include_router(auth.router)

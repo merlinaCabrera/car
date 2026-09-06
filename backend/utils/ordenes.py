@@ -299,8 +299,15 @@ def procesar_aprobacion_orden(
                 ),
             )
         meses_corregidos_aplicados = meses_corregidos
+        monto_orden_antes = orden.monto_total
         detalle_cuota.cantidad = meses_corregidos_aplicados
         orden.monto_total = detalle_cuota.precio_unitario_historico * meses_corregidos_aplicados
+        # Mantener la invariante Pago.monto_total == Σ Orden.monto_total: si se
+        # corrigen los meses, el Pago padre tiene que moverse el mismo delta.
+        # Sin esto, finalizar_pago_si_corresponde calcula mal el "saldo aplicado"
+        # del mail y cualquier reporte sobre pago.monto_total queda desfasado.
+        if orden.pago is not None:
+            orden.pago.monto_total = orden.pago.monto_total + (orden.monto_total - monto_orden_antes)
 
     # ── Paso 2: dia_vencimiento_cuota ────────────────────────────────────────
     dia_vencimiento = obtener_dia_vencimiento(db)

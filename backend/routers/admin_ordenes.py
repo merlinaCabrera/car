@@ -409,6 +409,20 @@ def aprobar_orden(
     — el mismo que usa el webhook de Mercado Pago para aprobar sin
     intervención humana.
     """
+    # Corregir la cantidad de meses de una cuota cambia lo que el socio queda
+    # debiendo/cubriendo → es una acción de Admin General, no de Personal
+    # Administrativo (que solo aprueba/rechaza tal cual vino).
+    if payload.meses_corregidos is not None:
+        roles_admin = {
+            ur.rol.nombre for ur in admin.roles_asignados
+            if ur.rol.es_activo and (ur.valido_hasta is None or ur.valido_hasta > datetime.now(timezone.utc))
+        }
+        if "admin_general" not in roles_admin:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Solo un Administrador General puede corregir la cantidad de meses de una orden.",
+            )
+
     orden = _obtener_orden_o_404(db, id_orden, lock=True)
     verificar_pendiente(orden)
 

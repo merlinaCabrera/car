@@ -48,6 +48,7 @@ import schemas
 from database import get_db
 from dependencies import get_current_user, require_roles
 from utils.cuotas_periodos import calcular_estado_financiero, calcular_nuevo_mes_cubierto
+from utils.fechas import hoy_club
 
 router = APIRouter(
     prefix="/admin/pagos",
@@ -107,7 +108,7 @@ def _calcular_edad(fecha_nacimiento: Optional[date]) -> Optional[int]:
     """
     if fecha_nacimiento is None:
         return None
-    hoy = date.today()
+    hoy = hoy_club()
     return (
         hoy.year - fecha_nacimiento.year
         - ((hoy.month, hoy.day) < (fecha_nacimiento.month, fecha_nacimiento.day))
@@ -152,18 +153,26 @@ def _calcular_precio_cuota(
     precio_base: Decimal,
     fecha_nacimiento: Optional[date],
     db: Session,
+    *,
+    descuento_menor_pct: Optional[Decimal] = None,
 ) -> Decimal:
     """
     Calcula el precio final de la cuota usando aritmética Decimal estricta.
     Aplica el % de descuento configurado (ConfiguracionGlobal.descuento_menor_pct)
-    si el socio tiene menos de 18 años. Al ser precio_base también Decimal
-    (Numeric ORM → Decimal en Python), toda la expresión opera en Decimal
-    sin conversión implícita a float, evitando errores de precisión en
-    columnas Numeric(10,2).
+    si el socio tiene menos de 18 años.
+
+    `descuento_menor_pct`: si se pasa, se usa ese valor y NO se consulta la DB.
+    Los endpoints que llaman a esta función dentro de un loop (morosos,
+    estadísticas) leen la config UNA vez y lo pasan → evita un N+1 de una
+    query de ConfiguracionGlobal por socio.
     """
     edad = _calcular_edad(fecha_nacimiento)
     if edad is not None and edad < 18:
-        descuento_pct = _obtener_descuento_menor_pct(db)
+        descuento_pct = (
+            descuento_menor_pct
+            if descuento_menor_pct is not None
+            else _obtener_descuento_menor_pct(db)
+        )
         return precio_base * (Decimal("1") - descuento_pct / Decimal("100"))
     return precio_base
 
@@ -183,7 +192,7 @@ def obtener_estadisticas(
     # como referencia del tablero — una cifra de orientación global.
     producto_cuota_base = _obtener_producto_cuota_social(db)
     dia_vencimiento = _obtener_dia_vencimiento(db)
-    hoy = date.today()
+    hoy = hoy_club()
 
     # "Al día" incluye tanto a quien nunca debió nada como a quien está
     # becado con cobertura vigente — mismo criterio que el resto del sistema
@@ -232,7 +241,7 @@ def listar_morosos(
     # Se listan todos los socios activos, no solo los morosos, para permitir
     # el pago por adelantado desde la ventanilla.
     dia_vencimiento = _obtener_dia_vencimiento(db)
-    hoy = date.today()
+    hoy = hoy_club()
     socios = (
         db.query(models.Usuario)
         .filter(models.Usuario.fecha_baja.is_(None))
@@ -241,10 +250,12 @@ def listar_morosos(
     )
 
     producto_cuota_base = _obtener_producto_cuota_social(db)
+    descuento_pct = _obtener_descuento_menor_pct(db)  # una sola vez, no por socio
     resultado = []
     for u in socios:
         precio_unitario = _calcular_precio_cuota(
-            producto_cuota_base.precio_actual, u.fecha_nacimiento, db
+            producto_cuota_base.precio_actual, u.fecha_nacimiento, db,
+            descuento_menor_pct=descuento_pct,
         )
         estado = calcular_estado_financiero(u.mes_cubierto_hasta, u.fecha_ingreso, dia_vencimiento, hoy)
 
@@ -302,6 +313,29 @@ def registrar_pago_manual(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="No se puede registrar un pago para un socio dado de baja.",
+        )
+
+    # 1b ── No cobrar por ventanilla si el socio tiene una orden de cuota
+    # pendiente: si el admin cobra acá Y después aprueba la pendiente, la
+    # cobertura avanza dos veces. Que resuelva la pendiente primero.
+    orden_cuota_pendiente = (
+        db.query(models.Orden.id_orden)
+        .join(models.DetalleOrden, models.DetalleOrden.id_orden == models.Orden.id_orden)
+        .join(models.ProductoServicio, models.DetalleOrden.id_producto == models.ProductoServicio.id_producto)
+        .filter(
+            models.Orden.id_usuario == usuario.id_usuario,
+            models.Orden.estado == "pendiente_verificacion",
+            models.ProductoServicio.categoria == "cuota_social",
+        )
+        .first()
+    )
+    if orden_cuota_pendiente is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                f"El socio tiene una orden de cuota pendiente (#{orden_cuota_pendiente.id_orden}). "
+                "Aprobala o rechazala antes de registrar un cobro por ventanilla."
+            ),
         )
 
     # 2 ── Seleccionar el producto y congelar el precio correcto para este socio

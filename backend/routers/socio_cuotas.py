@@ -56,6 +56,7 @@ from dependencies import get_current_user, require_roles
 from mailer.services import email_tasks
 from utils.s3 import subir_archivo, eliminar_archivo, generar_presigned_url
 from utils.cuotas_periodos import calcular_estado_financiero
+from utils.fechas import hoy_club
 from utils.ordenes import restaurar_stock_orden
 
 
@@ -128,7 +129,7 @@ def _calcular_edad(fecha_nacimiento: Optional[date]) -> Optional[int]:
     """
     if fecha_nacimiento is None:
         return None
-    hoy = date.today()
+    hoy = hoy_club()
     return (
         hoy.year - fecha_nacimiento.year
         - ((hoy.month, hoy.day) < (fecha_nacimiento.month, fecha_nacimiento.day))
@@ -208,7 +209,7 @@ def obtener_estado_cuota(
     # Si la beca está activa hoy, devolvemos deuda = 0 sin importar mes_cubierto_hasta.
     # La deuda real queda "congelada" en el campo: cuando expire la beca, el motor
     # financiero retomará desde ese punto automáticamente.
-    hoy = date.today()
+    hoy = hoy_club()
     beca_activa = (
         socio.es_becado
         and (socio.becado_hasta is None or socio.becado_hasta >= hoy)

@@ -3,9 +3,10 @@
 _Fecha: 2026-09-06 · Método: lectura de código (no se ejecutaron exploits) · Foco: manejo de dinero y control de acceso por rol._
 
 > **Estado de corrección (2026-09-06):** rama `seguridad/auditoria-alta`.
-> **ALTA A1–A5** — `8ca42a2` · **MEDIA M1–M6** — `4acc926` · **MEDIA M7–M11 + BAJA B2** — `5a8ee19`.
-> Todos los hallazgos de seguridad/plata están corregidos. Falta testeo con base real.
-> Pendiente: BAJA B1, B3–B14 (hygiene/robustez/UX — no bloquean el MVP). Ver "Veredicto" al final.
+> **ALTA A1–A5** — `8ca42a2` · **MEDIA M1–M6** — `4acc926` · **MEDIA M7–M11 + B2** — `5a8ee19`.
+> **BAJA B1, B3–B7, B12** — sin commitear (los hace la usuaria). B8 revisado → no es bug.
+> Pendiente sin planificar: B9 (enumeración, decisión del equipo), B10, B11, B13, B14.
+> Falta testeo con base real. Ver "Veredicto" y "Sprint BAJA" al final.
 
 Cubre: `backend/` completo (routers, `utils/`, `models.py`, `schemas.py`, `security.py`,
 `dependencies.py`, `scheduler.py`, `main.py`) y el ruteo del frontend
@@ -273,22 +274,22 @@ al superar el límite.
 
 ## BAJA / hardening
 
-- **B1 — Sin gate de rol en el frontend.** `RutaPrivada` solo mira el token; `App.jsx` no
+- **B1 ✅ — Sin gate de rol en el frontend.** `RutaPrivada` solo mira el token; `App.jsx` no
   tiene rutas por rol: cualquier logueado puede navegar a `/admin/*`, `/gestion-planteles`,
   etc. El backend igual rechaza los datos (verificado), así que no es fuga — pero es la causa
   probable del bug #4 y de "la página de admin se ve rota". Agregar un `<RequireRole roles={[...]}>`.
 - **B2 — Sin tope en `meses_a_pagar` / `cantidad` / `meses_corregidos`.** `gt=0`/`ge=1` sin
   `le=`. Valores enormes → overflow de `Numeric(10,2)` o `date` con año > 9999 → 500
   (en la aprobación, para el camino del socio). Poner `le=` razonable (ej. 60).
-- **B3 — `notificar_cuotas_vencidas` no le escribe a los que nunca pagaron.**
+- **B3 ✅ — `notificar_cuotas_vencidas` no le escribe a los que nunca pagaron.**
   `Usuario.mes_cubierto_hasta < hoy` con `mes_cubierto_hasta IS NULL` → `NULL` en SQL → fila
   excluida. Los socios nuevos que nunca abonaron no reciben el aviso.
 - **B4 — Todo en UTC.** `date.today()` y el scheduler → off-by-one en el día de vencimiento y
   en el cálculo de edad ~3 h por noche (Argentina UTC-3). Ya está en el checklist de QA.
-- **B5 — `GET /` expone el host de la base** (`bd_host`). Sacarlo.
-- **B6 — N+1 en `admin_pagos.listar_morosos`**: una query a `ConfiguracionGlobal` por socio
+- **B5 ✅ — `GET /` expone el host de la base** (`bd_host`). Sacarlo.
+- **B6 ✅ — N+1 en `admin_pagos.listar_morosos`**: una query a `ConfiguracionGlobal` por socio
   dentro del loop. Con 300-500 socios y cold start de Neon, lento. Leer la config una vez.
-- **B7 — `registrar_pago_manual` no chequea si el socio ya tiene una orden de cuota
+- **B7 ✅ — `registrar_pago_manual` no chequea si el socio ya tiene una orden de cuota
   pendiente** → el admin puede cobrar en ventanilla y después aprobar también la pendiente
   (doble cobertura).
 - **B8 — `suspender_reserva` acredita el precio histórico completo** aunque parte de esa
@@ -300,7 +301,7 @@ al superar el límite.
   brute-forceable). Idealmente hashearlo at rest.
 - **B11 — bcrypt trunca a 72 bytes a mano** (documentado): dos contraseñas con los mismos
   primeros 72 bytes son equivalentes.
-- **B12 — `actualizar_perfil` (rama admin) no audita.** Un `admin_general` cambiando
+- **B12 ✅ — `actualizar_perfil` (rama admin) no audita.** Un `admin_general` cambiando
   `es_becado` / `dni` / `email` / `is_directivo` vía `PATCH /usuarios/{id}` no deja
   `audit_log` (a diferencia de `ajustar_saldo`, `dar_baja`, `CAMBIO_ROLES`). Confirmar si
   `admin_usuarios.editar_socio` es el camino "oficial" y si ese sí audita.
@@ -564,3 +565,74 @@ del checklist de QA. B1 se puede hacer en paralelo con el QA manual.
 9. **M8:** `admin_temporal` haciendo `definir_forma_reintegro?forma=saldo_a_favor` → 403.
 10. **M9:** 6º `POST /usuarios/` desde la misma IP en una hora → 429.
 11. **M11:** subir un archivo de 20 MB como comprobante → 413, sin picos de RAM.
+
+---
+
+## Sprint BAJA (2026-09-06 · sin commitear — los commits los hace la usuaria)
+
+### B1 ✅ — Gate de rol en el frontend
+`frontend/src/components/RequireRole.jsx` (nuevo) + `App.jsx`. Los grupos de
+rutas quedan envueltos:
+- **socio/jugador**: `socio, jugador, admin_general, personal_administrativo, personal_tecnico`
+- **técnico** (`/gestion-*`, `/asistencias`): `personal_tecnico, admin_general`
+- **escáneres** (`/admin/escaner*`): `admin_general, personal_administrativo, admin_temporal, invitado, personal_tecnico`
+- **admin** (resto de `/admin/*`): `admin_general, personal_administrativo`
+
+Si el rol no matchea → redirect a la home del usuario (no pantalla rota). El
+backend sigue siendo la barrera real; esto es defensa en profundidad + UX.
+`npm run build` OK.
+
+### B3 ✅ — `notificar_cuotas_vencidas` no avisaba a los que nunca pagaron
+`scheduler.py`: la preselección SQL ahora incluye `mes_cubierto_hasta IS NULL`
+y la morosidad fina se decide con `calcular_estado_financiero` en Python
+(respeta el día de gracia).
+
+### B4 ✅ — Zona horaria
+`utils/fechas.py` (nuevo): `hoy_club()` / `ahora_club()` en
+`America/Argentina/Buenos_Aires`. Reemplaza `date.today()` (UTC del SO) en:
+`utils/cuotas_periodos.py` (motor — cubre casi todo transitivamente),
+`routers/admin_pagos.py`, `routers/socio_cuotas.py`, `routers/admin_usuarios.py`
+(incluida `fecha_baja`), `routers/deportivo.py`, `scheduler.py`. Los timestamps
+`DateTime(timezone=True)` siguen comparándose en UTC (son tz-aware, el instante
+es el mismo).
+
+### B5 ✅ — `GET /` filtraba el host de la base
+`main.py`: la raíz devuelve solo `{"mensaje": "..."}`, sin `bd_host`.
+
+### B6 ✅ — N+1 en `/admin/pagos/morosos`
+`_calcular_precio_cuota` acepta `descuento_menor_pct`; `listar_morosos` lee la
+config UNA vez y lo pasa → una query de `ConfiguracionGlobal` en total en vez
+de una por socio.
+
+### B7 ✅ — Pago manual con orden de cuota pendiente
+`registrar_pago_manual` devuelve 409 si el socio tiene una orden de
+`cuota_social` en `pendiente_verificacion` (antes: cobrar acá + aprobar la
+pendiente = doble avance de cobertura).
+
+### B8 — REVISADO: no es un bug
+El reintegro de `suspender_reserva` acredita el precio bruto del turno como
+saldo. Recontando el flujo: el socio pagó ese valor (efectivo/transferencia +
+lo que haya puesto de saldo) por un turno que no usó; devolverle el valor
+completo como saldo lo deja **exactamente igual que antes de reservar** (el
+crédito preexistente + lo que pagó de más). Es reintegro en crédito interno en
+vez de efectivo — que es la decisión de diseño para suspensión por lluvia. Sin
+cambios.
+
+### B12 ✅ — `PATCH /usuarios/{id}` (rama admin) no auditaba
+Había DOS handlers de edición de socio: `admin_usuarios.editar_socio`
+(`/admin/usuarios/{id}`, valida unicidad, deja `EDITAR_SOCIO` en audit_log) y
+`usuarios.actualizar_perfil` (`/usuarios/{id}`, con una rama admin que escribía
+cualquier campo sin auditar). Se quitó la rama admin: `actualizar_perfil` ahora
+es estrictamente autogestión del propio perfil (telefono/direccion/push_token).
+El admin edita por `/admin/usuarios/{id}`. Verificado: `AdminSocios.jsx` ya usa
+esa ruta; `SocioPerfil.jsx` solo edita el perfil propio.
+
+### Pendiente (sin planificar, no bloquea MVP)
+- **B9** — enumeración en login/registro. Decisión explícita del equipo según
+  los docstrings; queda para que lo confirmen.
+- **B10** — `token_recuperacion` en texto plano en DB (1 h, 256 bits, no
+  brute-forceable). Idealmente hashearlo at rest.
+- **B11** — bcrypt trunca a 72 bytes a mano (documentado).
+- **B13** — `ajustar_saldo` reemplaza el valor en vez de sumar delta (TOCTOU
+  suave, admin, auditado).
+- **B14** — APScheduler sin lock de instancia única (N/A en Render free).

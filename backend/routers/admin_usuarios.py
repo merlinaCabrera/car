@@ -34,6 +34,7 @@ from utils.cuotas_periodos import (
     calcular_estado_financiero,
     fecha_cubierta_para_meses_adeudados,
 )
+from utils.fechas import hoy_club
 
 router = APIRouter(
     prefix="/admin/usuarios",
@@ -56,7 +57,7 @@ _ADMIN_GENERAL = ("admin_general",)
 def _calcular_edad(fecha_nacimiento: Optional[date]) -> Optional[int]:
     if fecha_nacimiento is None:
         return None
-    hoy = date.today()
+    hoy = hoy_club()
     return (
         hoy.year - fecha_nacimiento.year
         - ((hoy.month, hoy.day) < (fecha_nacimiento.month, fecha_nacimiento.day))
@@ -431,7 +432,7 @@ def aprobar_usuario(
     # el socio arranque al día y recién deba pagar el mes siguiente.
     # Solo se toca si está vacío — no pisamos si ya tenía cobertura previa.
     if usuario.mes_cubierto_hasta is None:
-        hoy = date.today()
+        hoy = hoy_club()
         import calendar
         ultimo_dia = calendar.monthrange(hoy.year, hoy.month)[1]
         usuario.mes_cubierto_hasta = date(hoy.year, hoy.month, ultimo_dia)
@@ -570,7 +571,7 @@ def crear_socio_manual(
     # recién debe pagar el mes siguiente. Antes esto no se seteaba acá y el
     # socio recién creado aparecía como moroso desde el primer día.
     if nuevo_usuario.mes_cubierto_hasta is None:
-        hoy = date.today()
+        hoy = hoy_club()
         import calendar
         ultimo_dia = calendar.monthrange(hoy.year, hoy.month)[1]
         nuevo_usuario.mes_cubierto_hasta = date(hoy.year, hoy.month, ultimo_dia)
@@ -892,7 +893,7 @@ def dar_baja_socio(
                        "quedaría sin nadie que pueda administrar el sistema.",
             )
 
-    usuario.fecha_baja = date.today()
+    usuario.fecha_baja = hoy_club()
     db.add(models.AuditLog(
         usuario_actor=current_admin.id_usuario,
         accion="BAJA_SOCIO",

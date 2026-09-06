@@ -1792,7 +1792,7 @@ def registrar_asistencia(
 
     # Snapshot financiero calculado EN ESTE INSTANTE — nunca se recibe del frontend.
     # Un socio está "al día" si su cobertura está vigente (>= hoy).
-    esta_al_dia = socio.mes_cubierto_hasta is not None and socio.mes_cubierto_hasta >= date.today()
+    esta_al_dia = socio.mes_cubierto_hasta is not None and socio.mes_cubierto_hasta >= datetime.now(_TZ_AR).date()
     estado_financiero = "al_dia" if esta_al_dia else "moroso"
 
     # INSERT ... ON CONFLICT DO NOTHING apoyado en uq_asistencia_evento_usuario:

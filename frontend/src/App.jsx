@@ -3,6 +3,7 @@ import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import MainLayout from './layouts/MainLayout';
 import RutaPrivada from './components/RutaPrivada';
+import RequireRole from './components/RequireRole';
 import CambiarPasswordObligatorio from './pages/CambiarPasswordObligatorio';
 import Landing from './pages/Landing';
 import Ayuda from './pages/Ayuda';
@@ -58,43 +59,51 @@ function App() {
                 contraseña temporal. */}
             <Route path="/cambiar-password-obligatorio" element={<CambiarPasswordObligatorio />} />
             <Route element={<MainLayout userRole="socio" />}>
-              {/* Socio */}
-              <Route path="/socio" element={<SocioInicio />} />
-              <Route path="/carrito" element={<SocioCarrito />} />
-              <Route path="/socio/cuotas" element={<SocioCuotas />} />
-              <Route path="/shopping" element={<SocioShopping />} />
-              <Route path="/configuracion" element={<SocioPerfil />} />
-              <Route path="/perfil" element={<SocioPerfil />} />
-              <Route path="/mis-compras" element={<SocioCompras />} />
-              <Route path="/socio/reservas" element={<Reservas />} />
-              <Route path="/socio/cancha" element={<SocioCancha />} />
-              <Route path="/notificaciones" element={<SocioNotificaciones />} />
-
-              {/* Jugador */}
-              <Route path="/mi-equipo" element={<JugadorEquipo />} />
-              <Route path="/calendario-deportivo" element={<JugadorCalendario />} />
+              {/* Socio / Jugador — cualquier rol de miembro (no invitado ni admin_temporal sueltos) */}
+              <Route element={<RequireRole any={['socio', 'jugador', 'admin_general', 'personal_administrativo', 'personal_tecnico']} />}>
+                <Route path="/socio" element={<SocioInicio />} />
+                <Route path="/carrito" element={<SocioCarrito />} />
+                <Route path="/socio/cuotas" element={<SocioCuotas />} />
+                <Route path="/shopping" element={<SocioShopping />} />
+                <Route path="/configuracion" element={<SocioPerfil />} />
+                <Route path="/perfil" element={<SocioPerfil />} />
+                <Route path="/mis-compras" element={<SocioCompras />} />
+                <Route path="/socio/reservas" element={<Reservas />} />
+                <Route path="/socio/cancha" element={<SocioCancha />} />
+                <Route path="/notificaciones" element={<SocioNotificaciones />} />
+                <Route path="/mi-equipo" element={<JugadorEquipo />} />
+                <Route path="/calendario-deportivo" element={<JugadorCalendario />} />
+              </Route>
 
               {/* Técnico */}
-              <Route path="/gestion-planteles" element={<TecnicoPlanteles />} />
-              <Route path="/asistencias" element={<TecnicoAsistencias />} />
-              <Route path="/gestion-eventos" element={<TecnicoEventos />} />
+              <Route element={<RequireRole any={['personal_tecnico', 'admin_general']} />}>
+                <Route path="/gestion-planteles" element={<TecnicoPlanteles />} />
+                <Route path="/asistencias" element={<TecnicoAsistencias />} />
+                <Route path="/gestion-eventos" element={<TecnicoEventos />} />
+              </Route>
 
-              {/* Admin */}
-              <Route path="/admin" element={<AdminInicio />} />
-              <Route path="/admin/solicitudes" element={<AdminSolicitudes />} />
-              <Route path="/admin/socios" element={<AdminSocios />} />
-              <Route path="/admin/auditoria" element={<AdminAuditoria />} />
-              <Route path="/admin/comercios" element={<AdminComercios />} />
-              <Route path="/admin/pagos" element={<Navigate to="/admin/verificaciones?tipo=cuota" replace />} />
-              <Route path="/admin/verificaciones" element={<AdminVerificaciones />} />
-              <Route path="/admin/escaner" element={<AdminScanner />} />
-              <Route path="/admin/escaner-evento" element={<AdminScannerEvento />} />
-              <Route path="/admin/escaner-canchas" element={<AdminScannerCancha />} />
-              <Route path="/admin/reservas" element={<AdminReservas />} />
-              <Route path="/admin/productos" element={<AdminProductos />} />
-              <Route path="/admin/tienda" element={<Navigate to="/admin/verificaciones?tipo=compra" replace />} />
-              <Route path="/admin/alquileres" element={<Navigate to="/admin/verificaciones?tipo=alquiler" replace />} />
-              <Route path="/admin/estadisticas" element={<AdminEstadisticas />} />
+              {/* Escáneres — porteros / comercios además del staff */}
+              <Route element={<RequireRole any={['admin_general', 'personal_administrativo', 'admin_temporal', 'invitado', 'personal_tecnico']} />}>
+                <Route path="/admin/escaner" element={<AdminScanner />} />
+                <Route path="/admin/escaner-evento" element={<AdminScannerEvento />} />
+                <Route path="/admin/escaner-canchas" element={<AdminScannerCancha />} />
+              </Route>
+
+              {/* Admin — solo staff */}
+              <Route element={<RequireRole any={['admin_general', 'personal_administrativo']} />}>
+                <Route path="/admin" element={<AdminInicio />} />
+                <Route path="/admin/solicitudes" element={<AdminSolicitudes />} />
+                <Route path="/admin/socios" element={<AdminSocios />} />
+                <Route path="/admin/auditoria" element={<AdminAuditoria />} />
+                <Route path="/admin/comercios" element={<AdminComercios />} />
+                <Route path="/admin/pagos" element={<Navigate to="/admin/verificaciones?tipo=cuota" replace />} />
+                <Route path="/admin/verificaciones" element={<AdminVerificaciones />} />
+                <Route path="/admin/reservas" element={<AdminReservas />} />
+                <Route path="/admin/productos" element={<AdminProductos />} />
+                <Route path="/admin/tienda" element={<Navigate to="/admin/verificaciones?tipo=compra" replace />} />
+                <Route path="/admin/alquileres" element={<Navigate to="/admin/verificaciones?tipo=alquiler" replace />} />
+                <Route path="/admin/estadisticas" element={<AdminEstadisticas />} />
+              </Route>
             </Route>
             </Route>
           </Routes>

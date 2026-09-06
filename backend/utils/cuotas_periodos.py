@@ -27,6 +27,8 @@ from dataclasses import dataclass
 from datetime import date
 from typing import List, Optional
 
+from utils.fechas import hoy_club
+
 
 def sumar_meses(base: date, meses: int) -> date:
     """
@@ -63,14 +65,14 @@ def calcular_nuevo_mes_cubierto(
         extiende la cobertura desde donde el socio se quedó, llenando
         cronológicamente los meses adeudados.
       · Si mes_cubierto_hasta es None, la base es fecha_ingreso. Si también
-        fuera None, se usa date.today() como última red de seguridad.
+        fuera None, se usa hoy_club() como última red de seguridad.
     """
     if mes_cubierto_hasta is not None:
         base = mes_cubierto_hasta
     elif fecha_ingreso is not None:
         base = fecha_ingreso
     else:
-        base = date.today()
+        base = hoy_club()
 
     base_normalizada = normalizar_a_dia_vencimiento(base, dia_vencimiento_cuota)
     nueva_fecha = sumar_meses(base_normalizada, meses_a_pagar)
@@ -109,7 +111,7 @@ def calcular_estado_financiero(
         vencimiento del mes en curso (así un socio no es moroso hasta el
         día siguiente al vencimiento, no el mismo día).
     """
-    hoy = hoy or date.today()
+    hoy = hoy or hoy_club()
 
     fecha_base = mes_cubierto_hasta
     if fecha_base is None:
@@ -142,7 +144,7 @@ def fecha_cubierta_para_meses_adeudados(
     traspapelados de la carga por planilla, corrección de casos puntuales).
     n_meses <= 0 → hoy mismo (al día, sin deuda).
     """
-    hoy = hoy or date.today()
+    hoy = hoy or hoy_club()
     if n_meses <= 0:
         return hoy
 

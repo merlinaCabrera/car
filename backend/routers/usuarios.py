@@ -17,7 +17,7 @@ from pathlib import Path
 from uuid import uuid4
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Query, UploadFile, status
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session
 
 import models
 import schemas
@@ -236,51 +236,35 @@ def actualizar_perfil(
     current_user: models.Usuario = Depends(get_current_user),
 ):
     """
-    Un socio solo puede editar su propio perfil.
-    El admin_general puede editar cualquier usuario.
-    Campos editables: telefono, direccion, foto_perfil_url, push_token.
-    Campos NO editables por aquí: dni, email, roles, estado financiero.
+    AUTOGESTIÓN — un socio edita SU PROPIO perfil de contacto.
+    Campos editables: telefono, direccion, push_token.
+    Para editar a OTRO socio (o campos sensibles: dni, email, roles, beca,
+    is_directivo) el admin usa PATCH /admin/usuarios/{id} (editar_socio), que
+    valida unicidad y deja audit_log. Antes esta ruta tenía una rama "admin"
+    paralela que escribía cualquier campo sin auditar — se eliminó.
     """
-    _roles = {ur.rol.nombre for ur in current_user.roles_asignados}
-    es_admin = "admin_general" in _roles
-
-    if current_user.id_usuario != id_usuario and not es_admin:
+    if current_user.id_usuario != id_usuario:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Solo podés modificar tu propio perfil.",
+            detail="Solo podés modificar tu propio perfil. El admin edita socios desde su panel.",
         )
 
-    usuario = (
-        db.query(models.Usuario)
-        .options(
-            joinedload(models.Usuario.roles_asignados)
-            .joinedload(models.UsuarioRol.rol)
-        )
-        .filter(models.Usuario.id_usuario == id_usuario)
-        .first()
-    )
-    if not usuario:
-        raise HTTPException(status_code=404, detail="Usuario no encontrado.")
+    usuario = current_user  # ya está cargado por get_current_user
     if usuario.fecha_baja is not None:
         raise HTTPException(status_code=400, detail="El usuario está dado de baja.")
 
     cambios = datos.model_dump(exclude_unset=True)
 
-    # Un socio (no admin) solo puede tocar su propio perfil "de contacto".
-    # Cualquier otro campo (dni, email, roles, es_becado, becado_hasta,
-    # is_directivo, etc.) requiere admin_general, aunque venga en el body.
-    if not es_admin:
-        campos_no_permitidos = set(cambios) - _CAMPOS_EDITABLES_SOCIO
-        if campos_no_permitidos:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=(
-                    f"No podés modificar: {', '.join(sorted(campos_no_permitidos))}. "
-                    "Esos campos solo los puede cambiar un administrador."
-                ),
-            )
+    campos_no_permitidos = set(cambios) - _CAMPOS_EDITABLES_SOCIO
+    if campos_no_permitidos:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=(
+                f"No podés modificar: {', '.join(sorted(campos_no_permitidos))}. "
+                "Esos campos solo los puede cambiar un administrador."
+            ),
+        )
 
-    # Actualiza solo los campos que vinieron en el request (exclude_unset)
     for campo, valor in cambios.items():
         setattr(usuario, campo, valor)
 

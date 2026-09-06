@@ -22,6 +22,8 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from database import SessionLocal
 import models
 from utils.ordenes import finalizar_pago_si_corresponde, restaurar_stock_orden
+from utils.cuotas_periodos import calcular_estado_financiero
+from utils.fechas import hoy_club
 from fastapi import BackgroundTasks
 from mailer.services.email_service import (
     enviar_orden_expirada,
@@ -253,16 +255,23 @@ def recordatorio_comprobante_pendiente():
 
 def notificar_cuotas_vencidas():
     """
-    Corre 1 vez por día a las 9hs UTC.
-    Busca socios activos cuyo mes_cubierto_hasta < hoy, no tienen beca activa,
-    y no tienen ya una orden pendiente de cuota (para no spamear si ya pagaron
-    y están esperando verificación). Manda el mail de cuota vencida.
+    Corre 1 vez por día a las 9hs UTC (~6hs de Argentina).
+    Busca socios activos morosos, sin beca activa, y sin una orden de cuota
+    pendiente (para no spamear si ya pagaron y esperan verificación). Manda el
+    mail de cuota vencida.
+
+    `hoy` se calcula en hora de Argentina (hoy_club) y la morosidad se decide
+    con calcular_estado_financiero (respeta el día de gracia post-vencimiento).
+    Incluye a los que NUNCA pagaron (mes_cubierto_hasta IS NULL): antes el
+    filtro SQL `mes_cubierto_hasta < hoy` los dejaba afuera porque NULL < x es
+    NULL en SQL.
     """
     db = SessionLocal()
     try:
-        from datetime import date
-        hoy = date.today()
-        ahora = datetime.now(timezone.utc)
+        hoy = hoy_club()
+
+        config = db.query(models.ConfiguracionGlobal).first()
+        dia_vencimiento = config.dia_vencimiento_cuota if config else 10
 
         # IDs de productos cuota_social para el filtro de órdenes pendientes
         ids_cuota = [
@@ -272,14 +281,17 @@ def notificar_cuotas_vencidas():
             .all()
         ]
 
-        # Socios con cuota vencida y sin beca activa
-        socios_vencidos = (
+        # Preselección amplia en SQL; la morosidad fina se decide en Python.
+        candidatos = (
             db.query(models.Usuario)
             .filter(
                 models.Usuario.fecha_baja.is_(None),
-                models.Usuario.mes_cubierto_hasta < hoy,
                 models.Usuario.email.isnot(None),
-                # excluir becados activos
+                (
+                    (models.Usuario.mes_cubierto_hasta < hoy)
+                    | (models.Usuario.mes_cubierto_hasta.is_(None))
+                ),
+                # excluir becados activos (indefinidos o con fecha futura)
                 (
                     models.Usuario.es_becado.is_(False)
                     | (models.Usuario.becado_hasta < hoy)
@@ -287,6 +299,13 @@ def notificar_cuotas_vencidas():
             )
             .all()
         )
+
+        socios_vencidos = [
+            s for s in candidatos
+            if calcular_estado_financiero(
+                s.mes_cubierto_hasta, s.fecha_ingreso, dia_vencimiento, hoy
+            ).moroso
+        ]
 
         if not socios_vencidos:
             return

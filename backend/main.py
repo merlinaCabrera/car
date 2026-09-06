@@ -111,10 +111,9 @@ app.include_router(beneficios.router)
 
 @app.get("/")
 def read_root():
-    return {
-        "mensaje": "¡Bienvenida a la API del Club Atlético! El servidor está corriendo perfectamente.",
-        "bd_host": _db_host,
-    }
+    # No exponemos el host de la base (antes iba `bd_host` acá) — es información
+    # de infraestructura que no aporta nada a un cliente y sí a un atacante.
+    return {"mensaje": "API del Club Atlético Roberts. OK."}
 
 
 @app.get("/health")

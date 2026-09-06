@@ -116,8 +116,24 @@ def _crear_preferencia_mercado_pago(
     """
     sdk = mercadopago.SDK(settings.mp_access_token)
 
-    preference_data = {
-        "items": [
+    # Los ítems detallados suman el precio de lista. Si el socio aplicó saldo a
+    # favor, `pago.monto_total` es MENOR que esa suma → hay que cobrar el neto,
+    # no el bruto (antes MP cobraba el total sin descuento mientras el saldo YA
+    # se había restado de la billetera → el socio pagaba de más). En ese caso
+    # se colapsa a un único ítem por el monto real a cobrar.
+    suma_items = sum(
+        (producto.precio_actual * Decimal(item.cantidad) for producto, item in items_resueltos),
+        Decimal("0"),
+    )
+    if suma_items != pago.monto_total:
+        items_mp = [{
+            "title": "Compra Club Atlético Roberts",
+            "quantity": 1,
+            "unit_price": float(pago.monto_total),
+            "currency_id": "ARS",
+        }]
+    else:
+        items_mp = [
             {
                 "title": producto.nombre[:256],
                 "quantity": item.cantidad,
@@ -125,7 +141,10 @@ def _crear_preferencia_mercado_pago(
                 "currency_id": "ARS",
             }
             for producto, item in items_resueltos
-        ],
+        ]
+
+    preference_data = {
+        "items": items_mp,
         "external_reference": str(pago.id_pago),
         "notification_url": f"{settings.backend_url}/webhooks/mercadopago",
         "back_urls": {
@@ -480,9 +499,16 @@ def checkout_carrito(
         db.refresh(nuevo_pago)
 
     # 9 ── Mails en background ────────────────────────────────────────────────
-    metodo = payload.metodo_pago
+    # Método efectivo: si el saldo a favor cubrió TODO, el Pago ya nació como
+    # 'saldo_a_favor' y se auto-aprobó — no es un pago pendiente en efectivo ni
+    # hay que generar link de MP. Se respeta ese override acá también (antes se
+    # usaba payload.metodo_pago crudo y se mandaba a MP un Pago ya aprobado).
+    metodo = "saldo_a_favor" if saldo_cubre_todo else payload.metodo_pago
 
-    if current_user.email:
+    if current_user.email and not saldo_cubre_todo:
+        # Si el saldo cubrió todo, el Pago ya se aprobó y finalizar_pago_si_corresponde
+        # mandó el mail de "compra confirmada" — no corresponde el de "orden generada,
+        # subí el comprobante".
         background_tasks.add_task(
             email_tasks.task_orden_generada,
             email_destino=current_user.email,

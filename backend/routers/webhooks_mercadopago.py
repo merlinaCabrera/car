@@ -143,11 +143,13 @@ async def recibir_webhook_mercadopago(
     if tipo_evento != "payment" or not data_id:
         return {"status": "ignorado", "tipo_evento": tipo_evento}
 
-    # Validar firma solo en live_mode (pagos reales de producción).
-    # En sandbox, MP firma con un secret interno diferente al del panel
-    # (bug conocido de su entorno de pruebas — no afecta producción).
-    es_live = body.get("live_mode", False)
-    if es_live and not _validar_firma(
+    # Validación de firma: SIEMPRE que MP_WEBHOOK_SECRET esté configurado.
+    # Antes se gateaba con body["live_mode"], pero ese flag lo controla quien
+    # manda el request → un atacante mandaba live_mode:false y se salteaba la
+    # firma. `_validar_firma` devuelve True (skip) solo si el secret no está
+    # seteado, para no romper el entorno sandbox local. En prod el secret DEBE
+    # estar seteado.
+    if not _validar_firma(
         x_signature=x_signature,
         x_request_id=x_request_id,
         data_id=data_id,
@@ -213,6 +215,26 @@ async def recibir_webhook_mercadopago(
         pago.mp_payment_id = str(pago_mp.get("id"))
         db.commit()
         return {"status": "registrado_sin_aprobar", "estado_mp": estado_mp}
+
+    # ── Verificar que MP haya cobrado al menos lo que esperábamos ──────────
+    # El webhook solo confiaba en estado="approved" + external_reference. Si por
+    # cualquier motivo (preferencia manipulada, promo, cuotas raras) MP cobró
+    # menos que pago.monto_total, NO se aprueba: queda registrado y un admin lo
+    # revisa a mano.
+    from decimal import Decimal, InvalidOperation
+    try:
+        monto_mp = Decimal(str(pago_mp.get("transaction_amount")))
+    except (InvalidOperation, TypeError):
+        monto_mp = None
+    if monto_mp is None or monto_mp + Decimal("0.01") < pago.monto_total:
+        pago.mp_payment_id = str(pago_mp.get("id"))
+        db.commit()
+        return {
+            "status": "monto_no_coincide",
+            "id_pago": pago.id_pago,
+            "esperado": str(pago.monto_total),
+            "cobrado_mp": str(monto_mp) if monto_mp is not None else None,
+        }
 
     # ── Aprobación automática ─────────────────────────────────────────────
     pago.mp_payment_id = str(pago_mp.get("id"))

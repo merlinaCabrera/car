@@ -283,9 +283,14 @@ def registrar_pago_manual(
     admin: models.Usuario = Depends(require_roles(*_ROLES_ADMIN_PAGOS)),
 ) -> schemas.RegistrarPagoManualResponse:
     # 1 ── Validar que el usuario exista y esté activo ─────────────────────
+    # with_for_update: serializa este cobro con otro cobro manual del mismo socio
+    # o con la aprobación de una orden pendiente suya — sin el lock, dos avances
+    # de mes_cubierto_hasta parten de la misma base y uno se pierde (plata
+    # cobrada dos veces, cobertura sumada una sola).
     usuario = (
         db.query(models.Usuario)
         .filter(models.Usuario.id_usuario == payload.id_usuario)
+        .with_for_update()
         .first()
     )
     if usuario is None:

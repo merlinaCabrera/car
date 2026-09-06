@@ -565,6 +565,7 @@ def definir_forma_reintegro(
     reintegro = (
         db.query(models.ReintegroQR)
         .filter(models.ReintegroQR.id_reintegro == id_reintegro)
+        .with_for_update()
         .first()
     )
     if reintegro is None:
@@ -581,9 +582,14 @@ def definir_forma_reintegro(
             monto=reintegro.monto, forma=reintegro.forma, escaneado_at=reintegro.escaneado_at,
         )
 
+    # with_for_update: dos correcciones de forma concurrentes sobre reintegros
+    # distintos del mismo socio harían read-modify-write sobre saldo_a_favor y
+    # una se perdería. El lock del reintegro (arriba) cubre el doble-tap sobre
+    # el mismo reintegro; este cubre el cruce entre reintegros hermanos.
     socio = (
         db.query(models.Usuario)
         .filter(models.Usuario.id_usuario == reintegro.id_usuario)
+        .with_for_update()
         .first()
     )
 
@@ -688,9 +694,14 @@ def suspender_reserva(
     db: Session = Depends(get_db),
     admin: models.Usuario = Depends(require_roles(*_ROLES_ADMIN)),
 ) -> schemas.SuspenderReservaResponse:
+    # with_for_update: sin el lock, dos admins suspendiendo la misma reserva por
+    # lluvia (o doble-tap) pasan los dos el chequeo `estado == "confirmada"` y
+    # acreditan saldo_a_favor dos veces. Con el lock, el segundo espera, relee
+    # `estado` ya en 'liberada' y corta en el 422 de abajo.
     reserva = (
         db.query(models.ReservaInstalacion)
         .filter(models.ReservaInstalacion.id_reserva == id_reserva)
+        .with_for_update()
         .first()
     )
     if reserva is None:
@@ -727,6 +738,7 @@ def suspender_reserva(
     responsable = (
         db.query(models.Usuario)
         .filter(models.Usuario.id_usuario == reserva.id_usuario)
+        .with_for_update()
         .first()
     )
     if responsable is None:

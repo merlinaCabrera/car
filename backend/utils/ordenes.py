@@ -267,6 +267,14 @@ def procesar_aprobacion_orden(
     """
     socio = orden.usuario
 
+    # Lock de la fila del socio: serializa dos aprobaciones concurrentes que
+    # avanzarían mes_cubierto_hasta desde la misma base (admin humano + webhook
+    # de Mercado Pago sobre el mismo Pago, dos admins, doble-submit). Sin esto,
+    # el segundo cálculo parte de un valor viejo y se "come" un avance.
+    db.query(models.Usuario).filter(
+        models.Usuario.id_usuario == socio.id_usuario
+    ).populate_existing().with_for_update().one()
+
     mes_cubierto_hasta_antes: Optional[date] = socio.mes_cubierto_hasta
 
     meses_cuota_descontados = 0

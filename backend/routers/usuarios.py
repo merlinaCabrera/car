@@ -12,6 +12,7 @@ Cambios respecto a la versión anterior:
   - POST /usuarios/me/foto  → nuevo. Sube la foto de perfil del usuario logueado
     a uploads/fotos_perfil/ (reutiliza el mount /uploads que ya existe en main.py).
 """
+from datetime import datetime, timezone
 from pathlib import Path
 from uuid import uuid4
 
@@ -368,6 +369,11 @@ def cambiar_password(
 
     current_user.password_hash = get_password_hash(datos.password_nuevo)
     current_user.requiere_cambio_password = False
+    # Invalida todos los JWT emitidos antes de este instante (dependencies.
+    # get_current_user rechaza tokens con iat < password_actualizada_en). Sin
+    # esto, si el socio cambia la clave porque se la comprometieron, el token
+    # viejo del atacante seguía vivo hasta 8 h. auth.reset-password ya lo hacía.
+    current_user.password_actualizada_en = datetime.now(timezone.utc)
     db.commit()
 
     return {"mensaje": "Contraseña actualizada correctamente."}

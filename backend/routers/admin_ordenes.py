@@ -76,7 +76,23 @@ _ESTADOS_ORDEN_VALIDOS = ("pendiente_verificacion", "aprobada", "rechazada", "ca
 
 # ─── Helpers de esta ruta ─────────────────────────────────────────────────────
 
-def _obtener_orden_o_404(db: Session, id_orden: int) -> models.Orden:
+def _obtener_orden_o_404(db: Session, id_orden: int, *, lock: bool = False) -> models.Orden:
+    if lock:
+        # Lock de la fila de la orden ANTES de leerla con joinedload (no se puede
+        # FOR UPDATE sobre un query con LEFT JOIN de colecciones). Serializa
+        # aprobar/rechazar/reabrir concurrentes sobre la misma orden y la carrera
+        # cancelar-socio vs aprobar-admin.
+        existe = (
+            db.query(models.Orden.id_orden)
+            .filter(models.Orden.id_orden == id_orden)
+            .with_for_update()
+            .first()
+        )
+        if existe is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"No existe la orden #{id_orden}.",
+            )
     orden = (
         db.query(models.Orden)
         .options(
@@ -393,7 +409,7 @@ def aprobar_orden(
     — el mismo que usa el webhook de Mercado Pago para aprobar sin
     intervención humana.
     """
-    orden = _obtener_orden_o_404(db, id_orden)
+    orden = _obtener_orden_o_404(db, id_orden, lock=True)
     verificar_pendiente(orden)
 
     respuesta = procesar_aprobacion_orden(
@@ -429,7 +445,7 @@ def rechazar_orden(
     db: Session = Depends(get_db),
     admin: models.Usuario = Depends(require_roles(*_ROLES_ADMIN)),
 ) -> schemas.OrdenRechazarResponse:
-    orden = _obtener_orden_o_404(db, id_orden)
+    orden = _obtener_orden_o_404(db, id_orden, lock=True)
     verificar_pendiente(orden)
 
     orden.estado = "rechazada"
@@ -554,7 +570,7 @@ def reabrir_orden(
     reabrir por completo (no hay reapertura parcial) y el admin tiene que
     resolverlo a mano con el socio (reintegro, turno alternativo, etc.).
     """
-    orden = _obtener_orden_o_404(db, id_orden)
+    orden = _obtener_orden_o_404(db, id_orden, lock=True)
 
     if orden.estado != "expirada":
         raise HTTPException(

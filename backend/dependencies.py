@@ -12,7 +12,7 @@ Librería JWT: python-jose → pip install python-jose[cryptography]
 """
 from datetime import datetime, timezone
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 from sqlalchemy.orm import Session, joinedload
@@ -25,7 +25,14 @@ from security import ALGORITHM, SECRET_KEY   # ← asegurate de que existan en s
 _bearer = HTTPBearer()
 
 
+_RUTAS_OK_SIN_CAMBIO_PASSWORD = frozenset({
+    "/usuarios/me",
+    "/usuarios/me/password",
+})
+
+
 def get_current_user(
+    request: Request,
     credentials: HTTPAuthorizationCredentials = Depends(_bearer),
     db: Session = Depends(get_db),
 ) -> models.Usuario:
@@ -34,6 +41,10 @@ def get_current_user(
     Lanza 401 si el token es inválido/expirado.
     Lanza 401 si el token fue emitido antes del último cambio de password.
     Lanza 403 si el usuario está dado de baja.
+    Lanza 403 si el usuario tiene contraseña provisoria y llama a cualquier
+    endpoint que no sea ver su perfil o cambiar la clave (antes esto solo lo
+    bloqueaba el frontend; con un token de clave provisoria — 'car'+DNI,
+    adivinable — se podía operar toda la API por fuera de la SPA).
     """
     exc_401 = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -78,6 +89,18 @@ def get_current_user(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Tu cuenta está dada de baja. Contactá al administrador.",
         )
+
+    if user.requiere_cambio_password:
+        ruta = request.url.path.rstrip("/") or "/"
+        if ruta not in _RUTAS_OK_SIN_CAMBIO_PASSWORD:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={
+                    "tipo": "requiere_cambio_password",
+                    "mensaje": "Tenés que cambiar tu contraseña provisoria antes de seguir.",
+                },
+            )
+
     return user
 
 
@@ -88,6 +111,7 @@ _bearer_opcional = HTTPBearer(auto_error=False)
 
 
 def get_current_user_optional(
+    request: Request,
     credentials: HTTPAuthorizationCredentials | None = Depends(_bearer_opcional),
     db: Session = Depends(get_db),
 ) -> models.Usuario | None:
@@ -100,7 +124,7 @@ def get_current_user_optional(
     """
     if credentials is None:
         return None
-    return get_current_user(credentials=credentials, db=db)
+    return get_current_user(request=request, credentials=credentials, db=db)
 
 
 def _roles_activos(user: models.Usuario) -> set[str]:

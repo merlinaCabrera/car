@@ -303,6 +303,15 @@ class UsuarioResponse(UsuarioBase):
     """
     model_config = ConfigDict(from_attributes=True)
 
+    # Override del EmailStr de UsuarioBase: en la SALIDA se serializa como str.
+    # UsuarioBase usa EmailStr porque también lo hereda UsuarioCreate, donde
+    # validar el formato SÍ corresponde (entrada). Pero en la respuesta, un email
+    # ya guardado que no pasa el validador (dominio special-use como .local/.test,
+    # o un typo de la carga masiva desde Excel) hacía que Pydantic tirara
+    # ResponseValidationError → 500 en GET /usuarios/me para ese socio, con el
+    # dato ya en la base. Se valida al entrar, no al salir.
+    email: Optional[str] = None
+
     id_usuario: int
     qr_token: uuid.UUID
     qr_generado_at: datetime

@@ -1,5 +1,25 @@
 """sincronizar_base_neon
 
+⚠️ ESTA MIGRACIÓN NO ES REPLAYABLE DESDE UNA BASE VACÍA.
+
+Es una migración de SINCRONIZACIÓN: se autogeneró comparando models.py contra
+el estado que la base de Neon tenía el 2026-07-06, no contra el resultado de
+las migraciones anteriores. Hace `create_table('comercios_asociados')` cuando
+208ea0e312f5 ya la creó, y varios `alter_column` que asumen tipos de partida
+que la cadena no produce. Sobre una base vacía revienta con:
+
+    DuplicateTable: relation "comercios_asociados" already exists
+
+Es válida HACIA ADELANTE desde la base de producción (que ya está por delante
+de esta revisión), así que no se toca: reescribirla rompería el historial real.
+
+Para levantar un entorno NUEVO no uses `alembic upgrade head`, usá:
+
+    DATABASE_URL=... python -m scripts.bootstrap_db
+
+que crea el schema desde models.py (la fuente de verdad) y hace `stamp` en
+head, dejando las migraciones futuras funcionando normalmente.
+
 Revision ID: 90885e41b585
 Revises: d8a4662bbaa0
 Create Date: 2026-07-06 09:35:58.020147

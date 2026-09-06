@@ -25,7 +25,12 @@ son desde el celular (porteros en puertas, socios en el campo).
 - **ORM:** SQLAlchemy 2.x (con `Mapped`/`mapped_column` — ORM moderno)
 - **BD:** PostgreSQL en Neon (serverless, plan gratuito)
 - **Auth:** JWT con `python-jose`. Hashing con **bcrypt puro** en `security.py` (no usa passlib; trunca a 72 bytes a mano). `bcrypt==3.2.2` fijado en `requirements.txt` — el comentario del pin menciona passlib por historia, pero passlib ya no se importa.
-- **Migraciones:** Alembic (`backend/alembic/`, ~30 revisiones). El schema real se maneja con migraciones; `models.py` es la fuente de verdad para autogenerar. `alembic/env.py` toma la URL de la env var `DATABASE_URL`.
+- **Migraciones:** Alembic (`backend/alembic/`, ~30 revisiones). `models.py` es la fuente de verdad para autogenerar. `alembic/env.py` toma la URL de la env var `DATABASE_URL`.
+  ⚠️ **La cadena NO es replayable desde cero**: `90885e41b585_sincronizar_base_neon` se
+  autogeneró contra el estado que tenía Neon en ese momento y falla sobre una base vacía
+  (`DuplicateTable: comercios_asociados`). Es válida hacia adelante desde producción, así
+  que no se toca. Para un entorno nuevo: `python -m scripts.bootstrap_db` (crea el schema
+  desde `models.py` y hace `stamp` en head).
 - **Jobs:** APScheduler (BackgroundScheduler, no async)
 - **Mail:** Resend vía HTTP directo (templates Jinja2 en `mailer/templates/`)
 - **Archivos:** Amazon S3 (`boto3`) — bucket privado `car-archivos-produccion` + bucket público `car-sponsors-produccion` (`S3_BUCKET_PUBLICO`), ambos `sa-east-1`
@@ -413,10 +418,32 @@ python -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 # Crear backend/.env con las variables de la sección "Variables de entorno"
-# (DATABASE_URL apuntando a Neon dev o al Postgres de docker-compose)
-alembic upgrade head                       # aplicar migraciones
-python -m scripts.seed_usuario_sistema     # crear el usuario "sistema" (SISTEMA_USER_ID)
+
+# ── Base NUEVA (vacía) ──────────────────────────────────────────────────────
+# NO usar `alembic upgrade head`: la cadena no es replayable desde cero
+# (ver el aviso en Stack → Migraciones). bootstrap_db crea el schema desde
+# models.py, hace stamp en head y siembra roles + config + cuota + usuario
+# "sistema". Se niega a correr contra Neon/Render salvo --permitir-remoto.
+python -m scripts.bootstrap_db
+# Falta crear el primer admin_general a mano (el endpoint de roles lo protege).
+
+# ── Base EXISTENTE (dev o producción) ───────────────────────────────────────
+alembic upgrade head                       # acá sí: aplica lo que falte
+
 uvicorn main:app --reload --port 8000
+```
+
+### Suite de regresión de seguridad
+Cubre los hallazgos de `docs/auditoria-2026-09-06.md` (29 escenarios: permisos,
+stock, saldo concurrente, primer ingreso, rate limit, webhook MP).
+**Nunca contra producción** — crea usuarios y órdenes.
+```bash
+docker exec car_postgres_db psql -U admin_car -d postgres -c "CREATE DATABASE car_test;"
+export QA_DB='postgresql://admin_car:password123@localhost:5432/car_test'
+DATABASE_URL=$QA_DB python -m scripts.bootstrap_db
+DATABASE_URL=$QA_DB python -m scripts.seed_qa
+DATABASE_URL=$QA_DB MP_WEBHOOK_SECRET=testsecret123 uvicorn main:app --port 8010 &
+QA_BASE=http://localhost:8010 python -m scripts.qa_seguridad     # --keep para no limpiar
 ```
 
 ### Frontend

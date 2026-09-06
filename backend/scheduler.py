@@ -24,6 +24,7 @@ import models
 from utils.ordenes import finalizar_pago_si_corresponde, restaurar_stock_orden
 from utils.cuotas_periodos import calcular_estado_financiero
 from utils.fechas import hoy_club
+from routers.socio_reservas import liberar_pre_reservas_expiradas
 from fastapi import BackgroundTasks
 from mailer.services.email_service import (
     enviar_orden_expirada,
@@ -121,11 +122,28 @@ def expirar_ordenes_vencidas():
       - Devuelve stock a los productos de categoría != 'cuota_social' ni 'alquiler'
       - Libera las ReservaInstalacion asociadas (bloqueada → liberada)
       - Manda mail al socio avisando que expiró
+    Además libera las PRE-RESERVAS huérfanas (bloqueada sin id_orden) — ver abajo.
     Es idempotente.
     """
     db = SessionLocal()
     try:
         ahora = datetime.now(timezone.utc)
+
+        # ── Pre-reservas huérfanas ──────────────────────────────────────────
+        # Cuando el socio elige un turno pero nunca hace el checkout, queda una
+        # ReservaInstalacion 'bloqueada' con id_orden=NULL. expirar_reservas_sin_pago
+        # NO las ve (hace INNER JOIN con ordenes), así que el turno quedaba
+        # bloqueado PARA SIEMPRE. liberar_pre_reservas_expiradas() ya existía
+        # ("pensado para correr desde el mismo job que expira Orden.expira_at")
+        # pero nunca se había conectado a ningún lado.
+        try:
+            liberadas = liberar_pre_reservas_expiradas(db)
+            if liberadas:
+                logger.info(f"[scheduler] {liberadas} pre-reserva(s) huérfana(s) liberada(s)")
+        except Exception as pre_exc:
+            db.rollback()
+            logger.error(f"[scheduler] liberar_pre_reservas_expiradas falló: {pre_exc}", exc_info=True)
+
         ordenes = (
             db.query(models.Orden)
             .filter(
@@ -181,6 +199,25 @@ def expirar_ordenes_vencidas():
             pago = db.query(models.Pago).filter(models.Pago.id_pago == id_pago).first()
             if pago is None:
                 continue
+
+            # Cerrar el Pago si NINGUNA de sus órdenes quedó viva. Sin esto, un
+            # Pago cuyas órdenes expiraron todas se quedaba en 'pendiente' para
+            # siempre y ensuciaba cualquier reporte de "pagos pendientes"
+            # (se detectaron 36 así en producción). Mismo criterio que usan
+            # rechazar_orden y cancelar_orden_pendiente.
+            if pago.estado == "pendiente":
+                quedan_utiles = (
+                    db.query(models.Orden.id_orden)
+                    .filter(
+                        models.Orden.id_pago == pago.id_pago,
+                        models.Orden.estado.in_(("pendiente_verificacion", "aprobada")),
+                    )
+                    .first()
+                    is not None
+                )
+                if not quedan_utiles:
+                    pago.estado = "rechazado"
+
             bg = BackgroundTasks()
             finalizar_pago_si_corresponde(db=db, pago=pago, background_tasks=bg)
             try:

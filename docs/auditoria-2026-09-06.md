@@ -715,3 +715,150 @@ con `models.Base.metadata.create_all()`.
 Impacto real: **nadie puede levantar el proyecto de cero siguiendo el README.**
 No bloquea el MVP (la base de producción ya existe), pero conviene arreglarlo
 antes de que entre otra persona al proyecto o haya que recrear el entorno.
+
+---
+
+## Cierre (2026-09-06, segunda tanda)
+
+### T1 ✅ aplicado en producción
+Migración `f2a3b4c5d6e7` corrida en Neon. Verificado:
+`alembic_version = f2a3b4c5d6e7` y la constraint ahora incluye `saldo_a_favor`.
+El pago 100% con saldo dejó de tirar 500 en producción.
+
+### T3 ✅ corregido — `UsuarioResponse.email` pasa a `str`
+`UsuarioBase.email` sigue siendo `EmailStr` (lo hereda `UsuarioCreate`, donde
+validar el formato **de entrada** corresponde). `UsuarioResponse` lo pisa con
+`Optional[str]`: un email ya guardado que no pasa el validador ya no rompe la
+**salida**. Verificado: `UsuarioCreate` sigue rechazando `@test.local`,
+`UsuarioResponse` lo serializa sin drama.
+`UsuarioListResponse`, `MorosoResponse`, `UsuarioOrdenSimple` y
+`JugadorBusquedaResponse` ya usaban `str` — no hubo que tocarlas.
+
+⚠️ Igual conviene **normalizar/validar los emails en el script de carga desde
+Excel** cuando se escriba: esto evita el 500, pero un email mal cargado sigue
+significando que ese socio no recibe ningún mail (aprobación, recupero de
+clave, vencimiento de cuota).
+
+### Migraciones desde cero — resuelto con un camino soportado
+No se reescribió `90885e41b585` (es una migración de sincronización de 430
+líneas contra un estado puntual de Neon; tocarla rompería el historial real y
+no garantiza llegar al schema de `models.py`). En su lugar:
+
+- **`scripts/bootstrap_db.py`** (nuevo) — arma una base desde cero: schema
+  con `models.Base.metadata.create_all()`, `stamp` de Alembic en head, y seed
+  de roles + configuración global + producto de cuota + usuario "sistema".
+  Tiene `--reset` y se **niega a correr contra Neon/Render** salvo
+  `--permitir-remoto`.
+- **`scripts/seed_qa.py`** — solo los productos que espera la suite de QA.
+- Aviso al tope de `90885e41b585` explicando por qué no es replayable y qué
+  usar en su lugar.
+- `CLAUDE.md`: "Cómo correr en local" ahora distingue **base nueva**
+  (`bootstrap_db`) de **base existente** (`alembic upgrade head`), y documenta
+  cómo correr la suite de regresión.
+
+Validado de punta a punta: base `car_dev` creada vacía → `bootstrap_db` →
+`seed_qa` → API arriba → **29/29 PASS**.
+
+### Estado final
+| | |
+|---|---|
+| ALTA A1–A5 | ✅ corregidos y testeados |
+| MEDIA M1–M11 | ✅ corregidos (M1/M2 sin test automático — requieren mockear MP) |
+| BAJA B1–B7, B12 | ✅ corregidos · B8 revisado (no era bug) |
+| BAJA B9–B11, B13, B14 | pendientes, no bloquean el MVP |
+| T1, T2, T3 | ✅ encontrados durante el testeo y corregidos |
+| Suite de regresión | ✅ `scripts/qa_seguridad.py`, 29 escenarios |
+| Bootstrap de entornos nuevos | ✅ `scripts/bootstrap_db.py` |
+
+**Falta probar a mano:** M1/M2 (webhook MP en sandbox), B4 (timezone, entre 21 y
+24 hs ARG) y el checklist de UI de `docs/qa-checklist.md`.
+
+---
+
+## Auditoría de DATOS en producción (2026-09-06, solo lectura)
+
+Con el backend apuntando a Neon se corrió un chequeo **solo SELECT** sobre los
+datos reales (147 usuarios, 154 órdenes) para medir el daño que dejaron los bugs
+antes de corregirlos.
+
+### D1 · Stock subestimado — consecuencia real de A3 + A4
+El doble descuento (checkout + aprobación) y el rechazo que no restauraba
+estuvieron vivos todo este tiempo. Estimación del desvío acumulado:
+
+| Producto | Stock en la base | Desvío | Stock real ≈ |
+|---|---:|---:|---:|
+| Mesa Corso | 38 | 14 | **52** |
+| Remera Oficial - Talle M | 14 | 11 | **25** |
+| Remera Oficial - Talle S | 5 | 11 | **16** |
+| | | **36** | |
+
+Cálculo: cada orden `aprobada` descontó el doble, y cada `rechazada` /
+`cancelada_socio` descontó sin devolver. Las `expirada` sí quedaron bien (el
+scheduler las restauraba).
+
+⚠️ Es una **estimación**: si en algún momento se corrigió el stock a mano al ver
+que "no quedaban", el número real puede diferir. **Hacer un recuento físico y
+cargar el valor correcto** desde `/admin/productos`. Lo importante: la base venía
+mostrando MENOS stock del que hay, así que puede haber ítems marcados como
+agotados que en realidad están en el armario.
+
+### D2 · Pre-reservas huérfanas — BUG NUEVO, encontrado acá
+**11 turnos bloqueados para siempre**, el más viejo del 2026-07-07 (varios del
+quincho). Los 11 tienen `id_orden = NULL`.
+
+Causa: cuando el socio elige un turno pero nunca completa el checkout, queda una
+`ReservaInstalacion` en `'bloqueada'` sin orden. El job `expirar_reservas_sin_pago`
+**no las ve** porque hace INNER JOIN con `ordenes`. Y la función que existe para
+esto —`socio_reservas.liberar_pre_reservas_expiradas()`, cuyo docstring dice
+"pensado para correr desde el mismo job que ya expira Orden.expira_at"— **nunca
+se conectó a ningún lado**: estaba definida y sin usar.
+
+✅ **Corregido**: `expirar_ordenes_vencidas` ahora la llama. Respeta el TTL de 20
+minutos, así que no le saca el turno a alguien en pleno checkout. Verificado
+contra `car_dev`: una huérfana de 25 min se libera, una de 2 min no se toca.
+
+Al desplegar, el job libera los 11 turnos solo en su próxima corrida (cada hora).
+
+### D3 · 36 Pagos zombis en `'pendiente'`
+36 pagos sin comprobante de hace más de 7 días cuyas órdenes ya están todas
+`expirada`, pero el Pago quedó en `'pendiente'`. Nada se rompe, pero infla
+cualquier reporte de "pagos pendientes".
+
+✅ **Corregido para el futuro**: `expirar_ordenes_vencidas` ahora cierra el Pago
+(`estado='rechazado'`) cuando ninguna de sus órdenes queda viva — mismo criterio
+que `rechazar_orden` y `cancelar_orden_pendiente`.
+
+⚠️ **Los 36 que ya existen NO se arreglan solos** (sus órdenes ya están
+expiradas, el job no las vuelve a mirar). Limpieza puntual, si querés:
+
+```sql
+UPDATE pagos p SET estado = 'rechazado'
+WHERE p.estado = 'pendiente'
+  AND NOT EXISTS (
+    SELECT 1 FROM ordenes o
+    WHERE o.id_pago = p.id_pago
+      AND o.estado IN ('pendiente_verificacion', 'aprobada')
+  );
+```
+
+### D4 · Lo que salió limpio
+- **Emails (T3): 0 inválidos** entre los 146 con email. El fix quedó como
+  prevención para la carga masiva desde Excel. El único sin email es el usuario
+  técnico "Sistema Mercado Pago" — correcto.
+- **Becas: 3 activas, ninguna sospechosa.** Se revisó si alguien había explotado
+  A1 (auto-registrarse becado): las tres son usuarios de prueba creados por el
+  equipo (dos con DNI claramente ficticio: `99999998`, y uno llamado
+  literalmente "Pedro Perez (Becado)"). **Conviene borrarlos antes del MVP.**
+- `saldo_a_favor` negativo: 0 · stock negativo: 0 · órdenes pendientes vencidas
+  sin expirar: 0.
+- **Invariante Pago vs Órdenes:** un solo desvío (pago #137: 49.600 vs 50.000).
+  **No es un bug**: es un socio que aplicó 400 de saldo a favor. `pago.monto_total`
+  es NETO de saldo y `orden.monto_total` es BRUTO — por diseño.
+  📝 El docstring de `models.Pago` dice que deben ser iguales: **está
+  desactualizado**, habría que corregirlo para no confundir a futuro.
+- **Socio activo sin `mes_cubierto_hasta`:** 1 (usuario de prueba). Con el fix
+  B3 ahora sí va a recibir el aviso de cuota vencida — antes el filtro SQL lo
+  salteaba silenciosamente.
+
+### Regresión
+Suite completa vuelta a correr después de estos cambios: **29/29 PASS**.

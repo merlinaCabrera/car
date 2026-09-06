@@ -368,7 +368,10 @@ def cambiar_password(
     # get_current_user rechaza tokens con iat < password_actualizada_en). Sin
     # esto, si el socio cambia la clave porque se la comprometieron, el token
     # viejo del atacante seguía vivo hasta 8 h. auth.reset-password ya lo hacía.
-    current_user.password_actualizada_en = datetime.now(timezone.utc)
+    # Se trunca al segundo porque el `iat` del JWT son segundos enteros: si no,
+    # el token que el socio obtiene al reloguear en el mismo segundo tendría
+    # iat < password_actualizada_en y se rechazaría.
+    current_user.password_actualizada_en = datetime.now(timezone.utc).replace(microsecond=0)
     db.commit()
 
     return {"mensaje": "Contraseña actualizada correctamente."}

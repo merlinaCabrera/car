@@ -834,7 +834,7 @@ class Pago(Base):
     comprobante_url: Mapped[Optional[str]] = mapped_column(Text)
     metodo_pago: Mapped[str] = mapped_column(
         String(20), nullable=False, server_default=text("'transferencia'"),
-        comment="efectivo | transferencia | mercado_pago",
+        comment="efectivo | transferencia | mercado_pago | saldo_a_favor",
     )
     mp_preference_id: Mapped[Optional[str]] = mapped_column(
         String(80), unique=True,
@@ -881,7 +881,7 @@ class Pago(Base):
             name="chk_pago_estado",
         ),
         CheckConstraint(
-            "metodo_pago IN ('efectivo', 'transferencia', 'mercado_pago')",
+            "metodo_pago IN ('efectivo', 'transferencia', 'mercado_pago', 'saldo_a_favor')",
             name="chk_pago_metodo",
         ),
         Index("idx_pagos_usuario", "id_usuario"),

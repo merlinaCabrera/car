@@ -636,3 +636,82 @@ esa ruta; `SocioPerfil.jsx` solo edita el perfil propio.
 - **B13** — `ajustar_saldo` reemplaza el valor en vez de sumar delta (TOCTOU
   suave, admin, auditado).
 - **B14** — APScheduler sin lock de instancia única (N/A en Render free).
+
+---
+
+## Testeo ejecutado (2026-09-06) — 29/29 verde
+
+Suite automática: `backend/scripts/qa_seguridad.py` (+ `scripts/seed_qa.py` para
+el seed). Corrida contra una base **descartable** (`car_test` en el Postgres de
+docker), con la API en `:8010`. **Nunca contra Neon.**
+
+```
+QA_DB=postgresql://admin_car:password123@localhost:5432/car_test
+QA_BASE=http://localhost:8010  python -m scripts.qa_seguridad
+```
+
+| Escenario | Resultado |
+|---|---|
+| **A1** alta pública ignora `es_becado` / `id_titular` | ✅ 3/3 |
+| **A5** `GET /usuarios/` cerrado a invitado y socio, abierto a admin | ✅ 3/3 |
+| **A5** `validar-dni` prohibido a invitado, permitido a admin_temporal | ✅ 2/2 |
+| **A5** `validar-token` recortado para invitado (sin foto/roles/morosidad) | ✅ |
+| **M6** clave provisoria bloquea la API salvo perfil/cambio-de-clave | ✅ 3/3 |
+| **M5** cambiar la clave invalida el token viejo | ✅ 2/2 |
+| **M7** `meses_corregidos` solo admin_general + `Pago.monto_total` ajustado | ✅ 3/3 |
+| **M8** `admin_temporal` no acredita saldo, sí registra efectivo | ✅ 2/2 |
+| **A3/A4** stock: −1 al comprar, sin doble descuento al aprobar, restaurado al rechazar | ✅ 3/3 |
+| **A2** dos checkouts concurrentes con saldo → se gasta una sola vez | ✅ |
+| **M9** rate limit de registro (429 al 6º) | ✅ |
+| **M3** webhook MP sin firma → 401 | ✅ |
+| **B7** pago manual con orden de cuota pendiente → 409 | ✅ |
+| **B12** `PATCH /usuarios/{id}` solo autogestión | ✅ 2/2 |
+
+### Bugs encontrados DURANTE el testeo (preexistentes, ya corregidos)
+
+**T1 · Pagar el carrito entero con saldo a favor tiraba 500.**
+`checkout_carrito` crea el Pago con `metodo_pago='saldo_a_favor'` cuando el saldo
+cubre todo, pero el CHECK `chk_pago_metodo` solo permitía
+`efectivo|transferencia|mercado_pago` → `IntegrityError` (CheckViolation) en el
+INSERT. **Ese camino nunca funcionó.** Corregido en `models.py` + migración
+`f2a3b4c5d6e7_pago_metodo_saldo_a_favor`.
+⚠️ **Hay que correr esa migración en Neon** (`alembic upgrade head`).
+
+**T2 · Tras cambiar la clave, el relogin en el mismo segundo daba 401.**
+`password_actualizada_en` se guardaba con fracción de segundo y el `iat` del JWT
+son segundos enteros → el token recién emitido quedaba "anterior" al cambio y
+`get_current_user` lo rechazaba. Pega de lleno en el **primer ingreso
+obligatorio** (el socio cambia la clave provisoria y no puede entrar). Corregido
+truncando `password_actualizada_en` al segundo en `usuarios.cambiar_password` y
+`auth.resetear_password`; la comparación en `dependencies` queda estricta.
+Queda 1s de ambigüedad irreducible por la granularidad de `iat`.
+
+### Hallazgo nuevo — NO corregido, decisión pendiente
+
+**T3 · `UsuarioResponse.email: EmailStr` rompe la serialización con un email inválido en la base.**
+Detectado de casualidad: un usuario con email `@test.local` hacía que
+`GET /usuarios/me` devolviera **500** (`ResponseValidationError`) — el dato ya
+está guardado, falla al *salir*. Cualquier email que no pase el validador
+(dominios special-use como `.local`/`.test`, o un typo de la **carga masiva
+desde Excel**) rompe el perfil de ese socio y potencialmente los listados que lo
+incluyan.
+**Recomendación:** usar `str` en los *response models* (validar `EmailStr` solo
+en la entrada), y/o sanear los emails en el script de migración desde planilla.
+Es barato y evita un 500 difícil de diagnosticar justo en el alta masiva.
+
+### Sigue sin cubrir por tests automáticos
+- **M1 / M2** (webhook MP: verificación de monto, preferencia con saldo aplicado):
+  requieren mockear la API de Mercado Pago. Probar a mano en sandbox.
+- **B4** (zona horaria): requiere correr con el reloj entre 21 y 24 hs ARG.
+  Verificar a mano en esa franja.
+- Flujos de UI (el checklist manual de `docs/qa-checklist.md` sigue vigente).
+
+### Nota aparte — las migraciones no levantan desde cero
+`alembic upgrade head` sobre una base vacía **falla** en
+`90885e41b585_sincronizar_base_neon` (`relation "comercios_asociados" already
+exists`): es una migración de sincronización hecha a mano contra Neon, no
+compatible con un `upgrade` lineal desde `base`. Por eso la base de QA se armó
+con `models.Base.metadata.create_all()`.
+Impacto real: **nadie puede levantar el proyecto de cero siguiendo el README.**
+No bloquea el MVP (la base de producción ya existe), pero conviene arreglarlo
+antes de que entre otra persona al proyecto o haya que recrear el entorno.

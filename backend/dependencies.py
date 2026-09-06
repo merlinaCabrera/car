@@ -77,7 +77,15 @@ def get_current_user(
     if user is None:
         raise exc_401
 
-    # Si la contraseña se cambió después de emitido el token, el token queda inválido
+    # Si la contraseña se cambió después de emitido el token, el token queda inválido.
+    #
+    # `iat` del JWT viene en segundos ENTEROS. Por eso password_actualizada_en se
+    # guarda truncada al segundo (ver usuarios.cambiar_password / auth.resetear_password):
+    # así un token emitido en el MISMO segundo del cambio tiene iat == la marca y
+    # se acepta (si no, el socio no podría loguear por hasta ~1s justo después de
+    # cambiar la clave — y eso pega de lleno en el primer ingreso obligatorio).
+    # Queda 1s de ambigüedad irreducible por la granularidad de iat; cualquier
+    # token de un segundo anterior sí se rechaza.
     iat = payload.get("iat")
     if user.password_actualizada_en and iat:
         iat_dt = datetime.fromtimestamp(iat, tz=timezone.utc)

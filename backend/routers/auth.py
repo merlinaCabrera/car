@@ -192,7 +192,10 @@ def resetear_password(
     usuario.token_recuperacion = None
     usuario.token_recuperacion_expira = None
     usuario.requiere_cambio_password = False
-    usuario.password_actualizada_en = datetime.now(timezone.utc)
+    # Truncado al segundo: el `iat` del JWT son segundos enteros, si guardáramos
+    # la fracción el token del login inmediato posterior quedaría "anterior" al
+    # cambio y get_current_user lo rechazaría.
+    usuario.password_actualizada_en = datetime.now(timezone.utc).replace(microsecond=0)
     db.commit()
 
     return {"ok": True}

@@ -997,3 +997,110 @@ rutas inexistentes (F2 y F3).
 ### Suite de regresión: **35 PASS · 0 FAIL**
 (+2 nuevos: suspensión por lluvia acreditando saldo, y `id_orden` presente en el
 listado de reservas.)
+
+---
+
+## Cierre de la ronda de frontend — módulos restantes (2026-09-06)
+
+### F2-bis 🔴 · El escáner de eventos también leía mal la respuesta
+Arreglar la URL (`/qr/validar` → `/qr/validar-token`) no alcanzaba. El archivo
+tenía un docstring que **admitía haber adivinado el shape** ("No tenía el
+archivo qr_auth.py en este chat para confirmar…") y leía
+`usuarioResuelto.nombre` / `.apellido` / `.dni`, campos que
+`UsuarioQRValidacionResponse` **no devuelve** (trae `nombre_completo`, y ningún
+DNI). Resultado: incluso con la URL corregida, el operador registraba la
+asistencia **viendo una tarjeta en blanco**, sin saber a quién escaneó.
+
+✅ Corregido: usa `nombre_completo`; en el camino manual muestra el DNI que
+tipeó el operador; y si el QR no corresponde a nadie (`es_valido=false`,
+`id_usuario=null`) corta antes en vez de intentar registrar la asistencia de un
+usuario inexistente. Docstring reemplazado por el shape real.
+Verificado además que el payload de `/deportivo/eventos/{id}/asistencias`
+(`{id_evento, id_usuario, metodo}`) coincide con `AsistenciaCreate`.
+
+### Módulo deportivo — revisado, sin hallazgos
+`TecnicoPlanteles` (1416), `TecnicoEventos` (1140), `TecnicoAsistencias` (562),
+`JugadorEquipo`, `JugadorCalendario`:
+- **Contratos correctos** en las 8 mutaciones (inscribir jugador, capitán,
+  autocompletar, asignar técnico, crear/editar categoría, convocar, confirmar).
+- **Permisos bien gateados en la UI:** `TecnicoEventos` esconde "Nuevo Evento" y
+  "Editar" salvo `admin_general` (el backend los restringe a ese rol), y usa
+  `/deportivo/mis-categorias-a-cargo` para no ofrecerle a un técnico un botón
+  "Armar Convocatoria" sobre una categoría que no tiene asignada. Coincide con
+  el scoping que ya verificamos del lado del backend.
+
+### AdminSocios — revisado, sin hallazgos de contrato
+Las 6 mutaciones sensibles (`saldo`, `cobertura`, `roles`, `PATCH socio`,
+`rechazar-solicitud`, `registrar-pago-manual`) coinciden con sus schemas. El
+PUT de roles incluso **filtra `socio` y `admin_general` antes de enviar**,
+alineado con el 403 que devuelve el backend para esos roles protegidos.
+
+### Verificación automática de contratos — frontend ↔ backend
+Se compararon **271 payloads** del frontend contra el schema de OpenAPI
+(campos requeridos y propiedades válidas, contemplando shorthand de ES6):
+**0 desajustes reales**. Sumado a la verificación de rutas (77/77 existen), la
+capa de contrato entre frontend y backend queda limpia.
+
+### Estado final de esta ronda
+- Suite de regresión: **35 PASS · 0 FAIL**
+- Build del frontend: OK
+- Bugs conocidos de `CLAUDE.md`: **los 9 cerrados** (7 resueltos, 1 es
+  configuración, 1 tenía workaround y se resolvió en el origen)
+
+---
+
+## Ronda final (2026-09-06)
+
+### Mercado Pago fuera del MVP
+Decisión del club. En vez de borrar código, queda detrás de un flag apagado:
+
+- **`frontend/src/config/features.js`** → `MERCADOPAGO_HABILITADO`, leído de
+  `VITE_MERCADOPAGO_HABILITADO` (default **false**).
+- El botón "Mercado Pago" ya no se renderiza en el checkout: los únicos métodos
+  visibles son transferencia y efectivo.
+- El backend queda intacto y funcional (preferencia, webhook, aprobación
+  automática): reactivar es poner el flag en `true` y volver a buildear.
+- `docs/qa-checklist.md` avisa que MP no se testea en esta vuelta.
+
+Efecto colateral bueno: **M1 y M2 dejan de ser bloqueantes** (eran los únicos
+hallazgos sin test automático, porque exigían mockear la API de MP). Igual
+quedan documentados para el día que se prenda.
+
+### Recupero de contraseña — el rate limit se disfrazaba de éxito
+`RecuperarPassword.jsx` mostraba "te mandamos el mail" ante **cualquier**
+respuesta, a propósito, para no revelar si la cuenta existe. Pero con el rate
+limit de M9 (5/hora), un 429 también caía en ese "éxito": el socio esperaba un
+mail que nunca iba a llegar, sin ninguna pista. Es el flujo que van a usar los
+socios migrados que no recuerdan la clave provisoria.
+✅ Ahora el 429 y los 5xx muestran su propio mensaje. Ninguno de los dos revela
+nada sobre la cuenta, así que la protección contra enumeración se mantiene.
+(`Registro` y `Ayuda`, los otros dos endpoints con rate limit, ya mostraban bien
+el 429 gracias al helper `textoError`.)
+
+### Barridos que salieron limpios
+- **61 mutaciones del frontend** triadas por riesgo. Las que mueven plata ya
+  tienen guarda de re-entrada; el resto son idempotentes o el backend las
+  protege (inscripción duplicada de jugador: chequeo explícito + PK compuesta;
+  escaneo de QR en cancha: `ON CONFLICT DO NOTHING`; aprobar socio: 409;
+  pre-reserva duplicada: choca con el propio turno que acaba de crear).
+- **Fetches sin manejo de error:** 5 candidatos, 4 falsos positivos (el
+  `res.ok` estaba fuera de la ventana de análisis) y 1 real, el de recupero de
+  contraseña de arriba.
+- **Accesos a null** (`.map`/`.filter`/`.length` sobre estado inicializado en
+  `null`): 0.
+- **Rutas frontend ↔ backend:** 78/78 con correspondencia.
+
+### Estado final
+| | |
+|---|---|
+| Suite de regresión | **35 PASS · 0 FAIL** |
+| Build del frontend | OK |
+| Rutas verificadas | 78/78 |
+| Payloads verificados | 271, sin desajustes |
+| Bugs conocidos de CLAUDE.md | los 9 cerrados |
+| Hallazgos de auditoría | ALTA 5/5 · MEDIA 11/11 · BAJA 8 (B8 no era bug) |
+| Mercado Pago | apagado por flag |
+
+**Sin cobertura automática, para el testeo manual:** layout en celular real,
+cámara del escáner con poca luz, entrega efectiva de los mails (Resend), y
+zona horaria entre las 21 y 24 hs de Argentina.

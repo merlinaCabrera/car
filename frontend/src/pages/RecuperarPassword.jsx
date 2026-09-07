@@ -22,12 +22,25 @@ export default function RecuperarPassword() {
     setError(null);
     setLoading(true);
     try {
-      await fetch(`${API}/auth/recuperar-password`, {
+      const res = await fetch(`${API}/auth/recuperar-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ identificador }),
       });
-      setIsSuccess(true); // siempre éxito — no revelamos si el usuario existe
+      // El endpoint responde 200 exista o no la cuenta, a propósito (no
+      // revelamos si el DNI/email está registrado). PERO tiene rate limit:
+      // con un 429 antes se mostraba igual "te mandamos el mail" y el socio
+      // esperaba un mail que nunca iba a llegar. El 429 no revela nada sobre
+      // la cuenta, así que se puede mostrar tal cual.
+      if (res.status === 429) {
+        setError('Hiciste varios pedidos seguidos. Esperá unos minutos y volvé a intentar.');
+        return;
+      }
+      if (!res.ok && res.status >= 500) {
+        setError('El servidor no respondió bien. Probá de nuevo en un momento.');
+        return;
+      }
+      setIsSuccess(true); // 200 o 4xx de validación: no revelamos si existe
     } catch {
       setError('Error de conexión. Intentá de nuevo.');
     } finally {

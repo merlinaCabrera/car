@@ -17,14 +17,16 @@
  *   5. Fallback manual por DNI vía POST /qr/validar-dni, para cuando el QR
  *      no lee (celular roto, pantalla rayada, etc.).
  *
- * ── Supuesto que hice sobre /qr/validar-token y /qr/validar-dni ──────────
- * No tenía el archivo qr_auth.py en este chat para confirmar el shape
- * exacto de la respuesta. Asumí:
- *   POST /qr/validar-token  { qr_token }  → { id_usuario, nombre, apellido,
- *                                              dni, estado_financiero }
- *   POST /qr/validar-dni    { dni }       → misma forma de respuesta
- * Si el shape real es distinto, el único lugar que hay que tocar es
- * `resolverUsuarioPorToken` / `resolverUsuarioPorDni` de este archivo.
+ * ── Shape REAL de /qr/validar-token y /qr/validar-dni ────────────────────
+ *   POST /qr/validar-token  { token }  ─┐
+ *   POST /qr/validar-dni    { dni }    ─┴→ UsuarioQRValidacionResponse:
+ *      { es_valido, id_usuario, nombre_completo, foto_perfil_url,
+ *        estado_financiero, roles_activos[], antiguedad_meses,
+ *        meses_adeudados, mensaje_display, es_becado }
+ *
+ *   OJO: NO trae `nombre`, `apellido` ni `dni` sueltos. Este archivo los leía
+ *   así (por un supuesto viejo) y la tarjeta salía en blanco: el operador
+ *   registraba la asistencia sin ver a quién había escaneado.
  */
 
 import { textoError } from '../utils/errores';
@@ -331,19 +333,36 @@ export default function AdminScannerEvento() {
     return res.json()
   }
 
-  const procesarUsuarioResuelto = async (usuarioResuelto, metodo) => {
-    const nombreCompleto = `${usuarioResuelto.nombre ?? ''} ${usuarioResuelto.apellido ?? ''}`.trim()
+  const procesarUsuarioResuelto = async (usuarioResuelto, metodo, dniTipeado = null) => {
+    // El endpoint devuelve `nombre_completo` (no nombre/apellido sueltos) y no
+    // devuelve DNI: en el camino manual lo tenemos porque lo tipeó el operador.
+    const nombreCompleto = usuarioResuelto.nombre_completo ?? ''
+    const dni = dniTipeado ?? null
+
+    // Si el QR no corresponde a nadie, el backend responde 200 con
+    // es_valido=false e id_usuario=null — no tiene sentido intentar registrar
+    // la asistencia de un usuario inexistente.
+    if (!usuarioResuelto.id_usuario) {
+      setResultado({
+        tipo: 'error',
+        nombreCompleto: nombreCompleto || 'No reconocido',
+        dni,
+        mensaje: usuarioResuelto.mensaje_display ?? 'QR no reconocido.',
+      })
+      return
+    }
+
     try {
       const asistencia = await registrarAsistencia(usuarioResuelto, metodo)
       const esMoroso = asistencia.estado_financiero_snapshot === 'moroso'
       setResultado({
         tipo: esMoroso ? 'moroso' : 'al_dia',
         nombreCompleto,
-        dni: usuarioResuelto.dni,
+        dni,
         mensaje: esMoroso ? 'Ingreso registrado — avisar en secretaría.' : 'Ingreso registrado.',
       })
     } catch (err) {
-      setResultado({ tipo: 'error', nombreCompleto, dni: usuarioResuelto.dni, mensaje: err.message })
+      setResultado({ tipo: 'error', nombreCompleto, dni, mensaje: err.message })
     }
   }
 
@@ -373,8 +392,9 @@ export default function AdminScannerEvento() {
     setProcesando(true)
     setEscaneando(false)
     try {
-      const usuarioResuelto = await resolverUsuarioPorDni(dniManual.trim())
-      await procesarUsuarioResuelto(usuarioResuelto, 'DNI')
+      const dniLimpio = dniManual.trim()
+      const usuarioResuelto = await resolverUsuarioPorDni(dniLimpio)
+      await procesarUsuarioResuelto(usuarioResuelto, 'DNI', dniLimpio)
     } catch (err) {
       setResultado({ tipo: 'error', mensaje: err.message })
     } finally {

@@ -22,6 +22,7 @@
  */
 
 import { textoError } from '../utils/errores';
+import { MERCADOPAGO_HABILITADO } from '../config/features';
 import { useState, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
@@ -256,15 +257,18 @@ function OrdenGeneradaModal({ cartTotal, cartPayload, saldoDisponible = 0, token
                       <p className="text-xs text-gray-500 mt-0.5">Un administrativo se contactará con vos</p>
                     </div>
                   </button>
-                  <button onClick={() => handleConfirmar('mercado_pago')} disabled={isConfirming}
-                    className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-blue-200 bg-blue-50 hover:bg-blue-100 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed">
-                    <span className="text-2xl">💳</span>
-                    <div>
-                      <p className="font-bold text-blue-900 text-sm">Mercado Pago</p>
-                      <p className="text-xs text-blue-600 mt-0.5">Tarjeta, dinero en cuenta o cuotas</p>
-                    </div>
-                    {isConfirming && <Loader2 size={16} className="animate-spin ml-auto text-blue-500" />}
-                  </button>
+                  {/* Mercado Pago queda fuera del MVP — ver src/config/features.js */}
+                  {MERCADOPAGO_HABILITADO && (
+                    <button onClick={() => handleConfirmar('mercado_pago')} disabled={isConfirming}
+                      className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-blue-200 bg-blue-50 hover:bg-blue-100 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed">
+                      <span className="text-2xl">💳</span>
+                      <div>
+                        <p className="font-bold text-blue-900 text-sm">Mercado Pago</p>
+                        <p className="text-xs text-blue-600 mt-0.5">Tarjeta, dinero en cuenta o cuotas</p>
+                      </div>
+                      {isConfirming && <Loader2 size={16} className="animate-spin ml-auto text-blue-500" />}
+                    </button>
+                  )}
                 </div>
               </>
             )}

@@ -23,21 +23,37 @@ reservas de canchas/quincho, panel admin básico.
 
 ---
 
-## Bugs conocidos a vigilar
+## Regresiones a confirmar (los 9 bugs conocidos, ya corregidos)
 
-Estos ya están en el radar. Al llegar a la sección indicada, **confirmá si siguen
-vivos** y anotá el comportamiento actual.
+**Todos fueron corregidos el 2026-09-06** (ver `docs/auditoria-2026-09-06.md`).
+No los busques: **confirmá que siguen arreglados**. Si alguno reaparece, es una
+regresión y conviene avisar antes de seguir.
 
-| # | Dónde | Qué mirar | Sección |
-|---|-------|-----------|---------|
-| 1 | Cuotas | Pagar N meses acredita N (no N-1); no cuenta el mes en curso de más | 3.4, 3.5 |
-| 2 | Cuotas | Socio NO debería figurar moroso apenas crea la orden (antes de aprobar) | 3.3 |
-| 3 | Checkout | Método "efectivo" NO debe duplicar la orden en el panel admin | 3.6 |
-| 4 | Login | Post-login redirige a `/socio`, no a `/admin/auditoria` | 2.1 |
-| 5 | Password | `POST /usuarios/me/password` no debe dar 405 en el primer ingreso | 2.3 |
-| 6 | Notificaciones | El badge de la campana se actualiza al haber notas nuevas | 7.1 |
-| 7 | Mails | Los links apuntan a `clubatleticoroberts.com`, no a `localhost` ni Vercel | 12 |
-| 9 | Foto perfil | La foto carga aunque la URL en DB sea ruta local (workaround front) | 6.2 |
+| # | Qué debe pasar ahora | Sección |
+|---|----------------------|---------|
+| 1 | Pagar N meses acredita **N** (hay test automático por los dos caminos) | 3.4, 3.5 |
+| 2 | Con orden pendiente, el socio ve **"Pago en verificación"**, no "MOROSO" en rojo | 3.3 |
+| 3 | Doble clic en confirmar **NO** duplica la orden (guarda de re-entrada) | 3.6 |
+| 4 | Post-login cae en el home que corresponde al rol, sin doble redirect | 2.1 |
+| 5 | El cambio de clave funciona **y la sesión no se cae** (devuelve token nuevo) | 2.3 |
+| 6 | El badge aparece solo, sin navegar (refresca cada 60 s y al volver a la pestaña) | 7.1 |
+| 7 | Los links de los mails apuntan al dominio real (depende de `FRONTEND_URL` en Render) | 12 |
+| 9 | La foto de perfil carga bien | 6.2 |
+
+### Además, verificar lo que se arregló en esta ronda
+- [ ] **Escáner de eventos** (`/admin/escaner-evento`): escanear un QR muestra el
+      **nombre del socio** y registra la asistencia. (Antes daba 404 y mostraba
+      la tarjeta vacía — nunca había funcionado.)
+- [ ] **Agenda de reservas** → modal de un turno pendiente → "Rechazar / Liberar
+      turno" **funciona**. (Antes daba 404 siempre.)
+- [ ] **Suspender por lluvia**: en un turno `confirmada`, el botón "Suspender por
+      lluvia / mantenimiento" libera el turno y **acredita saldo a favor** al socio.
+      (Antes no existía el botón.)
+- [ ] **Mensajes de error**: forzá un error de validación (ej. dejar un campo
+      obligatorio vacío en un form del admin) → tiene que mostrar texto legible,
+      **nunca `[object Object]`**.
+- [ ] **Recuperar contraseña**: pedirlo 6 veces seguidas → el 6º avisa que
+      esperes unos minutos, en vez de decir "te mandamos el mail" sin mandarlo.
 
 ---
 
@@ -98,7 +114,9 @@ vivos** y anotá el comportamiento actual.
 ## 2. Login y primer ingreso
 
 ### 2.1 Login OK
-- [ ] DNI + password correcta → entra a **`/socio`** (❌ BUG #4 si va a `/admin/auditoria`)
+- [ ] DNI + password correcta → entra al home de su rol (socio → `/socio`,
+      staff → `/admin`, técnico → `/gestion-planteles`, portero → `/admin/escaner`),
+      **sin doble redirect visible**
 - [ ] El menú hamburguesa muestra solo las opciones del rol del usuario
 
 ### 2.2 Login fallido
@@ -110,7 +128,8 @@ vivos** y anotá el comportamiento actual.
 ### 2.3 Primer ingreso / cambio obligatorio
 - [ ] Login con `socio-primer-login@test` → redirige a `/cambiar-password-obligatorio`
 - [ ] No se puede navegar a otra ruta hasta cambiar la password
-- [ ] Cambiar la password → **no da 405** (❌ BUG #5) → redirige a `/socio`
+- [ ] Cambiar la password → redirige a `/socio` **sin pedir volver a loguear**
+      (el backend devuelve un token nuevo; si te patea al login, es regresión)
 - [ ] Logout + login con la password nueva → OK
 - [ ] La provisoria vieja ya **no** funciona
 
@@ -140,8 +159,9 @@ vivos** y anotá el comportamiento actual.
 - [ ] `/socio/cuotas` o carrito → elegir pagar **2 meses**
 - [ ] El monto = 2 × cuota (con descuento del 40% si el socio es menor)
 - [ ] Checkout → se crea orden en estado `pendiente_verificacion`
-- [ ] **❌ BUG #2 — anotar comportamiento:** ¿el socio queda marcado moroso apenas
-      crea la orden, antes de la aprobación? ¿El QR lo refleja antes que el calendario?
+- [ ] **Regresión #2:** tras crear la orden, `/socio` y `/socio/cuotas` deben mostrar
+      **"Pago en verificación"** (azul), no "MOROSO" (rojo). El QR sigue inhabilitado
+      hasta la aprobación — eso es correcto.
 - [ ] Subir foto del comprobante → la orden queda con el adjunto
 - [ ] Llega mail **`orden_generada`**
 - [ ] La orden aparece en `/admin/verificaciones`
@@ -150,7 +170,7 @@ vivos** y anotá el comportamiento actual.
 - [ ] `/admin/verificaciones` → abrir el comprobante (la imagen carga desde S3)
 - [ ] **Aprobar** →
   - [ ] Se acreditan los meses; `mes_cubierto_hasta` avanza
-  - [ ] **❌ BUG #1 — anotar:** pagué 2 meses → ¿el calendario/estado muestra **2** o solo 1?
+  - [ ] **Regresión #1:** pagué 2 meses → se acreditan **2** (no 1).
   - [ ] El socio pasa a "al día" (o baja la cantidad de meses de deuda)
   - [ ] Llega mail **`orden_aprobada_cuota`**
   - [ ] QR y calendario quedan **coherentes entre sí**
@@ -161,10 +181,14 @@ vivos** y anotá el comportamiento actual.
 
 ### 3.5 Cobro manual desde admin
 - [ ] Admin registra el pago de cuota de un socio desde el panel (N meses)
-- [ ] **❌ BUG #1 — anotar:** N meses registrados = N meses acreditados (no cuenta el mes en curso de más)
+- [ ] **Regresión #1:** N meses registrados = N meses acreditados
 - [ ] Queda en `/admin/auditoria`
 
 ### 3.6 Método efectivo
+> ⚠️ **Mercado Pago está APAGADO para el MVP** (`VITE_MERCADOPAGO_HABILITADO=false`).
+> El botón no aparece en el checkout. Los únicos métodos a testear son
+> transferencia y efectivo. Si en algún lado te aparece MP, avisá: quedó un flag mal.
+
 - [ ] En checkout elegir "efectivo" → **la orden llega UNA sola vez** a `/admin/verificaciones` (❌ BUG #3 si llega duplicada)
 
 ### 3.7 Descuento a menores
@@ -249,7 +273,7 @@ vivos** y anotá el comportamiento actual.
 
 ### 6.2 Foto de perfil
 - [ ] Subir foto → se ve en el perfil y en el escáner de la puerta
-- [ ] **❌ BUG #9 — verificar:** aunque la URL en DB sea ruta local, la foto carga bien (workaround `resolverFotoUrl()`)
+- [ ] **Regresión #9:** la foto carga bien (las nuevas se guardan como key de S3)
 - [ ] Subir desde galería y desde cámara (en el celu)
 
 ### 6.3 Cambiar password desde el perfil
@@ -261,7 +285,8 @@ vivos** y anotá el comportamiento actual.
 ## 7. Notificaciones
 
 ### 7.1 Badge de la campana
-- [ ] Generar una notificación (ej. asignar beca) → **❌ BUG #6 — verificar:** aparece el badge de "no leídas"
+- [ ] **Regresión #6:** generar una notificación (ej. asignar beca desde otro
+      navegador) → el badge aparece **solo, sin navegar**, en menos de 60 s
 - [ ] `/notificaciones` lista las notas
 - [ ] Marcar como leída → baja el contador
 

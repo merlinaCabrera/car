@@ -1,3 +1,4 @@
+import { textoError } from '../utils/errores';
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -197,7 +198,7 @@ function UploadComprobante({ idPago, token, onExito }) {
       )
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
-        throw new Error(err.detail ?? 'Error al subir el comprobante.')
+        throw new Error(textoError(err?.detail, 'Error al subir el comprobante.'))
       }
       setSuccess(true)
       setTimeout(() => onExito(), 1500)
@@ -352,9 +353,7 @@ export default function SocioCompras() {
 
         if (!respuesta.ok) {
           const cuerpo = await respuesta.json().catch(() => null);
-          throw new Error(
-            cuerpo?.detail || `Error ${respuesta.status} al obtener tus compras.`
-          );
+          throw new Error(textoError(cuerpo?.detail, `Error ${respuesta.status} al obtener tus compras.`));
         }
 
         const datos = await respuesta.json();

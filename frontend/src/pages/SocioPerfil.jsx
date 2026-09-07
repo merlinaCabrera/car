@@ -23,6 +23,7 @@
  *   7. Accesibilidad: aria-live en avisos, aria-label en botones icon-only.
  */
 
+import { textoError } from '../utils/errores';
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useAuth } from '../context/AuthContext'
 import {
@@ -333,7 +334,7 @@ export default function SocioPerfil() {
       })
       if (!res.ok) {
         const errData = await res.json().catch(() => null)
-        throw new Error(errData?.detail || 'No se pudieron guardar los cambios.')
+        throw new Error(textoError(errData?.detail, 'No se pudieron guardar los cambios.'))
       }
       const actualizado = await res.json()
       setPerfil(actualizado)
@@ -373,7 +374,7 @@ export default function SocioPerfil() {
       })
       if (!res.ok) {
         const errData = await res.json().catch(() => null)
-        throw new Error(errData?.detail || 'No se pudo subir la foto.')
+        throw new Error(textoError(errData?.detail, 'No se pudo subir la foto.'))
       }
       const actualizado = await res.json()
       setPerfil(actualizado)
@@ -415,7 +416,7 @@ export default function SocioPerfil() {
       })
       if (!res.ok) {
         const errData = await res.json().catch(() => null)
-        throw new Error(errData?.detail || 'No se pudo cambiar la contraseña.')
+        throw new Error(textoError(errData?.detail, 'No se pudo cambiar la contraseña.'))
       }
       // El backend invalida los tokens previos al cambio y devuelve uno nuevo:
       // hay que adoptarlo o la sesión se cae con 401 en la próxima request.

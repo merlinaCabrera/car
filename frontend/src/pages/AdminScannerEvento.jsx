@@ -27,6 +27,7 @@
  * `resolverUsuarioPorToken` / `resolverUsuarioPorDni` de este archivo.
  */
 
+import { textoError } from '../utils/errores';
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Scanner } from '@yudiel/react-qr-scanner'
@@ -284,14 +285,18 @@ export default function AdminScannerEvento() {
   const bloqueadoRef = useRef(false)
 
   const resolverUsuarioPorToken = async (qrToken) => {
-    const res = await fetch(`${API}/qr/validar`, {
+    // El endpoint es /qr/validar-token y el campo se llama `token`.
+    // Antes se pegaba a /qr/validar con { qr_token: ... }: esa ruta NO existe
+    // (hay validar-token y validar-dni), así que el escáner de eventos
+    // devolvía 404 con cualquier QR — la función entera nunca funcionó.
+    const res = await fetch(`${API}/qr/validar-token`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ qr_token: qrToken }),
+      body: JSON.stringify({ token: qrToken }),
     })
     if (!res.ok) {
       const err = await res.json().catch(() => ({}))
-      throw new Error(err.detail ?? 'QR inválido o no reconocido.')
+      throw new Error(textoError(err?.detail, 'QR inválido o no reconocido.'))
     }
     return res.json()
   }
@@ -304,7 +309,7 @@ export default function AdminScannerEvento() {
     })
     if (!res.ok) {
       const err = await res.json().catch(() => ({}))
-      throw new Error(err.detail ?? 'No se encontró un socio con ese DNI.')
+      throw new Error(textoError(err?.detail, 'No se encontró un socio con ese DNI.'))
     }
     return res.json()
   }
@@ -321,7 +326,7 @@ export default function AdminScannerEvento() {
     })
     if (!res.ok) {
       const err = await res.json().catch(() => ({}))
-      throw new Error(err.detail ?? 'No se pudo registrar la asistencia.')
+      throw new Error(textoError(err?.detail, 'No se pudo registrar la asistencia.'))
     }
     return res.json()
   }

@@ -1,3 +1,4 @@
+import { textoError } from '../utils/errores';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
@@ -78,7 +79,7 @@ export default function Registro() {
                     });
                     return;
                 }
-                throw new Error(errorData.detail || 'Ocurrió un error al registrar la solicitud.');
+                throw new Error(textoError(errorData?.detail, 'Ocurrió un error al registrar la solicitud.'));
             }
 
             setSuccess(true);
@@ -105,7 +106,7 @@ export default function Registro() {
             );
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.detail || 'No se pudo enviar el pedido.');
+                throw new Error(textoError(errorData?.detail, 'No se pudo enviar el pedido.'));
             }
             setReactivacionEnviada(true);
         } catch (err) {

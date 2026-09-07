@@ -154,7 +154,7 @@ export default function MainLayout({ userRole }) {
       if (!token) return;
 
       try {
-        const response = await fetch(`${import.meta.env.VITE_API_URL}/notificaciones`, {
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/notificaciones/`, {
           headers: { 'Authorization': `Bearer ${token}` },
         });
 
@@ -168,12 +168,35 @@ export default function MainLayout({ userRole }) {
       }
     };
 
-    if (user) {
-      fetchNotifications();
-    }
-    // Re-consultar también al volver de /notificaciones (donde se marcan
-    // como leídas) — así el numerito baja apenas la persona las vio, sin
-    // esperar a un refresh completo de la página.
+    if (!user) return;
+
+    fetchNotifications();
+
+    // Las notificaciones las genera el BACKEND por acciones de otra persona
+    // (el admin aprueba tu orden, te asignan una beca, te cambian los roles).
+    // Con el efecto atado solo a [user, token, pathname], si el socio se
+    // quedaba parado en una pantalla el badge no aparecía nunca hasta navegar
+    // — ese era el bug reportado. Ahora además:
+    //   · se re-consulta cada 60 s mientras la pestaña está visible
+    //   · se re-consulta al volver a la pestaña (el caso más común: el socio
+    //     deja la app abierta, hace otra cosa y vuelve)
+    // Se evita consultar con la pestaña oculta para no gastar requests al
+    // pedo contra el free tier de Render.
+    const intervalo = setInterval(() => {
+      if (document.visibilityState === 'visible') fetchNotifications();
+    }, 60_000);
+
+    const alVolver = () => {
+      if (document.visibilityState === 'visible') fetchNotifications();
+    };
+    document.addEventListener('visibilitychange', alVolver);
+
+    return () => {
+      clearInterval(intervalo);
+      document.removeEventListener('visibilitychange', alVolver);
+    };
+    // location.pathname sigue en las deps: al volver de /notificaciones (donde
+    // se marcan como leídas) el numerito baja enseguida.
   }, [user, token, location.pathname]);
 
   const handleLogout = () => {

@@ -910,3 +910,90 @@ Ver la tabla actualizada en `CLAUDE.md`. Resumen:
 ### Suite de regresión: **33 PASS · 0 FAIL**
 Se sumaron 4 checks: los 2 del token nuevo al cambiar la clave y los 2 del
 bug #1 (pagar N acredita N, por ventanilla y por aprobación de orden).
+
+---
+
+## Ronda profunda de FRONTEND (2026-09-06)
+
+Revisión transversal de las ~22.000 líneas del frontend, con foco en lo que
+iba a aparecer en el testeo manual.
+
+### F1 🔴 · "[object Object]" en cualquier error de validación
+**66 lugares** hacían `new Error(data.detail ?? 'fallback')`. Pero `detail` no
+siempre es texto:
+- **422 de Pydantic → SIEMPRE un array de objetos.** O sea: *cualquier* error de
+  validación de formulario le mostraba `[object Object]` al usuario.
+- Errores con payload estructurado (`dado_de_baja`, `requiere_cambio_password`)
+  → objeto.
+
+✅ Nuevo `src/utils/errores.js` con `textoError(detail, fallback)`, que resuelve
+los tres casos (string, array de 422 con `campo: mensaje`, objeto con `.mensaje`).
+Aplicado a las **60 llamadas** en 27 archivos.
+
+### F2 🔴 · Escáner de eventos completamente roto
+`AdminScannerEvento.jsx` pegaba a `POST /qr/validar` con `{ qr_token }`. Esa
+ruta **no existe** (son `/qr/validar-token` y `/qr/validar-dni`), y el campo se
+llama `token`. **Escanear un QR en un evento deportivo devolvía 404 siempre** —
+la función nunca funcionó. Corregido.
+
+### F3 🔴 · "Rechazar / Liberar turno" de la agenda, roto
+`AdminReservas.jsx` pegaba a `PATCH /admin/reservas/{id}/rechazar`, ruta
+inexistente → 404 en cada intento. El rechazo real se hace sobre la **Orden**.
+✅ Se expuso `id_orden` en `ReservaAdminListResponse` y el botón ahora llama a
+`POST /admin/ordenes/{id_orden}/rechazar` — que además libera la reserva,
+devuelve stock, avisa al socio y deja audit_log.
+
+### F4 🔴 · La suspensión por lluvia no tenía UI
+`POST /admin/reservas/{id}/suspender` —libera el turno, **acredita el saldo a
+favor** y manda el mail `reserva_suspendida`— **no lo llamaba ningún archivo**.
+Una feature documentada del MVP, en canchas al aire libre, inalcanzable.
+✅ Botón "Suspender por lluvia / mantenimiento" en el modal de la agenda, con
+campo de motivo, para reservas `confirmada`. Con test funcional: el turno pasa a
+`liberada` y el socio recibe +$8000 de saldo.
+
+### F5 🔴 · Un `console.log` filtraba el JWT
+`AdminSolicitudes.jsx` imprimía el token de sesión en la consola del navegador;
+`AdminScanner.jsx` imprimía el `qr_token` escaneado. Los tres `console.log`
+eliminados.
+
+### F6 · Bug conocido #3 — CAUSA ENCONTRADA
+El doble pago con efectivo es un **doble submit**: `setIsConfirming(true)` es
+state de React (asincrónico), así que un doble clic rápido entra dos veces al
+handler **antes** de que el `disabled` llegue al DOM → dos `POST /checkout` →
+dos Pagos y dos Órdenes.
+✅ Guarda de re-entrada con `useRef` (sincrónico) en los handlers que mueven
+plata: `checkout`, `registrar-pago-manual`, `aprobar`/`rechazar` orden y
+`suspender`. El más grave era el pago manual: **dos clics = doble cobertura
+acreditada al socio.**
+
+### F7 · Bug conocido #2 — RESUELTO
+El socio que ya pagó seguía viendo "MOROSO" en rojo. Ahora, cuando hay orden
+pendiente, `SocioInicio` y `SocioCuotas` muestran **"Pago en verificación"** con
+el mensaje de que un admin lo está revisando. El QR sigue correctamente
+inhabilitado (la puerta debe denegar hasta la aprobación), pero explicado.
+
+### F8 · Bug conocido #6 — RESUELTO
+El badge solo se recalculaba al montar y al cambiar de ruta. Pero las
+notificaciones las genera el **backend** por acciones de terceros (te aprueban
+la orden, te asignan beca), así que estando parado en una pantalla no aparecían
+nunca. ✅ Polling cada 60 s (solo con la pestaña visible) + refresco al volver a
+la pestaña.
+
+### F9 · Otros
+- `actualizarUsuario` no existía en `AuthContext` (se llamaba con `?.`, fallaba
+  en silencio): los cambios de perfil y foto nunca actualizaban el estado global.
+  Agregado junto con `aplicarToken`.
+- Redirect post-login unificado con `homePorRol()` — antes solo `admin_general`
+  iba a `/admin` y el resto rebotaba dos veces.
+- Dos llamadas sin barra final (`/notificaciones`, `/admin/usuarios`) que
+  provocaban un 307 en cada request — con el polling nuevo eso duplicaba el
+  tráfico. Corregidas.
+
+### Verificación cruzada frontend ↔ backend
+Se compararon **las 77 rutas distintas que llama el frontend** contra las **104
+del OpenAPI**: hoy **todas tienen correspondencia**. Antes de esta ronda había 2
+rutas inexistentes (F2 y F3).
+
+### Suite de regresión: **35 PASS · 0 FAIL**
+(+2 nuevos: suspensión por lluvia acreditando saldo, y `id_orden` presente en el
+listado de reservas.)

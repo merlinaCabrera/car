@@ -14,6 +14,7 @@
  * el turno elegido en estado (`seleccion`), listo para que ese POST lo use.
  */
 
+import { textoError } from '../utils/errores';
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useCart } from '../context/CartContext'
@@ -453,7 +454,7 @@ export default function Reservas() {
       })
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
-        throw new Error(err.detail ?? 'No se pudo reservar ese turno.')
+        throw new Error(textoError(err?.detail, 'No se pudo reservar ese turno.'))
       }
       const reserva = await res.json() // ReservaInstalacionResponse → trae id_reserva
 

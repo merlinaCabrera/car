@@ -584,6 +584,13 @@ class ReservaAdminListResponse(BaseModel):
     fecha_inicio: datetime
     fecha_fin: datetime
     estado: str
+    id_orden: Optional[int] = Field(
+        default=None,
+        description="Orden de pago vinculada. La agenda del admin lo necesita "
+                     "para poder rechazar/liberar un turno pendiente: el rechazo "
+                     "real se hace sobre la Orden (POST /admin/ordenes/{id}/rechazar), "
+                     "que libera la reserva, avisa al socio y queda auditado.",
+    )
     estado_orden: Optional[str] = Field(
         default=None,
         description="Estado de la Orden de pago vinculada (si la hay): "

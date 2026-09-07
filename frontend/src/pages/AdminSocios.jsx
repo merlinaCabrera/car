@@ -11,7 +11,8 @@
  *      y el POST a /admin/pagos/registrar-pago-manual.
  */
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { textoError } from '../utils/errores';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
 import ConfirmDialog from '../components/ConfirmDialog'
 import {
@@ -491,7 +492,7 @@ function SocioFormModal({ socio, onClose, onSave, catalogoRoles, token, esAdminG
         body: JSON.stringify({ saldo_a_favor: nuevoValor, motivo: motivoSaldo.trim() }),
       })
       const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(data.detail ?? 'No se pudo ajustar el saldo.')
+      if (!res.ok) throw new Error(textoError(data?.detail, 'No se pudo ajustar el saldo.'))
       setSaldoActual(parseFloat(data.saldo_a_favor ?? nuevoValor))
       setNuevoSaldo(parseFloat(data.saldo_a_favor ?? nuevoValor).toFixed(2))
       setMotivoSaldo('')
@@ -540,7 +541,7 @@ function SocioFormModal({ socio, onClose, onSave, catalogoRoles, token, esAdminG
         body: JSON.stringify(payload),
       })
       const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(data.detail ?? 'No se pudo actualizar la cobertura.')
+      if (!res.ok) throw new Error(textoError(data?.detail, 'No se pudo actualizar la cobertura.'))
 
       setMesCubiertoHastaActual(data.mes_cubierto_hasta ?? null)
       setFechaIngresoActual(data.fecha_ingreso ?? null)
@@ -1305,7 +1306,7 @@ function ComprasSocioModal({ socio, token, refreshTick, onClose, onCobrar }) {
       })
       if (!res.ok) {
         const body = await res.json().catch(() => ({}))
-        throw new Error(body.detail ?? `Error ${res.status} al cargar las compras.`)
+        throw new Error(textoError(body?.detail, `Error ${res.status} al cargar las compras.`))
       }
       setOrdenes(await res.json())
     } catch (err) {
@@ -1801,7 +1802,7 @@ export default function AdminSocios() {
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({}))
-      throw new Error(err.detail ?? `Error al ${isEdit ? 'actualizar' : 'crear'} el socio.`)
+      throw new Error(textoError(err?.detail, `Error al ${isEdit ? 'actualizar' : 'crear'} el socio.`))
     }
 
     if (isEdit && selectedRoles !== null) {
@@ -1832,7 +1833,17 @@ export default function AdminSocios() {
   }
 
   // ── Registrar pago manual (modal de cobro) ─────────────────────────────────
+  // Guarda de re-entrada con ref (el state de React es asincrónico, así que un
+  // `disabled` no alcanza contra un doble clic rápido). Acá importa de verdad:
+  // dos POST seguidos crean DOS Pagos aprobados y le acreditan al socio el
+  // doble de meses de cobertura. El lock del backend serializa las dos
+  // requests, pero ambas se completan — hay que cortarlo de este lado.
+  const registrandoPagoRef = useRef(false)
+
   const handleRegistrarPago = async ({ id_usuario, meses_a_pagar }) => {
+    if (registrandoPagoRef.current) return
+    registrandoPagoRef.current = true
+    try {
     const res = await fetch(`${API}/admin/pagos/registrar-pago-manual`, {
       method: 'POST',
       headers: {
@@ -1844,13 +1855,16 @@ export default function AdminSocios() {
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({}))
-      throw new Error(err.detail ?? 'Error al registrar el pago.')
+      throw new Error(textoError(err?.detail, 'Error al registrar el pago.'))
     }
 
     // Refrescar la tabla para actualizar el estado de cuenta del socio
     fetchData()
     // Si el modal de compras está abierto, que también se refresque
     setComprasRefreshTick(t => t + 1)
+    } finally {
+      registrandoPagoRef.current = false
+    }
   }
 
   // ── Handlers de tabla ──────────────────────────────────────────────────────
@@ -1877,7 +1891,7 @@ export default function AdminSocios() {
       })
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
-        throw new Error(err.detail ?? 'Error al descartar el pedido.')
+        throw new Error(textoError(err?.detail, 'Error al descartar el pedido.'))
       }
       setPendientesReactivacion(prev => prev.filter(p => p.id_usuario !== id_usuario))
     } catch (err) {
@@ -1903,7 +1917,7 @@ export default function AdminSocios() {
         })
         if (!res.ok) {
           const err = await res.json().catch(() => ({}))
-          throw new Error(err.detail ?? 'Error al dar de baja al socio.')
+          throw new Error(textoError(err?.detail, 'Error al dar de baja al socio.'))
         }
         fetchData()
       }
@@ -1916,7 +1930,7 @@ export default function AdminSocios() {
         })
         if (!res.ok) {
           const err = await res.json().catch(() => ({}))
-          throw new Error(err.detail ?? 'Error al reactivar al socio.')
+          throw new Error(textoError(err?.detail, 'Error al reactivar al socio.'))
         }
         fetchData()
       }
@@ -1929,7 +1943,7 @@ export default function AdminSocios() {
         })
         if (!res.ok) {
           const err = await res.json().catch(() => ({}))
-          throw new Error(err.detail ?? 'Error al aprobar al socio.')
+          throw new Error(textoError(err?.detail, 'Error al aprobar al socio.'))
         }
         await fetchData()
       }
@@ -1956,7 +1970,7 @@ export default function AdminSocios() {
       })
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
-        throw new Error(err.detail ?? 'Error al rechazar la solicitud.')
+        throw new Error(textoError(err?.detail, 'Error al rechazar la solicitud.'))
       }
       setMotivoRechazoAbierto(null)
       await fetchData()

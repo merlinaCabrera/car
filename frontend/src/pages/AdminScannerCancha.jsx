@@ -37,6 +37,7 @@
  *      muestra informativo nomás, sin volver a tocar el saldo.
  */
 
+import { textoError } from '../utils/errores';
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Scanner } from '@yudiel/react-qr-scanner'
@@ -202,7 +203,7 @@ function ModalFormaReintegro({ reintegro, onResuelto }) {
         headers: { Authorization: `Bearer ${token}` },
       })
       const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(data.detail ?? 'No se pudo registrar la forma del reintegro.')
+      if (!res.ok) throw new Error(textoError(data?.detail, 'No se pudo registrar la forma del reintegro.'))
       onResuelto(data)
     } catch (err) {
       setError(err.message)
@@ -315,7 +316,7 @@ export default function AdminScannerCancha() {
       body: JSON.stringify(body),
     })
     const data = await res.json().catch(() => ({}))
-    if (!res.ok) throw new Error(data.detail ?? 'No se pudo registrar el escaneo.')
+    if (!res.ok) throw new Error(textoError(data?.detail, 'No se pudo registrar el escaneo.'))
     return data
   }
 

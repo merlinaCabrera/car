@@ -1,3 +1,4 @@
+import { textoError } from '../utils/errores';
 import { useState } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -89,7 +90,7 @@ export default function Login() {
             });
             if (!res.ok) {
                 const data = await res.json().catch(() => ({}));
-                throw new Error(data.detail || 'No se pudo enviar el pedido.');
+                throw new Error(textoError(data?.detail, 'No se pudo enviar el pedido.'));
             }
             setReactivacionEnviada(true);
         } catch (err) {

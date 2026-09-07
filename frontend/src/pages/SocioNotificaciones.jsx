@@ -1,4 +1,5 @@
 // frontend/src/pages/SocioNotificaciones.jsx
+import { textoError } from '../utils/errores';
 import { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -164,7 +165,7 @@ export default function SocioNotificaciones() {
 
       if (!response.ok) {
         const errData = await response.json().catch(() => ({}));
-        throw new Error(errData.detail || 'No se pudieron cargar las notificaciones.');
+        throw new Error(textoError(errData?.detail, 'No se pudieron cargar las notificaciones.'));
       }
 
       const data = await response.json();

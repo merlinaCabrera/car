@@ -1,4 +1,5 @@
 // frontend/src/pages/AdminSolicitudes.jsx
+import { textoError } from '../utils/errores';
 import { useState, useEffect, useCallback } from 'react'
 import ConfirmDialog from '../components/ConfirmDialog'
 import { useAuth } from '../context/AuthContext'
@@ -203,7 +204,6 @@ export default function AdminSolicitudes() {
 
   // ── Fetch solicitudes ──────────────────────────────────────────────────────
 const fetchPendientes = useCallback(async () => {
-    console.log("Intentando conectar a la API en:", `${API}/admin/usuarios/pendientes`);
     // Si no hay token, no hacemos nada.
     if (!token) {
       console.warn("Fetch abortado: No hay token disponible.");
@@ -220,7 +220,6 @@ const fetchPendientes = useCallback(async () => {
     setError(null);
     
     try {
-      console.log("Token enviado al backend:", token);
       const res = await fetch(`${API}/admin/usuarios/pendientes`, {
         headers: { 
           'Authorization': `Bearer ${token}`,
@@ -278,7 +277,7 @@ const fetchPendientes = useCallback(async () => {
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
-        throw new Error(data.detail ?? `Error ${res.status} al aprobar.`)
+        throw new Error(textoError(data?.detail, `Error ${res.status} al aprobar.`))
       }
 
       // Quitar de la lista local optimísticamente
@@ -307,7 +306,7 @@ const fetchPendientes = useCallback(async () => {
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
-        throw new Error(data.detail ?? `Error ${res.status} al rechazar.`)
+        throw new Error(textoError(data?.detail, `Error ${res.status} al rechazar.`))
       }
 
       setPendientes(prev => prev.filter(u => u.id_usuario !== id_usuario))

@@ -32,6 +32,7 @@
  *   GET    /deportivo/jugadores/buscar?q=...           (buscador de excepciones)
  */
 
+import { textoError } from '../utils/errores';
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useAuth } from '../context/AuthContext'
 import {
@@ -596,7 +597,7 @@ function GestionTecnicosModal({ categoria, onClose }) {
       })
       if (!res.ok) {
         const body = await res.json().catch(() => ({}))
-        throw new Error(body.detail ?? 'No se pudo asignar el técnico.')
+        throw new Error(textoError(body?.detail, 'No se pudo asignar el técnico.'))
       }
       setBusqueda('')
       setResultados([])
@@ -618,7 +619,7 @@ function GestionTecnicosModal({ categoria, onClose }) {
       )
       if (!res.ok && res.status !== 204) {
         const body = await res.json().catch(() => ({}))
-        throw new Error(body.detail ?? 'No se pudo quitar el técnico.')
+        throw new Error(textoError(body?.detail, 'No se pudo quitar el técnico.'))
       }
       await fetchAsignados()
     } catch (err) {
@@ -890,7 +891,7 @@ function VistaPlantel({ categoria, onVolver, onCategoriaActualizada }) {
     })
     if (!res.ok) {
       const err = await res.json().catch(() => ({}))
-      throw new Error(err.detail ?? 'Error al inscribir al jugador.')
+      throw new Error(textoError(err?.detail, 'Error al inscribir al jugador.'))
     }
     fetchJugadores()
   }
@@ -904,7 +905,7 @@ function VistaPlantel({ categoria, onVolver, onCategoriaActualizada }) {
       )
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
-        throw new Error(err.detail ?? 'Error al eliminar al jugador.')
+        throw new Error(textoError(err?.detail, 'Error al eliminar al jugador.'))
       }
       fetchJugadores()
     } catch (err) {
@@ -920,7 +921,7 @@ function VistaPlantel({ categoria, onVolver, onCategoriaActualizada }) {
     })
     if (!res.ok) {
       const err = await res.json().catch(() => ({}))
-      throw new Error(err.detail ?? 'Error al autocompletar el plantel.')
+      throw new Error(textoError(err?.detail, 'Error al autocompletar el plantel.'))
     }
     const data = await res.json()
     setResultadoAutocompletar(data)
@@ -945,7 +946,7 @@ function VistaPlantel({ categoria, onVolver, onCategoriaActualizada }) {
       )
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
-        throw new Error(err.detail ?? 'Error al actualizar la capitanía.')
+        throw new Error(textoError(err?.detail, 'Error al actualizar la capitanía.'))
       }
       const actualizado = await res.json()
       setJugadores(prev =>
@@ -1295,7 +1296,7 @@ export default function TecnicoPlanteles() {
     })
     if (!res.ok) {
       const err = await res.json().catch(() => ({}))
-      throw new Error(err.detail ?? 'Error al crear la categoría.')
+      throw new Error(textoError(err?.detail, 'Error al crear la categoría.'))
     }
     fetchCategorias()
   }
@@ -1310,7 +1311,7 @@ export default function TecnicoPlanteles() {
     })
     if (!res.ok) {
       const err = await res.json().catch(() => ({}))
-      throw new Error(err.detail ?? 'Error al actualizar la categoría.')
+      throw new Error(textoError(err?.detail, 'Error al actualizar la categoría.'))
     }
     const actualizada = await res.json()
     setCategorias(prev => prev.map(c => (c.id_categoria === actualizada.id_categoria ? actualizada : c)))

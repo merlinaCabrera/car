@@ -19,6 +19,7 @@
  * deshabilitado en modo edición.
  */
 
+import { textoError } from '../utils/errores';
 import { useState, useEffect, Fragment, useCallback, useMemo } from 'react'
 import { useAuth } from '../context/AuthContext'
 import {
@@ -429,7 +430,7 @@ export default function AdminProductos() {
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
-        throw new Error(err.detail ?? 'Error al actualizar.')
+        throw new Error(textoError(err?.detail, 'Error al actualizar.'))
       }
 
       const data = await res.json()
@@ -465,7 +466,7 @@ export default function AdminProductos() {
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
-        throw new Error(err.detail ?? 'Error al actualizar.')
+        throw new Error(textoError(err?.detail, 'Error al actualizar.'))
       }
 
       const data = await res.json()
@@ -496,7 +497,7 @@ export default function AdminProductos() {
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({}))
-      throw new Error(err.detail ?? `Error al ${isEdit ? 'actualizar' : 'crear'} el producto.`)
+      throw new Error(textoError(err?.detail, `Error al ${isEdit ? 'actualizar' : 'crear'} el producto.`))
     }
 
     fetchProductos()

@@ -11,6 +11,7 @@
  * botón "Eliminar" borra de verdad, con confirmación.
  */
 
+import { textoError } from '../../utils/errores';
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import {
@@ -66,7 +67,7 @@ function FaqFormModal({ entry, onClose, onSaved, token }) {
       })
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
-        throw new Error(err.detail ?? 'No se pudo guardar la pregunta.')
+        throw new Error(textoError(err?.detail, 'No se pudo guardar la pregunta.'))
       }
       onSaved()
     } catch (err) {

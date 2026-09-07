@@ -16,6 +16,7 @@
  *   PATCH /deportivo/eventos/{id_evento}
  */
 
+import { textoError } from '../utils/errores';
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useAuth } from '../context/AuthContext'
 import CalendarioMensual from '../components/CalendarioMensual'
@@ -213,7 +214,7 @@ function ConvocatoriaModal({ evento, onClose, onSaveSuccess }) {
       })
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}))
-        throw new Error(errData.detail ?? 'Error al guardar la convocatoria.')
+        throw new Error(textoError(errData?.detail, 'Error al guardar la convocatoria.'))
       }
       onSaveSuccess()
     } catch (err) {
@@ -464,7 +465,7 @@ function EventoFormModal({ evento, onClose, onSaveSuccess }) {
       )
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}))
-        throw new Error(errData.detail ?? `Error al ${esEdicion ? 'editar' : 'crear'} el evento.`)
+        throw new Error(textoError(errData?.detail, `Error al ${esEdicion ? 'editar' : 'crear'} el evento.`))
       }
       onSaveSuccess()
     } catch (err) {

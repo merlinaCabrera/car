@@ -1,3 +1,4 @@
+import { textoError } from '../utils/errores';
 import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
@@ -54,7 +55,7 @@ export default function RecuperarPassword() {
       });
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.detail ?? 'Link inválido o expirado.');
+        throw new Error(textoError(data?.detail, 'Link inválido o expirado.'));
       }
       setIsSuccess(true);
     } catch (err) {

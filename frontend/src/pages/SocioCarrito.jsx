@@ -21,7 +21,8 @@
  * de carrito. Endpoint de upload idéntico (agnóstico al origen de la orden).
  */
 
-import { useState } from 'react'
+import { textoError } from '../utils/errores';
+import { useState, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useCart } from '../context/CartContext'
@@ -117,7 +118,7 @@ function OrdenGeneradaModal({ cartTotal, cartPayload, saldoDisponible = 0, token
       )
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
-        throw new Error(err.detail ?? 'Error al subir el comprobante.')
+        throw new Error(textoError(err?.detail, 'Error al subir el comprobante.'))
       }
       setUploadOk(true)
       setTimeout(() => onClose(), 2500)
@@ -550,7 +551,15 @@ export default function SocioCarrito() {
 
   // ── Checkout real — llamado desde el modal al confirmar método de pago ────
   // Devuelve el PagoResponse o lanza un Error (el modal lo captura).
+  // Guarda de re-entrada con ref (NO con state): setIsCheckingOut es asincrónico,
+  // así que un doble clic rápido entra dos veces al handler antes de que el
+  // `disabled` llegue al DOM → dos POST /checkout → dos Pagos y dos Órdenes
+  // duplicadas para el admin. El ref se actualiza en el acto y corta el segundo.
+  const checkoutEnCursoRef = useRef(false)
+
   const handleCheckout = async (metodo, usarSaldo = false) => {
+    if (checkoutEnCursoRef.current) return
+    checkoutEnCursoRef.current = true
     setIsCheckingOut(true)
     const usarSaldoFlag = usarSaldo
     const payload = {
@@ -583,6 +592,7 @@ export default function SocioCarrito() {
       }
       return data
     } finally {
+      checkoutEnCursoRef.current = false
       setIsCheckingOut(false)
     }
   }

@@ -1,4 +1,5 @@
 // frontend/src/pages/SocioInicio.jsx
+import { textoError } from '../utils/errores';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -97,6 +98,7 @@ export default function SocioInicio() {
   const [rotating, setRotating] = useState(false);
   const [errorQR, setErrorQR] = useState(null);
   const [online, setOnline] = useState(navigator.onLine);
+  const [ordenPendiente, setOrdenPendiente] = useState(null);
 
   const fetchTimerRef = useRef(null);
   const countdownTimerRef = useRef(null);
@@ -105,10 +107,15 @@ export default function SocioInicio() {
   useEffect(() => {
     const fetchPerfil = async () => {
       try {
-        const res = await fetch(`${API}/usuarios/me`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const [res, resPend] = await Promise.all([
+          fetch(`${API}/usuarios/me`, { headers: { Authorization: `Bearer ${token}` } }),
+          // Para distinguir "moroso" de "ya pagó, falta que el admin verifique".
+          // Sin esto la home le gritaba MOROSO en rojo a un socio que acababa
+          // de pagar y subir el comprobante.
+          fetch(`${API}/socio/cuotas/orden-pendiente`, { headers: { Authorization: `Bearer ${token}` } }),
+        ]);
         if (res.ok) setPerfil(await res.json());
+        if (resPend.ok) setOrdenPendiente(await resPend.json().catch(() => null));
       } catch {} finally {
         setLoading(false);
       }
@@ -139,7 +146,7 @@ export default function SocioInicio() {
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        throw new Error(body.detail ?? `Error ${res.status} al generar el QR.`);
+        throw new Error(textoError(body?.detail, `Error ${res.status} al generar el QR.`));
       }
       const data = await res.json();
       setQrValue(data.qr_token);
@@ -193,6 +200,10 @@ export default function SocioInicio() {
     perfil?.dia_vencimiento_cuota ?? 10
   )
   const esMoroso = becaActiva ? false : esMorosoReal;
+  // El socio ya generó la orden y espera verificación. Sigue sin acceso (el QR
+  // tiene que seguir denegando en la puerta hasta que el admin apruebe), pero
+  // el mensaje deja de ser un reproche y le explica en qué estado está.
+  const enVerificacion = esMoroso && !!ordenPendiente;
   const nombreCorto = perfil?.nombre?.split(' ')[0] ?? 'Socio';
 
   if (loading) {
@@ -227,11 +238,11 @@ export default function SocioInicio() {
           </div>
           <div>
             <p className={`text-3xl sm:text-4xl font-extrabold tracking-tight mt-3 ${esMoroso ? 'text-red-700' : 'text-green-700'}`}>
-              {esMoroso ? 'MOROSO' : 'AL DÍA'}
+              {enVerificacion ? 'EN VERIFICACIÓN' : esMoroso ? 'MOROSO' : 'AL DÍA'}
             </p>
           </div>
           <Link to="/socio/cuotas" className="mt-4 text-sm font-semibold underline inline-block w-fit">
-            {esMoroso ? 'Regularizar cuotas' : 'Ver detalle'}
+            {enVerificacion ? 'Ver mi pago' : esMoroso ? 'Regularizar cuotas' : 'Ver detalle'}
           </Link>
         </div>
 
@@ -251,7 +262,7 @@ export default function SocioInicio() {
                            }`}>
             <span className="flex items-center gap-2">
               {esMoroso ? <AlertTriangle size={15} /> : <ShieldCheck size={15} />}
-              {esMoroso ? 'CUENTA CON DEUDA' : becaActiva ? 'SOCIO BECADO ✓' : 'HABILITADO ✓'}
+              {enVerificacion ? 'PAGO EN VERIFICACIÓN' : esMoroso ? 'CUENTA CON DEUDA' : becaActiva ? 'SOCIO BECADO ✓' : 'HABILITADO ✓'}
             </span>
             <span className="font-normal text-xs opacity-70">{nombreCorto}</span>
           </div>
@@ -346,7 +357,15 @@ export default function SocioInicio() {
 
       {/* Acceso rápido a Beneficios — mensaje contextual según estado financiero */}
       <div className="pt-2">
-        {esMoroso ? (
+        {enVerificacion ? (
+          <div className="flex items-center gap-3 p-4 rounded-2xl bg-blue-50 border border-blue-200 text-blue-800">
+            <AlertTriangle size={20} className="flex-shrink-0" />
+            <p className="text-sm">
+              <span className="font-bold">Ya recibimos tu pago.</span> Un administrador lo está verificando; tu acceso se habilita apenas lo apruebe.{' '}
+              <Link to="/socio/cuotas" className="underline font-semibold">Ver el detalle</Link>
+            </p>
+          </div>
+        ) : esMoroso ? (
           <div className="flex items-center gap-3 p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-800">
             <AlertTriangle size={20} className="flex-shrink-0" />
             <p className="text-sm">

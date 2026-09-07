@@ -9,6 +9,7 @@
  * Accesible sin login (enlazada desde el footer de la Landing) y también
  * desde el menú del portal privado — en ambos casos, misma URL /ayuda.
  */
+import { textoError } from '../utils/errores';
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
@@ -57,7 +58,7 @@ function FormularioContacto() {
       })
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
-        throw new Error(err.detail ?? 'No se pudo enviar el mensaje.')
+        throw new Error(textoError(err?.detail, 'No se pudo enviar el mensaje.'))
       }
       setEnviado(true)
       setEmail(''); setNombre(''); setMensaje('')

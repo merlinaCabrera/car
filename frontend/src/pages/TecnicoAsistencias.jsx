@@ -17,6 +17,7 @@
  *   POST /deportivo/eventos/{id}/convocatorias/cerrar   → cruza y cierra
  */
 
+import { textoError } from '../utils/errores';
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useAuth } from '../context/AuthContext'
 import {
@@ -110,7 +111,7 @@ function IngresoManualModal({ evento, onClose, onSuccess, token }) {
       })
       if (!resAsist.ok) {
         const err = await resAsist.json().catch(() => ({}))
-        throw new Error(err.detail ?? `Error ${resAsist.status}`)
+        throw new Error(textoError(err?.detail, `Error ${resAsist.status}`))
       }
 
       setExito(`✓ ${jugador.usuario.apellido}, ${jugador.usuario.nombre} registrado correctamente.`)

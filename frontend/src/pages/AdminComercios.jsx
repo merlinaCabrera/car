@@ -20,6 +20,7 @@
  * socio existente).
  */
 
+import { textoError } from '../utils/errores';
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useAuth } from '../context/AuthContext'
 import {
@@ -418,7 +419,7 @@ export default function AdminComercios() {
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({}))
-      throw new Error(err.detail ?? `Error al ${isEdit ? 'actualizar' : 'crear'} el comercio.`)
+      throw new Error(textoError(err?.detail, `Error al ${isEdit ? 'actualizar' : 'crear'} el comercio.`))
     }
 
     const saved = await res.json()
@@ -439,7 +440,7 @@ export default function AdminComercios() {
       })
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
-        throw new Error(err.detail ?? 'Error al dar de baja el comercio.')
+        throw new Error(textoError(err?.detail, 'Error al dar de baja el comercio.'))
       }
       fetchComercios()
     } catch (err) {
@@ -461,7 +462,7 @@ export default function AdminComercios() {
       })
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
-        throw new Error(err.detail ?? 'Error al reactivar el comercio.')
+        throw new Error(textoError(err?.detail, 'Error al reactivar el comercio.'))
       }
       fetchComercios()
     } catch (err) {

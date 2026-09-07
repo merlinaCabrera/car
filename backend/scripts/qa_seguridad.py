@@ -307,6 +307,46 @@ async def run():
         ok("PATCH perfil de OTRO socio → 403", rp.status_code == 403, f"({rp.status_code})")
         ok("PATCH campo prohibido (es_becado) en el propio → 403", rp2.status_code == 403, f"({rp2.status_code})")
 
+        print("\n── Suspensión por lluvia · libera turno y acredita saldo ──")
+        db = SessionLocal()
+        try:
+            u = db.query(models.Usuario).filter_by(id_usuario=U["socio2"]).first()
+            saldo_antes = u.saldo_a_favor
+            prod_alq = db.query(models.ProductoServicio).filter_by(nombre="Cancha 1 Test").first()
+            pg = models.Pago(id_usuario=U["socio2"], monto_total=Decimal("8000"), estado="verificado")
+            db.add(pg); db.flush()
+            od = models.Orden(id_usuario=U["socio2"], id_pago=pg.id_pago,
+                              estado="aprobada", monto_total=Decimal("8000"))
+            db.add(od); db.flush()
+            rsv = models.ReservaInstalacion(
+                id_producto=prod_alq.id_producto, instalacion="cancha_1",
+                fecha_inicio=datetime.now(timezone.utc) + timedelta(days=2),
+                fecha_fin=datetime.now(timezone.utc) + timedelta(days=2, hours=2),
+                estado="confirmada", id_usuario=U["socio2"], id_orden=od.id_orden)
+            db.add(rsv); db.flush()
+            db.add(models.DetalleOrden(id_orden=od.id_orden, id_producto=prod_alq.id_producto,
+                                       cantidad=1, precio_unitario_historico=Decimal("8000"),
+                                       id_reserva=rsv.id_reserva))
+            db.commit()
+            rid_s, saldo_antes = rsv.id_reserva, saldo_antes
+        finally: db.close()
+        rsus = await cl.post(f"{BASE}/admin/reservas/{rid_s}/suspender",
+                             json={"motivo": "Lluvia"}, headers=H(t_admin))
+        db = SessionLocal()
+        try:
+            u = db.query(models.Usuario).filter_by(id_usuario=U["socio2"]).first()
+            r = db.query(models.ReservaInstalacion).filter_by(id_reserva=rid_s).first()
+            saldo_desp, estado_desp = u.saldo_a_favor, r.estado
+        finally: db.close()
+        ok("suspender → 200, reserva liberada y saldo +8000",
+           rsus.status_code == 200 and estado_desp == "liberada"
+           and saldo_desp == saldo_antes + Decimal("8000"),
+           f"({rsus.status_code}, estado={estado_desp}, saldo {saldo_antes}→{saldo_desp})")
+        # id_orden tiene que venir en el listado (lo necesita el botón de rechazar de la agenda)
+        rlist = await cl.get(f"{BASE}/admin/reservas", headers=H(t_admin))
+        tiene_campo = rlist.status_code == 200 and any("id_orden" in x for x in rlist.json())
+        ok("GET /admin/reservas expone id_orden", tiene_campo, f"({rlist.status_code})")
+
         print("\n── BUG#1 · pagar N meses acredita N (no N-1) ──")
         # socio con 3 meses de deuda exactos: cobertura vencida hace 3 períodos
         from utils.cuotas_periodos import calcular_estado_financiero, fecha_cubierta_para_meses_adeudados

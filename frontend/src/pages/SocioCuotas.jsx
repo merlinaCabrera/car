@@ -1,4 +1,5 @@
 // frontend/src/pages/SocioCuotas.jsx
+import { textoError } from '../utils/errores';
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useCart } from '../context/CartContext'
@@ -10,6 +11,7 @@ import {
   Loader2,
   X,
   CalendarClock,
+  Clock,
   UploadCloud,
   CheckCircle,
   Info,
@@ -452,7 +454,7 @@ function OrdenGeneradaModal({ orden, onClose, token }) {
       })
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
-        throw new Error(err.detail ?? 'Error al subir el comprobante.')
+        throw new Error(textoError(err?.detail, 'Error al subir el comprobante.'))
       }
       setSuccess(true)
       setTimeout(() => onClose(), 2000)
@@ -701,7 +703,16 @@ function EstadoCard({ estado, loading, error, ordenPendiente, onAbrirCarrito }) 
   const fechaLegible        = formatearFechaCobertura(estado.mes_cubierto_hasta)
   const diaVenc             = estado.dia_vencimiento_cuota ?? null
 
-  const paleta = moroso
+  // Si el socio ya generó la orden y está esperando que el admin verifique, NO
+  // se le muestra un rojo de "Moroso" a secas: técnicamente sigue debiendo
+  // (mes_cubierto_hasta no se mueve hasta la aprobación), pero él ya hizo su
+  // parte. Sin esto la pantalla le decía "Moroso · 3 meses adeudados" después
+  // de haber pagado y subido el comprobante — el reclamo clásico.
+  const enVerificacion = moroso && !!ordenPendiente
+
+  const paleta = enVerificacion
+    ? { card: 'bg-blue-50 border-blue-200', icon: 'bg-blue-100 text-blue-700', label: 'text-blue-700', sub: 'text-blue-800', aux: 'text-blue-500', badge: 'bg-blue-100 text-blue-700 border border-blue-200', btn: '' }
+    : moroso
     ? esGrave
       ? { card: 'bg-red-50 border-red-200',    icon: 'bg-red-100 text-red-700',    label: 'text-red-700',    sub: 'text-red-700',    aux: 'text-red-500',    badge: 'bg-red-100 text-red-700 border border-red-200',    btn: 'bg-red-600 hover:bg-red-700' }
       : { card: 'bg-amber-50 border-amber-200', icon: 'bg-amber-100 text-amber-700', label: 'text-amber-700', sub: 'text-amber-700', aux: 'text-amber-500', badge: 'bg-amber-100 text-amber-800 border border-amber-200', btn: 'bg-amber-600 hover:bg-amber-700' }
@@ -711,7 +722,7 @@ function EstadoCard({ estado, loading, error, ordenPendiente, onAbrirCarrito }) 
     <div className={`rounded-2xl shadow-sm border p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-5 ${paleta.card}`}>
       <div className="flex items-start gap-3 sm:gap-4">
         <div className={`p-2.5 sm:p-3 rounded-xl flex-shrink-0 mt-0.5 ${paleta.icon}`}>
-          {moroso ? <ShieldAlert size={22} /> : <ShieldCheck size={22} />}
+          {enVerificacion ? <Clock size={22} /> : moroso ? <ShieldAlert size={22} /> : <ShieldCheck size={22} />}
         </div>
 
         <div className="space-y-1.5">
@@ -720,13 +731,17 @@ function EstadoCard({ estado, loading, error, ordenPendiente, onAbrirCarrito }) 
           </p>
 
           <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${paleta.badge}`}>
-            {moroso
-              ? <><AlertTriangle size={11} /> Moroso</>
-              : <><CheckCircle2 size={11} /> Acceso activo</>}
+            {enVerificacion
+              ? <><Clock size={11} /> Pago en verificación</>
+              : moroso
+                ? <><AlertTriangle size={11} /> Moroso</>
+                : <><CheckCircle2 size={11} /> Acceso activo</>}
           </span>
 
           <p className={`text-sm font-medium leading-snug ${paleta.sub}`}>
-            {moroso
+            {enVerificacion
+              ? <>Ya registramos tu pago. Un administrador lo está verificando; en cuanto lo apruebe se actualiza tu estado.</>
+              : moroso
               ? tieneDeuda
                 ? <>{mesesAdeudadosReal} mes{mesesAdeudadosReal !== 1 ? 'es' : ''} adeudado{mesesAdeudadosReal !== 1 ? 's' : ''}&nbsp;·&nbsp;{formatoMoneda.format(montoEstimado)}</>
                 : 'Tu cobertura ha vencido.'

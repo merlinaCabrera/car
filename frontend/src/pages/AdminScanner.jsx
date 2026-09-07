@@ -20,6 +20,7 @@
  * components={{ audio: false }}      → evita el beep del scanner
  */
 
+import { textoError } from '../utils/errores';
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Scanner } from '@yudiel/react-qr-scanner'
 import {
@@ -264,7 +265,7 @@ export default function AdminScanner() {
 
       if (!res.ok) {
         // 4xx/5xx del backend (token mal formado, etc.)
-        throw new Error(data.detail ?? `Error ${res.status}`)
+        throw new Error(textoError(data?.detail, `Error ${res.status}`))
       }
 
       setResultado(data)   // UsuarioQRValidacionResponse — siempre viene en 2xx
@@ -285,7 +286,6 @@ export default function AdminScanner() {
     if (!codes?.length || procesandoRef.current || resultado) return
     const rawValue = codes[0]?.rawValue
     if (!rawValue) return
-    console.log("Token capturado:", rawValue);
     validar('/qr/validar-token', { token: rawValue })
   }, [validar, resultado])
 

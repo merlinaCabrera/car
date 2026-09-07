@@ -15,7 +15,8 @@
  * Las rechazadas/canceladas/expiradas aparecen solo en la vista Lista.
  */
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { textoError } from '../utils/errores';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
 import CalendarioMensual from '../components/CalendarioMensual'
 import {
@@ -143,12 +144,15 @@ function VistaToggle({ vista, onChange }) {
 
 // ─── Modal detalle de reserva ─────────────────────────────────────────────────
 
-function ModalDetalleReserva({ reserva, onClose, onRechazar }) {
+function ModalDetalleReserva({ reserva, onClose, onRechazar, onSuspender }) {
   const color   = colorDeReserva(reserva)
   const ahora   = new Date()
   const vencida = reserva.estado_orden === 'pendiente_verificacion' &&
                   new Date(reserva.fecha_fin) < ahora
   const [rechazando, setRechazando] = useState(false)
+  const [suspendiendo, setSuspendiendo] = useState(false)
+  const [motivoSusp, setMotivoSusp] = useState('')
+  const [mostrarSusp, setMostrarSusp] = useState(false)
 
   return (
     <div
@@ -211,7 +215,7 @@ function ModalDetalleReserva({ reserva, onClose, onRechazar }) {
           <button
             onClick={async () => {
               setRechazando(true)
-              await onRechazar(reserva.id_reserva)
+              await onRechazar(reserva)
               setRechazando(false)
               onClose()
             }}
@@ -221,6 +225,58 @@ function ModalDetalleReserva({ reserva, onClose, onRechazar }) {
             {rechazando && <Loader2 size={14} className="animate-spin" />}
             {rechazando ? 'Rechazando…' : 'Rechazar / Liberar turno'}
           </button>
+        )}
+
+        {/* Suspender por lluvia — solo para turnos ya confirmados (pagados).
+            Libera el turno y le acredita el importe al socio como saldo a
+            favor, además de avisarle por mail. El endpoint existía desde
+            siempre pero no tenía ningún botón que lo llamara. */}
+        {reserva.estado === 'confirmada' && (
+          mostrarSusp ? (
+            <div className="space-y-2 pt-1">
+              <input
+                autoFocus
+                value={motivoSusp}
+                onChange={e => setMotivoSusp(e.target.value)}
+                placeholder="Motivo (ej: Lluvia)"
+                maxLength={300}
+                className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:border-blue-500 focus:ring-blue-500"
+              />
+              <p className="text-xs text-gray-500">
+                Se libera el turno y se le acredita el importe al socio como saldo a favor.
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={async () => {
+                    if (motivoSusp.trim().length < 3) return
+                    setSuspendiendo(true)
+                    await onSuspender(reserva, motivoSusp.trim())
+                    setSuspendiendo(false)
+                    onClose()
+                  }}
+                  disabled={suspendiendo || motivoSusp.trim().length < 3}
+                  className="flex-1 py-2.5 rounded-xl bg-amber-600 text-white text-sm font-bold hover:bg-amber-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+                >
+                  {suspendiendo && <Loader2 size={14} className="animate-spin" />}
+                  {suspendiendo ? 'Suspendiendo…' : 'Confirmar suspensión'}
+                </button>
+                <button
+                  onClick={() => { setMostrarSusp(false); setMotivoSusp('') }}
+                  disabled={suspendiendo}
+                  className="px-4 py-2.5 rounded-xl border border-gray-300 text-sm font-semibold text-gray-600 hover:bg-gray-50"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={() => setMostrarSusp(true)}
+              className="w-full py-2.5 rounded-xl border-2 border-amber-500 text-amber-700 text-sm font-bold hover:bg-amber-50 transition-colors"
+            >
+              Suspender por lluvia / mantenimiento
+            </button>
+          )
         )}
       </div>
     </div>
@@ -259,7 +315,7 @@ function ModalNuevaReserva({ onClose, onGuardado }) {
   useEffect(() => {
     if (!cobroActivo || usuarios.length > 0) return
     setCargandoUsuarios(true)
-    fetch(`${API}/admin/usuarios`, { headers: { Authorization: `Bearer ${token}` } })
+    fetch(`${API}/admin/usuarios/`, { headers: { Authorization: `Bearer ${token}` } })
       .then(res => res.json())
       .then(data => setUsuarios(Array.isArray(data) ? data : []))
       .catch(() => {})
@@ -292,7 +348,7 @@ function ModalNuevaReserva({ onClose, onGuardado }) {
         headers: { Authorization: `Bearer ${token}` },
       })
       const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(data.detail ?? 'No se pudo obtener la cuenta Invitado.')
+      if (!res.ok) throw new Error(textoError(data?.detail, 'No se pudo obtener la cuenta Invitado.'))
       setPersona(data)
       setBusquedaSocio('')
     } catch (err) {
@@ -348,7 +404,7 @@ function ModalNuevaReserva({ onClose, onGuardado }) {
         }),
       })
       const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(data.detail ?? 'No se pudo crear la reserva.')
+      if (!res.ok) throw new Error(textoError(data?.detail, 'No se pudo crear la reserva.'))
       onGuardado(data)
     } catch (err) {
       setError(err.message)
@@ -639,20 +695,73 @@ export default function AdminReservas() {
     setFiltroInstalacion('')
   }
 
-  const handleRechazar = async (idReserva) => {
+  // Rechazar un turno pendiente = rechazar la ORDEN que lo respalda.
+  // Antes esto pegaba a PATCH /admin/reservas/{id}/rechazar, una ruta que NO
+  // existe en el backend: siempre devolvía 404 y el botón "Rechazar / Liberar
+  // turno" de la agenda nunca funcionó. El endpoint real es
+  // POST /admin/ordenes/{id_orden}/rechazar, que además libera la reserva,
+  // devuelve el stock, le avisa al socio y deja registro en audit_log.
+  const rechazandoRef = useRef(false)
+
+  const handleRechazar = async (reserva) => {
+    if (rechazandoRef.current) return
+    if (!reserva?.id_orden) {
+      setError('Este turno no tiene una orden de pago asociada; no hay nada que rechazar.')
+      return
+    }
+    rechazandoRef.current = true
     try {
-      const res = await fetch(`${API}/admin/reservas/${idReserva}/rechazar`, {
-        method: 'PATCH',
-        headers: { Authorization: `Bearer ${token}` },
+      const res = await fetch(`${API}/admin/ordenes/${reserva.id_orden}/rechazar`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        // motivo_rechazo es obligatorio (min. 5 caracteres) y le llega al socio
+        // por mail, así que conviene que se entienda.
+        body: JSON.stringify({
+          motivo_rechazo: 'Turno liberado por el administrador desde la agenda de reservas.',
+        }),
       })
       if (!res.ok) {
         const body = await res.json().catch(() => ({}))
-        throw new Error(body.detail ?? 'No se pudo rechazar la reserva.')
+        throw new Error(textoError(body?.detail, 'No se pudo rechazar la reserva.'))
       }
       // Quitar la reserva rechazada de la lista local sin refetch
-      setReservas(prev => prev.filter(r => r.id_reserva !== idReserva))
+      setReservas(prev => prev.filter(r => r.id_reserva !== reserva.id_reserva))
     } catch (err) {
       setError(err.message)
+    } finally {
+      rechazandoRef.current = false
+    }
+  }
+
+  // Suspensión (lluvia, mantenimiento): libera el turno y le acredita el
+  // importe al socio como saldo a favor. Requiere reserva 'confirmada'.
+  const suspendiendoRef = useRef(false)
+
+  const handleSuspender = async (reserva, motivo) => {
+    if (suspendiendoRef.current) return
+    suspendiendoRef.current = true
+    try {
+      const res = await fetch(`${API}/admin/reservas/${reserva.id_reserva}/suspender`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ motivo }),
+      })
+      const body = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        throw new Error(textoError(body?.detail, 'No se pudo suspender la reserva.'))
+      }
+      setReservas(prev => prev.map(r =>
+        r.id_reserva === reserva.id_reserva ? { ...r, estado: 'liberada' } : r
+      ))
+      setError(null)
+      window.alert(
+        `Turno suspendido. Se le acreditaron $${body.monto_acreditado} de saldo a favor al socio ` +
+        `(nuevo saldo: $${body.nuevo_saldo}).`
+      )
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      suspendiendoRef.current = false
     }
   }
 
@@ -708,6 +817,7 @@ export default function AdminReservas() {
           reserva={reservaDetalle}
           onClose={() => setReservaDetalle(null)}
           onRechazar={handleRechazar}
+          onSuspender={handleSuspender}
         />
       )}
 

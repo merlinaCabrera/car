@@ -32,7 +32,8 @@
  *   POST /admin/ordenes/{id_orden}/rechazar
  */
 
-import { useState, useMemo, useEffect } from 'react'
+import { textoError } from '../utils/errores';
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useAdminResource } from '../hooks/useAdminResource'
@@ -158,7 +159,14 @@ function VerificacionModal({ orden, onClose, onActionSuccess, token }) {
   const detalleCuota = orden.detalles?.find(d => d.producto?.categoria === 'cuota_social')
   const [mesesImputar, setMesesImputar] = useState(detalleCuota ? detalleCuota.cantidad : '')
 
+  // Ref (no state) porque setIsSubmitting es asincrónico: un doble clic entra
+  // dos veces antes de que el `disabled` llegue al DOM. La misma guarda cubre
+  // aprobar y rechazar — no tiene sentido disparar las dos sobre una orden.
+  const resolviendoRef = useRef(false)
+
   const handleAprobar = async () => {
+    if (resolviendoRef.current) return
+    resolviendoRef.current = true
     setIsSubmitting(true)
     setApiError(null)
     try {
@@ -174,12 +182,13 @@ function VerificacionModal({ orden, onClose, onActionSuccess, token }) {
       })
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
-        throw new Error(err.detail ?? 'Error al aprobar la orden.')
+        throw new Error(textoError(err?.detail, 'Error al aprobar la orden.'))
       }
       onActionSuccess(orden.id_orden, 'aprobada')
     } catch (err) {
       setApiError(err.message)
     } finally {
+      resolviendoRef.current = false
       setIsSubmitting(false)
     }
   }
@@ -194,7 +203,7 @@ function VerificacionModal({ orden, onClose, onActionSuccess, token }) {
       })
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
-        throw new Error(err.detail ?? 'Error al reabrir la orden.')
+        throw new Error(textoError(err?.detail, 'Error al reabrir la orden.'))
       }
       onActionSuccess(orden.id_orden, 'pendiente_verificacion')
     } catch (err) {
@@ -209,6 +218,8 @@ function VerificacionModal({ orden, onClose, onActionSuccess, token }) {
       setApiError('Debés ingresar un motivo para el rechazo.')
       return
     }
+    if (resolviendoRef.current) return
+    resolviendoRef.current = true
     setIsSubmitting(true)
     setApiError(null)
     try {
@@ -219,12 +230,13 @@ function VerificacionModal({ orden, onClose, onActionSuccess, token }) {
       })
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
-        throw new Error(err.detail ?? 'Error al rechazar la orden.')
+        throw new Error(textoError(err?.detail, 'Error al rechazar la orden.'))
       }
       onActionSuccess(orden.id_orden, 'rechazada')
     } catch (err) {
       setApiError(err.message)
     } finally {
+      resolviendoRef.current = false
       setIsSubmitting(false)
     }
   }

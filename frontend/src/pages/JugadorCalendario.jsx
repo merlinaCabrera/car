@@ -16,6 +16,7 @@
  *   PATCH /deportivo/mis-eventos/{id_evento}/confirmar
  */
 
+import { textoError } from '../utils/errores';
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useAuth } from '../context/AuthContext'
 import CalendarioMensual from '../components/CalendarioMensual'
@@ -231,7 +232,7 @@ export default function JugadorCalendario() {
       })
       if (!res.ok) {
         const errData = await res.json().catch(() => null)
-        throw new Error(errData?.detail || 'Error al actualizar la convocatoria.')
+        throw new Error(textoError(errData?.detail, 'Error al actualizar la convocatoria.'))
       }
       await fetchEventos()
       // Actualizar también el detalle abierto si corresponde

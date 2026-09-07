@@ -6,6 +6,7 @@
  * PATCH /usuarios/me/password) desde hace tiempo, pero nunca se conectó a
  * nada en el frontend — RutaPrivada redirige acá cuando detecta el flag.
  */
+import { textoError } from '../utils/errores';
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
@@ -57,7 +58,7 @@ export default function CambiarPasswordObligatorio() {
       })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
-        throw new Error(data.detail ?? 'No se pudo cambiar la contraseña.')
+        throw new Error(textoError(data?.detail, 'No se pudo cambiar la contraseña.'))
       }
 
       // El backend invalida los tokens emitidos ANTES del cambio y devuelve uno

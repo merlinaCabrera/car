@@ -14,7 +14,7 @@ import { Eye, EyeOff, KeyRound } from 'lucide-react'
 const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 
 export default function CambiarPasswordObligatorio() {
-  const { token, refreshUser } = useAuth()
+  const { token, refreshUser, aplicarToken } = useAuth()
   const navigate = useNavigate()
 
   const [passwordActual, setPasswordActual] = useState('')
@@ -60,9 +60,18 @@ export default function CambiarPasswordObligatorio() {
         throw new Error(data.detail ?? 'No se pudo cambiar la contraseña.')
       }
 
-      // Refresca el perfil en el contexto: requiere_cambio_password ya
-      // debería venir en false, así RutaPrivada deja de redirigir para acá.
-      await refreshUser()
+      // El backend invalida los tokens emitidos ANTES del cambio y devuelve uno
+      // nuevo en esta misma respuesta. Hay que adoptarlo: si siguiéramos con el
+      // token viejo, el refresh del perfil daría 401 y la sesión se caería justo
+      // acá (el socio quedaba pateado al login en su primer ingreso).
+      // aplicarToken dispara la recarga de /usuarios/me, que ya trae
+      // requiere_cambio_password=false → RutaPrivada deja de redirigir acá.
+      const data = await res.json().catch(() => ({}))
+      if (data.access_token) {
+        aplicarToken(data.access_token)
+      } else {
+        await refreshUser()   // backend viejo sin token en la respuesta
+      }
       navigate('/socio', { replace: true })
     } catch (err) {
       setError(err.message)

@@ -23,7 +23,7 @@ import models
 import schemas
 from database import get_db              # ← unificado, ya no hay get_db local
 from dependencies import get_current_user, require_roles
-from security import get_password_hash, verify_password
+from security import create_access_token, get_password_hash, verify_password
 from mailer.services import email_tasks
 from mailer.services.email_tasks import task_aviso_admin_nuevo_socio, task_solicitud_recibida
 from utils.s3 import subir_archivo, eliminar_archivo, generar_presigned_url
@@ -374,7 +374,26 @@ def cambiar_password(
     current_user.password_actualizada_en = datetime.now(timezone.utc).replace(microsecond=0)
     db.commit()
 
-    return {"mensaje": "Contraseña actualizada correctamente."}
+    # Devolvemos un token NUEVO. El token con el que vino esta request acaba de
+    # quedar inválido (password_actualizada_en), así que sin esto el frontend
+    # se queda con un token muerto: el refresh del perfil da 401 y la sesión se
+    # cae justo después de cambiar la clave — pegaba de lleno en el primer
+    # ingreso obligatorio, donde el socio quedaba pateado al login.
+    # El `iat` del token nuevo es >= password_actualizada_en (truncada al
+    # segundo), así que pasa la validación de get_current_user.
+    roles_activos = [
+        ur.rol.nombre for ur in current_user.roles_asignados
+        if ur.rol.es_activo and (ur.valido_hasta is None or ur.valido_hasta > datetime.now(timezone.utc))
+    ]
+    nuevo_token = create_access_token(
+        data={"sub": current_user.dni, "id": current_user.id_usuario, "roles": roles_activos}
+    )
+
+    return {
+        "mensaje": "Contraseña actualizada correctamente.",
+        "access_token": nuevo_token,
+        "token_type": "bearer",
+    }
 
 
 # ─── GET /usuarios/ ──────────────────────────────────────────────────────────

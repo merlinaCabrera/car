@@ -268,7 +268,7 @@ function PerfilSkeleton() {
 // ─── Componente Principal ──────────────────────────────────────────────────────
 
 export default function SocioPerfil() {
-  const { token, actualizarUsuario } = useAuth()
+  const { token, actualizarUsuario, aplicarToken } = useAuth()
 
   const [perfil,       setPerfil]       = useState(null)
   const [loading,      setLoading]      = useState(true)
@@ -417,6 +417,11 @@ export default function SocioPerfil() {
         const errData = await res.json().catch(() => null)
         throw new Error(errData?.detail || 'No se pudo cambiar la contraseña.')
       }
+      // El backend invalida los tokens previos al cambio y devuelve uno nuevo:
+      // hay que adoptarlo o la sesión se cae con 401 en la próxima request.
+      const data = await res.json().catch(() => ({}))
+      if (data.access_token) aplicarToken(data.access_token)
+
       setExitoPassword('Contraseña actualizada correctamente.')
       setPasswordForm({ password_actual: '', password_nuevo: '', password_nuevo_confirmacion: '' })
       setMostrarPassword(false)

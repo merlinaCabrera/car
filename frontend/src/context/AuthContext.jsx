@@ -94,8 +94,28 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('authToken');
   };
 
+  // Reemplaza el token de la sesión sin pasar por login().
+  // Lo usa el cambio de contraseña: el backend invalida los tokens emitidos
+  // antes del cambio y devuelve uno nuevo en la misma respuesta. Sin esto la
+  // sesión se caía (401) justo después de cambiar la clave.
+  const aplicarToken = (nuevoToken) => {
+    if (!nuevoToken) return;
+    localStorage.setItem('authToken', nuevoToken);
+    setToken(nuevoToken);   // el useEffect re-consulta /usuarios/me con el nuevo
+  };
+
+  // Actualiza el usuario en memoria con lo que devolvió un PATCH/POST, sin
+  // volver a pegarle a /usuarios/me.
+  const actualizarUsuario = (datos) => {
+    if (datos) setUser(datos);
+  };
+
   return (
-    <AuthContext.Provider value={{ user, token, isAuthenticated, login, logout, loading, refreshUser: () => fetchUserProfile(token) }}>
+    <AuthContext.Provider value={{
+      user, token, isAuthenticated, login, logout, loading,
+      aplicarToken, actualizarUsuario,
+      refreshUser: () => fetchUserProfile(token),
+    }}>
       {!loading && children}
     </AuthContext.Provider>
   );

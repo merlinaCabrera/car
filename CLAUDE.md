@@ -341,17 +341,19 @@ Templates existentes:
 
 ## Bugs conocidos
 
-Lista viva. Algunos ítems de cuotas pueden estar ya resueltos por commits recientes (`fix cuotas`, `correlatividad pagos`, `4b7d46a`) — verificar contra el código antes de darlos por abiertos.
+Estado verificado el 2026-09-06 (ver `docs/auditoria-2026-09-06.md`).
 
-1. **Cuotas — pagar N meses muestra N-1:** El pago manual via admin contabiliza el mes actual como parte de los N meses. La lógica de `mes_cubierto_hasta` arranca desde el mes en curso en lugar del próximo mes pendiente.
-2. **Cuotas — socio queda moroso al agregar al carrito:** Al crear la orden (estado `pendiente_verificacion`), el frontend muestra al socio como moroso antes de que el admin apruebe. El QR lo refleja antes que el calendario.
-3. **Pago duplicado al elegir efectivo:** Al seleccionar método "efectivo" en checkout, la orden llega duplicada al admin.
-4. **Redirect post-login:** Al hacer login, algunos usuarios son redirigidos a `/admin/auditoria` en lugar de `/socio`.
-5. **Error 405 en cambio de contraseña obligatorio:** El endpoint `POST /usuarios/me/password` devuelve 405 en algunos contextos del primer ingreso.
-6. **Ícono de notificaciones sin leer no aparece:** El badge del ícono de campana no se actualiza cuando hay notificaciones nuevas.
-7. **Links en mails:** Si `FRONTEND_URL` no está configurada en Render, `email_service.py` cae al default `http://localhost:5173` y todos los links de los mails quedan rotos. (La migración desde Vercel ya está hecha; no quedan referencias a Vercel en el código.)
-8. **Alta manual genera socio moroso:** Corregido en historial 19/08 — un alta manual ahora arranca al día igual que una solicitud aprobada.
-9. **URL de foto de perfil en DB:** La URL guardada puede ser ruta local en lugar de URL S3. Workaround en frontend con `resolverFotoUrl()`.
+| # | Bug | Estado |
+|---|-----|--------|
+| 1 | **Cuotas — pagar N meses acredita N-1** | ✅ **Resuelto y con test.** El pago manual y la aprobación comparten `utils/cuotas_periodos.calcular_nuevo_mes_cubierto`, que parte de `mes_cubierto_hasta` (no del mes en curso). Regresión cubierta en `scripts/qa_seguridad.py` por los dos caminos. |
+| 2 | Socio figura moroso al agregar al carrito | ⚠️ **No es bug de backend.** Hasta que el admin aprueba, el socio *sigue* debiendo: `mes_cubierto_hasta` no se toca. Lo que falta es que la UI muestre "pago pendiente de verificación" — el dato está en `GET /socio/cuotas/orden-pendiente`. **Decisión de UI, sin resolver.** |
+| 3 | Pago duplicado al elegir efectivo | ❓ **No reproducido.** El backend crea UN solo `Pago` por checkout. Sospechas: doble submit del formulario (no hay guarda en el front) o los dos mails que salen (`orden_generada` + `aviso_club_efectivo`) leyéndose como dos pagos. **Verificar en testeo manual.** |
+| 4 | Redirect post-login a `/admin/auditoria` | ✅ **Resuelto.** `Login.jsx` solo honra `?next=/admin/...` si la cuenta es admin, y ahora usa `homePorRol()` — el mismo mapa que `RequireRole`, así no hay doble redirect para técnicos/porteros/staff. |
+| 5 | 405 en el cambio de contraseña obligatorio | ✅ **No reproducible.** Front y back usan `POST /usuarios/me/password`. Además el flujo se rehizo entero (devuelve token nuevo, ver abajo). |
+| 6 | Badge de notificaciones sin leer no aparece | ❓ **Parcialmente descartado.** La URL sin barra final redirige 307 y llega bien. Queda como sospecha el *momento* del refresco: `MainLayout` solo recuenta al montar y al cambiar de ruta, así que una notificación creada mientras estás en la pantalla no aparece hasta navegar. **Sin resolver.** |
+| 7 | Links de los mails rotos | ⚙️ **Configuración, no código.** `FRONTEND_URL` debe estar en Render; si falta, cae a `localhost:5173`. |
+| 8 | Alta manual genera socio moroso | ✅ Resuelto (historial 19/08). |
+| 9 | URL de foto de perfil local en vez de S3 | ✅ **Resuelto en el origen.** `subir_foto_perfil` guarda el key de S3. Quedan filas viejas con ruta local; `resolverFotoUrl()` sigue como red. ⚠️ Desde el fix M10 solo se sirve `/uploads/fotos_perfil` (los comprobantes ya no se exponen). |
 
 ---
 

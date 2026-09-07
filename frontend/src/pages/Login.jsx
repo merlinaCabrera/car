@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { homePorRol } from '../components/RequireRole';
 import { Eye, EyeOff, ArrowLeft } from 'lucide-react';
 
 const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8000';
@@ -42,11 +43,12 @@ export default function Login() {
                 .map(ur => ur.rol?.nombre)
                 .filter(Boolean);
  
-            let destino = '/socio'; // Por defecto, para socios y otros roles.
- 
-            if (roles.includes('admin_general')) {
-                destino = '/admin';
-            }
+            // Mismo mapa rol → home que usa RequireRole. Antes acá solo se
+            // contemplaba admin_general y todo el resto caía en /socio: un
+            // personal_administrativo, un técnico o un portero aterrizaban en
+            // una pantalla que no les corresponde y RequireRole los rebotaba
+            // enseguida a otra (doble redirect visible).
+            let destino = homePorRol(roles);
 
             // Si venía de un link que la mandó acá por no tener sesión
             // (ej: el link "Revisar Solicitudes" del mail al club), la

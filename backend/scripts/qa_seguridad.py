@@ -167,6 +167,15 @@ async def run():
                             json={"password_actual": PW, "password_nuevo": "Nueva12345!",
                                   "password_nuevo_confirmacion": "Nueva12345!"})
         ok("POST /usuarios/me/password con clave provisoria → 200", rp2.status_code == 200, f"({rp2.status_code})")
+        # El endpoint devuelve un token NUEVO: el viejo quedó invalidado por el
+        # propio cambio, así que sin esto el frontend se queda sin sesión justo
+        # en el primer ingreso.
+        tok_nuevo = rp2.json().get("access_token") if rp2.status_code == 200 else None
+        rp_tok = await cl.get(f"{BASE}/usuarios/me", headers=H(tok_nuevo)) if tok_nuevo else None
+        ok("cambio de clave devuelve access_token nuevo", bool(tok_nuevo))
+        ok("el token devuelto sirve de inmediato (sin reloguear)",
+           rp_tok is not None and rp_tok.status_code == 200,
+           f"({getattr(rp_tok, 'status_code', 'sin token')})")
         r = await cl.post(f"{BASE}/auth/login", json={"dni": "90000008", "password": "Nueva12345!"})
         t_pro_new = r.json().get("access_token")
         rp3 = await cl.get(f"{BASE}/socio/cuotas/estado", headers=H(t_pro_new))
@@ -297,6 +306,46 @@ async def run():
         rp2 = await cl.patch(f"{BASE}/usuarios/{U['socio']}", headers=H(t_socio), json={"es_becado": True})
         ok("PATCH perfil de OTRO socio → 403", rp.status_code == 403, f"({rp.status_code})")
         ok("PATCH campo prohibido (es_becado) en el propio → 403", rp2.status_code == 403, f"({rp2.status_code})")
+
+        print("\n── BUG#1 · pagar N meses acredita N (no N-1) ──")
+        # socio con 3 meses de deuda exactos: cobertura vencida hace 3 períodos
+        from utils.cuotas_periodos import calcular_estado_financiero, fecha_cubierta_para_meses_adeudados
+        from utils.fechas import hoy_club
+        db = SessionLocal()
+        try:
+            u = db.query(models.Usuario).filter_by(id_usuario=U["socio"]).first()
+            u.mes_cubierto_hasta = fecha_cubierta_para_meses_adeudados(3, 10)
+            db.commit()
+            debe_antes = calcular_estado_financiero(u.mes_cubierto_hasta, u.fecha_ingreso, 10).cantidad_meses
+        finally: db.close()
+        rman = await cl.post(f"{BASE}/admin/pagos/registrar-pago-manual",
+                             json={"id_usuario": U["socio"], "meses_a_pagar": 3}, headers=H(t_admin))
+        db = SessionLocal()
+        try:
+            u = db.query(models.Usuario).filter_by(id_usuario=U["socio"]).first()
+            debe_despues = calcular_estado_financiero(u.mes_cubierto_hasta, u.fecha_ingreso, 10).cantidad_meses
+        finally: db.close()
+        ok(f"debía {debe_antes}, paga 3 por ventanilla → debe 0",
+           rman.status_code == 201 and debe_antes == 3 and debe_despues == 0,
+           f"({rman.status_code}, antes={debe_antes} después={debe_despues})")
+
+        # mismo chequeo por el camino del socio: generar orden de 2 meses y aprobarla
+        db = SessionLocal()
+        try:
+            u = db.query(models.Usuario).filter_by(id_usuario=U["socio"]).first()
+            u.mes_cubierto_hasta = fecha_cubierta_para_meses_adeudados(2, 10)
+            db.commit()
+        finally: db.close()
+        rgo2 = await cl.post(f"{BASE}/socio/cuotas/generar-orden", json={"meses_a_pagar": 2}, headers=H(t_socio))
+        oid2 = rgo2.json().get("id_orden")
+        rap2 = await cl.post(f"{BASE}/admin/ordenes/{oid2}/aprobar", json={}, headers=H(t_admin))
+        db = SessionLocal()
+        try:
+            u = db.query(models.Usuario).filter_by(id_usuario=U["socio"]).first()
+            debe_fin = calcular_estado_financiero(u.mes_cubierto_hasta, u.fecha_ingreso, 10).cantidad_meses
+        finally: db.close()
+        ok("debía 2, aprueba orden de 2 → debe 0",
+           rap2.status_code == 200 and debe_fin == 0, f"({rap2.status_code}, después={debe_fin})")
 
         print("\n── sanity permisos ──")
         rs = await cl.get(f"{BASE}/admin/pagos/morosos", headers=H(t_socio))

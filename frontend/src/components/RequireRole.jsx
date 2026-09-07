@@ -20,7 +20,7 @@ export function rolesDeUsuario(user) {
   return []
 }
 
-function homePorRol(roles) {
+export function homePorRol(roles) {
   if (roles.includes('admin_general') || roles.includes('personal_administrativo')) return '/admin'
   if (roles.includes('personal_tecnico')) return '/gestion-planteles'
   if (roles.includes('socio') || roles.includes('jugador')) return '/socio'

@@ -862,3 +862,51 @@ WHERE p.estado = 'pendiente'
 
 ### Regresión
 Suite completa vuelta a correr después de estos cambios: **29/29 PASS**.
+
+---
+
+## Ronda de frontend + bugs conocidos (2026-09-06)
+
+### 🔴 R1 · Regresión que introdujo el propio fix M5 — corregida
+`CambiarPasswordObligatorio.jsx` cambiaba la clave (200) y después llamaba
+`refreshUser()` **con el token viejo**, que M5 acababa de invalidar → 401 →
+`logout()` → **el socio terminaba pateado al login**. Justo en el primer
+ingreso obligatorio, que es lo primero que hacen los ~300 socios migrados.
+
+**Solución (no bajar la seguridad de M5):** `POST /usuarios/me/password` ahora
+devuelve un **token nuevo** en la misma respuesta. Su `iat` es posterior a
+`password_actualizada_en`, así que pasa la validación. El frontend lo adopta
+con `aplicarToken()`.
+
+Las dos propiedades conviven, verificado con tests:
+- token viejo después del cambio → **401** (seguridad M5 intacta)
+- token devuelto → **200 al instante**, sin reloguear
+
+Aplicado también al cambio voluntario desde `SocioPerfil.jsx`.
+
+### R2 · `actualizarUsuario` no existía en el contexto
+`SocioPerfil.jsx` llamaba `actualizarUsuario?.(...)` pero `AuthContext` solo
+exponía `refreshUser`. Con el `?.` fallaba en silencio: al editar el perfil o
+subir la foto, el contexto global nunca se actualizaba. Se agregó
+`actualizarUsuario()` (y `aplicarToken()`) al provider.
+
+### R3 · Redirect post-login unificado
+`Login.jsx` solo mandaba a `/admin` al `admin_general`; todo el resto caía en
+`/socio` y `RequireRole` los rebotaba enseguida (doble redirect visible para
+staff, técnicos, porteros e invitados). Ahora usa `homePorRol()`, exportado
+desde `RequireRole.jsx` — un solo mapa rol→home para login y para el guard.
+
+### Bugs conocidos de CLAUDE.md — estado verificado
+Ver la tabla actualizada en `CLAUDE.md`. Resumen:
+- **Resueltos y verificados:** #1 (con test de regresión en los dos caminos),
+  #4, #5, #8, #9.
+- **Configuración:** #7 (`FRONTEND_URL` en Render).
+- **Sin resolver, requieren decisión/testeo de UI:** #2 (mostrar "pago
+  pendiente" en vez de moroso — el dato ya está en
+  `GET /socio/cuotas/orden-pendiente`), #3 (no reproducido en backend;
+  sospecha de doble submit del form), #6 (el badge solo recuenta al montar y
+  al cambiar de ruta).
+
+### Suite de regresión: **33 PASS · 0 FAIL**
+Se sumaron 4 checks: los 2 del token nuevo al cambiar la clave y los 2 del
+bug #1 (pagar N acredita N, por ventanilla y por aprobación de orden).

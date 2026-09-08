@@ -2,7 +2,7 @@
 
 Guía de contexto para Claude Code. Leer antes de tocar cualquier archivo.
 
-_Última actualización: 2026-09-06._
+_Última actualización: 2026-09-08._
 
 ---
 
@@ -472,7 +472,12 @@ npm run dev
 
 **Pendiente antes del MVP:**
 - Rotar todas las claves (AWS, MP, Resend, `SECRET_KEY`, password de Neon) — ver "Secretos filtrados en el historial de git". Idealmente también limpiar el historial (`git filter-repo`) o asumir que quedan expuestas y rotar.
-- Configurar UptimeRobot para alertas de caída (ya existe el endpoint `/health`)
+- Configurar UptimeRobot apuntando a `/health` (además de las alertas de caída, evita que Render duerma el proceso del free tier por inactividad y con eso reactiva el scheduler — sin esto los jobs no corren de noche).
+- Correr el `UPDATE` manual de limpieza de D3 (pagos zombis) documentado en `docs/auditoria-2026-09-06.md`, una vez confirmado que el scheduler está vivo. Las ~45 filas viejas no se arreglan solas (sus órdenes ya están expiradas, el job no las vuelve a mirar).
+- Confirmar que las 11 pre-reservas huérfanas de D2 (`reservas_instalaciones` en `bloqueada` con `id_orden = NULL`) se liberen solas una vez que el scheduler esté corriendo — `expirar_ordenes_vencidas` ya llama a `liberar_pre_reservas_expiradas()`. Si no se liberan en la primera corrida, revisar ese camino.
+- Agregar `tzdata` a `requirements.txt` — en Render (Linux) da igual, pero en Windows (entorno de dev) `utils/fechas.py` revienta al importar con `ZoneInfoNotFoundError` porque no hay tz database del sistema.
+- Confirmar `FRONTEND_URL` en Render (debe ser `https://www.clubatleticoroberts.com`). Si falta, todos los links de los mails caen a `localhost:5173` (bug conocido #7).
+- Limpiar las 3 becas de prueba (`es_becado = true`: DNIs ficticios tipo `99999998`, "Pedro Perez (Becado)").
 - Migrar Render y Neon a cuenta del club (clubatleticoroberts1@gmail.com)
 - Centralizar todas las env vars en `config.py` (hoy están repartidas entre `config.py` y `os.getenv` sueltos)
 

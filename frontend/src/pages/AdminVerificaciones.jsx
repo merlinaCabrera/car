@@ -36,6 +36,7 @@ import { textoError } from '../utils/errores';
 import { useState, useMemo, useEffect, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { resolverUrlArchivo } from '../utils/archivos'
 import { useAdminResource } from '../hooks/useAdminResource'
 import CategoriaOrdenBadge from '../components/admin/CategoriaOrdenBadge'
 import {
@@ -150,8 +151,22 @@ function VerificacionModal({ orden, onClose, onActionSuccess, token }) {
   const [showRechazoInput, setShowRechazoInput] = useState(false)
   const [motivoRechazo, setMotivoRechazo] = useState('')
 
-  const esPdf = orden.pago?.comprobante_url?.toLowerCase().endsWith('.pdf')
+  // Ojo: comprobante_url ahora llega como Presigned URL de S3, o sea con query
+  // string (?X-Amz-Signature=...). Un endsWith('.pdf') sobre eso siempre daba
+  // false y un comprobante PDF terminaba renderizado como <img> roto.
+  const esPdf = (orden.pago?.comprobante_url ?? '')
+    .split('?')[0]
+    .toLowerCase()
+    .endsWith('.pdf')
   const esMercadoPago = orden.pago?.metodo_pago === 'mercado_pago'
+  // El pago en efectivo se cobra en mano, en el club: no hay comprobante que
+  // subir ni que mirar. Antes el botón "Aprobar" exigía comprobante para todo
+  // lo que no fuera Mercado Pago, así que una orden en efectivo quedaba
+  // trabada para siempre — la única salida era rechazarla (BUG-08 de la QA
+  // del 08-09, bloqueante). El backend nunca pidió comprobante para aprobar:
+  // el candado era solo este `disabled`.
+  const esEfectivo = orden.pago?.metodo_pago === 'efectivo'
+  const requiereComprobante = !esMercadoPago && !esEfectivo
 
   // Campo editable de meses a imputar — solo aparece si esta Orden puntual
   // tiene un ítem de cuota_social (puede ser una orden 'cuota' pura o una
@@ -333,7 +348,7 @@ function VerificacionModal({ orden, onClose, onActionSuccess, token }) {
               <div className="border rounded-lg overflow-hidden">
                 {esPdf ? (
                   <a
-                    href={`${API}${orden.pago.comprobante_url}`}
+                    href={resolverUrlArchivo(orden.pago.comprobante_url)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center gap-3 p-4 bg-gray-50 hover:bg-gray-100"
@@ -348,7 +363,7 @@ function VerificacionModal({ orden, onClose, onActionSuccess, token }) {
                   </a>
                 ) : (
                   <img
-                    src={`${API}${orden.pago.comprobante_url}`}
+                    src={resolverUrlArchivo(orden.pago.comprobante_url)}
                     alt={`Comprobante orden #${orden.id_orden}`}
                     className="w-full h-auto max-h-96 object-contain bg-gray-100"
                   />
@@ -356,7 +371,9 @@ function VerificacionModal({ orden, onClose, onActionSuccess, token }) {
               </div>
             ) : (
               <p className="text-sm text-gray-500 p-4 text-center bg-gray-50 rounded-lg">
-                El socio aún no ha subido un comprobante.
+                {esEfectivo
+                  ? '💵 Pago en efectivo — se cobra en el club, no lleva comprobante. Aprobá la orden cuando tengas la plata en mano.'
+                  : 'El socio aún no ha subido un comprobante.'}
               </p>
             )}
           </div>
@@ -381,13 +398,13 @@ function VerificacionModal({ orden, onClose, onActionSuccess, token }) {
           {orden.estado === 'expirada' ? (
             <div className="w-full flex items-center justify-between gap-3">
               <p className="text-xs text-gray-500">
-                {orden.pago?.comprobante_url
+                {orden.pago?.comprobante_url || !requiereComprobante
                   ? 'Reabrir le da otras 48hs para revisarla, como si nunca hubiera expirado.'
                   : 'No tiene comprobante — no hay nada que reabrir.'}
               </p>
               <button
                 onClick={handleReabrir}
-                disabled={isSubmitting || !orden.pago?.comprobante_url}
+                disabled={isSubmitting || (requiereComprobante && !orden.pago?.comprobante_url)}
                 className="flex-shrink-0 px-4 py-2 rounded-lg text-white bg-blue-600 hover:bg-blue-700 font-semibold disabled:opacity-50 transition-colors flex items-center gap-2"
               >
                 {isSubmitting && <Loader2 size={14} className="animate-spin" />}
@@ -419,7 +436,7 @@ function VerificacionModal({ orden, onClose, onActionSuccess, token }) {
               </button>
               <button
                 onClick={handleAprobar}
-                disabled={isSubmitting || (!esMercadoPago && !orden.pago?.comprobante_url)}
+                disabled={isSubmitting || (requiereComprobante && !orden.pago?.comprobante_url)}
                 className="px-4 py-2 rounded-lg text-white bg-green-600 hover:bg-green-700 font-semibold disabled:opacity-50 transition-colors flex items-center gap-2"
               >
                 {isSubmitting && <Loader2 size={14} className="animate-spin" />}

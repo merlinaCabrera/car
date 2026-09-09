@@ -10,6 +10,7 @@ import { textoError } from '../utils/errores';
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { homePorRol, rolesDeUsuario } from '../components/RequireRole'
 import { Eye, EyeOff, KeyRound } from 'lucide-react'
 
 const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
@@ -68,12 +69,17 @@ export default function CambiarPasswordObligatorio() {
       // aplicarToken dispara la recarga de /usuarios/me, que ya trae
       // requiere_cambio_password=false → RutaPrivada deja de redirigir acá.
       const data = await res.json().catch(() => ({}))
-      if (data.access_token) {
-        aplicarToken(data.access_token)
-      } else {
-        await refreshUser()   // backend viejo sin token en la respuesta
-      }
-      navigate('/socio', { replace: true })
+
+      // OJO con el orden: hay que ESPERAR a que /usuarios/me vuelva con
+      // requiere_cambio_password=false ANTES de navegar. Si navegamos antes,
+      // RutaPrivada todavía ve el `user` viejo (con el flag en true) y nos
+      // rebota de vuelta a esta misma pantalla — que es exactamente lo que se
+      // veía: el submit no hacía "nada" (BUG-02 de la QA del 08-09).
+      const perfil = data.access_token
+        ? await aplicarToken(data.access_token)
+        : await refreshUser()   // backend viejo sin token en la respuesta
+
+      navigate(homePorRol(rolesDeUsuario(perfil)), { replace: true })
     } catch (err) {
       setError(err.message)
     } finally {

@@ -2,7 +2,7 @@ import { textoError } from '../utils/errores';
 import { useState } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { homePorRol } from '../components/RequireRole';
+import { homePorRol, rolesDeUsuario } from '../components/RequireRole';
 import { Eye, EyeOff, ArrowLeft } from 'lucide-react';
 
 const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8000';
@@ -40,10 +40,13 @@ export default function Login() {
             // autenticado (con roles_asignados), así que podemos decidir el
             // redirect correcto sin esperar un re-render del contexto.
             const userData = await login(formData.dni, formData.password);
-            const roles = (userData?.roles_asignados ?? [])
-                .map(ur => ur.rol?.nombre)
-                .filter(Boolean);
- 
+            // rolesDeUsuario() = la MISMA función que usa RequireRole, que
+            // descarta roles desactivados y asignaciones vencidas igual que
+            // require_roles() en el backend. Antes acá se mapeaba
+            // roles_asignados crudo: una asignación vieja de admin mandaba a
+            // un socio a /admin y el panel cargaba vacío con 403 (BUG-01).
+            const roles = rolesDeUsuario(userData);
+
             // Mismo mapa rol → home que usa RequireRole. Antes acá solo se
             // contemplaba admin_general y todo el resto caía en /socio: un
             // personal_administrativo, un técnico o un portero aterrizaban en

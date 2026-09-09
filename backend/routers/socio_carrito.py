@@ -509,6 +509,13 @@ def checkout_carrito(
         # Si el saldo cubrió todo, el Pago ya se aprobó y finalizar_pago_si_corresponde
         # mandó el mail de "compra confirmada" — no corresponde el de "orden generada,
         # subí el comprobante".
+        # Las órdenes de cuota social no se ven en "Mis Compras" (esa pantalla
+        # es tienda/alquileres a propósito): su estado vive en Gestión de
+        # Cuotas. Si el carrito era SOLO cuota, el link del mail tiene que ir
+        # ahí, si no el socio lo seguía y encontraba la pantalla vacía —
+        # BUG-06 de la QA del 08-09. Un carrito mixto sí va a Mis Compras,
+        # que es donde están las órdenes de tienda/alquiler.
+        solo_cuota = bool(items_cuotas) and not items_tienda
         background_tasks.add_task(
             email_tasks.task_orden_generada,
             email_destino=current_user.email,
@@ -516,6 +523,7 @@ def checkout_carrito(
             numero_pago=nuevo_pago.id_pago,
             monto=str(nuevo_pago.monto_total),
             metodo=metodo,
+            ruta_estado="/socio/cuotas" if solo_cuota else "/mis-compras",
         )
 
     if metodo == "efectivo":

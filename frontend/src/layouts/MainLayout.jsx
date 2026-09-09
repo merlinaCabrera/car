@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { rolesDeUsuario } from '../components/RequireRole';
 import { useCart } from '../context/CartContext';
 import {
   Menu,
@@ -109,14 +110,12 @@ export default function MainLayout({ userRole }) {
   // que cada bloque del menú se evalúa de forma independiente y pueden
   // aparecer varios apilados para la misma persona.
   // Soporta dos formatos: array de strings (del JWT) y array de objetos (de la API)
-  const userRoles = (() => {
-    const fromJwt = user?.roles  // string[] directo del token
-    const fromApi = user?.roles_asignados?.map(r => r.rol?.nombre).filter(Boolean)
-    // Preferir el que tenga datos
-    if (fromApi?.length) return fromApi
-    if (fromJwt?.length) return fromJwt
-    return []
-  })()
+  // rolesDeUsuario() (components/RequireRole.jsx) es la ÚNICA fuente de verdad
+  // de roles en el frontend: descarta roles desactivados y asignaciones
+  // vencidas, igual que require_roles() en el backend. Antes acá había una
+  // copia propia que no filtraba nada y el menú mostraba secciones que el
+  // backend después rechazaba con 403 (BUG-01 de la QA del 08-09).
+  const userRoles = rolesDeUsuario(user)
 
   const esSocio = userRoles.includes('socio');
   const esJugador = userRoles.includes('jugador');

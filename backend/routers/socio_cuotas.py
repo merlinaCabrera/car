@@ -47,6 +47,7 @@ from fastapi import (
     UploadFile,
     status,
 )
+from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
 import models
@@ -246,7 +247,7 @@ def obtener_estado_cuota(
 @router.get(
     "/historial",
     response_model=List[schemas.HistorialPagoCuotaResponse],
-    summary="Historial de pagos de cuota social ya aprobados",
+    summary="Historial de pagos de cuota social (aprobados y resueltos sin éxito)",
 )
 def obtener_historial_pagos(
     db: Session = Depends(get_db),
@@ -270,21 +271,33 @@ def obtener_historial_pagos(
         )
         .filter(
             models.Orden.id_usuario == socio.id_usuario,
-            models.Orden.estado == "aprobada",
+            # Todo lo YA RESUELTO, no solo lo aprobado. Las órdenes de cuota no
+            # aparecen en "Mis Compras" (esa pantalla es tienda/alquileres a
+            # propósito), así que si acá tampoco figuraban, un pago rechazado o
+            # expirado no existía en ninguna pantalla del socio — BUG-06 de la
+            # QA del 08-09. Las 'pendiente_verificacion' siguen fuera: esas ya
+            # se muestran arriba, en el banner de orden pendiente.
+            models.Orden.estado.in_(
+                ("aprobada", "rechazada", "expirada", "cancelada_socio")
+            ),
             models.DetalleOrden.id_producto.in_(ids_cuota),
         )
-        .order_by(models.Orden.aprobada_at.desc())
+        .order_by(
+            func.coalesce(models.Orden.aprobada_at, models.Orden.fecha_creacion).desc()
+        )
         .all()
     )
 
     return [
         schemas.HistorialPagoCuotaResponse(
             id_orden=d.id_orden,
-            fecha_pago=d.orden.aprobada_at,
+            estado=d.orden.estado,
+            fecha_pago=d.orden.aprobada_at or d.orden.fecha_creacion,
             cantidad_meses=d.cantidad,
             monto_pagado=d.precio_unitario_historico * d.cantidad,
             mes_referencia=d.mes_referencia,
             comprobante_url=_resolver_url_archivo(d.orden.pago.comprobante_url) if d.orden.pago else None,
+            motivo_rechazo=d.orden.motivo_rechazo,
         )
         for d in detalles
     ]

@@ -153,9 +153,12 @@ async def task_orden_generada(
     numero_pago: int,
     monto: str,
     metodo: str,
+    ruta_estado: str = "/mis-compras",
 ) -> None:
     try:
-        await email_service.enviar_orden_generada(email_destino, nombre_socio, numero_pago, monto, metodo)
+        await email_service.enviar_orden_generada(
+            email_destino, nombre_socio, numero_pago, monto, metodo, ruta_estado
+        )
         logger.info(f"Mail 'orden_generada' ({metodo}) enviado a {email_destino} (pago #{numero_pago})")
     except Exception:
         logger.exception(f"Fallo al enviar mail 'orden_generada' a {email_destino} (pago #{numero_pago})")
@@ -209,10 +212,11 @@ async def task_recordatorio_comprobante(
     numero_orden: int,
     monto: str,
     horas_restantes: int,
+    ruta_estado: str = "/mis-compras",
 ) -> None:
     try:
         await email_service.enviar_recordatorio_comprobante(
-            email_destino, nombre_socio, numero_orden, monto, horas_restantes
+            email_destino, nombre_socio, numero_orden, monto, horas_restantes, ruta_estado
         )
         logger.info(f"Mail 'recordatorio_comprobante' enviado a {email_destino} (orden #{numero_orden})")
     except Exception:

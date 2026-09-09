@@ -280,6 +280,11 @@ class RolResponseSimple(BaseModel):
     id_rol: int
     nombre: str
     peso_jerarquico: int
+    # El frontend necesita este flag para calcular los MISMOS roles efectivos
+    # que require_roles() del backend (que descarta roles desactivados y
+    # asignaciones vencidas). Sin esto el menú/redirect por rol se calculaba
+    # sobre roles que el backend ya no honra → shell de admin con todo en 403.
+    es_activo: bool = True
 
 
 class UsuarioRolResponse(BaseModel):
@@ -818,6 +823,23 @@ class PagoResponse(BaseModel):
         ),
     )
 
+    @field_validator("comprobante_url", mode="after")
+    @classmethod
+    def _firmar_comprobante(cls, v: Optional[str]) -> Optional[str]:
+        """
+        En DB se guarda el object KEY de S3 (bucket privado), no una URL.
+        Se firma acá, en el schema, y no en cada router, porque PagoResponse va
+        embebido en un montón de respuestas (orden pendiente del socio, bandeja
+        de /admin/verificaciones, mis-compras) y bastaba con que uno se
+        olvidara para que el link quedara roto — que es lo que pasaba tanto del
+        lado del socio como del admin (BUG-05 de la QA del 08-09).
+
+        resolver_url_archivo() es idempotente: si el valor ya es una ruta local
+        legacy o una URL ya firmada, la devuelve sin tocar.
+        """
+        from utils.s3 import resolver_url_archivo
+        return resolver_url_archivo(v)
+
 
 class DetalleOrdenCreate(BaseModel):
     """Un ítem dentro del carrito. El precio se resuelve en el backend."""
@@ -1176,15 +1198,30 @@ class EstadoCuotaSocioResponse(BaseModel):
 
 
 class HistorialPagoCuotaResponse(BaseModel):
-    """Un pago de cuota ya aprobado, para el historial del socio."""
+    """
+    Un intento de pago de cuota del socio, para su historial.
+
+    Incluye los RESUELTOS, no solo los aprobados: antes solo se devolvían las
+    órdenes 'aprobada', así que un pago rechazado o expirado no aparecía en
+    ningún lado de la app (las cuotas tampoco salen en "Mis Compras", que es
+    solo tienda/alquileres) — el socio se quedaba sin forma de ver qué había
+    pasado con su pago una vez que leía la notificación. BUG-06 de la QA del
+    08-09.
+    """
     id_orden: int
+    estado: str = Field(
+        default="aprobada",
+        description="aprobada | rechazada | expirada | cancelada_socio.",
+    )
     fecha_pago: Optional[datetime] = Field(
-        default=None, description="Orden.aprobada_at del pago."
+        default=None,
+        description="Orden.aprobada_at si se aprobó; si no, Orden.fecha_creacion.",
     )
     cantidad_meses: int
     monto_pagado: Decimal = Field(description="precio_unitario_historico × cantidad_meses.")
     mes_referencia: Optional[date] = None
     comprobante_url: Optional[str] = None
+    motivo_rechazo: Optional[str] = None
 
 
 class GenerarOrdenCuotaPayload(BaseModel):

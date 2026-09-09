@@ -255,6 +255,11 @@ def recordatorio_comprobante_pendiente():
             .filter(
                 models.Orden.estado == "pendiente_verificacion",
                 models.Pago.comprobante_url.is_(None),
+                # Solo la transferencia necesita comprobante. Un pago en
+                # efectivo (se cobra en el club) o por Mercado Pago nunca va a
+                # tener uno, así que este recordatorio los perseguía por algo
+                # que no pueden hacer — parte del enredo de BUG-08 (QA 08-09).
+                models.Pago.metodo_pago == "transferencia",
                 models.Orden.expira_at >= ventana_inicio,
                 models.Orden.expira_at < ventana_fin,
             )
@@ -271,12 +276,19 @@ def recordatorio_comprobante_pendiente():
 
             horas_restantes = max(1, int((orden.expira_at - ahora).total_seconds() // 3600))
             try:
+                # Una orden de cuota no aparece en "Mis Compras": su estado
+                # vive en Gestión de Cuotas (ver BUG-06 de la QA del 08-09).
+                es_cuota = any(
+                    d.producto is not None and d.producto.categoria == "cuota_social"
+                    for d in orden.detalles
+                )
                 asyncio.run(enviar_recordatorio_comprobante(
                     email_destino=socio.email,
                     nombre_socio=socio.nombre,
                     numero_orden=orden.id_orden,
                     monto=str(orden.monto_total),
                     horas_restantes=horas_restantes,
+                    ruta_estado="/socio/cuotas" if es_cuota else "/mis-compras",
                 ))
                 logger.info(f"[scheduler] Recordatorio enviado a {socio.email} (orden #{orden.id_orden}, {horas_restantes}hs restantes)")
             except Exception as mail_exc:

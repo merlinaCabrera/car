@@ -177,15 +177,29 @@ async def enviar_aviso_club_pago_recibido(
     )
 
 
+# Adónde mandamos al socio a ver el estado de su orden. Las órdenes de cuota
+# social NO aparecen en "Mis Compras" (esa pantalla es tienda/alquileres a
+# propósito): su estado vive en "Gestión de Cuotas". Mandar siempre a
+# /mis-compras hacía que el socio siguiera el link y encontrara la pantalla
+# vacía — BUG-06 de la QA del 08-09.
+_NOMBRE_PANTALLA = {
+    "/mis-compras": "Mis Compras",
+    "/socio/cuotas": "Gestión de Cuotas",
+}
+
+
 async def enviar_orden_generada(
     email_destino: str, nombre_socio: str, numero_pago: int, monto: str, metodo: str,
+    ruta_estado: str = "/mis-compras",
 ) -> None:
     await _enviar(
         destinatarios=[email_destino],
         asunto=f"📋 Orden #{numero_pago} generada — Club Atlético Roberts",
         template_name="orden_generada.html",
         body={"nombre_socio": nombre_socio, "numero_pago": numero_pago,
-              "monto": monto, "metodo": metodo, "frontend_url": FRONTEND_URL},
+              "monto": monto, "metodo": metodo, "frontend_url": FRONTEND_URL,
+              "ruta_estado": ruta_estado,
+              "nombre_pantalla": _NOMBRE_PANTALLA.get(ruta_estado, "Mis Compras")},
     )
 
 
@@ -211,7 +225,12 @@ async def enviar_aviso_club_comprobante_recibido(
         template_name="aviso_club_comprobante.html",
         body={"nombre_socio": nombre_socio, "dni_socio": dni_socio,
               "numero_pago": numero_pago, "monto": monto,
-              "comprobante_url": f"{FRONTEND_URL}{comprobante_url}",
+              # NO se manda un link al archivo: en DB vive el object KEY del
+              # bucket privado, así que `FRONTEND_URL + key` armaba una URL que
+              # no existe (pestaña en blanco — mismo defecto que BUG-05 de la
+              # QA del 08-09). Firmar el archivo tampoco sirve acá: una
+              # Presigned URL vive 15 minutos y este mail se lee cuando se lee.
+              # El comprobante se mira desde el panel, que además pide sesión.
               # Antes apuntaba a /admin/pagos (solo cuotas) aunque este aviso
               # se dispara para CUALQUIER tipo de pago con comprobante
               # (cuota, alquiler, indumentaria o mixto) — se corrige para
@@ -234,13 +253,15 @@ async def enviar_orden_expirada(
 
 async def enviar_recordatorio_comprobante(
     email_destino: str, nombre_socio: str, numero_orden: int, monto: str, horas_restantes: int,
+    ruta_estado: str = "/mis-compras",
 ) -> None:
     await _enviar(
         destinatarios=[email_destino],
         asunto=f"⚠️ Recordatorio: subí el comprobante de tu orden #{numero_orden}",
         template_name="recordatorio_comprobante.html",
         body={"nombre_socio": nombre_socio, "numero_orden": numero_orden,
-              "monto": monto, "horas_restantes": horas_restantes, "frontend_url": FRONTEND_URL},
+              "monto": monto, "horas_restantes": horas_restantes, "frontend_url": FRONTEND_URL,
+              "ruta_estado": ruta_estado, "nombre_pantalla": _NOMBRE_PANTALLA.get(ruta_estado, "Mis Compras")},
     )
 
 

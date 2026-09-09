@@ -1,4 +1,5 @@
 import { textoError } from '../utils/errores';
+import { resolverUrlArchivo } from '../utils/archivos';
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -53,12 +54,6 @@ function resumenItems(detalles) {
   return detalles
     .map((d) => `${d.producto?.nombre ?? "Producto"} x${d.cantidad}`)
     .join(", ");
-}
-
-function resolverUrlArchivo(url) {
-  if (!url) return null;
-  if (url.startsWith("http")) return url;
-  return `${API_BASE_URL}${url}`;
 }
 
 // ─── Config visual por estado ──────────────────────────────────────────────
@@ -255,8 +250,11 @@ function UploadComprobante({ idPago, token, onExito }) {
 function TarjetaOrden({ orden, token, onComprobanteCargado }) {
   const comprobanteUrl = resolverUrlArchivo(orden.pago?.comprobante_url)
   const esMercadoPago = orden.pago?.metodo_pago === 'mercado_pago'
+  // El efectivo se cobra en el club: no hay comprobante que subir. Ofrecer el
+  // uploader acá era parte del mismo enredo de BUG-08 (QA del 08-09).
+  const esEfectivo = orden.pago?.metodo_pago === 'efectivo'
   const puedeSubirComprobante =
-    orden.estado === 'pendiente_verificacion' && !comprobanteUrl && !esMercadoPago
+    orden.estado === 'pendiente_verificacion' && !comprobanteUrl && !esMercadoPago && !esEfectivo
 
   return (
     <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition hover:shadow-md">

@@ -1,5 +1,5 @@
 import { textoError } from '../utils/errores';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
 
@@ -13,6 +13,33 @@ export default function RecuperarPassword() {
   const [loading, setLoading]   = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [error, setError]       = useState(null);
+
+  // Validez del token del link: 'chequeando' | 'ok' | 'invalido'.
+  // El backend pone token_recuperacion en NULL apenas se usa, pero esta
+  // pantalla mostraba el formulario igual con solo ver un ?token= en la URL:
+  // un link ya usado se veía idéntico a uno nuevo y el error recién saltaba al
+  // enviar (BUG-03 de la QA del 08-09). Ahora se pregunta primero.
+  const [tokenEstado, setTokenEstado] = useState(token ? 'chequeando' : 'ok');
+
+  useEffect(() => {
+    if (!token) return;
+    let cancelado = false;
+    (async () => {
+      try {
+        const res = await fetch(
+          `${API}/auth/reset-password/estado?token=${encodeURIComponent(token)}`
+        );
+        const data = await res.json().catch(() => ({}));
+        if (!cancelado) setTokenEstado(data?.valido ? 'ok' : 'invalido');
+      } catch {
+        // Si no se pudo consultar (red caída, backend dormido), no bloqueamos:
+        // dejamos intentar y que el POST decida. Es el mismo comportamiento
+        // que había antes de este chequeo.
+        if (!cancelado) setTokenEstado('ok');
+      }
+    })();
+    return () => { cancelado = true; };
+  }, [token]);
 
   // ── Paso 1: pedir el link ─────────────────────────────────────────────────
   const [identificador, setIdentificador] = useState('');
@@ -85,12 +112,16 @@ export default function RecuperarPassword() {
 
         <div className="text-center">
           <h1 className="text-3xl font-bold text-slate-800">
-            {token ? 'Nueva contraseña' : 'Recuperar contraseña'}
+            {!token
+              ? 'Recuperar contraseña'
+              : tokenEstado === 'invalido' ? 'Link no válido' : 'Nueva contraseña'}
           </h1>
           <p className="text-slate-500 mt-2">
-            {token
-              ? 'Elegí una contraseña nueva para tu cuenta.'
-              : 'Te enviaremos un link para restablecer tu acceso.'}
+            {!token
+              ? 'Te enviaremos un link para restablecer tu acceso.'
+              : tokenEstado === 'invalido'
+                ? 'El link de recuperación ya no está activo.'
+                : 'Elegí una contraseña nueva para tu cuenta.'}
           </p>
         </div>
 
@@ -138,8 +169,34 @@ export default function RecuperarPassword() {
           </form>
         )}
 
+        {/* ── Link ya usado o vencido ── */}
+        {!isSuccess && token && tokenEstado === 'invalido' && (
+          <div className="space-y-4">
+            <div className="bg-red-50 border border-red-200 text-red-800 rounded-xl p-4 text-sm leading-relaxed">
+              Este link ya no sirve: o ya lo usaste para cambiar tu contraseña, o pasó
+              más de una hora desde que lo pediste. Pedí uno nuevo, es gratis.
+            </div>
+            <button
+              onClick={() => navigate('/recuperar-password', { replace: true })}
+              className="w-full py-3 px-4 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
+            >
+              Pedir un link nuevo
+            </button>
+            <p className="text-center text-sm text-slate-600">
+              <Link to="/login" className="font-medium text-blue-600 hover:text-blue-500">
+                ← Volver al Login
+              </Link>
+            </p>
+          </div>
+        )}
+
+        {/* ── Chequeando el link ── */}
+        {!isSuccess && token && tokenEstado === 'chequeando' && (
+          <p className="text-center text-sm text-slate-500 py-4">Verificando el link…</p>
+        )}
+
         {/* ── Paso 2: nueva contraseña ── */}
-        {!isSuccess && token && (
+        {!isSuccess && token && tokenEstado === 'ok' && (
           <form onSubmit={handleReset} className="space-y-4">
             <div className="relative">
               <input

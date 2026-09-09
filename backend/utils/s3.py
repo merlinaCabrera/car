@@ -105,6 +105,33 @@ def generar_presigned_url(key: str, expiracion_segundos: int = PRESIGNED_URL_EXP
         )
 
 
+def resolver_url_archivo(valor: str | None) -> str | None:
+    """
+    Convierte lo que hay guardado en DB en una URL que el navegador pueda abrir:
+
+      - None / vacío           → None
+      - '/uploads/...'         → se devuelve tal cual (ruta local legacy)
+      - 'http...'              → ya está resuelta, no se toca (evita re-firmar)
+      - cualquier otra cosa    → es un object key privado → Presigned URL
+
+    Es la contracara de subir_archivo(): ahí se guarda el KEY, no una URL. Sin
+    este paso el frontend recibía el key pelado y armaba links tipo
+    `https://api.../comprobantes/146/abc.jpeg`, que no existen como ruta del
+    backend — se abría una pestaña en blanco (BUG-05 de la QA del 08-09).
+
+    Nunca lanza: si S3 falla, devuelve None y la UI muestra "no disponible" en
+    vez de romper toda la respuesta por una imagen.
+    """
+    if not valor:
+        return None
+    if valor.startswith("/") or valor.startswith("http://") or valor.startswith("https://"):
+        return valor
+    try:
+        return generar_presigned_url(valor)
+    except Exception:
+        return None
+
+
 def es_key_s3(url: str) -> bool:
     """
     Detecta si un valor almacenado en DB es un object key de S3

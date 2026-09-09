@@ -167,12 +167,18 @@ regresión y conviene avisar antes de seguir.
 - [ ] La orden aparece en `/admin/verificaciones`
 
 ### 3.4 Aprobación / rechazo de pago (admin)
-- [ ] `/admin/verificaciones` → abrir el comprobante (la imagen carga desde S3)
+- [ ] `/admin/verificaciones` → abrir el comprobante (la imagen carga desde S3 vía Presigned URL)
+- [ ] **Efectivo:** una orden con método efectivo se puede **aprobar sin comprobante**
+      (el botón no queda deshabilitado; el panel avisa que se cobra en el club)
 - [ ] **Aprobar** →
   - [ ] Se acreditan los meses; `mes_cubierto_hasta` avanza
   - [ ] **Regresión #1:** pagué 2 meses → se acreditan **2** (no 1).
   - [ ] El socio pasa a "al día" (o baja la cantidad de meses de deuda)
-  - [ ] Llega mail **`orden_aprobada_cuota`**
+  - [ ] Llega mail **`compra_confirmada`** (asunto: "✅ Compra confirmada — Comprobante #N").
+        ⚠️ Ya NO existe `orden_aprobada_cuota`: se reemplazó por un único mail por **Pago**,
+        con el detalle completo del carrito. Si el carrito tenía cuota + tienda, llega **uno solo**,
+        y recién cuando se resolvieron TODAS las órdenes de ese pago.
+  - [ ] Llega mail **`aviso_club_pago`** al club
   - [ ] QR y calendario quedan **coherentes entre sí**
 - [ ] **Rechazar** otra orden con motivo →
   - [ ] Llega mail **`orden_rechazada`**
@@ -369,7 +375,7 @@ Para **cada** mail: (a) llega, (b) no cae en spam — dominio verificado en Rese
 - [ ] `solicitud_rechazada`
 - [ ] `bienvenida_alta_manual`
 - [ ] `orden_generada`
-- [ ] `orden_aprobada_cuota`
+- [ ] `compra_confirmada` (reemplaza a los viejos `orden_aprobada_cuota` / `orden_aprobada_tienda`)
 - [ ] `orden_aprobada` (reserva)
 - [ ] `orden_rechazada`
 - [ ] `orden_expirada`

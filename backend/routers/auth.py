@@ -161,6 +161,51 @@ async def solicitar_recuperacion(
     return {"ok": True}
 
 
+def _token_recuperacion_valido(usuario: models.Usuario | None) -> bool:
+    """
+    Un token de recuperación sirve solo si existe el usuario, todavía tiene un
+    token guardado y no venció. `token_recuperacion` se pone en NULL apenas se
+    usa (ver resetear_password), así que esto también cubre el "ya usado".
+    """
+    if usuario is None or not usuario.token_recuperacion:
+        return False
+    if usuario.token_recuperacion_expira is None:
+        return False
+    return usuario.token_recuperacion_expira >= datetime.now(timezone.utc)
+
+
+# ─── GET /auth/reset-password/estado ─────────────────────────────────────────
+
+@router.get(
+    "/reset-password/estado",
+    status_code=status.HTTP_200_OK,
+    summary="¿El token del link de recuperación sigue siendo válido?",
+)
+def estado_token_recuperacion(
+    token: str,
+    db: Session = Depends(get_db),
+):
+    """
+    Lo consulta el frontend al ABRIR el link del mail, antes de mostrar el
+    formulario de contraseña nueva.
+
+    Sin esto, un link ya usado (o vencido) se veía idéntico a uno nuevo: la
+    pantalla pedía la contraseña como si nada y el error recién aparecía al
+    enviar. Para quien testeaba, eso se leía como "el link se puede reusar"
+    (BUG-03 de la QA del 08-09) — el backend ya invalidaba el token, lo que
+    faltaba era decírselo a la pantalla.
+
+    No revela nada: responde lo mismo (valido=false) para un token inexistente,
+    uno vencido y uno ya usado.
+    """
+    usuario = (
+        db.query(models.Usuario)
+        .filter(models.Usuario.token_recuperacion == token)
+        .first()
+    )
+    return {"valido": _token_recuperacion_valido(usuario)}
+
+
 # ─── POST /auth/reset-password ───────────────────────────────────────────────
 
 @router.post(
@@ -182,7 +227,7 @@ def resetear_password(
         .first()
     )
 
-    if not usuario or usuario.token_recuperacion_expira < datetime.now(timezone.utc):
+    if not _token_recuperacion_valido(usuario):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="El link expiró o no es válido. Solicitá uno nuevo.",

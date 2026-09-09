@@ -57,7 +57,7 @@
 <table cellpadding="0" cellspacing="0" width="100%" style="margin-bottom:16px;">
   <tr>
     <td align="center">
-      <a href="{{ frontend_url }}/mis-compras"
+      <a href="{{ frontend_url }}{{ ruta_estado }}"
          style="display:inline-block; background-color:#1b5e20; color:#ffffff;
                 text-decoration:none; font-size:15px; font-weight:700;
                 padding:12px 32px; border-radius:6px;">
@@ -75,7 +75,7 @@
 {% if metodo == 'efectivo' %}
 <p style="margin:0; color:#666; font-size:13px; line-height:1.6;">
   Podés ver el estado de tu orden desde
-  <a href="{{ frontend_url }}/mis-compras" style="color:#1b5e20;">Mis Compras</a>.
+  <a href="{{ frontend_url }}{{ ruta_estado }}" style="color:#1b5e20;">{{ nombre_pantalla }}</a>.
 </p>
 {% endif %}
 {% endblock %}

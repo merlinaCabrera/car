@@ -19,6 +19,7 @@
 import { textoError } from '../utils/errores';
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useAuth } from '../context/AuthContext'
+import { rolesDeUsuario } from '../components/RequireRole'
 import CalendarioMensual from '../components/CalendarioMensual'
 import {
   Calendar,
@@ -57,13 +58,9 @@ const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 // strings (JWT) y array de objetos (API), priorizando el que tenga datos.
 function useRolesDeUsuario() {
   const { user } = useAuth()
-  return useMemo(() => {
-    const fromJwt = user?.roles
-    const fromApi = user?.roles_asignados?.map(r => r.rol?.nombre).filter(Boolean)
-    if (fromApi?.length) return fromApi
-    if (fromJwt?.length) return fromJwt
-    return []
-  }, [user])
+  // rolesDeUsuario() filtra roles desactivados y asignaciones vencidas, igual
+  // que require_roles() en el backend (ver components/RequireRole.jsx).
+  return useMemo(() => rolesDeUsuario(user), [user])
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

@@ -25,6 +25,7 @@ export function AuthProvider({ children }) {
       if (res.ok) {
         const userData = await res.json();
         setUser(userData);
+        return userData;
       } else {
         // El token puede ser inválido o expirado
         logout();
@@ -35,6 +36,7 @@ export function AuthProvider({ children }) {
     } finally {
       setLoading(false);
     }
+    return null;
   }, []);
 
   // Al cargar, verifica si hay un token y busca los datos del usuario
@@ -98,10 +100,17 @@ export function AuthProvider({ children }) {
   // Lo usa el cambio de contraseña: el backend invalida los tokens emitidos
   // antes del cambio y devuelve uno nuevo en la misma respuesta. Sin esto la
   // sesión se caía (401) justo después de cambiar la clave.
-  const aplicarToken = (nuevoToken) => {
-    if (!nuevoToken) return;
+  // Devuelve el perfil ya recargado, y recién ahí resuelve. Es a propósito
+  // `await fetchUserProfile(...)` en vez de dejarlo en manos del useEffect que
+  // reacciona a `token`: quien llama (CambiarPasswordObligatorio) navega apenas
+  // vuelve, y si `user` todavía tuviera requiere_cambio_password=true,
+  // RutaPrivada lo rebota a /cambiar-password-obligatorio y la pantalla parece
+  // colgada (BUG-02 de la QA del 08-09).
+  const aplicarToken = async (nuevoToken) => {
+    if (!nuevoToken) return null;
     localStorage.setItem('authToken', nuevoToken);
     setToken(nuevoToken);   // el useEffect re-consulta /usuarios/me con el nuevo
+    return await fetchUserProfile(nuevoToken);
   };
 
   // Actualiza el usuario en memoria con lo que devolvió un PATCH/POST, sin

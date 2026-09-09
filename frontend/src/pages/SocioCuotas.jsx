@@ -2,6 +2,7 @@
 import { textoError } from '../utils/errores';
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useAuth } from '../context/AuthContext'
+import { resolverUrlArchivo } from '../utils/archivos'
 import { useCart } from '../context/CartContext'
 import {
   Wallet,
@@ -25,6 +26,7 @@ import {
   ChevronRight,
   Lock,
   Gift,
+  XCircle,
 } from 'lucide-react'
 
 const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
@@ -139,13 +141,21 @@ function calcularEstadoFinanciero(mesCubiertoHastaISO, fechaIngresoISO, diaVenci
  * mes. Eso es exactamente lo que el backend usa para calcular mes_cubierto_hasta,
  * así que la comparación es perfectamente simétrica.
  *
- * @returns {'inactivo'|'pagado'|'adeudado'|'futuro'}
+ * @returns {'inactivo'|'pagado'|'adeudado'|'a_vencer'|'futuro'}
  *
  * Reglas (en orden de prioridad):
  *   1. inactivo  — fechaRep < fechaIngreso           (no era socio aún)
  *   2. pagado    — fechaRep < mesCubiertoHasta        (cuota saldada)
  *   3. adeudado  — fechaRep <= hoy  (mes ya venció sin pagar)
- *   4. futuro    — fechaRep > hoy   (mes por venir, sin cobertura)
+ *   4. a_vencer  — es el mes EN CURSO y todavía no llegó el día de vencimiento
+ *   5. futuro    — fechaRep > hoy   (mes por venir, sin cobertura)
+ *
+ * Sobre 'a_vencer': antes el mes en curso sin cobertura caía en 'futuro' hasta
+ * que pasaba el día 10, y en la pantalla se leía literalmente "Futuro" al lado
+ * de meses en rojo — parecía que el sistema no contaba un mes que el socio
+ * claramente debe (BUG-04 de la QA del 08-09). La plata NO cambia: ese mes
+ * sigue sin sumar a la deuda hasta que vence, igual que en el backend. Lo que
+ * cambia es que ahora se muestra como "Vence el 10" en vez de "Futuro".
  */
 function estadoDeMes(anio, mes1based, diaVencimiento, fechaIngreso, mesCubiertoHasta, becadoHasta = null) {
   // Clamp del día al último día del mes para robustez
@@ -176,7 +186,10 @@ function estadoDeMes(anio, mes1based, diaVencimiento, fechaIngreso, mesCubiertoH
   // Regla 4: adeudado (venció sin pagar y sin beca)
   if (fechaRep <= hoy) return 'adeudado'
 
-  // Regla 5: futuro
+  // Regla 5: el mes en curso, que vence en unos días — no es "futuro"
+  if (anio === hoy.getFullYear() && mes1based === hoy.getMonth() + 1) return 'a_vencer'
+
+  // Regla 6: futuro
   return 'futuro'
 }
 
@@ -204,6 +217,13 @@ const ESTADO_CONFIG = {
     texto: 'Adeudado',
     textoClase: 'text-red-600',
   },
+  a_vencer: {
+    card: 'bg-amber-50 border-amber-200',
+    label: 'text-amber-900',
+    dot: 'bg-amber-400',
+    texto: 'Vence este mes',
+    textoClase: 'text-amber-700',
+  },
   futuro: {
     card: 'bg-white border-gray-200',
     label: 'text-gray-500',
@@ -220,8 +240,44 @@ const ESTADO_CONFIG = {
   },
 }
 
-function CeldaMes({ nombreMes, estado, esHoy }) {
+// ─── Config visual del historial de pagos de cuota ───────────────────────────
+// El historial incluye los intentos que NO prosperaron (rechazado, expirado,
+// cancelado). Se muestran para que el socio pueda volver a ver qué pasó con un
+// pago después de que la notificación se pierde — antes desaparecían del todo
+// (BUG-06 de la QA del 08-09).
+
+const HISTORIAL_ESTADO_CONFIG = {
+  aprobada: {
+    label: 'Pagado',
+    icon: Receipt,
+    iconWrap: 'bg-green-50 text-green-600',
+    badge: 'bg-green-100 text-green-700',
+  },
+  rechazada: {
+    label: 'Rechazado',
+    icon: XCircle,
+    iconWrap: 'bg-red-50 text-red-500',
+    badge: 'bg-red-100 text-red-700',
+  },
+  expirada: {
+    label: 'Expirado',
+    icon: Clock,
+    iconWrap: 'bg-gray-100 text-gray-400',
+    badge: 'bg-gray-100 text-gray-600',
+  },
+  cancelada_socio: {
+    label: 'Cancelado',
+    icon: XCircle,
+    iconWrap: 'bg-gray-100 text-gray-400',
+    badge: 'bg-gray-100 text-gray-600',
+  },
+}
+
+function CeldaMes({ nombreMes, estado, esHoy, diaVencimiento }) {
   const cfg = ESTADO_CONFIG[estado] ?? ESTADO_CONFIG.futuro
+  const texto = estado === 'a_vencer' && diaVencimiento
+    ? `Vence el ${diaVencimiento}`
+    : cfg.texto
 
   return (
     <div
@@ -244,6 +300,7 @@ function CeldaMes({ nombreMes, estado, esHoy }) {
         {estado === 'inactivo' && <Lock size={14} className="text-gray-400" />}
         {estado === 'pagado'   && <CheckCircle2 size={14} className="text-green-600" />}
         {estado === 'adeudado' && <AlertTriangle size={14} className="text-red-500" />}
+        {estado === 'a_vencer' && <CalendarClock size={14} className="text-amber-600" />}
         {estado === 'futuro'   && <div className="w-3 h-3 rounded-full border-2 border-blue-300" />}
         {estado === 'becado'   && <Gift size={14} className="text-teal-600" />}
       </div>
@@ -255,7 +312,7 @@ function CeldaMes({ nombreMes, estado, esHoy }) {
 
       {/* Badge de estado */}
       <span className={`text-[10px] font-semibold leading-none ${cfg.textoClase}`}>
-        {cfg.texto}
+        {texto}
       </span>
     </div>
   )
@@ -313,7 +370,7 @@ function CalendarioAnual({ estado }) {
 
   // Resumen del año visible
   const resumen = useMemo(() => {
-    const conteo = { pagado: 0, adeudado: 0, futuro: 0, inactivo: 0, becado: 0 }
+    const conteo = { pagado: 0, adeudado: 0, a_vencer: 0, futuro: 0, inactivo: 0, becado: 0 }
     meses.forEach(m => { conteo[m.estado]++ })
     return conteo
   }, [meses])
@@ -377,6 +434,12 @@ function CalendarioAnual({ estado }) {
               {resumen.becado} becado{resumen.becado !== 1 ? 's' : ''}
             </span>
           )}
+          {resumen.a_vencer > 0 && (
+            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-700">
+              <span className="w-2 h-2 rounded-full bg-amber-400 inline-block" />
+              vence este mes
+            </span>
+          )}
           {resumen.futuro > 0 && (
             <span className="inline-flex items-center gap-1.5 text-xs font-medium text-blue-500">
               <span className="w-2 h-2 rounded-full bg-blue-300 inline-block" />
@@ -400,6 +463,7 @@ function CalendarioAnual({ estado }) {
             nombreMes={nombre}
             estado={estadoMes}
             esHoy={esHoy}
+            diaVencimiento={diaVenc}
           />
         ))}
       </div>
@@ -409,6 +473,7 @@ function CalendarioAnual({ estado }) {
         {[
           { estado: 'pagado',   label: 'Pagado' },
           { estado: 'adeudado', label: 'Adeudado' },
+          { estado: 'a_vencer', label: 'Vence este mes' },
           { estado: 'futuro',   label: 'Futuro' },
           { estado: 'becado',   label: 'Becado' },
           { estado: 'inactivo', label: 'No era socio' },
@@ -841,6 +906,13 @@ export default function SocioCuotas() {
   // El comprobante vive en el Pago padre (pago.comprobante_url), no en la Orden.
   const comprobanteUrl = ordenPendiente?.pago?.comprobante_url ?? null
 
+  // El método de pago cambia TODO el copy de este banner. Antes era siempre el
+  // de transferencia: alguien que elegía efectivo veía "Total a transferir" y
+  // "Falta subir el comprobante de transferencia", con un botón para subir algo
+  // que nunca iba a tener (BUG-08 de la QA del 08-09).
+  const metodoPago = ordenPendiente?.pago?.metodo_pago ?? 'transferencia'
+  const esEfectivo = metodoPago === 'efectivo'
+
   return (
     <div className="p-4 sm:p-6 max-w-4xl mx-auto space-y-6 sm:space-y-8">
 
@@ -887,18 +959,24 @@ export default function SocioCuotas() {
             <div className="flex-1 min-w-0">
               <h3 className="text-base sm:text-lg font-bold text-blue-900">Tenés un pago en proceso</h3>
               <p className="text-sm text-blue-800 mt-0.5">
-                Orden #{ordenPendiente.id_orden} — Total a transferir:{' '}
+                Orden #{ordenPendiente.id_orden} — {esEfectivo ? 'Total a pagar' : 'Total a transferir'}:{' '}
                 <span className="font-bold">{formatoMoneda.format(ordenPendiente.monto_total)}</span>
               </p>
               <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
-                {comprobanteUrl ? (
+                {esEfectivo ? (
+                  <span className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-800">
+                    <Info size={14} />
+                    Acercate a la sede del club a pagar. Un administrativo registra el cobro
+                    y tu cuenta se actualiza sola — no tenés que subir nada.
+                  </span>
+                ) : comprobanteUrl ? (
                   <>
                     <span className="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-700">
                       <CheckCircle size={14} />
                       Comprobante en revisión
                     </span>
                     <a
-                      href={`${API}${comprobanteUrl}`}
+                      href={resolverUrlArchivo(comprobanteUrl)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-800 underline underline-offset-2 transition-colors"
@@ -918,12 +996,14 @@ export default function SocioCuotas() {
           </div>
 
           <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 sm:justify-end">
-            <button
-              onClick={() => setMostrarUpload(true)}
-              className="w-full sm:w-auto px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold transition-colors text-sm"
-            >
-              {comprobanteUrl ? 'Cambiar Comprobante' : 'Subir Comprobante'}
-            </button>
+            {!esEfectivo && (
+              <button
+                onClick={() => setMostrarUpload(true)}
+                className="w-full sm:w-auto px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold transition-colors text-sm"
+              >
+                {comprobanteUrl ? 'Cambiar Comprobante' : 'Subir Comprobante'}
+              </button>
+            )}
             <button
               onClick={handleCancelarOrden}
               disabled={isCanceling}
@@ -999,24 +1079,40 @@ export default function SocioCuotas() {
             // comprobante_url viene directo en HistorialPagoCuotaResponse
             // (el backend lo mapea desde pago.comprobante_url al construir la lista)
             const urlComprobante = pago.pago?.comprobante_url ?? pago.comprobante_url ?? null
+            // El historial ya no trae solo aprobados: también los rechazados,
+            // expirados y cancelados, que antes no se veían en ninguna pantalla
+            // (BUG-06). Un pago que no prosperó no puede verse igual que uno
+            // que sí — de ahí el badge y el ícono distinto.
+            const cfg = HISTORIAL_ESTADO_CONFIG[pago.estado] ?? HISTORIAL_ESTADO_CONFIG.aprobada
+            const IconoEstado = cfg.icon
             return (
               <div key={pago.id_orden} className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="p-2 rounded-lg bg-gray-100 text-gray-500 flex-shrink-0">
-                    <Receipt size={16} />
+                  <div className={`p-2 rounded-lg flex-shrink-0 ${cfg.iconWrap}`}>
+                    <IconoEstado size={16} />
                   </div>
                   <div className="min-w-0">
-                    <p className="font-medium text-gray-900 truncate">
-                      {formatoFecha.format(new Date(pago.fecha_pago))}
-                    </p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-medium text-gray-900 truncate">
+                        {formatoFecha.format(new Date(pago.fecha_pago))}
+                      </p>
+                      <span className={`text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full ${cfg.badge}`}>
+                        {cfg.label}
+                      </span>
+                    </div>
                     <p className="text-xs text-gray-500">
                       {pago.cantidad_meses} mes{pago.cantidad_meses !== 1 ? 'es' : ''} — {formatoMoneda.format(pago.monto_pagado)}
                     </p>
+                    {pago.motivo_rechazo && (
+                      <p className="text-xs text-red-600 mt-1">
+                        Motivo: {pago.motivo_rechazo}
+                      </p>
+                    )}
                   </div>
                 </div>
                 {urlComprobante && (
                   <a
-                    href={`${API}${urlComprobante}`}
+                    href={resolverUrlArchivo(urlComprobante)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-blue-600 hover:bg-blue-50 transition-colors self-start sm:self-auto"

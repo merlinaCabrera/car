@@ -6,6 +6,7 @@ import Beneficios from '../components/landing/Beneficios';
 import Sponsors from '../components/landing/Sponsors';
 import Footer from '../components/landing/Footer';
 import { useAuth } from '../context/AuthContext';
+import { rolesDeUsuario } from '../components/RequireRole';
 
 export default function Landing() {
   const { user } = useAuth();
@@ -18,7 +19,7 @@ export default function Landing() {
   };
 
   if (user) {
-    const userRoles = user?.roles_asignados?.map(r => r.rol.nombre) || user?.roles || [];
+    const userRoles = rolesDeUsuario(user);
     if (userRoles.includes('admin_general')) {
       ctaProps = {
         to: '/admin',

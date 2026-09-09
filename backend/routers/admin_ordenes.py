@@ -595,7 +595,15 @@ def reabrir_orden(
             ),
         )
 
-    if orden.pago is None or not orden.pago.comprobante_url:
+    # Un pago en efectivo no lleva comprobante nunca (se cobra en mano), así que
+    # exigirlo para reabrir lo dejaba sin salida igual que en la aprobación
+    # — ver BUG-08 de la QA del 08-09.
+    _sin_comprobante_es_normal = (
+        orden.pago is not None and orden.pago.metodo_pago in ("efectivo", "mercado_pago")
+    )
+    if orden.pago is None or (
+        not orden.pago.comprobante_url and not _sin_comprobante_es_normal
+    ):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=(

@@ -15,6 +15,7 @@ si algo falla a mitad de camino.
 """
 from __future__ import annotations
 
+import logging
 from datetime import date, datetime, timezone
 from typing import Optional
 
@@ -26,6 +27,8 @@ import schemas
 from mailer.services import email_tasks
 from utils.audit import registrar_audit
 from utils.cuotas_periodos import calcular_estado_financiero, calcular_nuevo_mes_cubierto
+
+logger = logging.getLogger(__name__)
 
 
 def obtener_dia_vencimiento(db: Session) -> int:
@@ -178,7 +181,13 @@ def finalizar_pago_si_corresponde(
     se manda este mail — el rechazo ya se avisa por separado en
     rechazar_orden() vía task_orden_rechazada.
     """
-    if pago is None or pago.mail_confirmacion_enviado:
+    if pago is None:
+        return
+    if pago.mail_confirmacion_enviado:
+        logger.info(
+            "compra_confirmada omitido (pago #%s): el mail resumen ya se había enviado.",
+            pago.id_pago,
+        )
         return
 
     quedan_pendientes = (
@@ -191,19 +200,36 @@ def finalizar_pago_si_corresponde(
         is not None
     )
     if quedan_pendientes:
+        logger.info(
+            "compra_confirmada pospuesto (pago #%s): quedan órdenes hermanas pendientes.",
+            pago.id_pago,
+        )
         return  # todavía falta resolver alguna orden hermana
 
     pago.mail_confirmacion_enviado = True  # idempotencia, pase lo que pase abajo
 
     if pago.estado != "verificado":
+        logger.info(
+            "compra_confirmada omitido (pago #%s): el pago quedó en '%s', no verificado.",
+            pago.id_pago, pago.estado,
+        )
         return  # rechazado del todo: ya se avisó por orden, no hay nada que confirmar
 
     socio = pago.usuario
     if not socio or not socio.email:
+        logger.warning(
+            "compra_confirmada NO enviado (pago #%s): el socio no tiene email cargado.",
+            pago.id_pago,
+        )
         return
 
     secciones, subtotal_items = _armar_secciones_compra(pago)
     if not secciones:
+        logger.warning(
+            "compra_confirmada NO enviado (pago #%s): el pago está verificado pero "
+            "ninguna de sus órdenes quedó aprobada — revisar.",
+            pago.id_pago,
+        )
         return  # nada aprobado realmente (no debería pasar si estado=='verificado')
 
     saldo_aplicado = subtotal_items - pago.monto_total
@@ -228,6 +254,10 @@ def finalizar_pago_si_corresponde(
         tipo=tipo_label,
     )
 
+    logger.info(
+        "compra_confirmada encolado (pago #%s → %s, método %s, %s sección/es).",
+        pago.id_pago, socio.email, pago.metodo_pago, len(secciones),
+    )
     background_tasks.add_task(
         email_tasks.task_compra_confirmada,
         email_destino=socio.email,

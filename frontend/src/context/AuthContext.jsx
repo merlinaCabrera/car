@@ -113,6 +113,48 @@ export function AuthProvider({ children }) {
     return await fetchUserProfile(nuevoToken);
   };
 
+  // Cierre del cambio de contraseña OBLIGATORIO (primer ingreso).
+  //
+  // Por qué no alcanza con aplicarToken(): ese camino hace que el redirect
+  // dependa de que /usuarios/me conteste bien ANTES de navegar. Si esa
+  // request falla o tarda (token recién rotado, cold start de Render de 40-60 s,
+  // un 401 de borde por la granularidad de `iat`, la respuesta cacheada por el
+  // navegador), `user` sigue con requiere_cambio_password=true, RutaPrivada
+  // rebota a /cambiar-password-obligatorio y desde afuera se ve como que el
+  // botón "no hace nada" — el síntoma exacto de BUG-02, que sobrevivió al
+  // primer intento de arreglo justamente porque el arreglo seguía colgado de
+  // esa request.
+  //
+  // Acá invertimos la dependencia: el 200 del backend YA es la confirmación de
+  // que la contraseña cambió y de que el flag quedó en false. Con eso alcanza
+  // para desbloquear la navegación, así que bajamos el flag en memoria de
+  // forma sincrónica y recién después refrescamos el perfil, sin que el
+  // redirect quede a la espera de nada.
+  const confirmarCambioPassword = (nuevoToken) => {
+    if (nuevoToken) {
+      localStorage.setItem('authToken', nuevoToken);
+      setToken(nuevoToken);
+    }
+
+    // Bajar el flag YA, sin red de por medio. Es lo único que RutaPrivada
+    // mira para decidir si deja pasar. `user` es el perfil del render actual
+    // (el previo, con el flag en true): alcanza porque esta pantalla es
+    // standalone y no hay ninguna otra actualización de perfil en vuelo.
+    const perfilDesbloqueado = user
+      ? { ...user, requiere_cambio_password: false }
+      : null;
+    if (perfilDesbloqueado) setUser(perfilDesbloqueado);
+
+    // Refresco en segundo plano, para traer cualquier otro cambio del perfil.
+    // Deliberadamente NO se espera: si falla, la persona ya está adentro con
+    // un perfil válido y el próximo refresh lo corrige.
+    fetchUserProfile(nuevoToken ?? token).catch(() => {});
+
+    // Se devuelve el perfil con el flag bajado para que quien llama pueda
+    // calcular el destino por rol sin esperar el re-render.
+    return perfilDesbloqueado;
+  };
+
   // Actualiza el usuario en memoria con lo que devolvió un PATCH/POST, sin
   // volver a pegarle a /usuarios/me.
   const actualizarUsuario = (datos) => {
@@ -122,7 +164,7 @@ export function AuthProvider({ children }) {
   return (
     <AuthContext.Provider value={{
       user, token, isAuthenticated, login, logout, loading,
-      aplicarToken, actualizarUsuario,
+      aplicarToken, actualizarUsuario, confirmarCambioPassword,
       refreshUser: () => fetchUserProfile(token),
     }}>
       {!loading && children}

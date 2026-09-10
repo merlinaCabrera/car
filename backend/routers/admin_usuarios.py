@@ -32,9 +32,17 @@ from fastapi import BackgroundTasks
 from mailer.services.email_tasks import task_cuenta_aprobada, task_socio_dado_de_baja, task_socio_reactivado, task_solicitud_rechazada, task_bienvenida_alta_manual
 from utils.cuotas_periodos import (
     calcular_estado_financiero,
+    cobertura_inicial_para_ingreso,
     fecha_cubierta_para_meses_adeudados,
 )
 from utils.fechas import hoy_club
+from utils.precios import (
+    calcular_edad,
+    calcular_precio_cuota,
+    es_menor,
+    obtener_descuento_menor_pct,
+    obtener_producto_cuota_social,
+)
 
 router = APIRouter(
     prefix="/admin/usuarios",
@@ -54,40 +62,19 @@ _ADMIN_GENERAL = ("admin_general",)
 # en este proyecto). Usados solo por editar_cobertura_socio() para
 # convertir un monto en pesos a una cantidad de meses. ─────────────────────
 
-def _calcular_edad(fecha_nacimiento: Optional[date]) -> Optional[int]:
-    if fecha_nacimiento is None:
-        return None
-    hoy = hoy_club()
-    return (
-        hoy.year - fecha_nacimiento.year
-        - ((hoy.month, hoy.day) < (fecha_nacimiento.month, fecha_nacimiento.day))
-    )
+# Helpers de precio: la implementación vive en utils/precios.py (fuente única
+# de verdad). Se re-exportan con los nombres locales de siempre para no tocar
+# los llamadores de este módulo.
+_calcular_edad = calcular_edad
+_obtener_producto_cuota_social = obtener_producto_cuota_social
+_obtener_descuento_menor_pct = obtener_descuento_menor_pct
+_calcular_precio_cuota = calcular_precio_cuota
 
 
-def _obtener_producto_cuota_social(db: Session) -> models.ProductoServicio:
-    producto = (
-        db.query(models.ProductoServicio)
-        .filter(
-            models.ProductoServicio.categoria == "cuota_social",
-            models.ProductoServicio.es_activo.is_(True),
-        )
-        .first()
-    )
-    if producto is None:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="No existe ningún producto activo con categoria='cuota_social'.",
-        )
-    return producto
-
-
-def _calcular_precio_cuota(precio_base: Decimal, fecha_nacimiento: Optional[date], db: Session) -> Decimal:
-    edad = _calcular_edad(fecha_nacimiento)
-    if edad is not None and edad < 18:
-        config = db.query(models.ConfiguracionGlobal).first()
-        descuento_pct = config.descuento_menor_pct if config else Decimal("40")
-        return precio_base * (Decimal("1") - descuento_pct / Decimal("100"))
-    return precio_base
+def _obtener_dia_vencimiento(db: Session) -> int:
+    """Día del mes en que vence la cuota (ConfiguracionGlobal), con fallback a 10."""
+    config = db.query(models.ConfiguracionGlobal).first()
+    return config.dia_vencimiento_cuota if config else 10
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -428,14 +415,19 @@ def aprobar_usuario(
         asignado_por=current_admin.id_usuario,
     ))
 
-    # Setear mes_cubierto_hasta al último día del mes actual para que
-    # el socio arranque al día y recién deba pagar el mes siguiente.
+    # Cobertura inicial: hasta el vencimiento del mes ANTERIOR al de ingreso,
+    # así el mes de ingreso queda como primer período adeudado y se cobra
+    # cuando el socio pague. El socio igual se ve AL DÍA durante todo su mes
+    # de ingreso, por la gracia de calcular_estado_financiero() (decisión D1).
+    #
+    # Antes acá se seteaba el último día del mes en curso: el mes de ingreso
+    # quedaba "cubierto" sin pago y el club perdía la primera cuota de cada
+    # socio nuevo.
     # Solo se toca si está vacío — no pisamos si ya tenía cobertura previa.
     if usuario.mes_cubierto_hasta is None:
-        hoy = hoy_club()
-        import calendar
-        ultimo_dia = calendar.monthrange(hoy.year, hoy.month)[1]
-        usuario.mes_cubierto_hasta = date(hoy.year, hoy.month, ultimo_dia)
+        usuario.mes_cubierto_hasta = cobertura_inicial_para_ingreso(
+            usuario.fecha_ingreso or hoy_club(), _obtener_dia_vencimiento(db)
+        )
     db.add(models.AuditLog(
         usuario_actor=current_admin.id_usuario,
         accion="APROBAR_SOLICITUD_SOCIO",
@@ -567,14 +559,13 @@ def crear_socio_manual(
         asignado_por=current_admin.id_usuario,
     ))
 
-    # Mismo criterio que al aprobar una solicitud normal: arranca al día,
-    # recién debe pagar el mes siguiente. Antes esto no se seteaba acá y el
-    # socio recién creado aparecía como moroso desde el primer día.
+    # Mismo criterio que al aprobar una solicitud normal (decisión D1): el mes
+    # de ingreso queda adeudado de verdad, pero el socio se ve al día mientras
+    # dure ese mes. Ver cobertura_inicial_para_ingreso().
     if nuevo_usuario.mes_cubierto_hasta is None:
-        hoy = hoy_club()
-        import calendar
-        ultimo_dia = calendar.monthrange(hoy.year, hoy.month)[1]
-        nuevo_usuario.mes_cubierto_hasta = date(hoy.year, hoy.month, ultimo_dia)
+        nuevo_usuario.mes_cubierto_hasta = cobertura_inicial_para_ingreso(
+            nuevo_usuario.fecha_ingreso or hoy_club(), _obtener_dia_vencimiento(db)
+        )
 
     db.add(models.AuditLog(
         usuario_actor=current_admin.id_usuario,
@@ -587,10 +578,17 @@ def crear_socio_manual(
     db.refresh(nuevo_usuario)
 
     if nuevo_usuario.email:
+        # El DNI y la contraseña temporal van EN el mail (decisión D3 de la QA):
+        # antes el socio recibía un mail que lo mandaba a usar una contraseña
+        # que nadie le había pasado. `usuario_in.password` es el texto plano que
+        # cargó el admin en el formulario — se usa acá y no se guarda en ningún
+        # lado más que el hash.
         background_tasks.add_task(
             task_bienvenida_alta_manual,
             email_destino=nuevo_usuario.email,
             nombre_socio=nuevo_usuario.nombre,
+            dni_socio=nuevo_usuario.dni,
+            password_temporal=usuario_in.password,
         )
 
     return nuevo_usuario
@@ -764,8 +762,7 @@ def editar_cobertura_socio(
             detail="No mandaste ningún campo para editar.",
         )
 
-    config = db.query(models.ConfiguracionGlobal).first()
-    dia_vencimiento = config.dia_vencimiento_cuota if config else 10
+    dia_vencimiento = _obtener_dia_vencimiento(db)
 
     mes_cubierto_hasta_antes = usuario.mes_cubierto_hasta
     fecha_ingreso_antes = usuario.fecha_ingreso
@@ -1271,10 +1268,30 @@ def actualizar_roles_usuario(
         db.add_all(nuevos_roles_orm)
 
     # ── 5. Audit log ──────────────────────────────────────────────────────────
+    #
+    # OJO: `ids_nuevos` NO es el estado final de los roles del usuario.
+    # Los roles protegidos ('socio' y 'admin_general') están prohibidos en el
+    # payload (403 en 2a) y el DELETE del paso 3 los excluye a propósito, así
+    # que sobreviven al cambio sin aparecer nunca en la lista que llega.
+    #
+    # Calcular el "después" solo desde `ids_nuevos` los daba por perdidos: el
+    # audit_log registraba un socio sin rol 'socio' y —peor— la notificación de
+    # 5b le avisaba "En el club te sacaron: socio" a alguien que lo conservaba
+    # intacto. Alcanzaba con editar cualquier dato del socio (la fecha de
+    # nacimiento, por ejemplo) para disparar ese aviso falso, porque el
+    # formulario manda la lista de roles seleccionables y 'socio' no está en
+    # ella (BUG-11 de la QA del 08-09).
+    #
+    # El estado final real = lo que llegó en el payload + los roles protegidos
+    # que el usuario ya tenía.
+    nombres_protegidos_conservados = [
+        nombre for nombre in ("socio", "admin_general")
+        if _por_nombre.get(nombre) is not None and nombre in roles_anteriores
+    ]
     roles_nuevos_nombres = sorted(
-        roles_validos[id_rol].nombre
-        for id_rol in ids_nuevos
-    ) if ids_nuevos else []
+        {roles_validos[id_rol].nombre for id_rol in ids_nuevos}
+        | set(nombres_protegidos_conservados)
+    )
 
     db.add(
         models.AuditLog(

@@ -3,7 +3,7 @@ import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import MainLayout from './layouts/MainLayout';
 import RutaPrivada from './components/RutaPrivada';
-import RequireRole from './components/RequireRole';
+import RequireRole, { ROLES_AREA_SOCIO, ROLES_AREA_ESCANER } from './components/RequireRole';
 import CambiarPasswordObligatorio from './pages/CambiarPasswordObligatorio';
 import Landing from './pages/Landing';
 import Ayuda from './pages/Ayuda';
@@ -60,7 +60,7 @@ function App() {
             <Route path="/cambiar-password-obligatorio" element={<CambiarPasswordObligatorio />} />
             <Route element={<MainLayout userRole="socio" />}>
               {/* Socio / Jugador — cualquier rol de miembro (no invitado ni admin_temporal sueltos) */}
-              <Route element={<RequireRole any={['socio', 'jugador', 'admin_general', 'personal_administrativo', 'personal_tecnico']} />}>
+              <Route element={<RequireRole any={ROLES_AREA_SOCIO} />}>
                 <Route path="/socio" element={<SocioInicio />} />
                 <Route path="/carrito" element={<SocioCarrito />} />
                 <Route path="/socio/cuotas" element={<SocioCuotas />} />
@@ -83,7 +83,7 @@ function App() {
               </Route>
 
               {/* Escáneres — porteros / comercios además del staff */}
-              <Route element={<RequireRole any={['admin_general', 'personal_administrativo', 'admin_temporal', 'invitado', 'personal_tecnico']} />}>
+              <Route element={<RequireRole any={ROLES_AREA_ESCANER} />}>
                 <Route path="/admin/escaner" element={<AdminScanner />} />
                 <Route path="/admin/escaner-evento" element={<AdminScannerEvento />} />
                 <Route path="/admin/escaner-canchas" element={<AdminScannerCancha />} />

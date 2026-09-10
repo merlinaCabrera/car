@@ -27,7 +27,6 @@ Decisiones técnicas:
 
 from __future__ import annotations
 
-import calendar
 import uuid
 from datetime import date, datetime, timezone
 from typing import Optional
@@ -57,6 +56,7 @@ import models
 import schemas
 from database import get_db
 from dependencies import get_current_user, require_roles
+from utils.cuotas_periodos import calcular_estado_financiero
 
 router = APIRouter(
     prefix="/qr",
@@ -226,45 +226,27 @@ def _calcular_estado_financiero(
     dia_vencimiento: int = 10,
 ) -> tuple[bool, int]:
     """
-    Puerto 1:1 de `calcularEstadoFinanciero` (SocioCuotas.jsx).
+    Estado financiero para el escáner de la puerta.
 
-    Reglas (idénticas al frontend):
-      1. fecha_base = mes_cubierto_hasta si NO es None (sin importar si está
-         en el pasado o el futuro).
-      2. Si mes_cubierto_hasta es None → fecha_base = fecha_ingreso, con el
-         día de vencimiento clampeado al último día de ESE mes (socio nuevo:
-         su primer "corte" es el día de vencimiento del mes en que ingresó).
-      3. Si tampoco hay fecha_ingreso → no hay nada que evaluar: al día,
-         0 meses adeudados (mismo comportamiento defensivo que el frontend).
-      4. Moroso SOLO si hoy > fecha_base (periodo de gracia: el mismo día
-         de vencimiento todavía cuenta como al día, igual que en JS con
-         `hoy <= fechaBase`).
-      5. meses_adeudados se calcula por diferencia de año/mes, +1 si ya pasó
-         el día de corte dentro del mes actual — igual que el JS.
+    Delega en utils/cuotas_periodos.calcular_estado_financiero(), que es la
+    fuente única de verdad del motor de cuotas. Antes esto era una copia a mano
+    de la lógica ("puerto 1:1 de calcularEstadoFinanciero en SocioCuotas.jsx"),
+    lo que dejaba CINCO implementaciones paralelas de la misma regla.
 
-    Devuelve (moroso, meses_adeudados).
+    Con la copia, dos cambios de la ronda 2 del QA no llegaban a la puerta:
+      · BUG-04 — el mes en curso dejó de contarse como adeudado hasta que
+        vence. La puerta habría marcado moroso a alguien que en su propia
+        pantalla figuraba al día.
+      · D1 — gracia por mes de ingreso. Un socio recién asociado habría
+        quedado rechazado en la puerta el mismo día que se dio de alta.
+
+    Se mantiene la firma `(moroso, cantidad_meses)` para no tocar los
+    llamadores de este módulo.
     """
-    fecha_base: Optional[date] = mes_cubierto_hasta
-
-    if fecha_base is None and fecha_ingreso is not None:
-        ultimo_dia_mes = calendar.monthrange(fecha_ingreso.year, fecha_ingreso.month)[1]
-        dia_clamp = min(dia_vencimiento, ultimo_dia_mes)
-        fecha_base = date(fecha_ingreso.year, fecha_ingreso.month, dia_clamp)
-
-    # Defensivo: sin mes_cubierto_hasta ni fecha_ingreso no hay nada que evaluar.
-    if fecha_base is None:
-        return False, 0
-
-    hoy = _hoy_local()
-
-    if hoy <= fecha_base:
-        return False, 0
-
-    meses_adeudados = (hoy.year - fecha_base.year) * 12 + (hoy.month - fecha_base.month)
-    if hoy.day > fecha_base.day:
-        meses_adeudados += 1
-
-    return True, meses_adeudados
+    estado = calcular_estado_financiero(
+        mes_cubierto_hasta, fecha_ingreso, dia_vencimiento, _hoy_local()
+    )
+    return estado.moroso, estado.cantidad_meses
 
 
 def _roles_activos_list(usuario: models.Usuario) -> list[str]:

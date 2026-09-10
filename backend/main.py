@@ -1,6 +1,29 @@
 # main.py
+import logging
 import os
 from dotenv import load_dotenv
+
+# ─────────────────────────────────────────────────────────────────────────────
+# LOGGING — tiene que configurarse explícitamente, y temprano.
+#
+# Sin esto el proyecto NO tenía ninguna configuración de logging: uvicorn
+# configura solo sus propios loggers ('uvicorn', 'uvicorn.error',
+# 'uvicorn.access') y deja el root logger sin handler, o sea en WARNING.
+# Consecuencia concreta: todos los `logger.info(...)` de los módulos del
+# proyecto (utils/ordenes.py, mailer/services/email_tasks.py) se descartaban
+# en silencio.
+#
+# Eso invalidó el diagnóstico de la ronda 1 del QA: se habían agregado logs
+# INFO en cada salida temprana de finalizar_pago_si_corresponde() para poder
+# ver por qué no salía el mail de confirmación, y en los logs de Render no
+# aparecía "ningún rastro" — no porque el código no pasara por ahí, sino
+# porque esas líneas nunca se emitían. Los `warning`/`exception` sí se veían,
+# pero solo por el handler de último recurso de Python.
+# ─────────────────────────────────────────────────────────────────────────────
+logging.basicConfig(
+    level=os.getenv("LOG_LEVEL", "INFO").upper(),
+    format="%(asctime)s %(levelname)-8s %(name)s: %(message)s",
+)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # CRÍTICO: load_dotenv() debe correr ANTES de cualquier import que use

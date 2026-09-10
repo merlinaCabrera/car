@@ -54,11 +54,8 @@ export default function RecuperarPassword() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ identificador }),
       });
-      // El endpoint responde 200 exista o no la cuenta, a propósito (no
-      // revelamos si el DNI/email está registrado). PERO tiene rate limit:
-      // con un 429 antes se mostraba igual "te mandamos el mail" y el socio
-      // esperaba un mail que nunca iba a llegar. El 429 no revela nada sobre
-      // la cuenta, así que se puede mostrar tal cual.
+      // Rate limit: con un 429 antes se mostraba igual "te mandamos el mail" y
+      // el socio esperaba un mail que nunca iba a llegar.
       if (res.status === 429) {
         setError('Hiciste varios pedidos seguidos. Esperá unos minutos y volvé a intentar.');
         return;
@@ -67,7 +64,17 @@ export default function RecuperarPassword() {
         setError('El servidor no respondió bien. Probá de nuevo en un momento.');
         return;
       }
-      setIsSuccess(true); // 200 o 4xx de validación: no revelamos si existe
+
+      // El backend ya NO responde neutro: dice si el DNI/email no está
+      // registrado o si la cuenta no tiene mail cargado (decisión D2 de la QA
+      // — se prioriza que el socio entienda qué pasó por sobre la protección
+      // anti-enumeración, que en un club chico aporta poco).
+      const data = await res.json().catch(() => ({}));
+      if (data?.estado === 'no_registrado' || data?.estado === 'sin_email') {
+        setError(data.mensaje);
+        return;
+      }
+      setIsSuccess(true);
     } catch {
       setError('Error de conexión. Intentá de nuevo.');
     } finally {
@@ -131,7 +138,7 @@ export default function RecuperarPassword() {
             <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-xl p-4 text-sm leading-relaxed">
               {token
                 ? '✅ ¡Contraseña actualizada! Ya podés iniciar sesión con tu nueva clave.'
-                : '📬 Si tu DNI o mail están registrados, vas a recibir un correo con el link. Revisá también la carpeta de spam.'}
+                : '📬 Te enviamos un correo con el link para cambiar tu contraseña. Revisá también la carpeta de spam.'}
             </div>
             <button
               onClick={() => navigate(token ? '/login' : '/')}

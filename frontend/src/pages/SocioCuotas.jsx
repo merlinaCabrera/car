@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { resolverUrlArchivo } from '../utils/archivos'
 import { useCart } from '../context/CartContext'
+import ConfirmDialog from '../components/ConfirmDialog'
 import {
   Wallet,
   CheckCircle2,
@@ -26,6 +27,7 @@ import {
   ChevronRight,
   Lock,
   Gift,
+  UserPlus,
   XCircle,
 } from 'lucide-react'
 
@@ -95,10 +97,16 @@ function formatearFechaCobertura(isoDate) {
  *     día de vencimiento (con clamp al último día del mes, ej. para meses
  *     cortos como febrero).
  *   · hoy <= fechaBase  → { moroso: false, mesesAdeudados: 0 }
- *   · hoy >  fechaBase  → moroso: true. mesesAdeudados = diferencia de meses
- *     de calendario entre hoy y fechaBase; si además ya pasó el día de
- *     vencimiento dentro del mes actual (hoy.getDate() > fechaBase.getDate()),
- *     se suma 1 mes extra (ese mes en curso también ya venció sin pagar).
+ *   · hoy >  fechaBase  → se cuentan SOLO los períodos ya vencidos, o sea
+ *     aquellos cuyo vencimiento es estrictamente anterior a hoy. El mes en
+ *     curso no suma hasta el día siguiente a su vencimiento.
+ *
+ * Este número es el que se muestra en el header ("N meses adeudados · $X") y
+ * tiene que coincidir con lo que pinta el calendario de abajo y con
+ * utils/cuotas_periodos.py en el backend. Antes no coincidía: el header sumaba
+ * el mes en curso desde el día 1 y el calendario ya lo mostraba como "a
+ * vencer", así que la misma pantalla decía 7 meses arriba y 6 en rojo abajo
+ * (BUG-04, ronda 2 de la QA).
  */
 function calcularEstadoFinanciero(mesCubiertoHastaISO, fechaIngresoISO, diaVencimiento = 10) {
   let fechaBase = parsearISO(mesCubiertoHastaISO)
@@ -118,17 +126,43 @@ function calcularEstadoFinanciero(mesCubiertoHastaISO, fechaIngresoISO, diaVenci
   const hoy = new Date()
   hoy.setHours(0, 0, 0, 0)
 
+  // Gracia por MES DE INGRESO (decisión D1): un socio que se asoció este mes
+  // se muestra al día. La deuda de ese mes existe (está en mes_cubierto_hasta)
+  // y aparece sola cuando el mes termina — no se condona. Mismo criterio que
+  // en_mes_de_ingreso() en utils/cuotas_periodos.py.
+  const ingresoParaGracia = parsearISO(fechaIngresoISO)
+  if (
+    ingresoParaGracia &&
+    ingresoParaGracia.getFullYear() === hoy.getFullYear() &&
+    ingresoParaGracia.getMonth() === hoy.getMonth()
+  ) return { moroso: false, mesesAdeudados: 0, enMesIngreso: true }
+
   if (hoy <= fechaBase) return { moroso: false, mesesAdeudados: 0 }
 
-  let mesesAdeudados =
+  let periodosHastaHoy =
     (hoy.getFullYear() - fechaBase.getFullYear()) * 12 +
     (hoy.getMonth() - fechaBase.getMonth())
 
   if (hoy.getDate() > fechaBase.getDate()) {
-    mesesAdeudados += 1
+    periodosHastaHoy += 1
   }
 
-  return { moroso: true, mesesAdeudados }
+  // Solo los ya vencidos cuentan como deuda.
+  let mesesAdeudados = 0
+  for (let i = 1; i <= periodosHastaHoy; i++) {
+    if (sumarMesesCuota(fechaBase, i) < hoy) mesesAdeudados += 1
+  }
+
+  return { moroso: mesesAdeudados > 0, mesesAdeudados }
+}
+
+/** Suma meses enteros a una fecha, con clamp de fin de mes. */
+function sumarMesesCuota(fecha, meses) {
+  const totalMeses = fecha.getMonth() + meses
+  const anio = fecha.getFullYear() + Math.floor(totalMeses / 12)
+  const mes = ((totalMeses % 12) + 12) % 12
+  const ultimoDia = new Date(anio, mes + 1, 0).getDate()
+  return new Date(anio, mes, Math.min(fecha.getDate(), ultimoDia))
 }
 
 // ─── Motor de estado de mes para el Calendario ───────────────────────────────
@@ -141,12 +175,12 @@ function calcularEstadoFinanciero(mesCubiertoHastaISO, fechaIngresoISO, diaVenci
  * mes. Eso es exactamente lo que el backend usa para calcular mes_cubierto_hasta,
  * así que la comparación es perfectamente simétrica.
  *
- * @returns {'inactivo'|'pagado'|'adeudado'|'a_vencer'|'futuro'}
+ * @returns {'inactivo'|'mes_ingreso'|'pagado'|'adeudado'|'a_vencer'|'futuro'|'becado'}
  *
  * Reglas (en orden de prioridad):
  *   1. inactivo  — fechaRep < fechaIngreso           (no era socio aún)
  *   2. pagado    — fechaRep < mesCubiertoHasta        (cuota saldada)
- *   3. adeudado  — fechaRep <= hoy  (mes ya venció sin pagar)
+ *   3. adeudado  — fechaRep <  hoy  (mes ya venció sin pagar)
  *   4. a_vencer  — es el mes EN CURSO y todavía no llegó el día de vencimiento
  *   5. futuro    — fechaRep > hoy   (mes por venir, sin cobertura)
  *
@@ -169,6 +203,19 @@ function estadoDeMes(anio, mes1based, diaVencimiento, fechaIngreso, mesCubiertoH
   // Regla 1: inactivo
   if (fechaIngreso && fechaRep < fechaIngreso) return 'inactivo'
 
+  // Regla 1b: mes de ingreso EN CURSO (decisión D1). Va antes que 'adeudado'
+  // porque su vencimiento puede haber pasado ya (alguien que se asocia el 20 y
+  // la cuota vence el 10): durante su mes de alta el socio se ve al día, y la
+  // deuda de ese mes aparece recién cuando el mes termina.
+  if (
+    fechaIngreso &&
+    fechaIngreso.getFullYear() === anio &&
+    fechaIngreso.getMonth() + 1 === mes1based &&
+    hoy.getFullYear() === anio &&
+    hoy.getMonth() + 1 === mes1based &&
+    !(mesCubiertoHasta && fechaRep < mesCubiertoHasta)
+  ) return 'mes_ingreso'
+
   // Regla 2: pagado
   if (mesCubiertoHasta && fechaRep < mesCubiertoHasta) return 'pagado'
 
@@ -183,8 +230,13 @@ function estadoDeMes(anio, mes1based, diaVencimiento, fechaIngreso, mesCubiertoH
     if (esBecado && fechaRep <= hoy) return 'becado'
   }
 
-  // Regla 4: adeudado (venció sin pagar y sin beca)
-  if (fechaRep <= hoy) return 'adeudado'
+  // Regla 4: adeudado (venció sin pagar y sin beca).
+  // Estricto (<, no <=): el día del vencimiento el socio todavía está en
+  // plazo, así que ese día el mes sigue siendo 'a_vencer' y recién al
+  // siguiente pasa a 'adeudado'. Es el mismo corte que usa el contador del
+  // header y el backend — con <= el calendario marcaba rojo un día antes que
+  // el resto del sistema.
+  if (fechaRep < hoy) return 'adeudado'
 
   // Regla 5: el mes en curso, que vence en unos días — no es "futuro"
   if (anio === hoy.getFullYear() && mes1based === hoy.getMonth() + 1) return 'a_vencer'
@@ -237,6 +289,17 @@ const ESTADO_CONFIG = {
     dot: 'bg-teal-400',
     texto: 'Becado',
     textoClase: 'text-teal-700',
+  },
+  // Mes en que el socio se dio de alta (decisión D1). Se muestra aparte a
+  // propósito: NO es 'pagado' —esa cuota se debe y se cobra— pero tampoco
+  // 'adeudado', porque durante ese mes el socio figura al día. Antes caía en
+  // 'pagado' y el mes de ingreso quedaba saldado gratis.
+  mes_ingreso: {
+    card: 'bg-indigo-50 border-indigo-200',
+    label: 'text-indigo-900',
+    dot: 'bg-indigo-400',
+    texto: 'Mes de ingreso',
+    textoClase: 'text-indigo-700',
   },
 }
 
@@ -303,6 +366,7 @@ function CeldaMes({ nombreMes, estado, esHoy, diaVencimiento }) {
         {estado === 'a_vencer' && <CalendarClock size={14} className="text-amber-600" />}
         {estado === 'futuro'   && <div className="w-3 h-3 rounded-full border-2 border-blue-300" />}
         {estado === 'becado'   && <Gift size={14} className="text-teal-600" />}
+        {estado === 'mes_ingreso' && <UserPlus size={14} className="text-indigo-600" />}
       </div>
 
       {/* Nombre del mes */}
@@ -370,7 +434,7 @@ function CalendarioAnual({ estado }) {
 
   // Resumen del año visible
   const resumen = useMemo(() => {
-    const conteo = { pagado: 0, adeudado: 0, a_vencer: 0, futuro: 0, inactivo: 0, becado: 0 }
+    const conteo = { pagado: 0, adeudado: 0, a_vencer: 0, futuro: 0, inactivo: 0, becado: 0, mes_ingreso: 0 }
     meses.forEach(m => { conteo[m.estado]++ })
     return conteo
   }, [meses])
@@ -440,6 +504,12 @@ function CalendarioAnual({ estado }) {
               vence este mes
             </span>
           )}
+          {resumen.mes_ingreso > 0 && (
+            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-700">
+              <span className="w-2 h-2 rounded-full bg-indigo-400 inline-block" />
+              mes de ingreso
+            </span>
+          )}
           {resumen.futuro > 0 && (
             <span className="inline-flex items-center gap-1.5 text-xs font-medium text-blue-500">
               <span className="w-2 h-2 rounded-full bg-blue-300 inline-block" />
@@ -474,6 +544,7 @@ function CalendarioAnual({ estado }) {
           { estado: 'pagado',   label: 'Pagado' },
           { estado: 'adeudado', label: 'Adeudado' },
           { estado: 'a_vencer', label: 'Vence este mes' },
+          { estado: 'mes_ingreso', label: 'Mes de ingreso' },
           { estado: 'futuro',   label: 'Futuro' },
           { estado: 'becado',   label: 'Becado' },
           { estado: 'inactivo', label: 'No era socio' },
@@ -762,6 +833,11 @@ function EstadoCard({ estado, loading, error, ordenPendiente, onAbrirCarrito }) 
     estado.fecha_ingreso,
     estado.dia_vencimiento_cuota ?? 10
   )
+  // Mes de ingreso (decisión D1): el socio se ve al día, pero la cuota de este
+  // mes se le sigue debiendo. Se dice explícitamente para no dejarle la
+  // impresión de que arrancó con un mes regalado. El backend manda el flag;
+  // el cálculo local es el respaldo si la respuesta viene de una versión vieja.
+  const enMesIngreso = estado.en_mes_ingreso === true
   const tieneDeuda          = mesesAdeudadosReal > 0
   const esGrave             = mesesAdeudadosReal >= 2
   const montoEstimado       = mesesAdeudadosReal * (estado.precio_cuota_actual ?? 0)
@@ -800,7 +876,9 @@ function EstadoCard({ estado, loading, error, ordenPendiente, onAbrirCarrito }) 
               ? <><Clock size={11} /> Pago en verificación</>
               : moroso
                 ? <><AlertTriangle size={11} /> Moroso</>
-                : <><CheckCircle2 size={11} /> Acceso activo</>}
+                : enMesIngreso
+                  ? <><UserPlus size={11} /> Mes de ingreso</>
+                  : <><CheckCircle2 size={11} /> Acceso activo</>}
           </span>
 
           <p className={`text-sm font-medium leading-snug ${paleta.sub}`}>
@@ -810,7 +888,9 @@ function EstadoCard({ estado, loading, error, ordenPendiente, onAbrirCarrito }) 
               ? tieneDeuda
                 ? <>{mesesAdeudadosReal} mes{mesesAdeudadosReal !== 1 ? 'es' : ''} adeudado{mesesAdeudadosReal !== 1 ? 's' : ''}&nbsp;·&nbsp;{formatoMoneda.format(montoEstimado)}</>
                 : 'Tu cobertura ha vencido.'
-              : fechaLegible
+              : enMesIngreso
+                ? <>¡Bienvenido! Este es tu mes de ingreso, así que tu acceso ya está habilitado. La cuota de este mes queda pendiente de pago y podés abonarla cuando quieras.</>
+                : fechaLegible
                 ? <>Tu acceso está activo hasta el <strong>{fechaLegible}</strong>.</>
                 : 'Tu acceso está vigente.'}
           </p>
@@ -824,13 +904,16 @@ function EstadoCard({ estado, loading, error, ordenPendiente, onAbrirCarrito }) 
         </div>
       </div>
 
-      {moroso && tieneDeuda && !ordenPendiente && (
+      {/* La paleta "al día" no define color de botón (ahí normalmente no hay nada
+          que pagar), así que en mes de ingreso se cae a un azul neutro: sin eso
+          el botón quedaba con texto blanco sobre fondo blanco. */}
+      {((moroso && tieneDeuda) || enMesIngreso) && !ordenPendiente && (
         <button
           onClick={onAbrirCarrito}
-          className={`w-full sm:w-auto flex justify-center items-center gap-2 px-5 py-3 rounded-xl font-bold text-white transition-colors flex-shrink-0 ${paleta.btn}`}
+          className={`w-full sm:w-auto flex justify-center items-center gap-2 px-5 py-3 rounded-xl font-bold text-white transition-colors flex-shrink-0 ${paleta.btn || 'bg-blue-600 hover:bg-blue-700'}`}
         >
           <ShoppingCart size={16} />
-          Pagar cuotas
+          {enMesIngreso && !tieneDeuda ? 'Pagar mi primera cuota' : 'Pagar cuotas'}
         </button>
       )}
     </div>
@@ -850,6 +933,8 @@ export default function SocioCuotas() {
   const [error, setError] = useState(null)
 
   const [isCanceling, setIsCanceling] = useState(false)
+  const [confirmarCancelar, setConfirmarCancelar] = useState(false)
+  const [errorCancelar, setErrorCancelar] = useState(null)
   const [mostrarUpload, setMostrarUpload] = useState(false)
   const [mostrarSeleccionMeses, setMostrarSeleccionMeses] = useState(false)
 
@@ -878,18 +963,26 @@ export default function SocioCuotas() {
 
   useEffect(() => { fetchData() }, [fetchData])
 
+  // La confirmación se pide con <ConfirmDialog>, no con el window.confirm()
+  // nativo del navegador — que rompía la estética de la app y quedaba
+  // inconsistente con el resto de las acciones destructivas (BUG-13 de la QA
+  // del 08-09). El error también se muestra in-app en vez de con alert().
   const handleCancelarOrden = async () => {
-    if (!window.confirm('¿Seguro que querés cancelar esta orden de pago?')) return
     setIsCanceling(true)
+    setErrorCancelar(null)
     try {
       const res = await fetch(`${API}/socio/cuotas/ordenes/${ordenPendiente.id_orden}/cancelar`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
       })
-      if (!res.ok) throw new Error('Error al cancelar la orden.')
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        throw new Error(textoError(body?.detail, 'No se pudo cancelar la orden.'))
+      }
+      setConfirmarCancelar(false)
       await fetchData()
     } catch (err) {
-      alert(err.message)
+      setErrorCancelar(err?.message || 'No se pudo cancelar la orden.')
     } finally {
       setIsCanceling(false)
     }
@@ -1005,14 +1098,38 @@ export default function SocioCuotas() {
               </button>
             )}
             <button
-              onClick={handleCancelarOrden}
+              onClick={() => { setErrorCancelar(null); setConfirmarCancelar(true) }}
               disabled={isCanceling}
               className="w-full sm:w-auto px-4 py-2.5 bg-white border border-red-200 text-red-600 hover:bg-red-50 rounded-xl font-bold transition-colors text-sm disabled:opacity-50"
             >
               {isCanceling ? 'Cancelando...' : 'Cancelar Trámite'}
             </button>
           </div>
+
+          {errorCancelar && (
+            <p className="mt-3 text-sm text-red-600 flex items-center gap-1.5">
+              <AlertTriangle size={14} className="flex-shrink-0" />
+              {errorCancelar}
+            </p>
+          )}
         </div>
+      )}
+
+      {confirmarCancelar && (
+        <ConfirmDialog
+          titulo="¿Cancelar el trámite de pago?"
+          mensaje={
+            esEfectivo
+              ? 'Se va a anular esta orden. Si ya pagaste en el club, no la canceles: avisale a un administrativo para que la registre.'
+              : 'Se va a anular esta orden y el comprobante que hayas subido. Si ya transferiste, no la canceles: esperá la verificación o avisale al club.'
+          }
+          confirmLabel="Sí, cancelar"
+          cancelLabel="No, volver"
+          variante="peligro"
+          cargando={isCanceling}
+          onConfirm={handleCancelarOrden}
+          onCancel={() => setConfirmarCancelar(false)}
+        />
       )}
 
       {/* Estado de Cuenta */}

@@ -67,7 +67,17 @@ def limpiar():
     finally:
         db.close()
 
-def mkuser(dni, nombre, rol, *, req_cambio=False, mes_cubierto=None, saldo=Decimal("0")):
+def mkuser(dni, nombre, rol, *, req_cambio=False, mes_cubierto=None, saldo=Decimal("0"),
+           fecha_ingreso=None):
+    """
+    `fecha_ingreso` se setea EXPLÍCITAMENTE a dos años atrás por defecto.
+
+    Antes se dejaba en el server_default (= hoy), y desde la decisión D1 de la
+    QA eso mete a todos los usuarios de prueba en su "mes de ingreso": la
+    gracia los muestra al día con 0 meses adeudados, y los escenarios de deuda
+    (BUG#1) medían siempre 0. Un socio con meses adeudados es, por definición,
+    alguien que no se asoció este mes.
+    """
     db = SessionLocal()
     try:
         u = models.Usuario(dni=dni, nombre=nombre, apellido="Test",
@@ -76,6 +86,7 @@ def mkuser(dni, nombre, rol, *, req_cambio=False, mes_cubierto=None, saldo=Decim
                            requiere_cambio_password=req_cambio,
                            mes_cubierto_hasta=mes_cubierto,
                            saldo_a_favor=saldo,
+                           fecha_ingreso=fecha_ingreso or (date.today() - timedelta(days=730)),
                            fecha_nacimiento=date(1990, 1, 1))
         db.add(u); db.flush()
         r = db.query(models.Rol).filter_by(nombre=rol).first()
@@ -386,6 +397,65 @@ async def run():
         finally: db.close()
         ok("debía 2, aprueba orden de 2 → debe 0",
            rap2.status_code == 200 and debe_fin == 0, f"({rap2.status_code}, después={debe_fin})")
+
+        print("\n── ronda 3 · BUG#4 · el mes en curso no suma hasta que vence ──")
+        # Con dia_vencimiento=10 y cobertura hasta el 10 del mes pasado, el mes
+        # en curso vence este mes: no debe contarse hasta el dia siguiente.
+        from utils.cuotas_periodos import (
+            cobertura_inicial_para_ingreso,
+            sumar_meses,
+            normalizar_a_dia_vencimiento,
+        )
+        venc_este_mes = normalizar_a_dia_vencimiento(date.today(), 10)
+        base_mes_actual = normalizar_a_dia_vencimiento(sumar_meses(date.today(), -1), 10)
+        e_antes = calcular_estado_financiero(base_mes_actual, date(2020, 1, 1), 10, venc_este_mes)
+        e_despues = calcular_estado_financiero(base_mes_actual, date(2020, 1, 1), 10,
+                                               venc_este_mes + timedelta(days=1))
+        ok("el dia del vencimiento todavia no cuenta como adeudado",
+           e_antes.cantidad_meses == 0, f"(dio {{e_antes.cantidad_meses}}, esperaba 0)")
+        ok("el dia siguiente al vencimiento ya cuenta 1 mes",
+           e_despues.cantidad_meses == 1, f"(dio {{e_despues.cantidad_meses}}, esperaba 1)")
+
+        print("\n── ronda 3 · D1 · mes de ingreso: al dia, pero se cobra ──")
+        hoy_d1 = date.today()
+        cob_d1 = cobertura_inicial_para_ingreso(hoy_d1, 10)
+        e_ingreso = calcular_estado_financiero(cob_d1, hoy_d1, 10, hoy_d1)
+        # Un mes despues ya no hay gracia y el mes de ingreso pasa a deberse.
+        mes_sig = normalizar_a_dia_vencimiento(sumar_meses(hoy_d1, 1), 10) + timedelta(days=1)
+        e_luego = calcular_estado_financiero(cob_d1, hoy_d1, 10, mes_sig)
+        ok("en su mes de ingreso el socio figura al dia",
+           not e_ingreso.moroso and e_ingreso.cantidad_meses == 0 and e_ingreso.en_mes_ingreso,
+           f"(moroso={{e_ingreso.moroso}} meses={{e_ingreso.cantidad_meses}})")
+        ok("pasado su mes de ingreso, ese mes se debe (no se condona)",
+           e_luego.cantidad_meses >= 1, f"(dio {{e_luego.cantidad_meses}}, esperaba >=1)")
+
+        print("\n── ronda 3 · BUG#12 · el menor paga con descuento en el CARRITO ──")
+        # El bug: /socio/cuotas/estado mostraba el precio con descuento pero el
+        # checkout del carrito congelaba el precio de adulto.
+        db = SessionLocal()
+        try:
+            u = db.query(models.Usuario).filter_by(id_usuario=U["socio"]).first()
+            u.fecha_nacimiento = date(date.today().year - 10, 1, 1)
+            u.mes_cubierto_hasta = fecha_cubierta_para_meses_adeudados(2, 10)
+            db.commit()
+            prod_cuota = db.query(models.ProductoServicio).filter_by(
+                categoria="cuota_social", es_activo=True).first()
+            id_prod_cuota, precio_lista = prod_cuota.id_producto, prod_cuota.precio_actual
+        finally: db.close()
+
+        rest = await cl.get(f"{{BASE}}/socio/cuotas/estado", headers=H(t_socio))
+        precio_mostrado = Decimal(str(rest.json().get("precio_cuota_actual", "0")))
+        rchk = await cl.post(f"{{BASE}}/socio/carrito/checkout", headers=H(t_socio),
+                             json={{"metodo_pago": "transferencia", "usar_saldo": False,
+                                   "items": [{{"id_producto": id_prod_cuota, "cantidad": 2}}]}})
+        monto_cobrado = (Decimal(str(rchk.json().get("monto_total", "0")))
+                         if rchk.status_code == 201 else Decimal("-1"))
+        ok("menor: el checkout cobra el mismo precio que muestra la pantalla",
+           rchk.status_code == 201 and monto_cobrado == precio_mostrado * 2,
+           f"({{rchk.status_code}}, cobro {{monto_cobrado}}, esperaba {{precio_mostrado * 2}})")
+        ok("menor: el descuento se aplico de verdad (no es el precio de adulto)",
+           precio_mostrado < precio_lista,
+           f"(mostrado {{precio_mostrado}} vs lista {{precio_lista}})")
 
         print("\n── sanity permisos ──")
         rs = await cl.get(f"{BASE}/admin/pagos/morosos", headers=H(t_socio))

@@ -14,9 +14,9 @@ Endpoints:
 Todos los endpoints requieren rol 'socio' o 'jugador'.
 
 Decisiones técnicas:
-  - El precio se calcula con _calcular_precio_cuota(), que aplica un descuento
-    dinámico del 40% sobre el producto único de 'cuota_social' si el socio
-    es menor de 18 años.
+  - El precio se calcula con utils.precios (fuente única de verdad), que
+    aplica el descuento configurado en ConfiguracionGlobal.descuento_menor_pct
+    sobre el producto único de 'cuota_social' si el socio es menor de 18.
   - Patrón "Split-Order bajo un único Pago": Orden.id_pago es NOT NULL, así
     que generar-orden ya NO crea una Orden suelta. Primero crea un Pago
     (estado='pendiente', comprobante_url=NULL) y recién después cuelga de él
@@ -31,8 +31,6 @@ Decisiones técnicas:
 
 from __future__ import annotations
 
-import os
-import uuid
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from typing import List, Optional
@@ -55,8 +53,19 @@ import schemas
 from database import get_db
 from dependencies import get_current_user, require_roles
 from mailer.services import email_tasks
-from utils.s3 import subir_archivo, eliminar_archivo, generar_presigned_url
+from utils.s3 import generar_presigned_url
+from utils.comprobantes import (
+    borrar_comprobante_anterior,
+    validar_y_subir_comprobante,
+)
 from utils.cuotas_periodos import calcular_estado_financiero
+from utils.precios import (
+    calcular_edad,
+    calcular_precio_cuota,
+    es_menor,
+    obtener_descuento_menor_pct,
+    obtener_producto_cuota_social,
+)
 from utils.fechas import hoy_club
 from utils.ordenes import restaurar_stock_orden
 
@@ -81,15 +90,9 @@ router = APIRouter(
 
 _ROLES_SOCIO = ("socio", "jugador")
 
-# ─── Configuración de subida de comprobantes ──────────────────────────────────
-_EXTENSIONES_PERMITIDAS = {".jpg", ".jpeg", ".png", ".pdf", ".webp"}
-_CONTENT_TYPES_PERMITIDOS = {
-    "image/jpeg",
-    "image/png",
-    "image/webp",
-    "application/pdf",
-}
-_TAMANO_MAXIMO_BYTES = 10 * 1024 * 1024  # 10 MB
+# Los formatos y el tamaño máximo aceptados viven en utils/comprobantes.py,
+# compartidos con el camino del admin (/admin/pagos/{id}/comprobante), para que
+# no puedan aceptar cosas distintas.
 
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -123,67 +126,15 @@ def _registrar_audit(
     )
 
 
-def _calcular_edad(fecha_nacimiento: Optional[date]) -> Optional[int]:
-    """
-    Retorna la edad en años completos al día de hoy.
-    Devuelve None si fecha_nacimiento es NULL.
-    """
-    if fecha_nacimiento is None:
-        return None
-    hoy = hoy_club()
-    return (
-        hoy.year - fecha_nacimiento.year
-        - ((hoy.month, hoy.day) < (fecha_nacimiento.month, fecha_nacimiento.day))
-    )
-
-
-def _obtener_producto_cuota_social(db: Session) -> models.ProductoServicio:
-    """Busca el único producto activo de categoría 'cuota_social'."""
-    producto = (
-        db.query(models.ProductoServicio)
-        .filter(
-            models.ProductoServicio.categoria == "cuota_social",
-            models.ProductoServicio.es_activo.is_(True),
-        )
-        .first()
-    )
-    if producto is None:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=(
-                "No existe ningún producto activo con categoria='cuota_social'. "
-                "Por favor, cargá la 'Cuota Social' base en el sistema."
-            ),
-        )
-    return producto
-
-
-def _obtener_descuento_menor_pct(db: Session) -> Decimal:
-    """
-    Único punto de lectura del % de descuento para menores — vive en
-    ConfiguracionGlobal (editable por el Admin General desde el Catálogo
-    de Productos), no hardcodeado. Fallback a 40 si todavía no hay fila
-    de configuración creada (mismo valor que estaba fijo antes de esto).
-    """
-    config = db.query(models.ConfiguracionGlobal).first()
-    return config.descuento_menor_pct if config else Decimal("40")
-
-
-def _calcular_precio_cuota(
-    precio_base: Decimal,
-    fecha_nacimiento: Optional[date],
-    db: Session,
-) -> Decimal:
-    """
-    Calcula el precio final de la cuota.
-    Aplica el % de descuento configurado (ConfiguracionGlobal.descuento_menor_pct)
-    si el socio tiene menos de 18 años.
-    """
-    edad = _calcular_edad(fecha_nacimiento)
-    if edad is not None and edad < 18:
-        descuento_pct = _obtener_descuento_menor_pct(db)
-        return precio_base * (Decimal("1") - descuento_pct / Decimal("100"))
-    return precio_base
+# Los helpers de precio (edad, descuento de menores, producto de cuota) viven
+# en utils/precios.py. Estaban duplicados a mano en 4 routers y el carrito se
+# quedó sin ellos — de ahí BUG-12 (menores cobrados como adultos en el
+# checkout). Se re-exportan con los nombres locales de siempre para no tocar
+# los llamadores de este módulo.
+_calcular_edad = calcular_edad
+_obtener_producto_cuota_social = obtener_producto_cuota_social
+_obtener_descuento_menor_pct = obtener_descuento_menor_pct
+_calcular_precio_cuota = calcular_precio_cuota
 
 
 # ─── ENDPOINT: Estado financiero del socio ────────────────────────────────────
@@ -237,6 +188,7 @@ def obtener_estado_cuota(
         deuda_total_pesos=Decimal(estado.cantidad_meses) * precio_real_socio,
         dia_vencimiento_cuota=dia_vencimiento,
         fecha_ingreso=socio.fecha_ingreso,
+        en_mes_ingreso=estado.en_mes_ingreso,
         es_becado=False,
         becado_hasta=None,
     )
@@ -394,8 +346,7 @@ def generar_orden_cuota(
             "meses_a_pagar": payload.meses_a_pagar,
             "precio_unitario_historico": str(precio_congelado),
             "monto_total": str(monto_total),
-            "es_menor": _calcular_edad(socio.fecha_nacimiento) is not None
-                        and _calcular_edad(socio.fecha_nacimiento) < 18,
+            "es_menor": es_menor(socio.fecha_nacimiento),
         },
         ip=_extraer_ip(request),
     )
@@ -599,46 +550,9 @@ async def subir_comprobante(
             ),
         )
 
-    nombre_original = file.filename or ""
-    extension = os.path.splitext(nombre_original)[-1].lower()
-
-    if extension not in _EXTENSIONES_PERMITIDAS:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=(
-                f"Extensión '{extension or 'desconocida'}' no permitida. "
-                f"Formatos aceptados: {', '.join(sorted(_EXTENSIONES_PERMITIDAS))}."
-            ),
-        )
-
-    if file.content_type not in _CONTENT_TYPES_PERMITIDOS:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Tipo de archivo '{file.content_type}' no permitido.",
-        )
-
-    nombre_archivo = f"{uuid.uuid4().hex}{extension}"
-
-    # Lectura acotada a (límite + 1): no cargamos en memoria un archivo enorme
-    # aunque el cliente mienta en Content-Length (la instancia de Render tiene
-    # 512 MB). Antes era file.read() sin tope.
-    contenido = await file.read(_TAMANO_MAXIMO_BYTES + 1)
-    await file.close()
-
-    if len(contenido) == 0:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="El archivo recibido está vacío.",
-        )
-    if len(contenido) > _TAMANO_MAXIMO_BYTES:
-        raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail="El archivo supera el tamaño máximo permitido (10 MB).",
-        )
-
-    # Subir a S3 — el key es la ruta dentro del bucket
-    s3_key = f"comprobantes/{pago.id_pago}/{nombre_archivo}"
-    subir_archivo(contenido, s3_key, file.content_type)
+    s3_key, nombre_original, tamano_bytes = await validar_y_subir_comprobante(
+        file, pago.id_pago
+    )
 
     comprobante_anterior = pago.comprobante_url
     # Guardar el key de S3 en DB (no una ruta local)
@@ -657,8 +571,7 @@ async def subir_comprobante(
             orden_hermana.expira_at = nuevo_vencimiento
 
     # Eliminar comprobante anterior de S3 si existía
-    if comprobante_anterior and not comprobante_anterior.startswith("/"):
-        eliminar_archivo(comprobante_anterior)
+    borrar_comprobante_anterior(comprobante_anterior)
 
     _registrar_audit(
         db=db,
@@ -670,7 +583,7 @@ async def subir_comprobante(
             "comprobante_url": s3_key,
             "comprobante_anterior": comprobante_anterior,
             "nombre_original": nombre_original,
-            "tamano_bytes": len(contenido),
+            "tamano_bytes": tamano_bytes,
         },
         ip=_extraer_ip(request),
     )

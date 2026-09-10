@@ -125,11 +125,32 @@ async def solicitar_recuperacion(
     db: Session = Depends(get_db),
 ):
     """
-    Acepta DNI o email. Siempre responde 200 para no revelar
-    si el usuario existe en el sistema.
-    Genera un token de un solo uso con 1 hora de vigencia y
-    envía el mail con el link de reset.
+    Acepta DNI o email. Genera un token de un solo uso con 1 hora de vigencia
+    y envía el mail con el link de reset.
     Rate limit: 5 pedidos por hora por IP (anti mail-bombing).
+
+    ── Respuesta explícita en vez de neutra (decisión D2 de la QA) ──────────
+    Antes esta ruta devolvía siempre `{"ok": True}`, sin importar si el
+    identificador existía: es la práctica estándar para no permitir
+    *enumeración de usuarios* (que alguien de afuera averigüe qué DNIs están
+    registrados probando de a uno).
+
+    Para este sistema se decidió lo contrario a propósito: es un club chico y
+    de comunidad conocida, y el costo real del mensaje neutro lo paga el socio
+    —escribe mal un dígito del DNI, ve "listo, revisá tu mail", espera un mail
+    que nunca llega y no tiene forma de saber por qué—. Se prioriza ahorrarle
+    ese callejón sin salida.
+
+    Lo que se mantiene como mitigación: el rate limit de 5 pedidos por hora
+    por IP, que es lo que hace impracticable barrer el padrón a fuerza bruta.
+
+    `estado` distingue tres casos para que el frontend pueda decir qué hacer:
+      · 'enviado'       → salió el mail.
+      · 'no_registrado' → no hay ninguna cuenta con ese DNI/email.
+      · 'sin_email'     → la cuenta existe pero no tiene mail cargado (típico
+                          de los socios migrados de la planilla), así que no
+                          hay a dónde mandar el link: tiene que resolverlo el
+                          club a mano.
     """
     identificador = payload.identificador.strip()
 
@@ -142,23 +163,48 @@ async def solicitar_recuperacion(
         .first()
     )
 
-    if usuario and usuario.email:
-        token = secrets.token_urlsafe(32)
-        usuario.token_recuperacion = token
-        usuario.token_recuperacion_expira = datetime.now(timezone.utc) + timedelta(hours=1)
-        db.commit()
+    if usuario is None:
+        return {
+            "ok": False,
+            "estado": "no_registrado",
+            "mensaje": (
+                "No encontramos ninguna cuenta con ese DNI o email. "
+                "Revisá que esté bien escrito, o consultá en el club si todavía "
+                "no estás registrado."
+            ),
+        }
 
-        frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
-        link_reset = f"{frontend_url}/recuperar-password?token={token}"
+    if not usuario.email:
+        return {
+            "ok": False,
+            "estado": "sin_email",
+            "mensaje": (
+                "Tu cuenta no tiene un email cargado, así que no podemos enviarte "
+                "el link de recuperación. Comunicate con el club para que lo "
+                "agreguen o te asignen una contraseña nueva."
+            ),
+        }
 
-        await enviar_recuperar_password(
-            email_destino=usuario.email,
-            nombre_socio=usuario.nombre,
-            link_reset=link_reset,
-            minutos_validez=60,
-        )
+    token = secrets.token_urlsafe(32)
+    usuario.token_recuperacion = token
+    usuario.token_recuperacion_expira = datetime.now(timezone.utc) + timedelta(hours=1)
+    db.commit()
 
-    return {"ok": True}
+    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
+    link_reset = f"{frontend_url}/recuperar-password?token={token}"
+
+    await enviar_recuperar_password(
+        email_destino=usuario.email,
+        nombre_socio=usuario.nombre,
+        link_reset=link_reset,
+        minutos_validez=60,
+    )
+
+    return {
+        "ok": True,
+        "estado": "enviado",
+        "mensaje": "Listo. Te enviamos un link a tu email para que puedas cambiar la contraseña.",
+    }
 
 
 def _token_recuperacion_valido(usuario: models.Usuario | None) -> bool:

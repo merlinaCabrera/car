@@ -39,7 +39,15 @@ from datetime import date
 from decimal import Decimal
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    HTTPException,
+    Request,
+    UploadFile,
+    status,
+)
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -47,8 +55,20 @@ import models
 import schemas
 from database import get_db
 from dependencies import get_current_user, require_roles
+from utils.s3 import resolver_url_archivo
+from utils.comprobantes import (
+    borrar_comprobante_anterior,
+    validar_y_subir_comprobante,
+)
 from utils.cuotas_periodos import calcular_estado_financiero, calcular_nuevo_mes_cubierto
 from utils.fechas import hoy_club
+from utils.precios import (
+    calcular_edad,
+    calcular_precio_cuota,
+    es_menor,
+    obtener_descuento_menor_pct,
+    obtener_producto_cuota_social,
+)
 
 router = APIRouter(
     prefix="/admin/pagos",
@@ -101,80 +121,13 @@ def _registrar_audit(
     )
 
 
-def _calcular_edad(fecha_nacimiento: Optional[date]) -> Optional[int]:
-    """
-    Retorna la edad en años completos al día de hoy.
-    Devuelve None si fecha_nacimiento es NULL.
-    """
-    if fecha_nacimiento is None:
-        return None
-    hoy = hoy_club()
-    return (
-        hoy.year - fecha_nacimiento.year
-        - ((hoy.month, hoy.day) < (fecha_nacimiento.month, fecha_nacimiento.day))
-    )
-
-
-def _obtener_producto_cuota_social(db: Session) -> models.ProductoServicio:
-    """Busca el único producto activo de categoría 'cuota_social'."""
-    producto = (
-        db.query(models.ProductoServicio)
-        .filter(
-            models.ProductoServicio.categoria == "cuota_social",
-            models.ProductoServicio.es_activo.is_(True),
-        )
-        .first()
-    )
-    if producto is None:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=(
-                "No existe ningún producto activo con categoria='cuota_social'. "
-                "Por favor, cargá la 'Cuota Social' base en el sistema."
-            ),
-        )
-    return producto
-
-
-def _obtener_descuento_menor_pct(db: Session) -> Decimal:
-    """
-    Único punto de lectura del % de descuento para menores — vive en
-    ConfiguracionGlobal (editable por el Admin General desde el Catálogo
-    de Productos), no hardcodeado. Fallback a 40 si todavía no hay fila
-    de configuración creada (mismo valor que estaba fijo antes de esto).
-    Misma función que en socio_cuotas.py — ambas leen la misma fila de
-    ConfiguracionGlobal, así que nunca pueden desincronizarse entre sí.
-    """
-    config = db.query(models.ConfiguracionGlobal).first()
-    return config.descuento_menor_pct if config else Decimal("40")
-
-
-def _calcular_precio_cuota(
-    precio_base: Decimal,
-    fecha_nacimiento: Optional[date],
-    db: Session,
-    *,
-    descuento_menor_pct: Optional[Decimal] = None,
-) -> Decimal:
-    """
-    Calcula el precio final de la cuota usando aritmética Decimal estricta.
-    Aplica el % de descuento configurado (ConfiguracionGlobal.descuento_menor_pct)
-    si el socio tiene menos de 18 años.
-
-    `descuento_menor_pct`: si se pasa, se usa ese valor y NO se consulta la DB.
-    Los endpoints que llaman a esta función dentro de un loop (morosos,
-    estadísticas) leen la config UNA vez y lo pasan → evita un N+1 de una
-    query de ConfiguracionGlobal por socio.
-    """
-    edad = _calcular_edad(fecha_nacimiento)
-    if edad is not None and edad < 18:
-        descuento_pct = (
-            descuento_menor_pct
-            if descuento_menor_pct is not None
-            else _obtener_descuento_menor_pct(db)
-        )
-        return precio_base * (Decimal("1") - descuento_pct / Decimal("100"))
-    return precio_base
+# Helpers de precio: la implementación vive en utils/precios.py (fuente única
+# de verdad). Se re-exportan con los nombres locales de siempre para no tocar
+# los llamadores de este módulo.
+_calcular_edad = calcular_edad
+_obtener_producto_cuota_social = obtener_producto_cuota_social
+_obtener_descuento_menor_pct = obtener_descuento_menor_pct
+_calcular_precio_cuota = calcular_precio_cuota
 
 
 # ─── ENDPOINT: Estadísticas financieras ───────────────────────────────────────
@@ -351,10 +304,11 @@ def registrar_pago_manual(
         usuario.mes_cubierto_hasta, usuario.fecha_ingreso, _obtener_dia_vencimiento(db)
     )
     mes_cubierto_hasta_antes: Optional[date] = usuario.mes_cubierto_hasta
-    es_menor = (
-        _calcular_edad(usuario.fecha_nacimiento) is not None
-        and _calcular_edad(usuario.fecha_nacimiento) < 18
-    )
+    # Ojo con el nombre: llamarla `es_menor` sombreaba el helper importado
+    # de utils.precios dentro de toda esta función (Python marca el nombre
+    # como local desde la primera asignación), así que quedaba inutilizable
+    # acá aunque estuviera importado.
+    socio_es_menor = es_menor(usuario.fecha_nacimiento)
 
     # 3 ── Crear el Pago padre (patrón Split-Order) ─────────────────────────
     # Orden.id_pago es NOT NULL en el modelo, por lo tanto toda Orden debe
@@ -368,6 +322,10 @@ def registrar_pago_manual(
         monto_total=monto_total,
         estado="verificado",
         comprobante_url=None,
+        # Sin esto el Pago tomaba el server_default 'transferencia' y un cobro
+        # en efectivo por ventanilla aparecía en el historial del socio como
+        # "Pagado por transferencia" (BUG-09).
+        metodo_pago=payload.metodo_pago,
     )
     db.add(nuevo_pago)
     db.flush()  # genera nuevo_pago.id_pago sin commit
@@ -381,7 +339,8 @@ def registrar_pago_manual(
         aprobada_por=admin.id_usuario,
         aprobada_at=func.now(),
         notas_admin=(
-            f"Pago manual por ventanilla — {payload.meses_a_pagar} mes(es). "
+            f"Pago manual por ventanilla ({payload.metodo_pago}) — "
+            f"{payload.meses_a_pagar} mes(es). "
             f"Tarifa aplicada: {producto_cuota.nombre}."
         ),
     )
@@ -422,7 +381,8 @@ def registrar_pago_manual(
             "meses_a_pagar": payload.meses_a_pagar,
             "id_producto": producto_cuota.id_producto,
             "nombre_producto": producto_cuota.nombre,
-            "es_menor": es_menor,
+            "es_menor": socio_es_menor,
+            "metodo_pago": payload.metodo_pago,
             "precio_unitario_historico": str(precio_congelado),
             "monto_total": str(monto_total),
             "meses_adeudados_antes": [d.isoformat() for d in deuda_antes.meses_adeudados],
@@ -467,4 +427,83 @@ def registrar_pago_manual(
         meses_pagados=payload.meses_a_pagar,
         monto_total=monto_total,
         meses_adeudados_restante=estado_despues.meses_adeudados,
+    )
+
+
+# ─── ENDPOINT: Reemplazar el comprobante de un pago (admin) ───────────────────
+
+@router.post(
+    "/{id_pago}/comprobante",
+    response_model=schemas.ComprobanteUploadResponse,
+    summary="Adjuntar o reemplazar el comprobante de un pago, desde el panel",
+)
+async def reemplazar_comprobante_admin(
+    id_pago: int,
+    request: Request,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    admin: models.Usuario = Depends(require_roles(*_ROLES_ADMIN_PAGOS)),
+) -> schemas.ComprobanteUploadResponse:
+    """
+    Pedido explícito de la QA (BUG-05, ronda 2): el admin necesitaba poder no
+    solo VER el comprobante desde el panel, sino también reemplazarlo — el
+    socio manda la foto por WhatsApp, o sube una ilegible y la corrige por
+    teléfono, y quien está en la ventanilla la carga por él.
+
+    Diferencias a propósito con el camino del socio
+    (POST /socio/cuotas/pagos/{id_pago}/comprobante):
+
+      · No exige que el pago sea del propio usuario (es el admin operando
+        sobre el pago de un socio).
+      · No exige estado 'pendiente'. Un pago ya verificado o rechazado también
+        se puede corregir: si el archivo quedó ilegible o se cargó el de otro
+        socio, el registro contable tiene que poder arreglarse después.
+      · NO reinicia el reloj de expiración de las órdenes hermanas. Ese
+        reinicio existe para darle al admin 48 h frescas desde que el SOCIO
+        sube la foto; acá el que sube es el admin, y estirar el vencimiento
+        solo por haber corregido un archivo sería un efecto colateral
+        inesperado.
+      · NO manda el aviso al club de "llegó un comprobante nuevo": el club es
+        justamente quien lo está subiendo.
+    """
+    pago = db.query(models.Pago).filter(models.Pago.id_pago == id_pago).first()
+    if pago is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="El pago indicado no existe.",
+        )
+
+    s3_key, nombre_original, tamano_bytes = await validar_y_subir_comprobante(
+        file, pago.id_pago
+    )
+
+    comprobante_anterior = pago.comprobante_url
+    pago.comprobante_url = s3_key
+
+    borrar_comprobante_anterior(comprobante_anterior)
+
+    _registrar_audit(
+        db=db,
+        actor_id=admin.id_usuario,
+        accion="REEMPLAZAR_COMPROBANTE_ADMIN",
+        tabla_afectada="pagos",
+        registro_id=pago.id_pago,
+        detalle={
+            "id_usuario_pago": pago.id_usuario,
+            "comprobante_url": s3_key,
+            "comprobante_anterior": comprobante_anterior,
+            "nombre_original": nombre_original,
+            "tamano_bytes": tamano_bytes,
+            "estado_pago": pago.estado,
+        },
+        ip=_extraer_ip(request),
+    )
+
+    db.commit()
+    db.refresh(pago)
+
+    return schemas.ComprobanteUploadResponse(
+        id_pago=pago.id_pago,
+        comprobante_url=resolver_url_archivo(pago.comprobante_url) or s3_key,
+        mensaje="Comprobante actualizado correctamente.",
     )

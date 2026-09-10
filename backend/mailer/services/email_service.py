@@ -372,12 +372,36 @@ async def enviar_aviso_admin_solicitud_reactivacion(nombre_socio: str, dni_socio
     )
 
 
-async def enviar_bienvenida_alta_manual(email_destino: str, nombre_socio: str) -> None:
+async def enviar_bienvenida_alta_manual(
+    email_destino: str,
+    nombre_socio: str,
+    dni_socio: str,
+    password_temporal: str | None = None,
+) -> None:
+    """
+    Mail de alta manual, con los datos de acceso incluidos (decisión D3 de la
+    QA del 08-09).
+
+    `password_temporal` viaja en texto plano dentro del mail a pedido explícito
+    del club: sin eso el socio recibía un mail que le decía que usara "la
+    contraseña temporal que te compartieron" sin que nadie se la hubiera
+    compartido por ningún canal. Es aceptable porque la cuenta nace con
+    `requiere_cambio_password=True`: la clave sirve para un único ingreso y el
+    sistema fuerza a cambiarla antes de dejar navegar.
+
+    Es opcional para no romper a los llamadores que no la tengan; en ese caso
+    el template cae al texto genérico de antes.
+    """
     await _enviar(
         destinatarios=[email_destino],
         asunto="¡Bienvenido al Club Atlético Roberts! 🎉",
         template_name="bienvenida_alta_manual.html",
-        body={"nombre_socio": nombre_socio, "frontend_url": FRONTEND_URL},
+        body={
+            "nombre_socio": nombre_socio,
+            "dni_socio": dni_socio,
+            "password_temporal": password_temporal,
+            "frontend_url": FRONTEND_URL,
+        },
     )
 
 

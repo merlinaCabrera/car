@@ -7,16 +7,16 @@
  * nada en el frontend — RutaPrivada redirige acá cuando detecta el flag.
  */
 import { textoError } from '../utils/errores';
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { homePorRol, rolesDeUsuario } from '../components/RequireRole'
-import { Eye, EyeOff, KeyRound } from 'lucide-react'
+import { CheckCircle2, Eye, EyeOff, KeyRound } from 'lucide-react'
 
 const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 
 export default function CambiarPasswordObligatorio() {
-  const { token, refreshUser, aplicarToken } = useAuth()
+  const { token, user, confirmarCambioPassword } = useAuth()
   const navigate = useNavigate()
 
   const [passwordActual, setPasswordActual] = useState('')
@@ -25,9 +25,18 @@ export default function CambiarPasswordObligatorio() {
   const [mostrar, setMostrar] = useState(false)
   const [error, setError] = useState(null)
   const [loading, setLoading] = useState(false)
+  const [exito, setExito] = useState(false)
+
+  // Guarda contra doble submit: `loading` es state de React (asincrónico), así
+  // que un doble clic rápido entra dos veces antes de que el `disabled` llegue
+  // al DOM — el segundo intento fallaría con "la contraseña actual no es
+  // correcta" (porque ya la cambió el primero) y taparía el éxito con un error.
+  // Mismo patrón que el resto de los botones críticos (ver BUG-03).
+  const enviando = useRef(false)
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    if (enviando.current) return
     setError(null)
 
     if (passwordNuevo !== passwordConfirmacion) {
@@ -43,6 +52,7 @@ export default function CambiarPasswordObligatorio() {
       return
     }
 
+    enviando.current = true
     setLoading(true)
     try {
       const res = await fetch(`${API}/usuarios/me/password`, {
@@ -66,23 +76,34 @@ export default function CambiarPasswordObligatorio() {
       // nuevo en esta misma respuesta. Hay que adoptarlo: si siguiéramos con el
       // token viejo, el refresh del perfil daría 401 y la sesión se caería justo
       // acá (el socio quedaba pateado al login en su primer ingreso).
-      // aplicarToken dispara la recarga de /usuarios/me, que ya trae
-      // requiere_cambio_password=false → RutaPrivada deja de redirigir acá.
       const data = await res.json().catch(() => ({}))
 
-      // OJO con el orden: hay que ESPERAR a que /usuarios/me vuelva con
-      // requiere_cambio_password=false ANTES de navegar. Si navegamos antes,
-      // RutaPrivada todavía ve el `user` viejo (con el flag en true) y nos
-      // rebota de vuelta a esta misma pantalla — que es exactamente lo que se
-      // veía: el submit no hacía "nada" (BUG-02 de la QA del 08-09).
-      const perfil = data.access_token
-        ? await aplicarToken(data.access_token)
-        : await refreshUser()   // backend viejo sin token en la respuesta
+      // Este 200 YA es la confirmación de que la contraseña cambió y de que el
+      // backend puso requiere_cambio_password=false. No hace falta —ni conviene—
+      // esperar un /usuarios/me para navegar: confirmarCambioPassword() adopta el
+      // token nuevo y baja el flag en memoria de forma sincrónica, así
+      // RutaPrivada deja pasar en el mismo tick.
+      //
+      // El intento anterior de arreglo (ronda 1) sí esperaba ese /usuarios/me, y
+      // por eso el bug sobrevivió: si esa request fallaba o volvía tarde, el
+      // `user` en memoria seguía con el flag en true, RutaPrivada rebotaba de
+      // vuelta a esta pantalla y el submit parecía no hacer nada.
+      const perfil = confirmarCambioPassword(data.access_token)
 
-      navigate(homePorRol(rolesDeUsuario(perfil)), { replace: true })
+      // Confirmación visible antes de salir. Sin esto, si el redirect vuelve a
+      // fallar por cualquier motivo, el síntoma es de nuevo "no pasó nada" y no
+      // se puede distinguir "no se guardó" de "se guardó pero no navegó".
+      setExito(true)
+
+      const destino = homePorRol(rolesDeUsuario(perfil ?? user))
+      navigate(destino, { replace: true })
     } catch (err) {
-      setError(err.message)
+      // `err.message` puede venir vacío (un TypeError sin texto, por ejemplo).
+      // Si se pasara vacío, el <p> de error no renderiza nada y la pantalla
+      // vuelve a "no hace nada" sin explicación.
+      setError(err?.message || 'No se pudo completar el cambio de contraseña. Probá de nuevo.')
     } finally {
+      enviando.current = false
       setLoading(false)
     }
   }
@@ -138,12 +159,19 @@ export default function CambiarPasswordObligatorio() {
 
           {error && <p className="text-red-500 text-sm text-center">{error}</p>}
 
+          {exito && (
+            <p className="text-emerald-600 text-sm text-center flex items-center justify-center gap-1.5">
+              <CheckCircle2 size={16} />
+              Contraseña actualizada. Entrando…
+            </p>
+          )}
+
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || exito}
             className="w-full flex justify-center py-3 px-4 rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:bg-slate-400 disabled:cursor-not-allowed transition-colors"
           >
-            {loading ? 'Guardando…' : 'Cambiar contraseña y continuar'}
+            {exito ? 'Listo' : loading ? 'Guardando…' : 'Cambiar contraseña y continuar'}
           </button>
         </form>
       </div>

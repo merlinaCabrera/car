@@ -36,9 +36,9 @@ import { textoError } from '../utils/errores';
 import { useState, useMemo, useEffect, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { resolverUrlArchivo } from '../utils/archivos'
 import { useAdminResource } from '../hooks/useAdminResource'
 import CategoriaOrdenBadge from '../components/admin/CategoriaOrdenBadge'
+import ComprobantePago from '../components/admin/ComprobantePago'
 import {
   Wallet,
   AlertCircle,
@@ -47,8 +47,6 @@ import {
   X,
   Check,
   CheckCheck,
-  FileText,
-  ExternalLink,
   Receipt,
   Package,
   User,
@@ -151,13 +149,10 @@ function VerificacionModal({ orden, onClose, onActionSuccess, token }) {
   const [showRechazoInput, setShowRechazoInput] = useState(false)
   const [motivoRechazo, setMotivoRechazo] = useState('')
 
-  // Ojo: comprobante_url ahora llega como Presigned URL de S3, o sea con query
-  // string (?X-Amz-Signature=...). Un endsWith('.pdf') sobre eso siempre daba
-  // false y un comprobante PDF terminaba renderizado como <img> roto.
-  const esPdf = (orden.pago?.comprobante_url ?? '')
-    .split('?')[0]
-    .toLowerCase()
-    .endsWith('.pdf')
+  // El visor del comprobante (incluida la detección de PDF sobre una Presigned
+  // URL, que trae query string) vive en components/admin/ComprobantePago.
+  // Copia local para que un reemplazo se vea al instante sin recargar la orden.
+  const [comprobanteUrl, setComprobanteUrl] = useState(orden.pago?.comprobante_url ?? null)
   const esMercadoPago = orden.pago?.metodo_pago === 'mercado_pago'
   // El pago en efectivo se cobra en mano, en el club: no hay comprobante que
   // subir ni que mirar. Antes el botón "Aprobar" exigía comprobante para todo
@@ -342,41 +337,22 @@ function VerificacionModal({ orden, onClose, onActionSuccess, token }) {
             </div>
           </div>
 
-          <div className="space-y-2">
-            <h3 className="text-sm font-semibold text-gray-700">Comprobante adjunto (Pago #{orden.id_pago}):</h3>
-            {orden.pago?.comprobante_url ? (
-              <div className="border rounded-lg overflow-hidden">
-                {esPdf ? (
-                  <a
-                    href={resolverUrlArchivo(orden.pago.comprobante_url)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-3 p-4 bg-gray-50 hover:bg-gray-100"
-                  >
-                    <FileText className="h-8 w-8 text-red-500" />
-                    <div>
-                      <p className="font-semibold text-gray-800">Comprobante.pdf</p>
-                      <p className="text-sm text-blue-600 flex items-center gap-1">
-                        Abrir en nueva pestaña <ExternalLink size={12} />
-                      </p>
-                    </div>
-                  </a>
-                ) : (
-                  <img
-                    src={resolverUrlArchivo(orden.pago.comprobante_url)}
-                    alt={`Comprobante orden #${orden.id_orden}`}
-                    className="w-full h-auto max-h-96 object-contain bg-gray-100"
-                  />
-                )}
-              </div>
-            ) : (
-              <p className="text-sm text-gray-500 p-4 text-center bg-gray-50 rounded-lg">
-                {esEfectivo
-                  ? '💵 Pago en efectivo — se cobra en el club, no lleva comprobante. Aprobá la orden cuando tengas la plata en mano.'
-                  : 'El socio aún no ha subido un comprobante.'}
-              </p>
-            )}
-          </div>
+          {/* Mismo visor que la tarjeta del Pago. Acá el reemplazo sirve para el
+              caso concreto que trajo la QA: llega un comprobante ilegible, el
+              socio manda otro por WhatsApp y quien verifica lo carga sin
+              tener que rechazar la orden y hacerla generar de nuevo. */}
+          <ComprobantePago
+            idPago={orden.id_pago}
+            comprobanteUrl={comprobanteUrl}
+            metodoPago={orden.pago?.metodo_pago}
+            token={token}
+            onReemplazado={setComprobanteUrl}
+          />
+          {esEfectivo && !comprobanteUrl && (
+            <p className="text-xs text-gray-500 -mt-1">
+              💵 Pago en efectivo — aprobá la orden cuando tengas la plata en mano.
+            </p>
+          )}
 
           {showRechazoInput && (
             <div className="pt-2">
@@ -398,13 +374,13 @@ function VerificacionModal({ orden, onClose, onActionSuccess, token }) {
           {orden.estado === 'expirada' ? (
             <div className="w-full flex items-center justify-between gap-3">
               <p className="text-xs text-gray-500">
-                {orden.pago?.comprobante_url || !requiereComprobante
+                {comprobanteUrl || !requiereComprobante
                   ? 'Reabrir le da otras 48hs para revisarla, como si nunca hubiera expirado.'
                   : 'No tiene comprobante — no hay nada que reabrir.'}
               </p>
               <button
                 onClick={handleReabrir}
-                disabled={isSubmitting || (requiereComprobante && !orden.pago?.comprobante_url)}
+                disabled={isSubmitting || (requiereComprobante && !comprobanteUrl)}
                 className="flex-shrink-0 px-4 py-2 rounded-lg text-white bg-blue-600 hover:bg-blue-700 font-semibold disabled:opacity-50 transition-colors flex items-center gap-2"
               >
                 {isSubmitting && <Loader2 size={14} className="animate-spin" />}
@@ -436,7 +412,7 @@ function VerificacionModal({ orden, onClose, onActionSuccess, token }) {
               </button>
               <button
                 onClick={handleAprobar}
-                disabled={isSubmitting || (requiereComprobante && !orden.pago?.comprobante_url)}
+                disabled={isSubmitting || (requiereComprobante && !comprobanteUrl)}
                 className="px-4 py-2 rounded-lg text-white bg-green-600 hover:bg-green-700 font-semibold disabled:opacity-50 transition-colors flex items-center gap-2"
               >
                 {isSubmitting && <Loader2 size={14} className="animate-spin" />}
@@ -456,8 +432,12 @@ function VerificacionModal({ orden, onClose, onActionSuccess, token }) {
 // despliega al click. Si el Pago tiene más de una Orden, aparece un botón
 // para aprobar todas las que sigan pendientes de un solo tiro.
 
-function TarjetaPago({ pago, ordenes, resueltosEnSesion, onVerificar, onAprobarTodo, aprobandoTodo }) {
+function TarjetaPago({ pago, ordenes, resueltosEnSesion, onVerificar, onAprobarTodo, aprobandoTodo, token }) {
   const [expandido, setExpandido] = useState(false)
+  // Copia local del comprobante para reflejar un reemplazo sin recargar toda
+  // la bandeja (el reemplazo no cambia ningún estado de orden, así que
+  // refetchear la lista completa sería desproporcionado).
+  const [comprobanteUrl, setComprobanteUrl] = useState(pago?.comprobante_url ?? null)
   const metodo = METODO_PAGO_BADGE[pago?.metodo_pago] ?? METODO_PAGO_BADGE.transferencia
   const esMultiple = ordenes.length > 1
   const socio = ordenes[0]?.usuario
@@ -503,6 +483,21 @@ function TarjetaPago({ pago, ordenes, resueltosEnSesion, onVerificar, onAprobarT
             <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${metodo.classes}`}>
               {metodo.label}
             </span>
+          </div>
+
+          {/* Comprobante — al nivel del PAGO y disponible en CUALQUIER estado.
+              Antes solo se veía dentro del modal de verificación, y ese modal
+              se abre únicamente para órdenes pendientes: una vez aprobada o
+              rechazada la orden, el club se quedaba sin ninguna forma de mirar
+              el comprobante (BUG-05, ronda 2). */}
+          <div className="px-4 sm:px-5 py-3 border-b border-gray-100">
+            <ComprobantePago
+              idPago={pago?.id_pago}
+              comprobanteUrl={comprobanteUrl}
+              metodoPago={pago?.metodo_pago}
+              token={token}
+              onReemplazado={setComprobanteUrl}
+            />
           </div>
 
           {/* Aprobar todo — solo si hay 2+ órdenes y más de una sigue pendiente.
@@ -862,6 +857,7 @@ export default function AdminVerificaciones() {
                     onVerificar={setOrdenSeleccionada}
                     onAprobarTodo={handleAprobarTodo}
                     aprobandoTodo={aprobandoTodoPagoId === pago?.id_pago}
+                    token={token}
                   />
                 </div>
               )

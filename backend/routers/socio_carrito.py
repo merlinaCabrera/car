@@ -31,8 +31,12 @@ Subida de comprobante:
 
 Decisiones técnicas (se mantienen del router anterior):
   ─ PRECIO: el valor que envía el frontend se IGNORA completamente.
-    El backend lee precio_actual de ProductoServicio en el momento exacto
-    del checkout. Esto cierra el vector de manipulación de precios.
+    El backend resuelve el precio en el momento exacto del checkout con
+    utils.precios.precio_para_socio(), que parte de precio_actual de
+    ProductoServicio y le aplica el descuento que le corresponda a ESTE
+    socio (hoy: menores de 18 en la cuota social). Esto cierra el vector de
+    manipulación de precios y, a la vez, evita el error inverso —cobrarle
+    de más a un menor— que era BUG-12.
 
   ─ STOCK: se descuenta INMEDIATAMENTE en el checkout, no al aprobar.
     Esto evita la sobreventa (dos socios reservando el mismo último ítem
@@ -77,6 +81,7 @@ from config import settings
 from database import get_db
 from dependencies import require_roles
 from mailer.services import email_tasks
+from utils.precios import obtener_descuento_menor_pct, precio_para_socio
 
 router = APIRouter(
     prefix="/socio/carrito",
@@ -102,7 +107,9 @@ def _extraer_ip(request: Request) -> Optional[str]:
 def _crear_preferencia_mercado_pago(
     *,
     pago: models.Pago,
-    items_resueltos: list[tuple[models.ProductoServicio, schemas.DetalleOrdenCreate]],
+    items_resueltos: list[
+        tuple[models.ProductoServicio, schemas.DetalleOrdenCreate, Decimal]
+    ],
     current_user: models.Usuario,
 ) -> str:
     """
@@ -122,7 +129,7 @@ def _crear_preferencia_mercado_pago(
     # se había restado de la billetera → el socio pagaba de más). En ese caso
     # se colapsa a un único ítem por el monto real a cobrar.
     suma_items = sum(
-        (producto.precio_actual * Decimal(item.cantidad) for producto, item in items_resueltos),
+        (precio_unit * Decimal(item.cantidad) for _, item, precio_unit in items_resueltos),
         Decimal("0"),
     )
     if suma_items != pago.monto_total:
@@ -137,10 +144,10 @@ def _crear_preferencia_mercado_pago(
             {
                 "title": producto.nombre[:256],
                 "quantity": item.cantidad,
-                "unit_price": float(producto.precio_actual),
+                "unit_price": float(precio_unit),
                 "currency_id": "ARS",
             }
-            for producto, item in items_resueltos
+            for producto, item, precio_unit in items_resueltos
         ]
 
     preference_data = {
@@ -210,7 +217,9 @@ def checkout_carrito(
          b. Verifica que exista y que es_activo sea True.
          c. Verifica que haya stock suficiente (si aplica).
          d. Descuenta stock ya en este paso (excepto cuota_social, que no tiene).
-         e. Congela precio_actual como precio_unitario_historico.
+         e. Congela el precio QUE LE CORRESPONDE A ESTE SOCIO como
+            precio_unitario_historico — vía utils.precios.precio_para_socio(),
+            que aplica el descuento por menor de edad sobre la cuota social.
       3. Calcula monto_total GLOBAL = Σ(precio_congelado × cantidad) de todo el carrito.
       4. Crea el Pago (estado='pendiente', monto_total=global, metodo_pago=payload)
          y hace flush para obtener id_pago.
@@ -235,11 +244,24 @@ def checkout_carrito(
 
     # 2 ── Resolución de productos y validaciones ───────────────────────────
     #
-    # items_resueltos: lista de tuplas (ProductoServicio, DetalleOrdenCreate)
+    # items_resueltos: lista de tuplas
+    #     (ProductoServicio, DetalleOrdenCreate, precio_unitario)
     # Permite iterar varias veces (calcular totales, separar por dominio,
     # insertar detalles) sin volver a consultar la BD.
     #
-    items_resueltos: list[tuple[models.ProductoServicio, schemas.DetalleOrdenCreate]] = []
+    # `precio_unitario` es el precio REAL de este socio, ya resuelto acá una
+    # sola vez. Antes cada bloque posterior hacía `producto.precio_actual` por
+    # su cuenta y así se perdía el descuento por menor de edad (BUG-12): la
+    # pantalla de cuotas mostraba $3.000 y la orden guardaba $5.000. Llevarlo
+    # en la tupla es lo que impide que vuelva a divergir.
+    #
+    items_resueltos: list[
+        tuple[models.ProductoServicio, schemas.DetalleOrdenCreate, Decimal]
+    ] = []
+
+    # El % de descuento se lee UNA vez para todo el carrito (evita una query
+    # de ConfiguracionGlobal por ítem).
+    descuento_menor_pct = obtener_descuento_menor_pct(db)
 
     for item in payload.items:
 
@@ -314,11 +336,20 @@ def checkout_carrito(
         if producto.stock is not None:
             producto.stock -= item.cantidad
 
-        items_resueltos.append((producto, item))
+        # 2e. Precio efectivo de ESTE socio (aplica descuento de menores sobre
+        #     la cuota social; para tienda/alquiler devuelve precio_actual).
+        items_resueltos.append((
+            producto,
+            item,
+            precio_para_socio(
+                producto, current_user, db,
+                descuento_menor_pct=descuento_menor_pct,
+            ),
+        ))
 
     # 3 ── Calcular monto_total GLOBAL exclusivamente en el backend ─────────
     monto_total_global: Decimal = sum(
-        (producto.precio_actual * Decimal(item.cantidad) for producto, item in items_resueltos),
+        (precio_unit * Decimal(item.cantidad) for _, item, precio_unit in items_resueltos),
         Decimal("0"),
     )
 
@@ -367,18 +398,18 @@ def checkout_carrito(
 
     # 5 ── Split-order: separar ítems resueltos por dominio de negocio ──────
     items_cuotas = [
-        (producto, item) for producto, item in items_resueltos
-        if producto.categoria == "cuota_social"
+        trio for trio in items_resueltos
+        if trio[0].categoria == "cuota_social"
     ]
     items_tienda = [
-        (producto, item) for producto, item in items_resueltos
-        if producto.categoria != "cuota_social"
+        trio for trio in items_resueltos
+        if trio[0].categoria != "cuota_social"
     ]
 
     ordenes_creadas: list[models.Orden] = []
 
     def _crear_orden_para_dominio(
-        grupo: list[tuple[models.ProductoServicio, schemas.DetalleOrdenCreate]],
+        grupo: list[tuple[models.ProductoServicio, schemas.DetalleOrdenCreate, Decimal]],
     ) -> Optional[models.Orden]:
         """Crea una Orden + sus DetalleOrden para un dominio (cuota o tienda).
         No hace nada si el grupo está vacío."""
@@ -386,7 +417,7 @@ def checkout_carrito(
             return None
 
         subtotal: Decimal = sum(
-            (producto.precio_actual * Decimal(item.cantidad) for producto, item in grupo),
+            (precio_unit * Decimal(item.cantidad) for _, item, precio_unit in grupo),
             Decimal("0"),
         )
 
@@ -400,12 +431,12 @@ def checkout_carrito(
         db.add(orden)
         db.flush()  # obtenemos orden.id_orden para los DetalleOrden
 
-        for producto, item in grupo:
+        for producto, item, precio_unit in grupo:
             db.add(models.DetalleOrden(
                 id_orden=orden.id_orden,
                 id_producto=producto.id_producto,
                 cantidad=item.cantidad,
-                precio_unitario_historico=producto.precio_actual,  # ← CONGELADO
+                precio_unitario_historico=precio_unit,  # ← CONGELADO (precio del socio)
                 mes_referencia=item.mes_referencia,                # None para no-cuotas
                 id_reserva=item.id_reserva,                        # None salvo alquileres
             ))
@@ -463,10 +494,11 @@ def checkout_carrito(
                     "nombre":       producto.nombre,
                     "categoria":    producto.categoria,
                     "cantidad":     item.cantidad,
-                    "precio_unit":  str(producto.precio_actual),
-                    "subtotal":     str(producto.precio_actual * item.cantidad),
+                    "precio_unit":  str(precio_unit),
+                    "precio_lista": str(producto.precio_actual),
+                    "subtotal":     str(precio_unit * item.cantidad),
                 }
-                for producto, item in items_resueltos
+                for producto, item, precio_unit in items_resueltos
             ],
         },
         ip_origen=_extraer_ip(request),
@@ -498,33 +530,70 @@ def checkout_carrito(
         db.commit()
         db.refresh(nuevo_pago)
 
-    # 9 ── Mails en background ────────────────────────────────────────────────
+    # 9 ── Avisos ────────────────────────────────────────────────────────────
+    # Al SOCIO: notificación in-app (ver D5 más abajo). Al CLUB: mail, que sí
+    # se mantiene — el club necesita enterarse de que entró un pago en efectivo
+    # sin tener que estar mirando el panel.
+    #
     # Método efectivo: si el saldo a favor cubrió TODO, el Pago ya nació como
     # 'saldo_a_favor' y se auto-aprobó — no es un pago pendiente en efectivo ni
     # hay que generar link de MP. Se respeta ese override acá también (antes se
     # usaba payload.metodo_pago crudo y se mandaba a MP un Pago ya aprobado).
     metodo = "saldo_a_favor" if saldo_cubre_todo else payload.metodo_pago
 
-    if current_user.email and not saldo_cubre_todo:
-        # Si el saldo cubrió todo, el Pago ya se aprobó y finalizar_pago_si_corresponde
-        # mandó el mail de "compra confirmada" — no corresponde el de "orden generada,
-        # subí el comprobante".
+    # ── Aviso al socio de que la orden se generó: IN-APP, no por mail ────────
+    #
+    # Decisión D5 de la QA del 08-09: el mail se reserva para cuando el pago se
+    # APRUEBA (ahí sí hay algo definitivo que comunicar y conviene que quede
+    # como comprobante en la casilla). Generar una orden es un paso intermedio
+    # que el socio acaba de hacer con la pantalla delante: mandarle un mail por
+    # eso satura la casilla y le baja el valor al mail que de verdad importa.
+    #
+    # Antes esto disparaba `task_orden_generada` y NO había ninguna
+    # notificación in-app en este punto.
+    #
+    # Si el saldo a favor cubrió todo, el Pago ya se aprobó y
+    # finalizar_pago_si_corresponde() se encarga de avisar la confirmación: no
+    # corresponde decirle "generamos tu orden, subí el comprobante".
+    if not saldo_cubre_todo:
         # Las órdenes de cuota social no se ven en "Mis Compras" (esa pantalla
         # es tienda/alquileres a propósito): su estado vive en Gestión de
-        # Cuotas. Si el carrito era SOLO cuota, el link del mail tiene que ir
-        # ahí, si no el socio lo seguía y encontraba la pantalla vacía —
-        # BUG-06 de la QA del 08-09. Un carrito mixto sí va a Mis Compras,
-        # que es donde están las órdenes de tienda/alquiler.
+        # Cuotas. Si el carrito era SOLO cuota, hay que mandarlo ahí; si no,
+        # encontraba la pantalla vacía — BUG-06 de la QA del 08-09.
         solo_cuota = bool(items_cuotas) and not items_tienda
-        background_tasks.add_task(
-            email_tasks.task_orden_generada,
-            email_destino=current_user.email,
-            nombre_socio=current_user.nombre,
-            numero_pago=nuevo_pago.id_pago,
-            monto=str(nuevo_pago.monto_total),
-            metodo=metodo,
-            ruta_estado="/socio/cuotas" if solo_cuota else "/mis-compras",
-        )
+        donde_ver = "Gestión de Cuotas" if solo_cuota else "Mis Compras"
+
+        if metodo == "efectivo":
+            cuerpo = (
+                f"Registramos tu pedido por ${nuevo_pago.monto_total}. "
+                f"Acercate al club a abonarlo y un administrativo lo registra en el momento. "
+                f"Podés seguir el estado desde {donde_ver}."
+            )
+        elif metodo == "mercado_pago":
+            cuerpo = (
+                f"Registramos tu pedido por ${nuevo_pago.monto_total}. "
+                f"Completá el pago en Mercado Pago para que se acredite. "
+                f"Podés seguir el estado desde {donde_ver}."
+            )
+        else:
+            cuerpo = (
+                f"Registramos tu pedido por ${nuevo_pago.monto_total}. "
+                f"Subí el comprobante de la transferencia para que podamos verificarlo. "
+                f"Podés hacerlo desde {donde_ver}."
+            )
+
+        db.add(models.Notificacion(
+            id_usuario=current_user.id_usuario,
+            # 'sistema' es uno de los tipos ya permitidos por el CHECK
+            # chk_notificacion_tipo (ver models.TIPOS_NOTIFICACION). Se reusa a
+            # propósito para no necesitar una migración solo por esto.
+            tipo="sistema",
+            titulo=f"Comprobante #{nuevo_pago.id_pago} generado",
+            cuerpo=cuerpo,
+            referencia_id=nuevo_pago.id_pago,
+            referencia_tabla="pagos",
+        ))
+        db.commit()
 
     if metodo == "efectivo":
         background_tasks.add_task(

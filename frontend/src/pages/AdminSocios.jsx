@@ -12,6 +12,7 @@
  */
 
 import { textoError } from '../utils/errores';
+import ComprobantePago from '../components/admin/ComprobantePago'
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
 import ConfirmDialog from '../components/ConfirmDialog'
@@ -110,10 +111,17 @@ function calcularEdad(fechaNacimientoISO) {
  *   · Si mes_cubierto_hasta es nulo, fechaBase = fecha_ingreso normalizada al
  *     día de vencimiento (con clamp al último día del mes).
  *   · hoy <= fechaBase  → { moroso: false, mesesAdeudados: 0 }
- *   · hoy >  fechaBase  → moroso: true, con la diferencia de meses de
- *     calendario entre hoy y fechaBase (+1 si ya pasó el día de vencimiento
- *     del mes en curso). Así, un socio nuevo o que debe el mes en curso NO
- *     es moroso hasta pasado el día de vencimiento (ej. día 11 si vence el 10).
+ *   · hoy >  fechaBase  → se cuentan SOLO los períodos cuya fecha de
+ *     vencimiento ya pasó (vencimiento < hoy). El período del mes en curso no
+ *     suma hasta el día siguiente a su vencimiento: si vence el 10, el 10
+ *     todavía está en plazo y el 11 pasa a adeudado.
+ *
+ * Tiene que dar EXACTAMENTE lo mismo que utils/cuotas_periodos.py
+ * (calcular_estado_financiero) en el backend. El filtro por vencimiento se
+ * agregó en los dos lados a la vez: antes el contador del header sumaba el mes
+ * en curso desde el día 1 mientras el calendario de /socio/cuotas ya lo trataba
+ * como "a vencer", así que header y calendario mostraban deudas distintas para
+ * el mismo socio (BUG-04, ronda 2 de la QA).
  */
 function calcularEstadoFinanciero(mesCubiertoHastaISO, fechaIngresoISO, diaVencimiento = 10) {
   let fechaBase = parsearISO(mesCubiertoHastaISO)
@@ -134,15 +142,21 @@ function calcularEstadoFinanciero(mesCubiertoHastaISO, fechaIngresoISO, diaVenci
 
   if (hoy <= fechaBase) return { moroso: false, mesesAdeudados: 0 }
 
-  let mesesAdeudados =
+  let periodosHastaHoy =
     (hoy.getFullYear() - fechaBase.getFullYear()) * 12 +
     (hoy.getMonth() - fechaBase.getMonth())
 
   if (hoy.getDate() > fechaBase.getDate()) {
-    mesesAdeudados += 1
+    periodosHastaHoy += 1
   }
 
-  return { moroso: true, mesesAdeudados }
+  // Solo los ya vencidos cuentan como deuda.
+  let mesesAdeudados = 0
+  for (let i = 1; i <= periodosHastaHoy; i++) {
+    if (sumarMesesLocal(fechaBase, i) < hoy) mesesAdeudados += 1
+  }
+
+  return { moroso: mesesAdeudados > 0, mesesAdeudados }
 }
 
 /** Suma (o resta) meses enteros a una fecha, con clamp de fin de mes. */
@@ -173,6 +187,27 @@ function listarMesesAdeudados(mesCubiertoHastaISO, fechaIngresoISO, diaVencimien
   const periodos = []
   for (let i = 1; i <= mesesAdeudados; i++) periodos.push(sumarMesesLocal(fechaBase, i))
   return periodos
+}
+
+/**
+ * Etiqueta legible del método de pago de un Pago.
+ *
+ * Antes esto era `Pagado por ${metodo.replace('_',' ')}` en el historial, con
+ * dos problemas: 'mercado_pago' quedaba como "mercado pago" y, sobre todo, un
+ * cobro por ventanilla figuraba como "Pagado por transferencia" porque el
+ * backend no guardaba el método y la columna caía en su default (BUG-09 de la
+ * QA del 08-09). El backend ya guarda el método real; esto solo lo nombra bien.
+ */
+const ETIQUETAS_METODO_PAGO = {
+  efectivo:      'Cobrado en efectivo',
+  transferencia: 'Pagado por transferencia',
+  mercado_pago:  'Pagado por Mercado Pago',
+  saldo_a_favor: 'Saldado con saldo a favor',
+}
+
+function etiquetaMetodoPago(metodo) {
+  if (!metodo) return 'Método de pago no registrado'
+  return ETIQUETAS_METODO_PAGO[metodo] ?? `Pagado por ${metodo.replace(/_/g, ' ')}`
 }
 
 /** Precio final de la cuota para un socio puntual, aplicando el descuento de menor si corresponde. */
@@ -1108,6 +1143,10 @@ function CobroModal({ socio, precioCuota, onClose, onSave, diaVencimiento }) {
   const { moroso, mesesAdeudados } = estadoFinanciero
 
   const [meses, setMeses] = useState(moroso && mesesAdeudados > 0 ? mesesAdeudados : 1)
+  // Cómo se cobró realmente. Por defecto efectivo: es el caso típico del cobro
+  // presencial, y era justamente el que antes quedaba registrado como
+  // transferencia (BUG-09).
+  const [metodoPago, setMetodoPago] = useState('efectivo')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [apiError, setApiError] = useState(null)
   const [formError, setFormError] = useState(null)
@@ -1144,7 +1183,11 @@ function CobroModal({ socio, precioCuota, onClose, onSave, diaVencimiento }) {
     setIsSubmitting(true)
     setApiError(null)
     try {
-      await onSave({ id_usuario: socio.id_usuario, meses_a_pagar: Number(meses) })
+      await onSave({
+        id_usuario: socio.id_usuario,
+        meses_a_pagar: Number(meses),
+        metodo_pago: metodoPago,
+      })
       onClose()
     } catch (err) {
       setApiError(err.message)
@@ -1216,6 +1259,34 @@ function CobroModal({ socio, precioCuota, onClose, onSave, diaVencimiento }) {
               className={`form-input mt-1.5 ${formError ? 'border-red-500' : ''}`}
             />
             {formError && <p className="text-red-600 text-xs mt-1">{formError}</p>}
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              Cómo se cobró
+            </label>
+            <div className="mt-1.5 grid grid-cols-2 gap-2">
+              {[
+                { value: 'efectivo',      label: 'Efectivo' },
+                { value: 'transferencia', label: 'Transferencia' },
+              ].map(opcion => (
+                <button
+                  key={opcion.value}
+                  type="button"
+                  onClick={() => setMetodoPago(opcion.value)}
+                  className={`px-3 py-2 rounded-xl text-sm font-semibold border transition-colors ${
+                    metodoPago === opcion.value
+                      ? 'bg-slate-900 text-white border-slate-900'
+                      : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                  }`}
+                >
+                  {opcion.label}
+                </button>
+              ))}
+            </div>
+            <p className="text-xs text-gray-400 mt-1.5">
+              Queda registrado en el historial del socio y en la auditoría.
+            </p>
           </div>
 
           <div className="flex items-center justify-between px-4 py-4 rounded-xl bg-blue-50 border border-blue-200">
@@ -1295,6 +1366,10 @@ function ComprasSocioModal({ socio, token, refreshTick, onClose, onCobrar }) {
   const [loading,     setLoading]     = useState(true)
   const [error,       setError]       = useState(null)
   const [filtroTipo,  setFiltroTipo]  = useState('')
+  // Comprobantes reemplazados en esta sesión del modal, por id_pago. Evita
+  // refetchear todo el historial por haber cambiado un archivo. Varias órdenes
+  // pueden compartir el mismo Pago (split-order), así que la clave es el pago.
+  const [comprobantesPorPago, setComprobantesPorPago] = useState({})
 
   const fetchOrdenes = useCallback(async () => {
     setLoading(true)
@@ -1416,12 +1491,25 @@ function ComprasSocioModal({ socio, token, refreshTick, onClose, onCobrar }) {
 
               <div className="mt-3 flex items-center justify-between border-t border-gray-100 pt-2.5">
                 <span className="text-xs text-gray-400">
-                  {orden.pago?.metodo_pago
-                    ? `Pagado por ${orden.pago.metodo_pago.replace('_', ' ')}`
-                    : 'Método de pago no registrado'}
+                  {etiquetaMetodoPago(orden.pago?.metodo_pago)}
                 </span>
                 <span className="text-base font-bold text-gray-900">{formatoMoneda.format(orden.monto_total)}</span>
               </div>
+
+              {/* Comprobante — antes este historial no tenía ningún control para
+                  verlo, así que el club no podía revisar el respaldo de un pago
+                  ya resuelto desde acá (BUG-05, ronda 2). */}
+              {orden.id_pago != null && (
+                <div className="mt-3 border-t border-gray-100 pt-3">
+                  <ComprobantePago
+                    idPago={orden.id_pago}
+                    comprobanteUrl={comprobantesPorPago[orden.id_pago] ?? orden.pago?.comprobante_url}
+                    metodoPago={orden.pago?.metodo_pago}
+                    token={token}
+                    onReemplazado={(url) => setComprobantesPorPago(prev => ({ ...prev, [orden.id_pago]: url }))}
+                  />
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -1840,7 +1928,7 @@ export default function AdminSocios() {
   // requests, pero ambas se completan — hay que cortarlo de este lado.
   const registrandoPagoRef = useRef(false)
 
-  const handleRegistrarPago = async ({ id_usuario, meses_a_pagar }) => {
+  const handleRegistrarPago = async ({ id_usuario, meses_a_pagar, metodo_pago }) => {
     if (registrandoPagoRef.current) return
     registrandoPagoRef.current = true
     try {
@@ -1850,7 +1938,7 @@ export default function AdminSocios() {
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ id_usuario, meses_a_pagar }),
+      body: JSON.stringify({ id_usuario, meses_a_pagar, metodo_pago }),
     })
 
     if (!res.ok) {

@@ -41,7 +41,7 @@ from __future__ import annotations
 import uuid
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Annotated, List, Optional
+from typing import Annotated, List, Literal, Optional
 
 from pydantic import (
     BaseModel,
@@ -364,6 +364,24 @@ class UsuarioListResponse(BaseModel):
     apellido: str
     email: Optional[str] = None
     fecha_baja: Optional[date] = None
+    fecha_nacimiento: Optional[date] = Field(
+        default=None,
+        description=(
+            "Necesaria en el LISTADO, no solo en el detalle: /admin/socios calcula "
+            "con esto el filtro 'Menores' y el precio con descuento de cada fila. "
+            "Sin este campo el filtro no devolvía NADA —la edad salía siempre "
+            "undefined— y la cuota de un menor se mostraba a precio de adulto "
+            "(BUG-10 de la QA del 08-09)."
+        ),
+    )
+    fecha_ingreso: Optional[date] = Field(
+        default=None,
+        description=(
+            "Fecha de alta. El cálculo de deuda del frontend la usa como fecha "
+            "base cuando mes_cubierto_hasta es NULL (socio que nunca pagó); sin "
+            "ella esas filas no podían calcular su estado."
+        ),
+    )
     mes_cubierto_hasta: Optional[date] = Field(
         default=None,
         description="Fecha de cobertura vigente (ISO 8601). NULL = sin cobertura activa.",
@@ -1101,6 +1119,16 @@ class RegistrarPagoManualPayload(BaseModel):
     """Payload para que el admin registre un cobro por ventanilla (efectivo/transferencia)."""
     id_usuario: int
     meses_a_pagar: int = Field(gt=0, le=60, description="Cantidad de meses que se están saldando.")
+    metodo_pago: Literal["efectivo", "transferencia"] = Field(
+        default="efectivo",
+        description=(
+            "Cómo se cobró realmente. Antes no existía este campo y el Pago "
+            "quedaba con el server_default 'transferencia', así que un cobro en "
+            "efectivo por ventanilla figuraba como transferencia bancaria en el "
+            "historial del socio (BUG-09 de la QA del 08-09). El default es "
+            "'efectivo' porque es el caso típico del cobro presencial."
+        ),
+    )
 
 
 class RegistrarPagoManualResponse(BaseModel):
@@ -1181,6 +1209,17 @@ class EstadoCuotaSocioResponse(BaseModel):
             "Fecha en que el socio se unió al club (fecha de alta original). "
             "El frontend la usa para el Calendario Anual: cualquier mes anterior "
             "a esta fecha se muestra como 'Inactivo / No era socio'."
+        ),
+    )
+    en_mes_ingreso: bool = Field(
+        default=False,
+        description=(
+            "TRUE mientras el socio está dentro de su mes de ingreso (decisión D1). "
+            "En esa ventana se muestra AL DÍA y meses_adeudados viene vacío, aunque "
+            "la cuota de ese mes se le sigue debiendo: la deuda está en "
+            "mes_cubierto_hasta y aparece sola cuando el mes termina. El frontend "
+            "usa este flag para mostrar 'Mes de ingreso' en vez de 'Al día' seco, "
+            "y para no dar a entender que ese mes quedó saldado."
         ),
     )
     es_becado: bool = Field(

@@ -47,11 +47,11 @@ export default function Login() {
             // un socio a /admin y el panel cargaba vacío con 403 (BUG-01).
             const roles = rolesDeUsuario(userData);
 
-            // Mismo mapa rol → home que usa RequireRole. Antes acá solo se
-            // contemplaba admin_general y todo el resto caía en /socio: un
-            // personal_administrativo, un técnico o un portero aterrizaban en
-            // una pantalla que no les corresponde y RequireRole los rebotaba
-            // enseguida a otra (doble redirect visible).
+            // Mismo mapa rol → home que usa RequireRole (única fuente de
+            // verdad). Desde la ronda 2 de QA la regla es: solo admin_general
+            // aterriza en /admin; cualquier otra cuenta —incluso si además de
+            // socio tiene personal_administrativo, técnico o escáner— cae en
+            // /socio. Ver homePorRol() en components/RequireRole.jsx.
             let destino = homePorRol(roles);
 
             // Si venía de un link que la mandó acá por no tener sesión
@@ -63,10 +63,15 @@ export default function Login() {
             // DESPUÉS se loguea una cuenta distinta (ej: un socio común) en
             // esa misma pestaña, no tiene sentido mandarla a una pantalla
             // de admin a la que ni siquiera tiene acceso. Solo lo honramos
-            // si además la cuenta que acaba de loguear es admin.
-            const esAdmin = roles.includes('admin_general') || roles.includes('personal_administrativo');
+            // si además la cuenta que acaba de loguear tiene acceso real al
+            // panel. Ojo: esto NO contradice la regla de homePorRol() — ahí se
+            // decide el destino POR DEFECTO (solo admin_general va a /admin);
+            // acá hay una intención de navegación explícita de la persona, así
+            // que alcanza con que la ruta le esté permitida.
+            const puedeEntrarAlPanel =
+                roles.includes('admin_general') || roles.includes('personal_administrativo');
             const next = searchParams.get('next');
-            if (next && next.startsWith('/admin') && esAdmin) destino = next;
+            if (next && next.startsWith('/admin') && puedeEntrarAlPanel) destino = next;
 
             navigate(destino, { replace: true });
         } catch (err) {

@@ -147,6 +147,12 @@ async def task_aviso_club_pago_recibido(
     except Exception:
         logger.exception(f"Fallo al enviar mail 'aviso_club_pago' al club (orden #{numero_orden})")
 
+# NOTA (decisión D5 de la QA del 08-09): esta task quedó SIN USO. El aviso de
+# "orden generada" pasó a ser una notificación in-app (ver
+# routers/socio_carrito.checkout_carrito): el mail se reserva para cuando el
+# pago se aprueba. Se conserva la función —junto con su template
+# orden_generada.html— por si el club quiere volver a activarlo, pero si en la
+# próxima revisión sigue sin usarse conviene borrar las dos cosas.
 async def task_orden_generada(
     email_destino: str,
     nombre_socio: str,
@@ -314,9 +320,18 @@ async def task_aviso_admin_solicitud_reactivacion(nombre_socio: str, dni_socio: 
         logger.exception(f"Fallo al enviar mail 'aviso_admin_solicitud_reactivacion' al club (DNI {dni_socio})")
 
 
-async def task_bienvenida_alta_manual(email_destino: str, nombre_socio: str) -> None:
+async def task_bienvenida_alta_manual(
+    email_destino: str,
+    nombre_socio: str,
+    dni_socio: str,
+    password_temporal: str | None = None,
+) -> None:
     try:
-        await email_service.enviar_bienvenida_alta_manual(email_destino, nombre_socio)
+        await email_service.enviar_bienvenida_alta_manual(
+            email_destino, nombre_socio, dni_socio, password_temporal
+        )
+        # Nunca loguear `password_temporal`: los logs de Render los ve cualquiera
+        # con acceso al dashboard y quedan retenidos.
         logger.info(f"Mail 'bienvenida_alta_manual' enviado a {email_destino}")
     except Exception:
         logger.exception(f"Fallo al enviar mail 'bienvenida_alta_manual' a {email_destino}")

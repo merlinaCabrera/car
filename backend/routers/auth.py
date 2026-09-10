@@ -1,3 +1,4 @@
+import logging
 import secrets
 from datetime import timedelta, datetime, timezone
 
@@ -11,6 +12,8 @@ from database import get_db
 from security import ACCESS_TOKEN_EXPIRE_MINUTES, create_access_token, verify_password, get_password_hash
 from mailer.services.email_service import enviar_recuperar_password
 from utils.ratelimit import rate_limit
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(
     prefix="/auth",
@@ -193,12 +196,33 @@ async def solicitar_recuperacion(
     frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
     link_reset = f"{frontend_url}/recuperar-password?token={token}"
 
-    await enviar_recuperar_password(
-        email_destino=usuario.email,
-        nombre_socio=usuario.nombre,
-        link_reset=link_reset,
-        minutos_validez=60,
-    )
+    # El envío se hace INLINE (no en background) porque la respuesta le dice al
+    # socio "revisá tu mail": si el envío falla, tiene que enterarse ahora y no
+    # quedarse esperando algo que no va a llegar.
+    #
+    # Pero un fallo del proveedor de mail no puede salir como 500: el token ya
+    # se generó y guardó, y un error genérico deja al socio sin saber qué
+    # hacer. Antes reventaba con el traceback crudo de httpx — reproducido en
+    # dev con RESEND_API_KEY vacía: `Illegal header value b'Bearer '` → 500.
+    try:
+        await enviar_recuperar_password(
+            email_destino=usuario.email,
+            nombre_socio=usuario.nombre,
+            link_reset=link_reset,
+            minutos_validez=60,
+        )
+    except Exception:
+        logger.exception(
+            "Fallo el envío del mail de recuperación al usuario %s.", usuario.id_usuario
+        )
+        return {
+            "ok": False,
+            "estado": "error_envio",
+            "mensaje": (
+                "Generamos el pedido, pero no pudimos enviarte el mail en este momento. "
+                "Probá de nuevo en unos minutos o comunicate con el club."
+            ),
+        }
 
     return {
         "ok": True,

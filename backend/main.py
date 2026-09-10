@@ -1,7 +1,29 @@
 # main.py
 import logging
 import os
+import sys
+
 from dotenv import load_dotenv
+
+# ---------------------------------------------------------------------------
+# CONSOLA EN UTF-8 (Windows)
+#
+# En Windows la consola usa cp1252 por defecto, y este archivo -como los logs
+# y varios mensajes del scheduler- imprime acentos y simbolos tipo "check".
+# Sin esto, arrancar el server en PowerShell revienta con UnicodeEncodeError
+# antes de levantar nada, y habia que acordarse de exportar PYTHONUTF8=1 a
+# mano en cada terminal nueva.
+#
+# reconfigure() existe desde Python 3.7. Se envuelve igual en try/except
+# porque stdout puede no ser un stream reconfigurable (por ejemplo si el
+# proceso corre con la salida redirigida por un supervisor).
+# En Linux (Render) esto es un no-op: ya viene en UTF-8.
+# ---------------------------------------------------------------------------
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding="utf-8")
+    except (AttributeError, ValueError):
+        pass
 
 # ─────────────────────────────────────────────────────────────────────────────
 # LOGGING — tiene que configurarse explícitamente, y temprano.

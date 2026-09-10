@@ -35,6 +35,16 @@ def _render(template_name: str, body: dict) -> str:
 
 
 async def _enviar(destinatarios: list[str], asunto: str, template_name: str, body: dict) -> None:
+    # Sin API key, httpx arma el header `Authorization: Bearer ` (vacío) y lo
+    # rechaza con "Illegal header value b'Bearer '", un error que no dice nada
+    # sobre la causa real. Se corta antes, con un mensaje que sí la nombra:
+    # pasa siempre en entornos de dev donde RESEND_API_KEY no está seteada.
+    if not RESEND_API_KEY:
+        raise RuntimeError(
+            "RESEND_API_KEY no está configurada: no se puede enviar el mail "
+            f"'{template_name}'. Seteala en el .env (dev) o en Render (producción)."
+        )
+
     html = _render(template_name, body)
     from_field = f"{MAIL_FROM_NAME} <{MAIL_FROM}>"
 

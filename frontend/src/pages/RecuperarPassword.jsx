@@ -70,8 +70,12 @@ export default function RecuperarPassword() {
       // — se prioriza que el socio entienda qué pasó por sobre la protección
       // anti-enumeración, que en un club chico aporta poco).
       const data = await res.json().catch(() => ({}));
-      if (data?.estado === 'no_registrado' || data?.estado === 'sin_email') {
-        setError(data.mensaje);
+      // Cualquier respuesta con ok:false trae un `mensaje` explicando qué pasó
+      // ('no_registrado', 'sin_email', 'error_envio'). Se muestra tal cual en
+      // vez de enumerar los estados acá: si el backend agrega uno nuevo, el
+      // socio ve la explicación igual y no un "listo, revisá tu mail" falso.
+      if (data?.ok === false) {
+        setError(data.mensaje || 'No pudimos procesar el pedido. Probá de nuevo.');
         return;
       }
       setIsSuccess(true);

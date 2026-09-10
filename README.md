@@ -43,3 +43,29 @@ El proyecto está dividido en dos aplicaciones principales y se apoya en servici
 - **Correos:** Para flujos de alta/baja de usuarios o de compras (en general, de un tipo de ítem o mixtas, es decir: cuotas, indumentaria y alquileres) están establecidas notificaciones por correo electrónico, para lo cual se utiliza la plataforma Resend.
 
 <br clear="left"/>
+
+
+
+
+
+
+## Levantar el proyecto en Windows
+
+**Backend** (terminal 1, PowerShell):
+
+```powershell
+cd C:\Users\Merlina\Desktop\car\backend
+.\venv\Scripts\Activate.ps1
+uvicorn main:app --reload --port 8000
+```
+
+**Frontend** (terminal 2, PowerShell):
+
+```powershell
+cd C:\Users\Merlina\Desktop\car\frontend
+npm run dev
+```
+
+Queda en <http://localhost:5173>, apuntando al backend que indique `VITE_API_URL` en `frontend/.env.local`.
+
+> **Nota:** antes hacía falta `$env:PYTHONUTF8 = "1"` en cada terminal nueva, porque la consola de Windows usa cp1252 y el arranque imprime acentos y un `✓` que la hacían fallar con `UnicodeEncodeError`. Ya no hace falta: `main.py` fuerza UTF-8 en stdout/stderr al arrancar.

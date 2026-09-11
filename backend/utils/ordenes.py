@@ -182,7 +182,44 @@ def finalizar_pago_si_corresponde(
     rechazar_orden() vía task_orden_rechazada.
     """
     if pago is None:
+        logger.warning(
+            "compra_confirmada NO enviado: la orden que se resolvió no cuelga de "
+            "ningún Pago (id_pago NULL). Es una fila vieja, anterior al patrón "
+            "Split-Order — no hay comprobante ni destinatario que resolver."
+        )
         return
+
+    # ¡ESTE flush ES LA FUNCIÓN! (no es una optimización ni una precaución)
+    #
+    # SessionLocal se crea con autoflush=False (ver database.py), así que los
+    # cambios que hizo el llamador —en particular `orden.estado = "aprobada"` de
+    # procesar_aprobacion_orden()— están solo en memoria: no los ve ninguna
+    # query hasta que alguien los baje a la base. Y esta función decide si
+    # mandar el mail justamente con una QUERY ("¿le quedan órdenes pendientes a
+    # este Pago?").
+    #
+    # Sin el flush, esa query leía el estado ANTERIOR: la orden recién aprobada
+    # seguía figurando como 'pendiente_verificacion' en la base, la función
+    # concluía "todavía falta resolver una hermana" y se volvía sin mandar nada.
+    # O sea: el mail de compra confirmada no salía NUNCA al aprobar una orden,
+    # ni siquiera en el caso simple de un Pago con una sola orden — BUG-07 de la
+    # QA del 11-09 ("llega la notificación in-app pero no llega el mail").
+    #
+    # El commit sigue siendo responsabilidad del llamador: flush() no cierra la
+    # transacción, solo hace visibles los cambios dentro de ella.
+    db.flush()
+
+    # Lock de la fila del Pago: serializa dos órdenes hermanas del MISMO Pago
+    # resolviéndose en requests simultáneas. Sin él, cada transacción consulta
+    # "¿quedan hermanas pendientes?" antes de que la otra commitee, las dos se
+    # ven a sí mismas como "todavía falta una" y el mail no lo manda ninguna.
+    # Va DESPUÉS del flush: populate_existing() pisa el objeto en memoria con lo
+    # que tenga la base, así que si los cambios no estuvieran bajados, este
+    # refresco se los comería.
+    db.query(models.Pago).filter(
+        models.Pago.id_pago == pago.id_pago
+    ).populate_existing().with_for_update().one()
+
     if pago.mail_confirmacion_enviado:
         logger.info(
             "compra_confirmada omitido (pago #%s): el mail resumen ya se había enviado.",
@@ -206,8 +243,17 @@ def finalizar_pago_si_corresponde(
         )
         return  # todavía falta resolver alguna orden hermana
 
-    pago.mail_confirmacion_enviado = True  # idempotencia, pase lo que pase abajo
-
+    # OJO con el momento en que se levanta `mail_confirmacion_enviado`: se levanta
+    # recién cuando el mail se encola de verdad (más abajo), NO acá.
+    #
+    # Antes se levantaba en este punto, "pase lo que pase abajo". Eso rompía el
+    # camino de la orden que expira y después se reabre: al expirar pasaba por
+    # este mismo bloque, salía por el `return` de abajo (el Pago no estaba
+    # verificado) pero dejaba la bandera en True para siempre. Cuando el admin
+    # después reabría esa orden y la aprobaba, la aprobación funcionaba pero el
+    # socio no recibía ningún mail, en silencio y sin ningún error visible —
+    # BUG-07 de la QA del 11-09. La idempotencia real la da el lock de la fila
+    # del Pago que se toma arriba.
     if pago.estado != "verificado":
         logger.info(
             "compra_confirmada omitido (pago #%s): el pago quedó en '%s', no verificado.",
@@ -236,6 +282,10 @@ def finalizar_pago_si_corresponde(
     from decimal import Decimal
     if saldo_aplicado < Decimal("0"):
         saldo_aplicado = Decimal("0")  # defensivo — nunca debería ser negativo
+
+    # Punto de no retorno: de acá en adelante el mail se encola sí o sí, así que
+    # la bandera se levanta ahora (dentro de la misma transacción que el lock).
+    pago.mail_confirmacion_enviado = True
 
     tipos_presentes = {s["clave"] for s in secciones}
     if tipos_presentes == {"cuota_social"}:
@@ -391,11 +441,26 @@ def procesar_aprobacion_orden(
         orden.notas_admin = notas_admin
 
     # ── Paso 6: resolver el Pago padre ────────────────────────────────────────
+    # Una orden aprobada significa plata efectivamente recibida, así que el Pago
+    # padre queda verificado sea cual sea su estado previo. Antes la condición
+    # era `== "pendiente"`, y eso dejaba colgado el caso de la orden que expiró
+    # (el scheduler marca el Pago 'rechazado') y después se reabrió y se aprobó:
+    # la cobertura del socio se actualizaba bien, pero el Pago quedaba
+    # 'rechazado' para siempre — con lo cual no se mandaba el mail de compra
+    # confirmada y cualquier reporte sobre pagos mostraba esa plata como
+    # rechazada (BUG-07 de la QA del 11-09).
     pago = orden.pago
     pago_marcado_verificado = False
-    if pago is not None and pago.estado == "pendiente":
+    if pago is not None and pago.estado != "verificado":
+        estado_pago_previo = pago.estado
         pago.estado = "verificado"
         pago_marcado_verificado = True
+        if estado_pago_previo != "pendiente":
+            logger.warning(
+                "Pago #%s pasó de '%s' a 'verificado' al aprobarse la orden #%s "
+                "(típicamente: orden expirada, reabierta y aprobada).",
+                pago.id_pago, estado_pago_previo, orden.id_orden,
+            )
 
     # ── Paso 7: audit_log ──────────────────────────────────────────────────────
     registrar_audit(

@@ -27,6 +27,7 @@ import { useState, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useCart } from '../context/CartContext'
+import ConfirmDialog from '../components/ConfirmDialog'
 import {
   ShoppingCart,
   ShoppingBag,
@@ -627,8 +628,15 @@ export default function SocioCarrito() {
   // ── Vaciar carrito: liberar TODAS las pre-reservas de alquiler antes ────────
   // (mismo motivo que handleRemove — si no, quedan 'bloqueada' hasta que las
   // agarre el job de expiración de 20 minutos, ocupando la agenda en vano).
+  // La confirmación se pide con <ConfirmDialog>, no con el window.confirm()
+  // nativo: era el último popup del sistema operativo que le quedaba al socio
+  // en el flujo de pago, y rompía la estética de la app igual que el de
+  // cancelar una orden (3.13 de la QA).
+  const [confirmarVaciar, setConfirmarVaciar] = useState(false)
+  const [vaciando, setVaciando] = useState(false)
+
   const handleVaciarCarrito = async () => {
-    if (!window.confirm('¿Vaciar el carrito?')) return
+    setVaciando(true)
 
     const itemsAlquiler = cart.filter(
       item => item.categoria === 'alquiler' && item.id_reserva != null
@@ -646,6 +654,8 @@ export default function SocioCarrito() {
     )
 
     clearCart()
+    setVaciando(false)
+    setConfirmarVaciar(false)
   }
 
   // ── Render ──────────────────────────────────────────────────────────────────
@@ -656,6 +666,18 @@ export default function SocioCarrito() {
 
   return (
     <div className="p-4 sm:p-6 max-w-2xl mx-auto space-y-6">
+
+      {confirmarVaciar && (
+        <ConfirmDialog
+          titulo="¿Vaciar el carrito?"
+          mensaje="Se quitan todos los ítems. Si tenías turnos de cancha o quincho reservados, vuelven a quedar disponibles para otros socios."
+          confirmLabel="Vaciar carrito"
+          variante="peligro"
+          cargando={vaciando}
+          onConfirm={handleVaciarCarrito}
+          onCancel={() => setConfirmarVaciar(false)}
+        />
+      )}
 
       {/* Modal de comprobante */}
       {modalAbierto && (
@@ -726,8 +748,8 @@ export default function SocioCarrito() {
         <div className="flex flex-col sm:flex-row gap-3">
           {/* Vaciar carrito */}
           <button
-            onClick={handleVaciarCarrito}
-            disabled={isCheckingOut}
+            onClick={() => setConfirmarVaciar(true)}
+            disabled={isCheckingOut || vaciando}
             className="flex-1 py-3 rounded-xl border border-gray-200 text-gray-500
                        hover:bg-gray-50 font-semibold text-sm transition-colors
                        disabled:opacity-50"

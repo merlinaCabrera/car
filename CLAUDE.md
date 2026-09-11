@@ -2,7 +2,7 @@
 
 Guía de contexto para Claude Code. Leer antes de tocar cualquier archivo.
 
-_Última actualización: 2026-09-08._
+_Última actualización: 2026-09-11._
 
 ---
 
@@ -342,6 +342,11 @@ Templates existentes:
 ## Bugs conocidos
 
 Estado verificado el 2026-09-06 (ver `docs/auditoria-2026-09-06.md`).
+
+⚠️ Esta tabla cubre solo la auditoría del 06-09. Las rondas de QA manual
+posteriores tienen su propio historial, más actualizado:
+`docs/qa-manual-2026-09-08.md` y `docs/qa-manual-2026-09-11.md` (rondas 1 a 3
++ las correcciones pendientes de retestear en la ronda 4).
 
 | # | Bug | Estado |
 |---|-----|--------|

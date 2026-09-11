@@ -19,6 +19,8 @@
 import { useRef, useState } from 'react'
 import {
   AlertCircle,
+  ChevronDown,
+  ChevronUp,
   ExternalLink,
   FileText,
   ImageIcon,
@@ -47,9 +49,17 @@ export default function ComprobantePago({
   token,
   onReemplazado,
   permitirReemplazo = true,
+  // Arranca colapsado (solo el título + "Ver comprobante") en las pantallas
+  // que listan VARIOS pagos seguidos: una foto vertical de transferencia mide
+  // lo mismo que media pantalla de celular, y con 5 o 6 pagos en el historial
+  // hay que hacer scroll eterno para llegar al siguiente (sugerencia 8.7 de la
+  // QA del 11-09). Donde se mira un comprobante puntual —el modal de
+  // verificación— sigue apareciendo abierto, que es para lo que se entra.
+  colapsable = false,
 }) {
   const [subiendo, setSubiendo] = useState(false)
   const [error, setError] = useState(null)
+  const [abierto, setAbierto] = useState(!colapsable)
   const inputRef = useRef(null)
   // `subiendo` es state (asincrónico): sin esta ref, dos cambios rápidos del
   // input disparan dos uploads. Mismo patrón que el resto de las acciones
@@ -116,13 +126,24 @@ export default function ComprobantePago({
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between gap-2 flex-wrap">
-        <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-          Comprobante {idPago != null && <span className="normal-case font-normal">(Pago #{idPago})</span>}
-        </h4>
-        {botonReemplazar}
+        {colapsable ? (
+          <button
+            type="button"
+            onClick={() => setAbierto(a => !a)}
+            className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wider hover:text-gray-700 transition-colors"
+          >
+            {abierto ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+            Comprobante {idPago != null && <span className="normal-case font-normal">(Pago #{idPago})</span>}
+          </button>
+        ) : (
+          <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+            Comprobante {idPago != null && <span className="normal-case font-normal">(Pago #{idPago})</span>}
+          </h4>
+        )}
+        {abierto && botonReemplazar}
       </div>
 
-      {url ? (
+      {!abierto ? null : url ? (
         <div className="border rounded-lg overflow-hidden">
           {esPdf ? (
             <a
@@ -166,7 +187,7 @@ export default function ComprobantePago({
         </p>
       )}
 
-      {error && (
+      {abierto && error && (
         <p className="text-xs text-red-600 flex items-center gap-1.5">
           <AlertCircle size={12} className="flex-shrink-0" />
           {error}

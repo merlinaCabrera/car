@@ -412,9 +412,9 @@ async def run():
         e_despues = calcular_estado_financiero(base_mes_actual, date(2020, 1, 1), 10,
                                                venc_este_mes + timedelta(days=1))
         ok("el dia del vencimiento todavia no cuenta como adeudado",
-           e_antes.cantidad_meses == 0, f"(dio {{e_antes.cantidad_meses}}, esperaba 0)")
+           e_antes.cantidad_meses == 0, f"(dio {e_antes.cantidad_meses}, esperaba 0)")
         ok("el dia siguiente al vencimiento ya cuenta 1 mes",
-           e_despues.cantidad_meses == 1, f"(dio {{e_despues.cantidad_meses}}, esperaba 1)")
+           e_despues.cantidad_meses == 1, f"(dio {e_despues.cantidad_meses}, esperaba 1)")
 
         print("\n── ronda 3 · D1 · mes de ingreso: al dia, pero se cobra ──")
         hoy_d1 = date.today()
@@ -425,9 +425,27 @@ async def run():
         e_luego = calcular_estado_financiero(cob_d1, hoy_d1, 10, mes_sig)
         ok("en su mes de ingreso el socio figura al dia",
            not e_ingreso.moroso and e_ingreso.cantidad_meses == 0 and e_ingreso.en_mes_ingreso,
-           f"(moroso={{e_ingreso.moroso}} meses={{e_ingreso.cantidad_meses}})")
+           f"(moroso={e_ingreso.moroso} meses={e_ingreso.cantidad_meses})")
         ok("pasado su mes de ingreso, ese mes se debe (no se condona)",
-           e_luego.cantidad_meses >= 1, f"(dio {{e_luego.cantidad_meses}}, esperaba >=1)")
+           e_luego.cantidad_meses >= 1, f"(dio {e_luego.cantidad_meses}, esperaba >=1)")
+
+        # Ronda 4: la gracia se APAGA al pagar esa primera cuota. Si no, la
+        # pantalla le sigue ofreciendo "Pagar mi primera cuota" a alguien que ya
+        # pagó y el calendario deja el mes en "Mes de ingreso" en vez de verde
+        # (síntomas 7.4 y 7.6 de la QA del 11-09).
+        from utils.cuotas_periodos import calcular_nuevo_mes_cubierto
+        cob_pagada = calcular_nuevo_mes_cubierto(cob_d1, hoy_d1, 1, 10)
+        e_pagado = calcular_estado_financiero(cob_pagada, hoy_d1, 10, hoy_d1)
+        ok("pagada la primera cuota, se apaga la gracia de mes de ingreso",
+           not e_pagado.en_mes_ingreso and not e_pagado.moroso and e_pagado.cantidad_meses == 0,
+           f"(ingreso={e_pagado.en_mes_ingreso} moroso={e_pagado.moroso} "
+           f"meses={e_pagado.cantidad_meses})")
+        # ...y el mes siguiente se le sigue cobrando normal.
+        venc_sig = normalizar_a_dia_vencimiento(sumar_meses(hoy_d1, 1), 10) + timedelta(days=1)
+        e_pagado_sig = calcular_estado_financiero(cob_pagada, hoy_d1, 10, venc_sig)
+        ok("pagada la primera cuota, el mes siguiente sí se adeuda al vencer",
+           e_pagado_sig.cantidad_meses == 1,
+           f"(dio {e_pagado_sig.cantidad_meses}, esperaba 1)")
 
         print("\n── ronda 3 · BUG#12 · el menor paga con descuento en el CARRITO ──")
         # El bug: /socio/cuotas/estado mostraba el precio con descuento pero el

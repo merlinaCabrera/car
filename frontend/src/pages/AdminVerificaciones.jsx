@@ -39,6 +39,7 @@ import { useAuth } from '../context/AuthContext'
 import { useAdminResource } from '../hooks/useAdminResource'
 import CategoriaOrdenBadge from '../components/admin/CategoriaOrdenBadge'
 import ComprobantePago from '../components/admin/ComprobantePago'
+import ConfirmDialog from '../components/ConfirmDialog'
 import {
   Wallet,
   AlertCircle,
@@ -143,7 +144,7 @@ function estadoDePago(ordenes, resueltosEnSesion) {
 // Alquileres), visor de comprobante + indicador de Mercado Pago + ajuste
 // manual de meses de cuota (venían del de Pagos).
 
-function VerificacionModal({ orden, onClose, onActionSuccess, token }) {
+function VerificacionModal({ orden, onClose, onActionSuccess, token, comprobanteUrl, onReemplazado }) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [apiError, setApiError] = useState(null)
   const [showRechazoInput, setShowRechazoInput] = useState(false)
@@ -151,8 +152,14 @@ function VerificacionModal({ orden, onClose, onActionSuccess, token }) {
 
   // El visor del comprobante (incluida la detección de PDF sobre una Presigned
   // URL, que trae query string) vive en components/admin/ComprobantePago.
-  // Copia local para que un reemplazo se vea al instante sin recargar la orden.
-  const [comprobanteUrl, setComprobanteUrl] = useState(orden.pago?.comprobante_url ?? null)
+  //
+  // La URL viene de la pantalla, NO de una copia local hecha al montar: el
+  // mismo comprobante se ve acá y en la tarjeta del Pago, y un reemplazo tiene
+  // que verse en los dos lugares. Con una copia por componente, reemplazar
+  // desde la tarjeta y después abrir este modal mostraba el comprobante VIEJO
+  // (el modal se monta de cero leyendo `orden.pago`, que sigue trayendo el dato
+  // con el que se cargó la bandeja) hasta que se aprobaba la orden y la lista
+  // se refrescaba — BUG-NEW-1 de la QA del 11-09.
   const esMercadoPago = orden.pago?.metodo_pago === 'mercado_pago'
   // El pago en efectivo se cobra en mano, en el club: no hay comprobante que
   // subir ni que mirar. Antes el botón "Aprobar" exigía comprobante para todo
@@ -346,7 +353,7 @@ function VerificacionModal({ orden, onClose, onActionSuccess, token }) {
             comprobanteUrl={comprobanteUrl}
             metodoPago={orden.pago?.metodo_pago}
             token={token}
-            onReemplazado={setComprobanteUrl}
+            onReemplazado={(url) => onReemplazado(orden.id_pago, url)}
           />
           {esEfectivo && !comprobanteUrl && (
             <p className="text-xs text-gray-500 -mt-1">
@@ -432,12 +439,11 @@ function VerificacionModal({ orden, onClose, onActionSuccess, token }) {
 // despliega al click. Si el Pago tiene más de una Orden, aparece un botón
 // para aprobar todas las que sigan pendientes de un solo tiro.
 
-function TarjetaPago({ pago, ordenes, resueltosEnSesion, onVerificar, onAprobarTodo, aprobandoTodo, token }) {
+function TarjetaPago({
+  pago, ordenes, resueltosEnSesion, onVerificar, onAprobarTodo, aprobandoTodo, token,
+  comprobanteUrl, onReemplazado,
+}) {
   const [expandido, setExpandido] = useState(false)
-  // Copia local del comprobante para reflejar un reemplazo sin recargar toda
-  // la bandeja (el reemplazo no cambia ningún estado de orden, así que
-  // refetchear la lista completa sería desproporcionado).
-  const [comprobanteUrl, setComprobanteUrl] = useState(pago?.comprobante_url ?? null)
   const metodo = METODO_PAGO_BADGE[pago?.metodo_pago] ?? METODO_PAGO_BADGE.transferencia
   const esMultiple = ordenes.length > 1
   const socio = ordenes[0]?.usuario
@@ -496,7 +502,7 @@ function TarjetaPago({ pago, ordenes, resueltosEnSesion, onVerificar, onAprobarT
               comprobanteUrl={comprobanteUrl}
               metodoPago={pago?.metodo_pago}
               token={token}
-              onReemplazado={setComprobanteUrl}
+              onReemplazado={(url) => onReemplazado(pago?.id_pago, url)}
             />
           </div>
 
@@ -603,8 +609,24 @@ export default function AdminVerificaciones() {
   const [resueltosEnSesion, setResueltosEnSesion] = useState(new Map())
   const [aprobandoTodoPagoId, setAprobandoTodoPagoId] = useState(null)
 
+  // Comprobantes reemplazados durante esta sesión de la pantalla —
+  // Map<id_pago, presigned_url>. Vive acá arriba, y no dentro de cada tarjeta o
+  // modal, porque el comprobante cuelga del PAGO y se muestra en dos lugares a
+  // la vez: si cada uno guarda su propia copia, reemplazarlo en uno deja al
+  // otro mostrando el archivo viejo hasta que se refresque la lista entera
+  // (BUG-NEW-1 de la QA del 11-09). Se limpia junto con el resto del estado de
+  // sesión, cuando la lista se vuelve a pedir de cero.
+  const [comprobantesReemplazados, setComprobantesReemplazados] = useState(new Map())
+  const comprobanteDePago = (pago) =>
+    comprobantesReemplazados.get(pago?.id_pago) ?? pago?.comprobante_url ?? null
+  const registrarReemplazo = (idPago, url) => {
+    if (idPago == null) return
+    setComprobantesReemplazados(prev => new Map(prev).set(idPago, url))
+  }
+
   useEffect(() => {
     setResueltosEnSesion(new Map())
+    setComprobantesReemplazados(new Map())
   }, [filtroTipo, filtroEstado, busquedaDebounced])
 
   // Endpoint general (GET /admin/ordenes) en vez de /pendientes: permite
@@ -626,6 +648,7 @@ export default function AdminVerificaciones() {
   const refrescarTodo = () => {
     ordenesResource.refetch()
     setResueltosEnSesion(new Map())
+    setComprobantesReemplazados(new Map())
   }
 
   // Tras aprobar/rechazar UNA orden desde el modal: no se re-pide la lista
@@ -643,12 +666,15 @@ export default function AdminVerificaciones() {
   // Orden se sigue aprobando de a una, solo que el click es uno solo.
   // Sin ajuste de "meses a imputar": si alguna orden de cuota necesita ese
   // ajuste manual, hay que aprobarla individual desde "Verificar".
-  const handleAprobarTodo = async (pago, pendientes) => {
-    const confirmado = window.confirm(
-      `¿Aprobar las ${pendientes.length} órdenes pendientes del Pago #${pago?.id_pago}? Esta acción no se puede deshacer.`
-    )
-    if (!confirmado) return
+  // La confirmación y el resumen de errores van con componentes de la app, no
+  // con window.confirm()/window.alert(): son popups del sistema operativo,
+  // rompen la estética y en el celular tapan la pantalla entera (3.13 de la QA).
+  const [confirmarAprobarTodo, setConfirmarAprobarTodo] = useState(null) // { pago, pendientes }
+  const [errorAprobarTodo, setErrorAprobarTodo] = useState(null)
 
+  const handleAprobarTodo = async (pago, pendientes) => {
+    setConfirmarAprobarTodo(null)
+    setErrorAprobarTodo(null)
     setAprobandoTodoPagoId(pago?.id_pago)
     const resultados = new Map()
     for (const orden of pendientes) {
@@ -674,7 +700,10 @@ export default function AdminVerificaciones() {
 
     const fallidas = [...resultados.values()].filter(r => r === 'error').length
     if (fallidas > 0) {
-      window.alert(`${fallidas} de ${pendientes.length} órdenes no se pudieron aprobar. Revisalas individualmente con "Verificar".`)
+      setErrorAprobarTodo(
+        `${fallidas} de ${pendientes.length} órdenes del Pago #${pago?.id_pago} no se pudieron aprobar. ` +
+        'Revisalas individualmente con "Verificar".'
+      )
     }
   }
 
@@ -708,12 +737,39 @@ export default function AdminVerificaciones() {
   return (
     <div className="p-4 sm:p-6 max-w-6xl mx-auto space-y-6 sm:space-y-8">
 
+      {confirmarAprobarTodo && (
+        <ConfirmDialog
+          titulo={`¿Aprobar ${confirmarAprobarTodo.pendientes.length} órdenes?`}
+          mensaje={`Se aprueban todas las órdenes pendientes del Pago #${confirmarAprobarTodo.pago?.id_pago} con el comprobante que está cargado. Esta acción no se puede deshacer.`}
+          confirmLabel="Aprobar todo"
+          cargando={aprobandoTodoPagoId != null}
+          onConfirm={() => handleAprobarTodo(confirmarAprobarTodo.pago, confirmarAprobarTodo.pendientes)}
+          onCancel={() => setConfirmarAprobarTodo(null)}
+        />
+      )}
+
+      {errorAprobarTodo && (
+        <div className="flex items-start gap-2 p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm">
+          <AlertCircle size={16} className="flex-shrink-0 mt-0.5" />
+          <span className="flex-1">{errorAprobarTodo}</span>
+          <button onClick={() => setErrorAprobarTodo(null)} className="font-semibold hover:text-red-900">
+            Cerrar
+          </button>
+        </div>
+      )}
+
       {ordenSeleccionada && (
         <VerificacionModal
           orden={ordenSeleccionada}
           onClose={() => setOrdenSeleccionada(null)}
           onActionSuccess={handleAccionExitosa}
           token={token}
+          comprobanteUrl={
+            comprobantesReemplazados.get(ordenSeleccionada.id_pago)
+            ?? ordenSeleccionada.pago?.comprobante_url
+            ?? null
+          }
+          onReemplazado={registrarReemplazo}
         />
       )}
 
@@ -855,9 +911,11 @@ export default function AdminVerificaciones() {
                     ordenes={ordenes}
                     resueltosEnSesion={resueltosEnSesion}
                     onVerificar={setOrdenSeleccionada}
-                    onAprobarTodo={handleAprobarTodo}
+                    onAprobarTodo={(p, pend) => setConfirmarAprobarTodo({ pago: p, pendientes: pend })}
                     aprobandoTodo={aprobandoTodoPagoId === pago?.id_pago}
                     token={token}
+                    comprobanteUrl={comprobanteDePago(pago)}
+                    onReemplazado={registrarReemplazo}
                   />
                 </div>
               )

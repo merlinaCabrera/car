@@ -670,13 +670,31 @@ def reabrir_orden(
     orden.estado = "pendiente_verificacion"
     orden.expira_at = datetime.now(timezone.utc) + timedelta(hours=48)
 
+    # ── Devolver el Pago padre al ruedo ────────────────────────────────────
+    # Cuando la última orden viva de un Pago expira, el scheduler cierra el Pago
+    # en 'rechazado' y lo marca como "mail resumen ya resuelto". Reabrir la
+    # orden sin deshacer eso dejaba al Pago muerto: la aprobación posterior
+    # funcionaba (la cobertura del socio se actualizaba), pero el socio no
+    # recibía ningún mail y el Pago quedaba figurando como rechazado — BUG-07
+    # de la QA del 11-09. Reabrir una orden es, literalmente, volver a ponerla
+    # pendiente: el Pago tiene que volver con ella.
+    pago_reactivado = False
+    if orden.pago is not None and orden.pago.estado == "rechazado":
+        orden.pago.estado = "pendiente"
+        orden.pago.mail_confirmacion_enviado = False
+        pago_reactivado = True
+
     _registrar_audit(
         db=db,
         actor_id=admin.id_usuario,
         accion="REABRIR_ORDEN_EXPIRADA",
         tabla_afectada="ordenes",
         registro_id=orden.id_orden,
-        detalle={"nuevo_expira_at": orden.expira_at.isoformat()},
+        detalle={
+            "nuevo_expira_at": orden.expira_at.isoformat(),
+            "id_pago": orden.id_pago,
+            "pago_reactivado": pago_reactivado,
+        },
         ip=_extraer_ip(request),
     )
 

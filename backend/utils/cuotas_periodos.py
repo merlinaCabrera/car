@@ -115,6 +115,34 @@ def en_mes_de_ingreso(fecha_ingreso: Optional[date], hoy: Optional[date] = None)
     return (hoy.year, hoy.month) == (fecha_ingreso.year, fecha_ingreso.month)
 
 
+def mes_de_ingreso_pendiente(
+    mes_cubierto_hasta: Optional[date],
+    fecha_ingreso: Optional[date],
+    dia_vencimiento: int = 10,
+    hoy: Optional[date] = None,
+) -> bool:
+    """
+    True si el socio está en su mes de ingreso Y ese mes TODAVÍA no está pagado.
+
+    La gracia de D1 existe para no recibir a un socio nuevo con un cartel de
+    "moroso": una vez que paga esa primera cuota, la gracia ya no tiene nada
+    que tapar y tiene que apagarse sola. Si no se apaga, la pantalla de cuotas
+    le sigue ofreciendo "Pagar mi primera cuota" a alguien que ya la pagó y el
+    calendario deja el mes en "Mes de ingreso" en vez de pintarlo en verde
+    (síntomas 7.4 y 7.6 de la QA del 11-09).
+
+    "Pagado" = la cobertura llega al vencimiento del mes de ingreso o más allá.
+    `mes_cubierto_hasta` es el vencimiento del ÚLTIMO mes cubierto, así que la
+    comparación va con >=, no con >.
+    """
+    if not en_mes_de_ingreso(fecha_ingreso, hoy):
+        return False
+    if mes_cubierto_hasta is None:
+        return True
+    venc_mes_ingreso = normalizar_a_dia_vencimiento(fecha_ingreso, dia_vencimiento)
+    return mes_cubierto_hasta < venc_mes_ingreso
+
+
 @dataclass
 class EstadoFinanciero:
     moroso: bool
@@ -133,9 +161,11 @@ def calcular_estado_financiero(
     hoy: Optional[date] = None,
 ) -> EstadoFinanciero:
     """
-    Fuente única de verdad del estado financiero de un socio. Replica
-    EXACTAMENTE calcularEstadoFinanciero() de AdminSocios.jsx — si algún
-    día se cambia esta lógica, hay que cambiarla en los dos lugares.
+    Fuente única de verdad del estado financiero de un socio. Del lado del
+    navegador le corresponde calcularEstadoFinanciero() en
+    frontend/src/utils/cuotas.js — UN solo archivo, compartido por las tres
+    pantallas que lo usan. Si algún día se cambia esta lógica, hay que
+    cambiarla en esos dos lugares y en ninguno más.
 
     Reglas:
       · fecha_base = mes_cubierto_hasta si no es None (sin importar si está
@@ -168,7 +198,12 @@ def calcular_estado_financiero(
     # deuda sigue existiendo en la fecha de cobertura y se le cobra en cuanto
     # pase el mes (o cuando venga a pagar). Solo evita recibir a un socio
     # nuevo con un cartel de "moroso" el mismo día que se asoció.
-    if en_mes_de_ingreso(fecha_ingreso, hoy):
+    #
+    # La gracia dura hasta que el socio paga esa primera cuota: apenas la paga
+    # se sigue de largo por el camino normal, que lo va a encontrar al día
+    # igual pero SIN el flag — así la pantalla de cuotas deja de ofrecerle
+    # "Pagar mi primera cuota" y el calendario puede pintar el mes en verde.
+    if mes_de_ingreso_pendiente(mes_cubierto_hasta, fecha_ingreso, dia_vencimiento, hoy):
         return EstadoFinanciero(
             moroso=False, meses_adeudados=[], en_mes_ingreso=True
         )

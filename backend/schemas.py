@@ -274,11 +274,23 @@ class UsuarioBaja(BaseModel):
 # ── Respuestas ────────────────────────────────────────────────────────────────
 
 class RolResponseSimple(BaseModel):
-    """Versión ligera de Rol para embeber en UsuarioResponse."""
+    """
+    Versión ligera de Rol para embeber en UsuarioResponse.
+
+    `es_activo` viaja a propósito: require_roles() en el backend descarta las
+    asignaciones cuyo rol del catálogo está desactivado, y rolesDeUsuario() en
+    el frontend (components/RequireRole.jsx) dice hacer exactamente lo mismo
+    para decidir el destino del login. Pero este schema no mandaba el campo, así
+    que del lado del navegador la comparación era contra `undefined` y no
+    filtraba nada: una cuenta con una asignación vieja de admin DESACTIVADA
+    aterrizaba igual en /admin y se encontraba el panel lleno de 403, porque el
+    backend sí la filtraba (BUG-01, arrastrado hasta la QA del 11-09).
+    """
     model_config = ConfigDict(from_attributes=True)
 
     id_rol: int
     nombre: str
+    es_activo: bool = True
     peso_jerarquico: int
     # El frontend necesita este flag para calcular los MISMOS roles efectivos
     # que require_roles() del backend (que descarta roles desactivados y

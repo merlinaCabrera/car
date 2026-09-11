@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext'
 import { resolverUrlArchivo } from '../utils/archivos'
 import { useCart } from '../context/CartContext'
 import ConfirmDialog from '../components/ConfirmDialog'
+import { parsearISO, calcularEstadoFinanciero, estadoDeMes } from '../utils/cuotas'
 import {
   Wallet,
   CheckCircle2,
@@ -50,27 +51,12 @@ const NOMBRES_MES = [
   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
 ]
 
-// ─── Helpers de fecha (sin UTC offset) ───────────────────────────────────────
-
-/**
- * Construye un Date en tiempo local desde partes individuales.
- * Evita el desfase UTC que produce `new Date("YYYY-MM-DD")` en zonas negativas
- * como America/Argentina/Buenos_Aires (UTC-3).
- */
-function fechaLocal(anio, mes1based, dia) {
-  return new Date(anio, mes1based - 1, dia)
-}
-
-/**
- * Parsea una ISO Date string "YYYY-MM-DD" a Date local.
- * Si es null/undefined devuelve null.
- */
-function parsearISO(isoDate) {
-  if (!isoDate) return null
-  const partes = String(isoDate).split('-').map(Number)
-  if (partes.length !== 3 || partes.some(Number.isNaN)) return null
-  return fechaLocal(partes[0], partes[1], partes[2])
-}
+// ─── Helpers de fecha ────────────────────────────────────────────
+// El motor de cuotas (parseo de fechas, estado financiero y estado de cada mes
+// del calendario) vive en utils/cuotas.js, compartido con SocioInicio y
+// AdminSocios. Antes cada pantalla tenía su propia copia y se
+// desincronizaron: acá figuraba "Mes de ingreso" y el inicio, mirando los
+// mismos datos, decía MOROSO (QA del 11-09, síntomas 7.1/7.4).
 
 /**
  * Formatea una ISO Date string a texto legible en español.
@@ -80,169 +66,6 @@ function formatearFechaCobertura(isoDate) {
   const d = parsearISO(isoDate)
   if (!d) return null
   return d.toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' })
-}
-
-/**
- * Fuente única de verdad para el estado financiero del socio (moroso / al día
- * / meses adeudados). Reemplaza a los viejos `esMoroso` y
- * `calcularMesesAdeudadosReal`, que marcaban como moroso a cualquier socio
- * sin `mes_cubierto_hasta` (ej. recién ingresado) desde el día 1 del mes,
- * sin respetar el día de vencimiento configurado — un socio nuevo o que debe
- * el mes en curso NO es moroso hasta que pase el día de vencimiento.
- *
- * Reglas de negocio:
- *   · fechaBase = mes_cubierto_hasta si no es nulo (SIN importar si está en
- *     el pasado o en el futuro).
- *   · Si mes_cubierto_hasta es nulo, fechaBase = fecha_ingreso normalizada al
- *     día de vencimiento (con clamp al último día del mes, ej. para meses
- *     cortos como febrero).
- *   · hoy <= fechaBase  → { moroso: false, mesesAdeudados: 0 }
- *   · hoy >  fechaBase  → se cuentan SOLO los períodos ya vencidos, o sea
- *     aquellos cuyo vencimiento es estrictamente anterior a hoy. El mes en
- *     curso no suma hasta el día siguiente a su vencimiento.
- *
- * Este número es el que se muestra en el header ("N meses adeudados · $X") y
- * tiene que coincidir con lo que pinta el calendario de abajo y con
- * utils/cuotas_periodos.py en el backend. Antes no coincidía: el header sumaba
- * el mes en curso desde el día 1 y el calendario ya lo mostraba como "a
- * vencer", así que la misma pantalla decía 7 meses arriba y 6 en rojo abajo
- * (BUG-04, ronda 2 de la QA).
- */
-function calcularEstadoFinanciero(mesCubiertoHastaISO, fechaIngresoISO, diaVencimiento = 10) {
-  let fechaBase = parsearISO(mesCubiertoHastaISO)
-
-  if (!fechaBase) {
-    const ingreso = parsearISO(fechaIngresoISO)
-    if (ingreso) {
-      const ultimoDiaMes = new Date(ingreso.getFullYear(), ingreso.getMonth() + 1, 0).getDate()
-      const diaClamp = Math.min(diaVencimiento, ultimoDiaMes)
-      fechaBase = fechaLocal(ingreso.getFullYear(), ingreso.getMonth() + 1, diaClamp)
-    }
-  }
-
-  // Defensivo: sin mes_cubierto_hasta ni fecha_ingreso no hay nada que evaluar.
-  if (!fechaBase) return { moroso: false, mesesAdeudados: 0 }
-
-  const hoy = new Date()
-  hoy.setHours(0, 0, 0, 0)
-
-  // Gracia por MES DE INGRESO (decisión D1): un socio que se asoció este mes
-  // se muestra al día. La deuda de ese mes existe (está en mes_cubierto_hasta)
-  // y aparece sola cuando el mes termina — no se condona. Mismo criterio que
-  // en_mes_de_ingreso() en utils/cuotas_periodos.py.
-  const ingresoParaGracia = parsearISO(fechaIngresoISO)
-  if (
-    ingresoParaGracia &&
-    ingresoParaGracia.getFullYear() === hoy.getFullYear() &&
-    ingresoParaGracia.getMonth() === hoy.getMonth()
-  ) return { moroso: false, mesesAdeudados: 0, enMesIngreso: true }
-
-  if (hoy <= fechaBase) return { moroso: false, mesesAdeudados: 0 }
-
-  let periodosHastaHoy =
-    (hoy.getFullYear() - fechaBase.getFullYear()) * 12 +
-    (hoy.getMonth() - fechaBase.getMonth())
-
-  if (hoy.getDate() > fechaBase.getDate()) {
-    periodosHastaHoy += 1
-  }
-
-  // Solo los ya vencidos cuentan como deuda.
-  let mesesAdeudados = 0
-  for (let i = 1; i <= periodosHastaHoy; i++) {
-    if (sumarMesesCuota(fechaBase, i) < hoy) mesesAdeudados += 1
-  }
-
-  return { moroso: mesesAdeudados > 0, mesesAdeudados }
-}
-
-/** Suma meses enteros a una fecha, con clamp de fin de mes. */
-function sumarMesesCuota(fecha, meses) {
-  const totalMeses = fecha.getMonth() + meses
-  const anio = fecha.getFullYear() + Math.floor(totalMeses / 12)
-  const mes = ((totalMeses % 12) + 12) % 12
-  const ultimoDia = new Date(anio, mes + 1, 0).getDate()
-  return new Date(anio, mes, Math.min(fecha.getDate(), ultimoDia))
-}
-
-// ─── Motor de estado de mes para el Calendario ───────────────────────────────
-
-/**
- * Evalúa el estado de un mes dado (anio, mes1based) contra las 3 variables
- * clave del motor de cuotas.
- *
- * La "fecha representativa" del mes es el dia_vencimiento_cuota dentro de ese
- * mes. Eso es exactamente lo que el backend usa para calcular mes_cubierto_hasta,
- * así que la comparación es perfectamente simétrica.
- *
- * @returns {'inactivo'|'mes_ingreso'|'pagado'|'adeudado'|'a_vencer'|'futuro'|'becado'}
- *
- * Reglas (en orden de prioridad):
- *   1. inactivo  — fechaRep < fechaIngreso           (no era socio aún)
- *   2. pagado    — fechaRep < mesCubiertoHasta        (cuota saldada)
- *   3. adeudado  — fechaRep <  hoy  (mes ya venció sin pagar)
- *   4. a_vencer  — es el mes EN CURSO y todavía no llegó el día de vencimiento
- *   5. futuro    — fechaRep > hoy   (mes por venir, sin cobertura)
- *
- * Sobre 'a_vencer': antes el mes en curso sin cobertura caía en 'futuro' hasta
- * que pasaba el día 10, y en la pantalla se leía literalmente "Futuro" al lado
- * de meses en rojo — parecía que el sistema no contaba un mes que el socio
- * claramente debe (BUG-04 de la QA del 08-09). La plata NO cambia: ese mes
- * sigue sin sumar a la deuda hasta que vence, igual que en el backend. Lo que
- * cambia es que ahora se muestra como "Vence el 10" en vez de "Futuro".
- */
-function estadoDeMes(anio, mes1based, diaVencimiento, fechaIngreso, mesCubiertoHasta, becadoHasta = null) {
-  // Clamp del día al último día del mes para robustez
-  const ultimoDia = new Date(anio, mes1based, 0).getDate()
-  const dia = Math.min(diaVencimiento, ultimoDia)
-  const fechaRep = fechaLocal(anio, mes1based, dia)
-
-  const hoy = new Date()
-  hoy.setHours(0, 0, 0, 0)
-
-  // Regla 1: inactivo
-  if (fechaIngreso && fechaRep < fechaIngreso) return 'inactivo'
-
-  // Regla 1b: mes de ingreso EN CURSO (decisión D1). Va antes que 'adeudado'
-  // porque su vencimiento puede haber pasado ya (alguien que se asocia el 20 y
-  // la cuota vence el 10): durante su mes de alta el socio se ve al día, y la
-  // deuda de ese mes aparece recién cuando el mes termina.
-  if (
-    fechaIngreso &&
-    fechaIngreso.getFullYear() === anio &&
-    fechaIngreso.getMonth() + 1 === mes1based &&
-    hoy.getFullYear() === anio &&
-    hoy.getMonth() + 1 === mes1based &&
-    !(mesCubiertoHasta && fechaRep < mesCubiertoHasta)
-  ) return 'mes_ingreso'
-
-  // Regla 2: pagado
-  if (mesCubiertoHasta && fechaRep < mesCubiertoHasta) return 'pagado'
-
-  // Regla 3: becado
-  // Si hay beca activa, los meses desde mes_cubierto_hasta hasta becado_hasta
-  // (o hasta el futuro si beca indefinida) se marcan como 'becado'.
-  if (becadoHasta !== null) {
-    // becadoHasta = Date o 'indefinida'
-    const esBecado = becadoHasta === 'indefinida' ? fechaRep >= hoy : fechaRep <= becadoHasta
-    if (esBecado && fechaRep >= hoy) return 'becado'
-    // Meses pasados sin pago pero cubiertos por beca activa: también becado
-    if (esBecado && fechaRep <= hoy) return 'becado'
-  }
-
-  // Regla 4: adeudado (venció sin pagar y sin beca).
-  // Estricto (<, no <=): el día del vencimiento el socio todavía está en
-  // plazo, así que ese día el mes sigue siendo 'a_vencer' y recién al
-  // siguiente pasa a 'adeudado'. Es el mismo corte que usa el contador del
-  // header y el backend — con <= el calendario marcaba rojo un día antes que
-  // el resto del sistema.
-  if (fechaRep < hoy) return 'adeudado'
-
-  // Regla 5: el mes en curso, que vence en unos días — no es "futuro"
-  if (anio === hoy.getFullYear() && mes1based === hoy.getMonth() + 1) return 'a_vencer'
-
-  // Regla 6: futuro
-  return 'futuro'
 }
 
 // ─── Componente: celda de mes en el calendario ───────────────────────────────
@@ -828,16 +651,23 @@ function EstadoCard({ estado, loading, error, ordenPendiente, onAbrirCarrito }) 
     )
   }
 
-  const { moroso, mesesAdeudados: mesesAdeudadosReal } = calcularEstadoFinanciero(
-    estado.mes_cubierto_hasta,
-    estado.fecha_ingreso,
-    estado.dia_vencimiento_cuota ?? 10
-  )
+  const { moroso, mesesAdeudados: mesesAdeudadosReal, enMesIngreso: enMesIngresoLocal } =
+    calcularEstadoFinanciero(
+      estado.mes_cubierto_hasta,
+      estado.fecha_ingreso,
+      estado.dia_vencimiento_cuota ?? 10
+    )
   // Mes de ingreso (decisión D1): el socio se ve al día, pero la cuota de este
   // mes se le sigue debiendo. Se dice explícitamente para no dejarle la
-  // impresión de que arrancó con un mes regalado. El backend manda el flag;
-  // el cálculo local es el respaldo si la respuesta viene de una versión vieja.
-  const enMesIngreso = estado.en_mes_ingreso === true
+  // impresión de que arrancó con un mes regalado.
+  //
+  // La bandera se APAGA apenas paga esa primera cuota — si no, la tarjeta le
+  // seguía ofreciendo "Pagar mi primera cuota" a alguien que ya la había
+  // pagado (síntoma 7.6 de la QA del 11-09). El backend manda el flag ya con
+  // ese criterio; el cálculo local es el respaldo si la respuesta viene de una
+  // versión vieja del backend (deploy a mitad de camino).
+  const enMesIngreso =
+    estado.en_mes_ingreso === undefined ? enMesIngresoLocal : estado.en_mes_ingreso === true
   const tieneDeuda          = mesesAdeudadosReal > 0
   const esGrave             = mesesAdeudadosReal >= 2
   const montoEstimado       = mesesAdeudadosReal * (estado.precio_cuota_actual ?? 0)
@@ -849,7 +679,10 @@ function EstadoCard({ estado, loading, error, ordenPendiente, onAbrirCarrito }) 
   // (mes_cubierto_hasta no se mueve hasta la aprobación), pero él ya hizo su
   // parte. Sin esto la pantalla le decía "Moroso · 3 meses adeudados" después
   // de haber pagado y subido el comprobante — el reclamo clásico.
-  const enVerificacion = moroso && !!ordenPendiente
+  // Vale también para el mes de ingreso: ese socio no está moroso, pero si ya
+  // mandó su primera cuota lo que corresponde mostrarle es "en verificación",
+  // no seguir ofreciéndole el botón de pagarla.
+  const enVerificacion = !!ordenPendiente && (moroso || enMesIngreso)
 
   const paleta = enVerificacion
     ? { card: 'bg-blue-50 border-blue-200', icon: 'bg-blue-100 text-blue-700', label: 'text-blue-700', sub: 'text-blue-800', aux: 'text-blue-500', badge: 'bg-blue-100 text-blue-700 border border-blue-200', btn: '' }

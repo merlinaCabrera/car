@@ -17,6 +17,11 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
 import ConfirmDialog from '../components/ConfirmDialog'
 import {
+  parsearISO,
+  calcularEstadoFinanciero,
+  listarMesesAdeudados,
+} from '../utils/cuotas'
+import {
   PlusCircle,
   Edit,
   Trash2,
@@ -59,30 +64,11 @@ const formatoMoneda = new Intl.NumberFormat('es-AR', {
 
 const DESCUENTO_MENOR_PORCENTAJE = 0.40
 
-// ─── Helpers de fecha (sin desfase UTC) ──────────────────────────────────────
-// Duplicados intencionalmente respecto a SocioCuotas.jsx: cada página de este
-// proyecto es un módulo independiente (mismo patrón que ya usan los routers
-// del backend con _extraer_ip/_registrar_audit).
-
-/**
- * Construye un Date en tiempo local desde partes individuales.
- * Evita el desfase UTC que produce `new Date("YYYY-MM-DD")` en zonas negativas
- * como America/Argentina/Buenos_Aires (UTC-3).
- */
-function fechaLocal(anio, mes1based, dia) {
-  return new Date(anio, mes1based - 1, dia)
-}
-
-/**
- * Parsea una ISO Date string "YYYY-MM-DD" a Date local. Devuelve null si es
- * nulo/undefined/inválido.
- */
-function parsearISO(isoDate) {
-  if (!isoDate) return null
-  const partes = String(isoDate).split('-').map(Number)
-  if (partes.length !== 3 || partes.some(Number.isNaN)) return null
-  return fechaLocal(partes[0], partes[1], partes[2])
-}
+// ─── Helpers ──────────────────────────────────────────────────
+// El parseo de fechas y todo el motor de cuotas (estado financiero, meses
+// adeudados) vienen de utils/cuotas.js, el mismo módulo que usan SocioInicio y
+// SocioCuotas. Estaban duplicados acá a propósito y las copias se
+// desincronizaron — ver el encabezado de ese archivo.
 
 /**
  * Edad en años completos a partir de una fecha de nacimiento ISO ("YYYY-MM-DD").
@@ -98,95 +84,6 @@ function calcularEdad(fechaNacimientoISO) {
     edad--
   }
   return edad
-}
-
-/**
- * Fuente única de verdad para el estado financiero del socio (moroso / al día
- * / meses adeudados), calculado "al vuelo" en vez de leer el campo crudo
- * `socio.deuda_historica_meses` de la API (que queda obsoleto con el tiempo).
- *
- * Reglas de negocio:
- *   · fechaBase = mes_cubierto_hasta si no es nulo (SIN importar si está en
- *     el pasado o en el futuro).
- *   · Si mes_cubierto_hasta es nulo, fechaBase = fecha_ingreso normalizada al
- *     día de vencimiento (con clamp al último día del mes).
- *   · hoy <= fechaBase  → { moroso: false, mesesAdeudados: 0 }
- *   · hoy >  fechaBase  → se cuentan SOLO los períodos cuya fecha de
- *     vencimiento ya pasó (vencimiento < hoy). El período del mes en curso no
- *     suma hasta el día siguiente a su vencimiento: si vence el 10, el 10
- *     todavía está en plazo y el 11 pasa a adeudado.
- *
- * Tiene que dar EXACTAMENTE lo mismo que utils/cuotas_periodos.py
- * (calcular_estado_financiero) en el backend. El filtro por vencimiento se
- * agregó en los dos lados a la vez: antes el contador del header sumaba el mes
- * en curso desde el día 1 mientras el calendario de /socio/cuotas ya lo trataba
- * como "a vencer", así que header y calendario mostraban deudas distintas para
- * el mismo socio (BUG-04, ronda 2 de la QA).
- */
-function calcularEstadoFinanciero(mesCubiertoHastaISO, fechaIngresoISO, diaVencimiento = 10) {
-  let fechaBase = parsearISO(mesCubiertoHastaISO)
-
-  if (!fechaBase) {
-    const ingreso = parsearISO(fechaIngresoISO)
-    if (ingreso) {
-      const ultimoDiaMes = new Date(ingreso.getFullYear(), ingreso.getMonth() + 1, 0).getDate()
-      const diaClamp = Math.min(diaVencimiento, ultimoDiaMes)
-      fechaBase = fechaLocal(ingreso.getFullYear(), ingreso.getMonth() + 1, diaClamp)
-    }
-  }
-
-  if (!fechaBase) return { moroso: false, mesesAdeudados: 0 }
-
-  const hoy = new Date()
-  hoy.setHours(0, 0, 0, 0)
-
-  if (hoy <= fechaBase) return { moroso: false, mesesAdeudados: 0 }
-
-  let periodosHastaHoy =
-    (hoy.getFullYear() - fechaBase.getFullYear()) * 12 +
-    (hoy.getMonth() - fechaBase.getMonth())
-
-  if (hoy.getDate() > fechaBase.getDate()) {
-    periodosHastaHoy += 1
-  }
-
-  // Solo los ya vencidos cuentan como deuda.
-  let mesesAdeudados = 0
-  for (let i = 1; i <= periodosHastaHoy; i++) {
-    if (sumarMesesLocal(fechaBase, i) < hoy) mesesAdeudados += 1
-  }
-
-  return { moroso: mesesAdeudados > 0, mesesAdeudados }
-}
-
-/** Suma (o resta) meses enteros a una fecha, con clamp de fin de mes. */
-function sumarMesesLocal(fecha, meses) {
-  const totalMeses = fecha.getMonth() + meses
-  const anio = fecha.getFullYear() + Math.floor(totalMeses / 12)
-  const mes = ((totalMeses % 12) + 12) % 12
-  const ultimoDia = new Date(anio, mes + 1, 0).getDate()
-  return new Date(anio, mes, Math.min(fecha.getDate(), ultimoDia))
-}
-
-/**
- * Lista las fechas de vencimiento de cada período adeudado (para mostrarle
- * al admin CUÁLES meses puntuales debe, no solo cuántos). Mismo criterio
- * que calcularEstadoFinanciero — si cambia una, cambia la otra.
- */
-function listarMesesAdeudados(mesCubiertoHastaISO, fechaIngresoISO, diaVencimiento = 10) {
-  const { moroso, mesesAdeudados } = calcularEstadoFinanciero(mesCubiertoHastaISO, fechaIngresoISO, diaVencimiento)
-  if (!moroso) return []
-
-  let fechaBase = parsearISO(mesCubiertoHastaISO)
-  if (!fechaBase) {
-    const ingreso = parsearISO(fechaIngresoISO)
-    const ultimoDiaMes = new Date(ingreso.getFullYear(), ingreso.getMonth() + 1, 0).getDate()
-    fechaBase = fechaLocal(ingreso.getFullYear(), ingreso.getMonth() + 1, Math.min(diaVencimiento, ultimoDiaMes))
-  }
-
-  const periodos = []
-  for (let i = 1; i <= mesesAdeudados; i++) periodos.push(sumarMesesLocal(fechaBase, i))
-  return periodos
 }
 
 /**
@@ -405,6 +302,10 @@ function SocioFormModal({ socio, onClose, onSave, catalogoRoles, token, esAdminG
   const [saldoExito,       setSaldoExito]       = useState(null)
 
   const [selectedRoles, setSelectedRoles] = useState([])
+  // Foto de los roles tal como vinieron del backend, para poder distinguir
+  // "el admin tocó los roles" de "el admin editó el teléfono y los roles ni se
+  // abrieron". Ver rolesCambiaron() más abajo.
+  const [rolesIniciales, setRolesIniciales] = useState([])
   const [loadingRoles,  setLoadingRoles]  = useState(false)
   const [errorRoles,    setErrorRoles]    = useState(false)
 
@@ -445,6 +346,7 @@ function SocioFormModal({ socio, onClose, onSave, catalogoRoles, token, esAdminG
         // 1. Actualizar los roles
         const ids = (data.roles_asignados ?? []).map(ur => ur.id_rol)
         setSelectedRoles(ids)
+        setRolesIniciales(ids)
 
         // 2. Actualizar el formulario con los datos completos (incluyendo fecha_nacimiento)
         setFormData(prev => ({
@@ -644,8 +546,27 @@ function SocioFormModal({ socio, onClose, onSave, catalogoRoles, token, esAdminG
     // Si becado_hasta está vacío, mandarlo como null (beca indefinida)
     if (payload.becado_hasta === '') payload.becado_hasta = null
 
+    // Los roles solo se mandan si de verdad cambiaron.
+    //
+    // Antes se mandaban SIEMPRE en cada edición: cambiar la fecha de nacimiento
+    // de un socio disparaba un PUT de roles idéntico al estado actual, con dos
+    // efectos feos. Uno, cada edición dejaba un CAMBIO_ROLES en la auditoría
+    // sin que nadie hubiera cambiado un rol. Dos — y esto es lo que vio la QA
+    // (6.2) — cualquier discrepancia en ese viaje redondo terminaba en una
+    // notificación al socio diciendo que le habían sacado roles que conserva
+    // intactos. También cubre el caso en que el fetch de roles falla
+    // (`errorRoles`): ahí selectedRoles queda vacío y mandarlo le borraría al
+    // socio todos sus roles no protegidos sin que nadie lo pidiera.
+    const rolesCambiaron =
+      selectedRoles.length !== rolesIniciales.length ||
+      selectedRoles.some(id => !rolesIniciales.includes(id))
+
     try {
-      await onSave(payload, socio?.id_usuario ?? null, isEditMode ? selectedRoles : null)
+      await onSave(
+        payload,
+        socio?.id_usuario ?? null,
+        isEditMode && rolesCambiaron ? selectedRoles : null,
+      )
       onClose()
     } catch (err) {
       setApiError(err.message)
@@ -934,7 +855,11 @@ function SocioFormModal({ socio, onClose, onSave, catalogoRoles, token, esAdminG
                     <p className="text-xs text-blue-700 mt-0.5">
                       {(() => {
                         const e = calcularEstadoFinanciero(mesCubiertoHastaActual, fechaIngresoActual, diaVencimiento)
-                        return e.moroso ? `Moroso — ${e.mesesAdeudados} mes(es)` : 'Al día'
+                        if (e.moroso) return `Moroso — ${e.mesesAdeudados} mes(es)`
+                        // Mes de ingreso: figura al día (decisión D1) pero su
+                        // primera cuota sigue impaga — el admin necesita verlo,
+                        // o parece que el socio nuevo ya pagó.
+                        return e.enMesIngreso ? 'Mes de ingreso — 1ª cuota pendiente' : 'Al día'
                       })()}
                     </p>
                   </div>
@@ -957,8 +882,10 @@ function SocioFormModal({ socio, onClose, onSave, catalogoRoles, token, esAdminG
                     <div className="bg-white rounded-lg px-4 py-2.5 border border-blue-200 space-y-1.5">
                       <div className="flex items-center justify-between">
                         <span className="text-sm text-blue-800 font-medium">Estado actual</span>
-                        <span className={`text-sm font-bold ${estado.moroso ? 'text-red-600' : 'text-green-600'}`}>
-                          {estado.moroso ? `MOROSO — ${estado.mesesAdeudados} mes(es)` : 'AL DÍA'}
+                        <span className={`text-sm font-bold ${estado.moroso ? 'text-red-600' : estado.enMesIngreso ? 'text-indigo-600' : 'text-green-600'}`}>
+                          {estado.moroso
+                            ? `MOROSO — ${estado.mesesAdeudados} mes(es)`
+                            : estado.enMesIngreso ? 'MES DE INGRESO' : 'AL DÍA'}
                         </span>
                       </div>
                       {detalle.length > 0 && (
@@ -1507,6 +1434,7 @@ function ComprasSocioModal({ socio, token, refreshTick, onClose, onCobrar }) {
                     metodoPago={orden.pago?.metodo_pago}
                     token={token}
                     onReemplazado={(url) => setComprobantesPorPago(prev => ({ ...prev, [orden.id_pago]: url }))}
+                    colapsable
                   />
                 </div>
               )}

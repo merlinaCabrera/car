@@ -13,69 +13,23 @@ import {
   WifiOff,
   Clock,
   Wallet,
+  UserPlus,
 } from 'lucide-react';
 import Beneficios from '../components/landing/Beneficios';
+import { calcularEstadoFinanciero } from '../utils/cuotas';
 
 const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8000';
 const REFRESH_INTERVAL_SEC = 55; // Rotamos antes de que el token expire en el backend (60s)
 const QR_SIZE = 260; // px — se escala bien en móvil con max-w-xs del contenedor
 
-// ─── Helpers de fecha y estado financiero (copiados de SocioCuotas.jsx) ─────
-
-/**
- * Construye un Date en tiempo local desde partes individuales.
- * Evita el desfase UTC que produce `new Date("YYYY-MM-DD")` en zonas negativas
- * como America/Argentina/Buenos_Aires (UTC-3).
- */
-function fechaLocal(anio, mes1based, dia) {
-  return new Date(anio, mes1based - 1, dia);
-}
-
-/**
- * Parsea una ISO Date string "YYYY-MM-DD" a Date local.
- * Si es null/undefined devuelve null.
- */
-function parsearISO(isoDate) {
-  if (!isoDate) return null;
-  const partes = String(isoDate).split('-').map(Number);
-  if (partes.length !== 3 || partes.some(Number.isNaN)) return null;
-  return fechaLocal(partes[0], partes[1], partes[2]);
-}
-
-/**
- * Fuente única de verdad para el estado financiero del socio (moroso / al día).
- * Reutiliza la lógica robusta de SocioCuotas.jsx para consistencia.
- */
-function calcularEstadoFinanciero(mesCubiertoHastaISO, fechaIngresoISO, diaVencimiento = 10) {
-  let fechaBase = parsearISO(mesCubiertoHastaISO);
-
-  if (!fechaBase) {
-    const ingreso = parsearISO(fechaIngresoISO);
-    if (ingreso) {
-      const ultimoDiaMes = new Date(ingreso.getFullYear(), ingreso.getMonth() + 1, 0).getDate();
-      const diaClamp = Math.min(diaVencimiento, ultimoDiaMes);
-      fechaBase = fechaLocal(ingreso.getFullYear(), ingreso.getMonth() + 1, diaClamp);
-    }
-  }
-
-  // Defensivo: sin mes_cubierto_hasta ni fecha_ingreso no hay nada que evaluar.
-  if (!fechaBase) return { moroso: false, mesesAdeudados: 0 };
-
-  const hoy = new Date();
-  hoy.setHours(0, 0, 0, 0);
-
-  if (hoy <= fechaBase) return { moroso: false, mesesAdeudados: 0 };
-
-  let mesesAdeudados =
-    (hoy.getFullYear() - fechaBase.getFullYear()) * 12 +
-    (hoy.getMonth() - fechaBase.getMonth());
-
-  if (hoy.getDate() > fechaBase.getDate()) {
-    mesesAdeudados += 1;
-  }
-
-  return { moroso: true, mesesAdeudados };
-}
+// ─── Estado financiero ─────────────────────────────────────────
+// El cálculo vive en utils/cuotas.js, compartido con SocioCuotas y AdminSocios.
+//
+// Esta pantalla tenía su propia copia, y esa copia se quedó vieja: no conocía
+// ni la gracia por mes de ingreso (D1) ni el corte por día de vencimiento
+// (BUG-04). Con los mismos datos, /socio/cuotas decía "Mes de ingreso" y acá
+// aparecía MOROSO en rojo gigante — y un socio que acababa de pagar su primera
+// cuota seguía viendo MOROSO hasta pagar una segunda (QA del 11-09, 7.1 y 7.4).
 
 // ─── Sub-componentes ──────────────────────────────────────────────────────────
 
@@ -192,18 +146,21 @@ export default function SocioInicio() {
   const becaActiva = perfil?.es_becado && (
     !perfil?.becado_hasta || perfil.becado_hasta >= hoyISO
   )
-  const { moroso: esMorosoReal } = calcularEstadoFinanciero(
+  const { moroso: esMorosoReal, enMesIngreso } = calcularEstadoFinanciero(
     perfil?.mes_cubierto_hasta,
     perfil?.fecha_ingreso,
-    // El perfil de /usuarios/me no siempre incluye dia_vencimiento_cuota.
-    // Usamos el default (10) que es consistente con el resto de la app.
+    // /usuarios/me sí devuelve dia_vencimiento_cuota (lo agrega el router
+    // leyendo configuracion_club); el default es solo la red por si falta.
     perfil?.dia_vencimiento_cuota ?? 10
   )
   const esMoroso = becaActiva ? false : esMorosoReal;
-  // El socio ya generó la orden y espera verificación. Sigue sin acceso (el QR
-  // tiene que seguir denegando en la puerta hasta que el admin apruebe), pero
-  // el mensaje deja de ser un reproche y le explica en qué estado está.
-  const enVerificacion = esMoroso && !!ordenPendiente;
+  // El socio ya generó la orden y espera verificación. Si debía, sigue sin
+  // acceso (el QR tiene que seguir denegando en la puerta hasta que el admin
+  // apruebe), pero el mensaje deja de ser un reproche y le explica en qué
+  // estado está. También aplica al socio en su mes de ingreso: no está moroso,
+  // pero si ya mandó su primera cuota no tiene sentido seguir invitándolo a
+  // pagarla.
+  const enVerificacion = !!ordenPendiente && (esMoroso || enMesIngreso);
   const nombreCorto = perfil?.nombre?.split(' ')[0] ?? 'Socio';
 
   if (loading) {
@@ -240,9 +197,24 @@ export default function SocioInicio() {
             <p className={`text-3xl sm:text-4xl font-extrabold tracking-tight mt-3 ${esMoroso ? 'text-red-700' : 'text-green-700'}`}>
               {enVerificacion ? 'EN VERIFICACIÓN' : esMoroso ? 'MOROSO' : 'AL DÍA'}
             </p>
+            {/* El socio recién asociado está al día (decisión D1), pero su primera
+                cuota sigue pendiente: se aclara acá para que "AL DÍA" no se lea
+                como "no debés nada". */}
+            {enMesIngreso && !enVerificacion && (
+              <p className="mt-1.5 inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-700">
+                <UserPlus size={12} className="flex-shrink-0" />
+                Mes de ingreso · tu primera cuota queda pendiente
+              </p>
+            )}
           </div>
           <Link to="/socio/cuotas" className="mt-4 text-sm font-semibold underline inline-block w-fit">
-            {enVerificacion ? 'Ver mi pago' : esMoroso ? 'Regularizar cuotas' : 'Ver detalle'}
+            {enVerificacion
+              ? 'Ver mi pago'
+              : esMoroso
+                ? 'Regularizar cuotas'
+                : enMesIngreso
+                  ? 'Pagar mi primera cuota'
+                  : 'Ver detalle'}
           </Link>
         </div>
 
@@ -262,7 +234,7 @@ export default function SocioInicio() {
                            }`}>
             <span className="flex items-center gap-2">
               {esMoroso ? <AlertTriangle size={15} /> : <ShieldCheck size={15} />}
-              {enVerificacion ? 'PAGO EN VERIFICACIÓN' : esMoroso ? 'CUENTA CON DEUDA' : becaActiva ? 'SOCIO BECADO ✓' : 'HABILITADO ✓'}
+              {enVerificacion ? 'PAGO EN VERIFICACIÓN' : esMoroso ? 'CUENTA CON DEUDA' : becaActiva ? 'SOCIO BECADO ✓' : enMesIngreso ? 'BIENVENIDO — HABILITADO ✓' : 'HABILITADO ✓'}
             </span>
             <span className="font-normal text-xs opacity-70">{nombreCorto}</span>
           </div>
@@ -371,6 +343,15 @@ export default function SocioInicio() {
             <p className="text-sm">
               <span className="font-bold">Regularizá tu cuenta</span> para acceder a los descuentos y beneficios exclusivos de nuestros comercios adheridos.{' '}
               <Link to="/socio/cuotas" className="underline font-semibold">Pagar ahora</Link>
+            </p>
+          </div>
+        ) : enMesIngreso ? (
+          <div className="flex items-center gap-3 p-4 rounded-2xl bg-indigo-50 border border-indigo-200 text-indigo-800">
+            <UserPlus size={20} className="flex-shrink-0" />
+            <p className="text-sm">
+              <span className="font-bold">¡Bienvenido al club!</span> Tu acceso ya está habilitado. La cuota de este
+              mes, tu primera, queda pendiente de pago y podés abonarla cuando quieras.{' '}
+              <Link to="/socio/cuotas" className="underline font-semibold">Pagar mi primera cuota</Link>
             </p>
           </div>
         ) : (

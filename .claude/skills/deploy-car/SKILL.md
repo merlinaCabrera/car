@@ -23,13 +23,23 @@ desde GitHub Actions o hacer un commit vacío que toque `frontend/**`.
 Antes de mergear a `main`, correr el checklist de QA (ver skill `qa-release`)
 — este pipeline no tiene ningún paso de testing automático antes del sync a S3.
 
-## Backend
+## Backend (automatizado, pero fuera de este repo)
 
-⚠️ **No hay workflow de CI/CD para el backend en este repo** — el deploy de
-`backend/` no está automatizado como el de frontend. Antes de asumir cómo se
-despliega (Render, EC2, Fly, un VPS, etc.), **preguntar al usuario** cuál es
-el mecanismo actual, porque no está documentado en el código ni en
-`CLAUDE.md`. No inventar un paso de deploy que no existe.
+El backend lo deploya **Render con Auto-Deploy**: push a `main` y levanta solo,
+sin ningún paso manual. Confirmado por la dueña del proyecto el 2026-09-11.
+
+No hay workflow de CI/CD para el backend **en este repo** — por eso no se ve
+nada en `.github/workflows/` —: la conexión es directa entre Render y GitHub,
+configurada en el dashboard de Render.
+
+Consecuencias prácticas:
+- Un push a `main` que toque `backend/**` **ya es** un deploy a producción.
+- El deploy tarda unos minutos, y en el free tier el primer request después
+  puede pegarle a un proceso frío (40-60 s). Antes de testear, confirmar en el
+  dashboard que el deploy terminó y que corresponde al commit esperado.
+- Frontend y backend salen por caminos distintos y **no son atómicos**: si un
+  cambio necesita los dos lados, durante unos minutos convive el frontend nuevo
+  con el backend viejo.
 
 Lo que sí se sabe con certeza del backend en runtime:
 - Usa `DATABASE_URL` apuntando a Neon en producción.
@@ -45,10 +55,11 @@ Lo que sí se sabe con certeza del backend en runtime:
    si el backend nuevo depende de columnas/tablas nuevas.
 3. Confirmar que las env vars necesarias existen en destino (especialmente
    las que se leen con `os.getenv` fuera de `config.py`).
-4. Frontend: mergear a `main` dispara todo solo. Backend: seguir el mecanismo
-   que confirme el usuario.
+4. Frontend y backend: mergear a `main` dispara los dos solos (GitHub Actions
+   y Render respectivamente). Verificar que ambos hayan terminado antes de
+   testear — no salen al mismo tiempo.
 
 ## Qué NO hacer
-- No asumir un proveedor de hosting para el backend sin confirmarlo.
+- No decirle al usuario que el backend necesita un paso manual: sale con el push.
 - No mergear a `main` sin haber corrido QA si el cambio toca flujos críticos.
 - No aplicar migraciones directo contra producción sin haberlas probado en staging.

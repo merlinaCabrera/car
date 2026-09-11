@@ -2,40 +2,69 @@
 /**
  * Agenda de Reservas — panel del admin.
  *
- * Vistas: Lista ↔ Calendario (toggle en el header).
- * Tabs de tipo: Canchas | Quincho
+ * Rediseño de la ronda 5 de QA. Antes esto era una lista de filas (más una
+ * vista calendario secundaria) que mezclaba quincho y canchas: para saber si
+ * un turno estaba libre había que leer la tabla entera y hacer la cuenta a
+ * mano. Ahora el admin ve LA MISMA GRILLA QUE VE EL SOCIO, con dos
+ * diferencias, que son justamente las que necesita el club:
  *
- * Coloreo por estado_orden (estado del pago de la orden):
- *   pendiente_verificacion → naranja  (esperando comprobante)
- *   aprobada               → verde    (pago confirmado)
- *   rechazada / cancelada_socio / expirada → gris (inactiva)
- *   sin orden (null)       → gris claro
+ *   1. Cada turno ocupado dice DE QUIÉN es — nombre y DNI del socio, o el
+ *      motivo si es un bloqueo del club (mantenimiento, reunión de comisión).
+ *   2. No hay tope de fechas. El socio solo ve de hoy en adelante (y las
+ *      canchas, dos semanas); el admin navega a cualquier mes, pasado o futuro.
  *
- * En el calendario solo se muestran reservas con orden pendiente o aprobada.
- * Las rechazadas/canceladas/expiradas aparecen solo en la vista Lista.
+ * Quincho  → grilla mensual con las dos franjas fijas (Día / Noche).
+ * Canchas  → grilla mensual para elegir día; los turnos horarios de ese día se
+ *            despliegan DEBAJO del calendario, con su estado uno por uno.
+ *
+ * Los turnos (qué horarios existen, cuánto duran) NO se definen acá: vienen de
+ * `utils/reservas.js`, el mismo módulo que usan `Reservas.jsx` y
+ * `SocioCancha.jsx`. Si esta pantalla tuviera su propia copia, podría mostrar
+ * libre un turno que el socio no puede pedir.
  */
 
 import { textoError } from '../utils/errores';
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
-import CalendarioMensual from '../components/CalendarioMensual'
+import ConfirmDialog from '../components/ConfirmDialog'
 import {
-  Calendar,
-  Filter,
-  RefreshCw,
+  CANCHAS,
+  DURACION_TURNO_CANCHA_HORAS,
+  NOMBRES_MES,
+  NOMBRES_DIA_SEMANA,
+  TURNOS_QUINCHO,
+  diasEnMes,
+  esBloqueoManual,
+  fechaLocal,
+  horaLabel,
+  indiceDiaSemana,
+  isoDeFechaLocal,
+  rangoTurnoCancha,
+  rangoTurnoQuincho,
+  reservaQueOcupa,
+  turnosDeCancha,
+} from '../utils/reservas'
+import {
   AlertCircle,
-  Users,
-  X,
-  Loader2,
+  Ban,
+  CalendarClock,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   Clock,
-  List,
-  LayoutGrid,
-  Tent,
-  Volleyball,
-  MapPin,
+  Loader2,
+  Lock,
+  Moon,
   PlusCircle,
+  RefreshCw,
   Search,
+  Sun,
+  Tent,
+  User,
+  Users,
+  Volleyball,
   Wallet,
+  X,
 } from 'lucide-react'
 
 const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
@@ -43,69 +72,65 @@ const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 // ─── Instalaciones ────────────────────────────────────────────────────────────
 
 const GRUPOS = [
-  {
-    key:           'canchas',
-    label:         'Canchas',
-    icon:          Volleyball,
-    instalaciones: ['cancha_1', 'cancha_2'],
-  },
-  {
-    key:           'quincho',
-    label:         'Quincho',
-    icon:          Tent,
-    instalaciones: ['quincho'],
-  },
+  { key: 'canchas', label: 'Canchas', icon: Volleyball },
+  { key: 'quincho', label: 'Quincho', icon: Tent },
 ]
 
 const labelInstalacion = (key) =>
   key === 'quincho'
     ? 'Quincho'
-    : key.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase())
+    : (CANCHAS.find(c => c.key === key)?.label ?? key.replace('_', ' '))
 
-const instalacionesDe = (grupoKey) =>
-  GRUPOS.find(g => g.key === grupoKey)?.instalaciones ?? []
+const ICONOS_TURNO_QUINCHO = { dia: Sun, noche: Moon }
 
-// ─── Estado de orden → colores ────────────────────────────────────────────────
+// Estados de la reserva que efectivamente ocupan la agenda. Mismo criterio que
+// `_ESTADOS_OCUPA_AGENDA` en el backend: una reserva 'liberada' o 'expirada'
+// sigue existiendo como fila pero su turno vuelve a estar disponible, así que
+// pintarla ocuparía un turno que el socio ve libre.
+const ESTADOS_OCUPA_AGENDA = ['bloqueada', 'confirmada']
+
+// ─── Estado de pago → colores ─────────────────────────────────────────────────
 //
-// El coloreo se basa en estado_orden (estado del pago), no en el estado
-// interno de la reserva (bloqueada/confirmada/liberada/expirada).
+// Ojo con el verde: en esta pantalla está reservado para LIBRE, que es la
+// pregunta que el admin viene a responder ("¿puedo darle este turno a
+// alguien?"). Un turno pagado es azul, no verde.
 
 const COLOR_ORDEN = {
   pendiente_verificacion: {
-    chip:   'bg-orange-400 text-white',
-    badge:  'bg-orange-100 text-orange-800',
-    label:  'Pendiente',
+    celda: 'bg-amber-50 border-amber-300 text-amber-900 hover:bg-amber-100',
+    badge: 'bg-amber-100 text-amber-800',
+    label: 'Pago pendiente',
   },
   aprobada: {
-    chip:   'bg-green-500 text-white',
-    badge:  'bg-green-100 text-green-800',
-    label:  'Aprobada',
+    celda: 'bg-blue-50 border-blue-300 text-blue-900 hover:bg-blue-100',
+    badge: 'bg-blue-100 text-blue-800',
+    label: 'Pagada',
   },
-  rechazada: {
-    chip:   'bg-gray-300 text-gray-600',
-    badge:  'bg-gray-100 text-gray-500',
-    label:  'Rechazada',
-  },
-  cancelada_socio: {
-    chip:   'bg-gray-300 text-gray-600',
-    badge:  'bg-gray-100 text-gray-500',
-    label:  'Cancelada',
-  },
-  expirada: {
-    chip:   'bg-gray-300 text-gray-600',
-    badge:  'bg-gray-100 text-gray-500',
-    label:  'Expirada',
-  },
+  rechazada:       { celda: 'bg-gray-100 border-gray-300 text-gray-500', badge: 'bg-gray-100 text-gray-500', label: 'Rechazada' },
+  cancelada_socio: { celda: 'bg-gray-100 border-gray-300 text-gray-500', badge: 'bg-gray-100 text-gray-500', label: 'Cancelada' },
+  expirada:        { celda: 'bg-gray-100 border-gray-300 text-gray-500', badge: 'bg-gray-100 text-gray-500', label: 'Expirada' },
 }
 
-const colorDeReserva = (r) =>
-  COLOR_ORDEN[r.estado_orden] ?? { chip: 'bg-gray-200 text-gray-500', badge: 'bg-gray-100 text-gray-400', label: 'Sin orden' }
+// Reserva manual del admin con cobro en ventanilla: hay socio, pero no pasó por
+// el circuito de comprobantes.
+const COLOR_SIN_ORDEN = {
+  celda: 'bg-indigo-50 border-indigo-300 text-indigo-900 hover:bg-indigo-100',
+  badge: 'bg-indigo-100 text-indigo-700',
+  label: 'Carga manual',
+}
 
-// Las reservas activas son las que tienen sentido mostrar en el calendario
-const esActiva = (r) =>
-  r.estado_orden === 'pendiente_verificacion' || r.estado_orden === 'aprobada'
+const COLOR_BLOQUEO = {
+  celda: 'bg-red-50 border-red-300 text-red-900 hover:bg-red-100',
+  badge: 'bg-red-100 text-red-700',
+  label: 'Inhabilitado',
+}
 
-// ─── Helpers de formato ───────────────────────────────────────────────────────
+const colorDeReserva = (r) => {
+  if (esBloqueoManual(r)) return COLOR_BLOQUEO
+  return COLOR_ORDEN[r.estado_orden] ?? COLOR_SIN_ORDEN
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const formatoFechaHora = (iso) =>
   new Date(iso).toLocaleString('es-AR', {
@@ -116,50 +141,152 @@ const formatoFechaHora = (iso) =>
 const formatoHora = (iso) =>
   new Date(iso).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
 
-// ─── Toggle Vista ─────────────────────────────────────────────────────────────
-
-function VistaToggle({ vista, onChange }) {
-  return (
-    <div className="flex items-center bg-gray-100 rounded-xl p-1 gap-1">
-      {[
-        { key: 'lista',      Icon: List,       label: 'Lista'      },
-        { key: 'calendario', Icon: LayoutGrid,  label: 'Calendario' },
-      ].map(({ key, Icon, label }) => (
-        <button
-          key={key}
-          onClick={() => onChange(key)}
-          className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${
-            vista === key
-              ? 'bg-white text-gray-900 shadow-sm'
-              : 'text-gray-500 hover:text-gray-700'
-          }`}
-        >
-          <Icon size={15} />
-          <span className="hidden sm:inline">{label}</span>
-        </button>
-      ))}
-    </div>
-  )
+/**
+ * Qué pasa con un turno: libre, reservado por alguien, o bloqueado por el club.
+ * Es LA función de esta pantalla — todo lo demás es cómo se dibuja.
+ */
+function estadoDeTurno(reservasQueOcupan, inicio, fin) {
+  const reserva = reservaQueOcupa(reservasQueOcupan, inicio, fin)
+  if (!reserva) return { tipo: 'libre', reserva: null }
+  return { tipo: esBloqueoManual(reserva) ? 'bloqueo' : 'reserva', reserva }
 }
 
-// ─── Modal detalle de reserva ─────────────────────────────────────────────────
+/** Texto corto para meter dentro de una celda chica. */
+function etiquetaCorta(estado) {
+  if (estado.tipo === 'libre') return 'Libre'
+  if (estado.tipo === 'bloqueo') return estado.reserva.notas || 'Inhabilitado'
+  return estado.reserva.nombre_responsable || estado.reserva.notas || 'Reservado'
+}
 
-function ModalDetalleReserva({ reserva, onClose, onRechazar, onSuspender }) {
-  const color   = colorDeReserva(reserva)
-  const ahora   = new Date()
-  const vencida = reserva.estado_orden === 'pendiente_verificacion' &&
-                  new Date(reserva.fecha_fin) < ahora
-  const [rechazando, setRechazando] = useState(false)
-  const [suspendiendo, setSuspendiendo] = useState(false)
-  const [motivoSusp, setMotivoSusp] = useState('')
-  const [mostrarSusp, setMostrarSusp] = useState(false)
+// ─── Modal: bloquear / inhabilitar un turno ───────────────────────────────────
+
+function ModalBloquearTurno({ turno, onClose, onBloqueado }) {
+  const { token } = useAuth()
+  const [motivo, setMotivo] = useState('')
+  const [guardando, setGuardando] = useState(false)
+  const [error, setError] = useState(null)
+  const enviandoRef = useRef(false)
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    if (motivo.trim().length < 3) {
+      setError('Escribí un motivo — es lo que vas a leer cuando abras la agenda en tres semanas.')
+      return
+    }
+    if (enviandoRef.current) return
+    enviandoRef.current = true
+    setGuardando(true)
+    setError(null)
+    try {
+      const res = await fetch(`${API}/admin/reservas/bloqueo`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          instalacion:  turno.instalacion,
+          fecha_inicio: turno.inicio.toISOString(),
+          fecha_fin:    turno.fin.toISOString(),
+          motivo:       motivo.trim(),
+        }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(textoError(data?.detail, 'No se pudo bloquear el turno.'))
+      onBloqueado(data)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setGuardando(false)
+      enviandoRef.current = false
+    }
+  }
 
   return (
     <div
       className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
       onClick={e => { if (e.target === e.currentTarget) onClose() }}
     >
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4">
+      <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-bold text-gray-900">Inhabilitar turno</h2>
+            <p className="text-xs text-gray-500 mt-0.5">
+              {labelInstalacion(turno.instalacion)} · {turno.etiqueta}
+            </p>
+          </div>
+          <button type="button" onClick={onClose} className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 flex-shrink-0">
+            <X size={18} />
+          </button>
+        </div>
+
+        {error && (
+          <div className="flex items-start gap-2 p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm">
+            <AlertCircle size={15} className="flex-shrink-0 mt-0.5" />
+            <span>{error}</span>
+          </div>
+        )}
+
+        <div>
+          <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">
+            Motivo
+          </label>
+          <input
+            autoFocus
+            value={motivo}
+            onChange={e => { setMotivo(e.target.value); setError(null) }}
+            placeholder="Mantenimiento de la cancha, reunión de comisión…"
+            maxLength={300}
+            className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:border-blue-500 focus:ring-blue-500"
+          />
+          <p className="text-[11px] text-gray-400 mt-1.5">
+            El turno deja de ofrecerse a los socios. No hay cobro ni socio asociado:
+            para cargar un alquiler cobrado en ventanilla usá «Nueva reserva manual».
+          </p>
+        </div>
+
+        <div className="flex gap-2 pt-1">
+          <button
+            type="submit"
+            disabled={guardando || motivo.trim().length < 3}
+            className="flex-1 py-2.5 rounded-xl bg-red-600 text-white text-sm font-bold hover:bg-red-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+          >
+            {guardando && <Loader2 size={14} className="animate-spin" />}
+            {guardando ? 'Bloqueando…' : 'Inhabilitar turno'}
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={guardando}
+            className="px-4 py-2.5 rounded-xl border border-gray-300 text-sm font-semibold text-gray-600 hover:bg-gray-50"
+          >
+            Cancelar
+          </button>
+        </div>
+      </form>
+    </div>
+  )
+}
+
+// ─── Modal: detalle de un turno ocupado ───────────────────────────────────────
+
+function ModalDetalleReserva({ reserva, onClose, onRechazar, onSuspender, onQuitarBloqueo }) {
+  const color   = colorDeReserva(reserva)
+  const bloqueo = esBloqueoManual(reserva)
+  const ahora   = new Date()
+  const vencida = reserva.estado_orden === 'pendiente_verificacion' &&
+                  new Date(reserva.fecha_fin) < ahora
+
+  const [rechazando, setRechazando] = useState(false)
+  const [suspendiendo, setSuspendiendo] = useState(false)
+  const [quitando, setQuitando] = useState(false)
+  const [motivoSusp, setMotivoSusp] = useState('')
+  const [mostrarSusp, setMostrarSusp] = useState(false)
+  const [confirmarQuitar, setConfirmarQuitar] = useState(false)
+
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+      onClick={e => { if (e.target === e.currentTarget) onClose() }}
+    >
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4 max-h-[90dvh] overflow-y-auto">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-bold text-gray-900">{labelInstalacion(reserva.instalacion)}</h2>
           <button onClick={onClose} className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100">
@@ -167,7 +294,6 @@ function ModalDetalleReserva({ reserva, onClose, onRechazar, onSuspender }) {
           </button>
         </div>
 
-        {/* Alerta de pendiente vencida */}
         {vencida && (
           <div className="flex items-start gap-2 p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm">
             <AlertCircle size={16} className="flex-shrink-0 mt-0.5" />
@@ -189,29 +315,61 @@ function ModalDetalleReserva({ reserva, onClose, onRechazar, onSuspender }) {
               {reserva.fecha_fin && ` → ${formatoHora(reserva.fecha_fin)}`}
             </span>
           </div>
-          {reserva.nombre_responsable && (
-            <div className="flex items-center gap-2">
-              <Users size={14} className="text-gray-400 flex-shrink-0" />
-              <span>{reserva.nombre_responsable}</span>
-            </div>
-          )}
-          {reserva.notas && (
+
+          {bloqueo ? (
             <div className="flex items-start gap-2">
-              <MapPin size={14} className="text-gray-400 flex-shrink-0 mt-0.5" />
-              <span className="italic text-gray-500">{reserva.notas}</span>
+              <Ban size={14} className="text-red-400 flex-shrink-0 mt-0.5" />
+              <span>
+                <span className="font-semibold text-gray-800">Bloqueo del club</span>
+                {reserva.notas && <> — <span className="italic">{reserva.notas}</span></>}
+              </span>
             </div>
+          ) : (
+            <>
+              <div className="flex items-start gap-2">
+                <User size={14} className="text-gray-400 flex-shrink-0 mt-0.5" />
+                <span>
+                  <span className="font-semibold text-gray-800">
+                    {reserva.nombre_responsable ?? 'Sin responsable registrado'}
+                  </span>
+                  {reserva.dni_responsable && (
+                    <span className="text-gray-400"> · DNI {reserva.dni_responsable}</span>
+                  )}
+                </span>
+              </div>
+              {reserva.notas && (
+                <div className="flex items-start gap-2">
+                  <CalendarClock size={14} className="text-gray-400 flex-shrink-0 mt-0.5" />
+                  <span className="italic text-gray-500">{reserva.notas}</span>
+                </div>
+              )}
+            </>
           )}
         </div>
 
         <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-          <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Estado del pago</span>
+          <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+            {bloqueo ? 'Tipo' : 'Estado del pago'}
+          </span>
           <span className={`text-xs font-bold px-3 py-1.5 rounded-full ${color.badge}`}>
             {color.label}
           </span>
         </div>
 
-        {/* Botón rechazar — solo para pendientes */}
-        {reserva.estado_orden === 'pendiente_verificacion' && (
+        {/* ── Bloqueo del club: se quita y listo, no hay a quién avisar ── */}
+        {bloqueo && (
+          <button
+            onClick={() => setConfirmarQuitar(true)}
+            disabled={quitando}
+            className="w-full py-2.5 rounded-xl bg-slate-900 text-white text-sm font-bold hover:bg-slate-800 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+          >
+            {quitando && <Loader2 size={14} className="animate-spin" />}
+            {quitando ? 'Quitando…' : 'Quitar bloqueo y liberar el turno'}
+          </button>
+        )}
+
+        {/* ── Reserva de un socio: rechazar la orden ── */}
+        {!bloqueo && reserva.estado_orden === 'pendiente_verificacion' && (
           <button
             onClick={async () => {
               setRechazando(true)
@@ -227,11 +385,8 @@ function ModalDetalleReserva({ reserva, onClose, onRechazar, onSuspender }) {
           </button>
         )}
 
-        {/* Suspender por lluvia — solo para turnos ya confirmados (pagados).
-            Libera el turno y le acredita el importe al socio como saldo a
-            favor, además de avisarle por mail. El endpoint existía desde
-            siempre pero no tenía ningún botón que lo llamara. */}
-        {reserva.estado === 'confirmada' && (
+        {/* ── Suspender por lluvia: libera el turno y acredita saldo ── */}
+        {!bloqueo && reserva.estado === 'confirmada' && (
           mostrarSusp ? (
             <div className="space-y-2 pt-1">
               <input
@@ -278,19 +433,37 @@ function ModalDetalleReserva({ reserva, onClose, onRechazar, onSuspender }) {
             </button>
           )
         )}
+
+        {confirmarQuitar && (
+          <ConfirmDialog
+            titulo="Quitar el bloqueo"
+            mensaje={`El turno vuelve a estar disponible para los socios${reserva.notas ? ` (motivo actual: "${reserva.notas}")` : ''}.`}
+            confirmLabel="Sí, liberar el turno"
+            cancelLabel="No, dejarlo bloqueado"
+            cargando={quitando}
+            onConfirm={async () => {
+              setQuitando(true)
+              await onQuitarBloqueo(reserva)
+              setQuitando(false)
+              setConfirmarQuitar(false)
+              onClose()
+            }}
+            onCancel={() => setConfirmarQuitar(false)}
+          />
+        )}
       </div>
     </div>
   )
 }
 
-// ─── Modal: Nueva Reserva Manual ─────────────────────────────────────────────
+// ─── Modal: Nueva Reserva Manual (con cobro opcional) ────────────────────────
 
-function ModalNuevaReserva({ onClose, onGuardado }) {
+function ModalNuevaReserva({ onClose, onGuardado, inicial }) {
   const { token } = useAuth()
   const [form, setForm] = useState({
-    instalacion:        'cancha_1',
-    fecha_inicio:       '',
-    fecha_fin:          '',
+    instalacion:        inicial?.instalacion ?? 'cancha_1',
+    fecha_inicio:       inicial?.fecha_inicio ?? '',
+    fecha_fin:          inicial?.fecha_fin ?? '',
     nombre_responsable: '',
     notas_extra:        '',
   })
@@ -447,8 +620,7 @@ function ModalNuevaReserva({ onClose, onGuardado }) {
           <div>
             <label className={L}>Instalación</label>
             <select name="instalacion" value={form.instalacion} onChange={handleChange} className="form-input w-full">
-              <option value="cancha_1">Cancha 1</option>
-              <option value="cancha_2">Cancha 2</option>
+              {CANCHAS.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
               <option value="quincho">Quincho</option>
             </select>
           </div>
@@ -634,47 +806,471 @@ function ModalNuevaReserva({ onClose, onGuardado }) {
   )
 }
 
-export default function AdminReservas() {
-  const { token } = useAuth()
+// ─── Navegación de mes (compartida por las dos agendas) ───────────────────────
+//
+// Sin tope hacia atrás ni hacia adelante: el admin tiene que poder mirar meses
+// pasados. El socio sí tiene tope, y lo maneja su propia pantalla.
 
-  const [reservas,    setReservas]    = useState([])
-  const [loading,     setLoading]     = useState(true)
-  const [error,       setError]       = useState(null)
-  const [grupoActivo, setGrupoActivo] = useState('canchas')
-  const [vista,       setVista]       = useState('lista')
-  const [mes,         setMes]         = useState(new Date())
-  const [filtroCalendario, setFiltroCalendario] = useState('') // '' | 'pendiente_verificacion' | 'aprobada'
+function NavegadorMes({ anio, mes, onCambiar, children }) {
+  const hoy = new Date()
+  const esMesActual = anio === hoy.getFullYear() && mes === hoy.getMonth() + 1
 
-  // Filtros lista
-  const [filtroInstalacion, setFiltroInstalacion] = useState('')
-  const [filtroEstadoOrden, setFiltroEstadoOrden] = useState('')
-  const [busqueda,           setBusqueda]           = useState('') // nombre o DNI del socio
-
-  // Detalle abierto (calendario)
-  const [reservaDetalle,    setReservaDetalle]    = useState(null)
-  const [modalNuevaAbierto, setModalNuevaAbierto] = useState(false)
-
-  const handleNuevaReservaGuardada = (nueva) => {
-    setReservas(prev => [nueva, ...prev])
-    setModalNuevaAbierto(false)
+  const cambiar = (delta) => {
+    let m = mes + delta
+    let a = anio
+    if (m < 1) { m = 12; a -= 1 }
+    if (m > 12) { m = 1; a += 1 }
+    onCambiar(a, m)
   }
 
-  // ── Fetch ─────────────────────────────────────────────────────────────────
+  return (
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="min-w-0">{children}</div>
+      <div className="flex items-center justify-between sm:justify-end gap-1 flex-shrink-0">
+        <button
+          onClick={() => cambiar(-1)}
+          className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors"
+          aria-label="Mes anterior"
+        >
+          <ChevronLeft size={16} />
+        </button>
+        <span className="text-sm sm:text-base font-bold text-gray-900 w-28 sm:w-32 text-center">
+          {NOMBRES_MES[mes - 1]} {anio}
+        </span>
+        <button
+          onClick={() => cambiar(1)}
+          className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors"
+          aria-label="Mes siguiente"
+        >
+          <ChevronRight size={16} />
+        </button>
+        {!esMesActual && (
+          <button
+            onClick={() => onCambiar(hoy.getFullYear(), hoy.getMonth() + 1)}
+            className="ml-1 text-xs font-semibold text-blue-600 hover:underline underline-offset-2"
+          >
+            Hoy
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ─── Leyenda ──────────────────────────────────────────────────────────────────
+
+function Leyenda() {
+  const items = [
+    { color: 'bg-green-500',  texto: 'Libre' },
+    { color: 'bg-blue-500',   texto: 'Reservado y pagado' },
+    { color: 'bg-amber-500',  texto: 'Reservado, pago pendiente' },
+    { color: 'bg-indigo-500', texto: 'Carga manual del admin' },
+    { color: 'bg-red-500',    texto: 'Inhabilitado por el club' },
+  ]
+  return (
+    <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+      {items.map(({ color, texto }) => (
+        <span key={texto} className="inline-flex items-center gap-1.5 text-xs text-gray-500">
+          <span className={`w-2 h-2 rounded-full inline-block ${color}`} />
+          {texto}
+        </span>
+      ))}
+      <span className="inline-flex items-center gap-1.5 text-xs text-gray-400">
+        <Lock size={10} />
+        Fecha pasada
+      </span>
+    </div>
+  )
+}
+
+// ─── Agenda del quincho ───────────────────────────────────────────────────────
+
+function AgendaQuincho({ reservas, anio, mes, onCambiarMes, onAbrirTurno, onBloquearTurno }) {
+  const hoy = new Date()
+  hoy.setHours(0, 0, 0, 0)
+
+  const dias = useMemo(() => {
+    const total = diasEnMes(anio, mes)
+    return Array.from({ length: total }, (_, i) => {
+      const dia = i + 1
+      const fecha = fechaLocal(anio, mes, dia)
+      return {
+        dia,
+        nombreDiaSemana: NOMBRES_DIA_SEMANA[indiceDiaSemana(fecha)],
+        esHoy: fecha.getTime() === hoy.getTime(),
+        esPasado: fecha.getTime() < hoy.getTime(),
+      }
+    })
+  }, [anio, mes, hoy])
+
+  const resumen = useMemo(() => {
+    let libres = 0, ocupados = 0, bloqueados = 0
+    dias.forEach(({ dia }) => {
+      Object.keys(TURNOS_QUINCHO).forEach(key => {
+        const { inicio, fin } = rangoTurnoQuincho(anio, mes, dia, key)
+        const estado = estadoDeTurno(reservas, inicio, fin)
+        if (estado.tipo === 'libre') libres++
+        else if (estado.tipo === 'bloqueo') bloqueados++
+        else ocupados++
+      })
+    })
+    return { libres, ocupados, bloqueados }
+  }, [dias, reservas, anio, mes])
+
+  return (
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+      <div className="px-4 sm:px-5 pt-4 sm:pt-5 pb-4 border-b border-gray-100">
+        <NavegadorMes anio={anio} mes={mes} onCambiar={onCambiarMes}>
+          <h2 className="text-base font-bold text-gray-900 flex items-center gap-2">
+            <Tent size={17} className="text-gray-400 flex-shrink-0" />
+            Quincho
+          </h2>
+          <p className="text-xs text-gray-400 mt-0.5">
+            Turno <strong className="text-gray-600">Día</strong> ({TURNOS_QUINCHO.dia.horaInicio}:00–{TURNOS_QUINCHO.dia.horaFin}:00) ·{' '}
+            Turno <strong className="text-gray-600">Noche</strong> ({TURNOS_QUINCHO.noche.horaInicio}:00–00:00)
+          </p>
+        </NavegadorMes>
+
+        <div className="flex flex-wrap gap-2 sm:gap-3 mt-3">
+          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-green-700">
+            <span className="w-2 h-2 rounded-full bg-green-500 inline-block" />
+            {resumen.libres} libre{resumen.libres !== 1 ? 's' : ''}
+          </span>
+          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-blue-700">
+            <span className="w-2 h-2 rounded-full bg-blue-500 inline-block" />
+            {resumen.ocupados} reservado{resumen.ocupados !== 1 ? 's' : ''}
+          </span>
+          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-red-600">
+            <span className="w-2 h-2 rounded-full bg-red-500 inline-block" />
+            {resumen.bloqueados} inhabilitado{resumen.bloqueados !== 1 ? 's' : ''}
+          </span>
+        </div>
+      </div>
+
+      <div className="p-3 sm:p-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
+          {dias.map(({ dia, nombreDiaSemana, esHoy, esPasado }) => (
+            <div
+              key={dia}
+              className={`rounded-xl border p-2 flex flex-col gap-1.5 ${
+                esHoy ? 'ring-2 ring-blue-400 ring-offset-1 border-gray-200' : 'border-gray-200'
+              } ${esPasado ? 'bg-gray-50' : 'bg-white'}`}
+            >
+              <div className="flex items-baseline justify-between px-0.5">
+                <span className={`text-sm font-bold ${esPasado ? 'text-gray-400' : 'text-gray-800'}`}>{dia}</span>
+                <span className="text-[10px] text-gray-400 uppercase">{nombreDiaSemana}</span>
+              </div>
+
+              <div className="flex flex-col gap-1">
+                {Object.keys(TURNOS_QUINCHO).map(key => {
+                  const { inicio, fin } = rangoTurnoQuincho(anio, mes, dia, key)
+                  const estado = estadoDeTurno(reservas, inicio, fin)
+                  const Icon = ICONOS_TURNO_QUINCHO[key]
+                  const libre = estado.tipo === 'libre'
+                  // Un turno que ya pasó y quedó libre no tiene nada que
+                  // hacerse: inhabilitarlo hacia atrás no cambia nada.
+                  const inerte = libre && esPasado
+                  const clases = libre
+                    ? esPasado
+                      ? 'bg-gray-50 border-gray-200 text-gray-300 cursor-default'
+                      : 'bg-green-50 border-green-200 text-green-700 hover:bg-green-100'
+                    : colorDeReserva(estado.reserva).celda
+
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      disabled={inerte}
+                      onClick={() => libre
+                        ? onBloquearTurno({
+                            instalacion: 'quincho', inicio, fin,
+                            etiqueta: `${dia}/${mes} · Turno ${TURNOS_QUINCHO[key].label}`,
+                          })
+                        : onAbrirTurno(estado.reserva)}
+                      title={libre
+                        ? esPasado
+                          ? `${TURNOS_QUINCHO[key].label} — pasó libre`
+                          : `${TURNOS_QUINCHO[key].label} — libre. Click para inhabilitarlo.`
+                        : `${TURNOS_QUINCHO[key].label} — ${etiquetaCorta(estado)}`}
+                      className={`w-full rounded-lg border px-1.5 py-1 text-left transition-colors ${clases}`}
+                    >
+                      <span className="flex items-center gap-1 text-[11px] font-bold">
+                        <Icon size={10} className="flex-shrink-0" />
+                        {TURNOS_QUINCHO[key].label}
+                      </span>
+                      <span className="block text-[10px] leading-tight truncate opacity-90">
+                        {etiquetaCorta(estado)}
+                      </span>
+                      {estado.tipo === 'reserva' && estado.reserva.dni_responsable && (
+                        <span className="block text-[9px] leading-tight truncate opacity-70">
+                          DNI {estado.reserva.dni_responsable}
+                        </span>
+                      )}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="px-4 sm:px-5 pb-4">
+        <Leyenda />
+        <p className="text-[11px] text-gray-400 mt-2">
+          Tocá un turno libre para inhabilitarlo, o uno ocupado para ver el detalle.
+        </p>
+      </div>
+    </div>
+  )
+}
+
+// ─── Agenda de canchas ────────────────────────────────────────────────────────
+
+function AgendaCanchas({
+  reservas, anio, mes, onCambiarMes,
+  canchaKey, onCambiarCancha,
+  diaSeleccionado, onSeleccionarDia,
+  onAbrirTurno, onBloquearTurno,
+}) {
+  const hoy = new Date()
+  hoy.setHours(0, 0, 0, 0)
+
+  const turnosDelDia = useMemo(() => turnosDeCancha(), [])
+
+  // Celdas del mes con relleno, para que el día caiga bajo su día de semana.
+  const celdas = useMemo(() => {
+    const total = diasEnMes(anio, mes)
+    const primerDia = fechaLocal(anio, mes, 1)
+    const relleno = indiceDiaSemana(primerDia) // lunes primero
+    return [
+      ...Array.from({ length: relleno }, () => null),
+      ...Array.from({ length: total }, (_, i) => i + 1),
+    ]
+  }, [anio, mes])
+
+  // Ocupación por día, para el puntito del calendario.
+  const ocupacionPorDia = useMemo(() => {
+    const mapa = new Map()
+    const total = diasEnMes(anio, mes)
+    for (let dia = 1; dia <= total; dia++) {
+      const base = fechaLocal(anio, mes, dia)
+      let ocupados = 0, bloqueados = 0
+      for (const hora of turnosDelDia) {
+        const { inicio, fin } = rangoTurnoCancha(base, hora)
+        const estado = estadoDeTurno(reservas, inicio, fin)
+        if (estado.tipo === 'bloqueo') bloqueados++
+        else if (estado.tipo === 'reserva') ocupados++
+      }
+      mapa.set(dia, { ocupados, bloqueados, libres: turnosDelDia.length - ocupados - bloqueados })
+    }
+    return mapa
+  }, [reservas, anio, mes, turnosDelDia])
+
+  const fechaDia = diaSeleccionado ? fechaLocal(anio, mes, diaSeleccionado) : null
+
+  return (
+    <div className="space-y-4">
+      {/* Selector de cancha */}
+      <div className="flex gap-2">
+        {CANCHAS.map(c => (
+          <button
+            key={c.key}
+            onClick={() => onCambiarCancha(c.key)}
+            className={`flex-1 sm:flex-none px-4 py-2 rounded-xl text-sm font-bold border transition-colors ${
+              canchaKey === c.key
+                ? 'bg-slate-900 text-white border-slate-900'
+                : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+            }`}
+          >
+            {c.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Calendario mensual: elegir día */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="px-4 sm:px-5 pt-4 sm:pt-5 pb-4 border-b border-gray-100">
+          <NavegadorMes anio={anio} mes={mes} onCambiar={onCambiarMes}>
+            <h2 className="text-base font-bold text-gray-900 flex items-center gap-2">
+              <Volleyball size={17} className="text-gray-400 flex-shrink-0" />
+              {labelInstalacion(canchaKey)}
+            </h2>
+            <p className="text-xs text-gray-400 mt-0.5">
+              Elegí un día para ver sus {turnosDelDia.length} turnos.
+            </p>
+          </NavegadorMes>
+        </div>
+
+        <div className="grid grid-cols-7 border-b border-gray-100">
+          {NOMBRES_DIA_SEMANA.map(d => (
+            <div key={d} className="py-1.5 text-center text-[9px] sm:text-[11px] font-semibold text-gray-400 uppercase tracking-wide">
+              {d}
+            </div>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-7 gap-px bg-gray-50 p-px">
+          {celdas.map((dia, idx) => {
+            if (dia === null) return <div key={`v-${idx}`} className="bg-white min-h-[52px]" />
+            const fecha = fechaLocal(anio, mes, dia)
+            const esHoy = fecha.getTime() === hoy.getTime()
+            const esPasado = fecha.getTime() < hoy.getTime()
+            const oc = ocupacionPorDia.get(dia)
+            const seleccionado = dia === diaSeleccionado
+
+            return (
+              <button
+                key={dia}
+                onClick={() => onSeleccionarDia(dia)}
+                className={`bg-white min-h-[52px] sm:min-h-[62px] p-1 flex flex-col items-center justify-start gap-1 transition-colors ${
+                  seleccionado ? 'ring-2 ring-inset ring-slate-900 bg-slate-50' : 'hover:bg-gray-50'
+                }`}
+              >
+                <span className={`text-xs font-semibold w-6 h-6 flex items-center justify-center rounded-full ${
+                  esHoy ? 'bg-blue-600 text-white' : esPasado ? 'text-gray-400' : 'text-gray-700'
+                }`}>
+                  {dia}
+                </span>
+                <span className="flex items-center gap-0.5">
+                  {oc.ocupados > 0 && (
+                    <span className="text-[9px] font-bold text-blue-600">{oc.ocupados}</span>
+                  )}
+                  {oc.bloqueados > 0 && (
+                    <span className="text-[9px] font-bold text-red-500">·{oc.bloqueados}</span>
+                  )}
+                  {oc.ocupados === 0 && oc.bloqueados === 0 && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-400 inline-block" />
+                  )}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+
+        <div className="px-4 sm:px-5 py-3">
+          <Leyenda />
+        </div>
+      </div>
+
+      {/* Turnos del día elegido */}
+      {fechaDia && (
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="px-4 sm:px-5 py-3.5 border-b border-gray-100 flex items-center justify-between gap-3">
+            <h3 className="text-sm font-bold text-gray-900 capitalize">
+              {fechaDia.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })}
+            </h3>
+            <span className="text-xs text-gray-400 flex-shrink-0">{labelInstalacion(canchaKey)}</span>
+          </div>
+
+          <ul className="divide-y divide-gray-50">
+            {turnosDelDia.map(hora => {
+              const { inicio, fin } = rangoTurnoCancha(fechaDia, hora)
+              const estado = estadoDeTurno(reservas, inicio, fin)
+              const esPasado = fin.getTime() <= Date.now()
+              const color = estado.tipo === 'libre' ? null : colorDeReserva(estado.reserva)
+
+              return (
+                <li key={hora} className="flex items-center gap-3 px-4 sm:px-5 py-3">
+                  <span className={`font-mono text-sm font-bold flex-shrink-0 w-[105px] ${esPasado ? 'text-gray-300' : 'text-gray-700'}`}>
+                    {horaLabel(hora)}–{horaLabel(hora + DURACION_TURNO_CANCHA_HORAS)}
+                  </span>
+
+                  {estado.tipo === 'libre' ? (
+                    <>
+                      <span className={`flex-1 flex items-center gap-2 text-sm font-semibold min-w-0 ${
+                        esPasado ? 'text-gray-300' : 'text-green-700'
+                      }`}>
+                        <span className={`w-2 h-2 rounded-full inline-block flex-shrink-0 ${
+                          esPasado ? 'bg-gray-200' : 'bg-green-500'
+                        }`} />
+                        Libre
+                      </span>
+                      {!esPasado && (
+                        <button
+                          onClick={() => onBloquearTurno({
+                            instalacion: canchaKey, inicio, fin,
+                            etiqueta: `${fechaDia.toLocaleDateString('es-AR')} · ${horaLabel(hora)}`,
+                          })}
+                          className="flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-semibold text-gray-600 hover:bg-red-50 hover:border-red-200 hover:text-red-700 transition-colors"
+                        >
+                          <Ban size={13} />
+                          Inhabilitar
+                        </button>
+                      )}
+                    </>
+                  ) : (
+                    <button
+                      onClick={() => onAbrirTurno(estado.reserva)}
+                      className="flex-1 flex items-center gap-2 min-w-0 text-left group"
+                    >
+                      {estado.tipo === 'bloqueo'
+                        ? <Ban size={14} className="text-red-500 flex-shrink-0" />
+                        : <User size={14} className="text-blue-500 flex-shrink-0" />}
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-sm font-semibold text-gray-800 truncate group-hover:underline">
+                          {etiquetaCorta(estado)}
+                        </span>
+                        {estado.tipo === 'reserva' && estado.reserva.dni_responsable && (
+                          <span className="block text-xs text-gray-400">DNI {estado.reserva.dni_responsable}</span>
+                        )}
+                      </span>
+                      <span className={`flex-shrink-0 text-[10px] font-bold px-2 py-1 rounded-full ${color.badge}`}>
+                        {color.label}
+                      </span>
+                    </button>
+                  )}
+                </li>
+              )
+            })}
+          </ul>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Página ───────────────────────────────────────────────────────────────────
+
+export default function AdminReservas() {
+  const { token } = useAuth()
+  const hoy = useMemo(() => new Date(), [])
+
+  const [reservas, setReservas] = useState([])
+  const [loading,  setLoading]  = useState(true)
+  const [error,    setError]    = useState(null)
+  const [aviso,    setAviso]    = useState(null)
+
+  const [grupoActivo, setGrupoActivo] = useState('canchas')
+  const [canchaKey,   setCanchaKey]   = useState(CANCHAS[0].key)
+  const [anio, setAnio] = useState(hoy.getFullYear())
+  const [mes,  setMes]  = useState(hoy.getMonth() + 1)
+  const [diaSeleccionado, setDiaSeleccionado] = useState(hoy.getDate())
+
+  const [reservaDetalle,    setReservaDetalle]    = useState(null)
+  const [turnoABloquear,    setTurnoABloquear]    = useState(null)
+  const [modalNuevaAbierto, setModalNuevaAbierto] = useState(false)
+
+  // ── Fetch del mes visible ─────────────────────────────────────────────────
+  // Se trae el mes entero de TODAS las instalaciones y se filtra en memoria:
+  // son decenas de filas, y así cambiar de pestaña o de cancha no dispara otro
+  // request. El rango se arma con fechas locales (no toISOString sobre el
+  // Date, que se corre un día en UTC-3).
   const fetchReservas = useCallback(async () => {
     if (!token) return
     setLoading(true)
     setError(null)
     try {
-      const params = new URLSearchParams()
-
-      if (vista === 'calendario') {
-        const desde = new Date(mes.getFullYear(), mes.getMonth(), 1)
-        const hasta  = new Date(mes.getFullYear(), mes.getMonth() + 1, 0)
-        params.set('desde', desde.toISOString().slice(0, 10))
-        params.set('hasta', hasta.toISOString().slice(0, 10))
-      } else {
-        if (filtroInstalacion) params.set('instalacion', filtroInstalacion)
-      }
+      // `hasta` va al DÍA SIGUIENTE al último del mes, no al último.
+      // El backend filtra `fecha_inicio <= hasta` contra un `date`, que
+      // Postgres castea a medianoche: mandando el 30 de septiembre, una
+      // reserva del 30 a las 19:00 queda afuera y el turno Noche del último
+      // día del mes nunca aparecía en la agenda.
+      const finDeMes = fechaLocal(anio, mes, diasEnMes(anio, mes))
+      finDeMes.setDate(finDeMes.getDate() + 1)
+      const desde = isoDeFechaLocal(fechaLocal(anio, mes, 1))
+      const hasta = isoDeFechaLocal(finDeMes)
+      const params = new URLSearchParams({ desde, hasta })
 
       const res = await fetch(`${API}/admin/reservas?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -686,23 +1282,36 @@ export default function AdminReservas() {
     } finally {
       setLoading(false)
     }
-  }, [token, vista, mes, filtroInstalacion])
+  }, [token, anio, mes])
 
   useEffect(() => { fetchReservas() }, [fetchReservas])
 
-  const handleGrupoChange = (key) => {
-    setGrupoActivo(key)
-    setFiltroInstalacion('')
+  const cambiarMes = (a, m) => {
+    setAnio(a)
+    setMes(m)
+    setDiaSeleccionado(
+      a === hoy.getFullYear() && m === hoy.getMonth() + 1 ? hoy.getDate() : 1
+    )
   }
 
-  // Rechazar un turno pendiente = rechazar la ORDEN que lo respalda.
-  // Antes esto pegaba a PATCH /admin/reservas/{id}/rechazar, una ruta que NO
-  // existe en el backend: siempre devolvía 404 y el botón "Rechazar / Liberar
-  // turno" de la agenda nunca funcionó. El endpoint real es
-  // POST /admin/ordenes/{id_orden}/rechazar, que además libera la reserva,
-  // devuelve el stock, le avisa al socio y deja registro en audit_log.
+  // Solo las franjas que efectivamente ocupan la agenda, de la instalación
+  // que se está mirando.
+  const instalacionActiva = grupoActivo === 'quincho' ? 'quincho' : canchaKey
+
+  const reservasVisibles = useMemo(
+    () => reservas.filter(r =>
+      r.instalacion === instalacionActiva && ESTADOS_OCUPA_AGENDA.includes(r.estado)
+    ),
+    [reservas, instalacionActiva]
+  )
+
+  // ── Acciones ──────────────────────────────────────────────────────────────
+
   const rechazandoRef = useRef(false)
 
+  // Rechazar un turno pendiente = rechazar la ORDEN que lo respalda. El
+  // endpoint real es POST /admin/ordenes/{id_orden}/rechazar, que libera la
+  // reserva, avisa al socio y deja registro en audit_log.
   const handleRechazar = async (reserva) => {
     if (rechazandoRef.current) return
     if (!reserva?.id_orden) {
@@ -714,8 +1323,6 @@ export default function AdminReservas() {
       const res = await fetch(`${API}/admin/ordenes/${reserva.id_orden}/rechazar`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        // motivo_rechazo es obligatorio (min. 5 caracteres) y le llega al socio
-        // por mail, así que conviene que se entienda.
         body: JSON.stringify({
           motivo_rechazo: 'Turno liberado por el administrador desde la agenda de reservas.',
         }),
@@ -724,8 +1331,8 @@ export default function AdminReservas() {
         const body = await res.json().catch(() => ({}))
         throw new Error(textoError(body?.detail, 'No se pudo rechazar la reserva.'))
       }
-      // Quitar la reserva rechazada de la lista local sin refetch
       setReservas(prev => prev.filter(r => r.id_reserva !== reserva.id_reserva))
+      setError(null)
     } catch (err) {
       setError(err.message)
     } finally {
@@ -733,8 +1340,6 @@ export default function AdminReservas() {
     }
   }
 
-  // Suspensión (lluvia, mantenimiento): libera el turno y le acredita el
-  // importe al socio como saldo a favor. Requiere reserva 'confirmada'.
   const suspendiendoRef = useRef(false)
 
   const handleSuspender = async (reserva, motivo) => {
@@ -747,14 +1352,12 @@ export default function AdminReservas() {
         body: JSON.stringify({ motivo }),
       })
       const body = await res.json().catch(() => ({}))
-      if (!res.ok) {
-        throw new Error(textoError(body?.detail, 'No se pudo suspender la reserva.'))
-      }
+      if (!res.ok) throw new Error(textoError(body?.detail, 'No se pudo suspender la reserva.'))
       setReservas(prev => prev.map(r =>
         r.id_reserva === reserva.id_reserva ? { ...r, estado: 'liberada' } : r
       ))
       setError(null)
-      window.alert(
+      setAviso(
         `Turno suspendido. Se le acreditaron $${body.monto_acreditado} de saldo a favor al socio ` +
         `(nuevo saldo: $${body.nuevo_saldo}).`
       )
@@ -765,52 +1368,140 @@ export default function AdminReservas() {
     }
   }
 
-  // ── Filtrado ──────────────────────────────────────────────────────────────
-  const instDelGrupo = instalacionesDe(grupoActivo)
+  const quitandoRef = useRef(false)
 
-  const ahora = useMemo(() => new Date(), [])
-
-  const reservasFiltradas = useMemo(() => {
-    let lista = reservas.filter(r => instDelGrupo.includes(r.instalacion))
-    if (vista === 'calendario') {
-      // Calendario: solo pendientes y aprobadas
-      lista = lista.filter(esActiva)
-      // Filtro adicional por estado si el usuario lo eligió
-      if (filtroCalendario) lista = lista.filter(r => r.estado_orden === filtroCalendario)
-    } else {
-      if (filtroInstalacion) lista = lista.filter(r => r.instalacion === filtroInstalacion)
-      if (filtroEstadoOrden) lista = lista.filter(r => r.estado_orden === filtroEstadoOrden)
+  const handleQuitarBloqueo = async (reserva) => {
+    if (quitandoRef.current) return
+    quitandoRef.current = true
+    try {
+      const res = await fetch(`${API}/admin/reservas/bloqueo/${reserva.id_reserva}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const body = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(textoError(body?.detail, 'No se pudo quitar el bloqueo.'))
+      setReservas(prev => prev.map(r =>
+        r.id_reserva === reserva.id_reserva ? { ...r, estado: 'liberada' } : r
+      ))
+      setError(null)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      quitandoRef.current = false
     }
-    const busquedaNorm = busqueda.trim().toLowerCase()
-    if (busquedaNorm) {
-      lista = lista.filter(r =>
-        r.nombre_responsable?.toLowerCase().includes(busquedaNorm) ||
-        r.dni_responsable?.toLowerCase().includes(busquedaNorm)
-      )
-    }
-    return lista
-  }, [reservas, instDelGrupo, vista, filtroInstalacion, filtroEstadoOrden, filtroCalendario, busqueda])
+  }
 
-  // ── Chip para el calendario ───────────────────────────────────────────────
-  const renderReservaCalendario = useCallback((reserva) => {
-    const color    = colorDeReserva(reserva)
-    const vencida  = reserva.estado_orden === 'pendiente_verificacion' &&
-                     new Date(reserva.fecha_fin) < ahora
-    return (
-      <button
-        onClick={() => setReservaDetalle(reserva)}
-        title={`${labelInstalacion(reserva.instalacion)} — ${color.label}${vencida ? ' ⚠️ vencida sin pago' : ''}`}
-        className={`w-full text-left px-1.5 py-0.5 rounded text-[10px] font-semibold truncate transition-opacity hover:opacity-80 ${color.chip} ${vencida ? 'ring-2 ring-red-500 ring-offset-0' : ''}`}
-      >
-        {vencida ? '⚠️ ' : ''}{formatoHora(reserva.fecha_inicio)} {labelInstalacion(reserva.instalacion)}
-      </button>
-    )
-  }, [ahora])
+  const handleBloqueado = (nuevo) => {
+    setReservas(prev => [nuevo, ...prev])
+    setTurnoABloquear(null)
+  }
 
-  const grupoInfo = GRUPOS.find(g => g.key === grupoActivo)
+  const handleNuevaReservaGuardada = (nueva) => {
+    setReservas(prev => [nueva, ...prev])
+    setModalNuevaAbierto(false)
+  }
+
+  // ── Render ────────────────────────────────────────────────────────────────
 
   return (
     <div className="p-4 sm:p-6 max-w-5xl mx-auto space-y-5">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2 sm:gap-3">
+            <CalendarClock size={22} className="text-gray-500 flex-shrink-0" />
+            Agenda de Reservas
+          </h1>
+          <p className="text-xs sm:text-sm text-gray-500 mt-1">
+            La misma grilla que ve el socio, pero con el nombre de quien tiene cada turno.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <button
+            onClick={fetchReservas}
+            disabled={loading}
+            className="p-2.5 rounded-xl border border-gray-200 text-gray-500 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+            title="Refrescar"
+          >
+            <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+          </button>
+          <button
+            onClick={() => setModalNuevaAbierto(true)}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-900 text-white text-sm font-bold hover:bg-slate-800 transition-colors"
+          >
+            <PlusCircle size={16} />
+            <span className="hidden sm:inline">Nueva reserva manual</span>
+            <span className="sm:hidden">Nueva</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex gap-2">
+        {GRUPOS.map(({ key, label, icon: Icon }) => (
+          <button
+            key={key}
+            onClick={() => setGrupoActivo(key)}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold border transition-colors ${
+              grupoActivo === key
+                ? 'bg-white text-gray-900 border-gray-300 shadow-sm'
+                : 'bg-transparent text-gray-500 border-transparent hover:bg-white/60'
+            }`}
+          >
+            <Icon size={16} />
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {error && (
+        <div className="flex items-start gap-2 p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm">
+          <AlertCircle size={16} className="flex-shrink-0 mt-0.5" />
+          <span className="flex-1">{error}</span>
+          <button onClick={() => setError(null)} className="flex-shrink-0 text-red-400 hover:text-red-600">
+            <X size={15} />
+          </button>
+        </div>
+      )}
+
+      {aviso && (
+        <div className="flex items-start gap-2 p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm">
+          <CheckCircle2 size={16} className="flex-shrink-0 mt-0.5" />
+          <span className="flex-1">{aviso}</span>
+          <button onClick={() => setAviso(null)} className="flex-shrink-0 text-emerald-500 hover:text-emerald-700">
+            <X size={15} />
+          </button>
+        </div>
+      )}
+
+      {loading && reservas.length === 0 ? (
+        <div className="flex justify-center py-16">
+          <Loader2 className="animate-spin text-gray-400" size={28} />
+        </div>
+      ) : grupoActivo === 'quincho' ? (
+        <AgendaQuincho
+          reservas={reservasVisibles}
+          anio={anio}
+          mes={mes}
+          onCambiarMes={cambiarMes}
+          onAbrirTurno={setReservaDetalle}
+          onBloquearTurno={setTurnoABloquear}
+        />
+      ) : (
+        <AgendaCanchas
+          reservas={reservasVisibles}
+          anio={anio}
+          mes={mes}
+          onCambiarMes={cambiarMes}
+          canchaKey={canchaKey}
+          onCambiarCancha={setCanchaKey}
+          diaSeleccionado={diaSeleccionado}
+          onSeleccionarDia={setDiaSeleccionado}
+          onAbrirTurno={setReservaDetalle}
+          onBloquearTurno={setTurnoABloquear}
+        />
+      )}
 
       {reservaDetalle && (
         <ModalDetalleReserva
@@ -818,6 +1509,15 @@ export default function AdminReservas() {
           onClose={() => setReservaDetalle(null)}
           onRechazar={handleRechazar}
           onSuspender={handleSuspender}
+          onQuitarBloqueo={handleQuitarBloqueo}
+        />
+      )}
+
+      {turnoABloquear && (
+        <ModalBloquearTurno
+          turno={turnoABloquear}
+          onClose={() => setTurnoABloquear(null)}
+          onBloqueado={handleBloqueado}
         />
       )}
 
@@ -825,231 +1525,8 @@ export default function AdminReservas() {
         <ModalNuevaReserva
           onClose={() => setModalNuevaAbierto(false)}
           onGuardado={handleNuevaReservaGuardada}
+          inicial={{ instalacion: instalacionActiva }}
         />
-      )}
-
-      {/* Header */}
-      <div className="space-y-4">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-3">
-            <Calendar size={22} className="text-gray-500 flex-shrink-0" />
-            Agenda de Reservas
-          </h1>
-          <p className="text-sm text-gray-500 mt-1">
-            Quincho y canchas — estado de pagos y ocupación.
-          </p>
-        </div>
-
-        {/* Tabs: Canchas / Quincho — base, arriba de todo */}
-        <div className="flex gap-1 p-1 bg-gray-100 rounded-xl w-fit mx-auto">
-          {GRUPOS.map(grupo => {
-            const Icon = grupo.icon
-            return (
-              <button
-                key={grupo.key}
-                onClick={() => handleGrupoChange(grupo.key)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
-                  grupoActivo === grupo.key
-                    ? 'bg-white text-gray-900 shadow-sm'
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                <Icon size={15} />
-                {grupo.label}
-              </button>
-            )
-          })}
-        </div>
-
-        {/* Barra de filtros — mismo patrón que Gestión de Eventos */}
-        <div className="flex flex-nowrap items-center gap-1.5 sm:gap-3 overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 sm:overflow-visible">
-          {instDelGrupo.length > 1 && (
-            <div className="relative flex-shrink-0">
-              <Filter size={13} className="absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none z-10" />
-              <select
-                value={filtroInstalacion}
-                onChange={e => setFiltroInstalacion(e.target.value)}
-                className="form-input pl-7 pr-5 sm:pl-8 sm:pr-7 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-gray-600 w-auto"
-                title="Filtrar por cancha"
-              >
-                <option value="">Canchas</option>
-                {instDelGrupo.map(inst => (
-                  <option key={inst} value={inst}>{labelInstalacion(inst)}</option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          <div className="relative flex-shrink-0">
-            <Filter size={13} className="absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none z-10" />
-            <select
-              value={vista === 'calendario' ? filtroCalendario : filtroEstadoOrden}
-              onChange={e =>
-                vista === 'calendario'
-                  ? setFiltroCalendario(e.target.value)
-                  : setFiltroEstadoOrden(e.target.value)
-              }
-              className="form-input pl-7 pr-5 sm:pl-8 sm:pr-7 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-gray-600 w-auto"
-              title="Filtrar por estado"
-            >
-              <option value="">Estados</option>
-              <option value="pendiente_verificacion">Pendiente</option>
-              <option value="aprobada">Aprobada</option>
-              {vista === 'lista' && (
-                <>
-                  <option value="rechazada">Rechazada</option>
-                  <option value="cancelada_socio">Cancelada</option>
-                  <option value="expirada">Expirada</option>
-                </>
-              )}
-            </select>
-          </div>
-
-          <div className="flex-shrink-0">
-            <VistaToggle vista={vista} onChange={setVista} />
-          </div>
-
-          <button
-            onClick={() => setModalNuevaAbierto(true)}
-            className="flex-shrink-0 inline-flex items-center gap-2 px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-green-600 text-white font-semibold hover:bg-green-700 transition-colors shadow-sm text-sm"
-            title="Nueva Reserva"
-          >
-            <PlusCircle size={16} />
-            <span className="hidden sm:inline">Nueva Reserva</span>
-          </button>
-
-          <button
-            onClick={fetchReservas}
-            disabled={loading}
-            className="flex-shrink-0 p-1.5 sm:p-2 rounded-lg text-gray-500 hover:bg-gray-100 disabled:opacity-40 transition-colors"
-            title="Actualizar"
-          >
-            <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
-          </button>
-        </div>
-
-        {/* Buscador por socio: nombre o DNI de quien alquiló */}
-        <div className="relative">
-          <Search size={13} className="absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-          <input
-            type="text"
-            value={busqueda}
-            onChange={e => setBusqueda(e.target.value)}
-            placeholder="Buscar por socio o DNI..."
-            className="form-input pl-7 sm:pl-8 py-1.5 sm:py-2 text-xs sm:text-sm w-full"
-          />
-        </div>
-      </div>
-
-      {/* Error */}
-      {error && (
-        <div className="flex items-center gap-3 p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm">
-          <AlertCircle size={18} className="flex-shrink-0" />
-          <span className="flex-1">{error}</span>
-          <button onClick={fetchReservas} className="underline underline-offset-2 font-medium">Reintentar</button>
-        </div>
-      )}
-
-      {/* ── Vista Calendario ─────────────────────────────────────────────── */}
-      {vista === 'calendario' && (
-        <div className="space-y-3">
-          {loading ? (
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm h-96 animate-pulse" />
-          ) : (
-            <>
-              {/* Calendarios por instalación */}
-              {instDelGrupo.map(inst => {
-                const reservasDeEsta = reservasFiltradas.filter(r => r.instalacion === inst)
-                return (
-                  <div key={inst}>
-                    {instDelGrupo.length > 1 && (
-                      <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-2 px-1">
-                        {labelInstalacion(inst)}
-                      </h2>
-                    )}
-                    <CalendarioMensual
-                      eventos={reservasDeEsta.map(r => ({
-                        ...r,
-                        id_evento: r.id_reserva,
-                      }))}
-                      mes={mes}
-                      onMesChange={setMes}
-                      renderEvento={renderReservaCalendario}
-                    />
-                  </div>
-                )
-              })}
-
-              {/* Leyenda */}
-              <div className="flex flex-wrap items-center gap-4 px-1">
-                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Estado de pago:</span>
-                {[
-                  { key: 'pendiente_verificacion', label: 'Pendiente',  cls: 'bg-orange-400' },
-                  { key: 'aprobada',               label: 'Aprobada',   cls: 'bg-green-500'  },
-                ].map(({ key, label, cls }) => (
-                  <span key={key} className="flex items-center gap-1.5 text-xs text-gray-600">
-                    <span className={`w-2.5 h-2.5 rounded-sm ${cls}`} />
-                    {label}
-                  </span>
-                ))}
-              </div>
-            </>
-          )}
-        </div>
-      )}
-
-      {/* ── Vista Lista ──────────────────────────────────────────────────── */}
-      {vista === 'lista' && (
-        <div className="space-y-4">
-          {/* Skeleton */}
-          {loading && [...Array(3)].map((_, i) => (
-            <div key={i} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 h-20 animate-pulse" />
-          ))}
-
-          {/* Cards */}
-          {!loading && reservasFiltradas.map(r => {
-            const color = colorDeReserva(r)
-            return (
-              <div
-                key={r.id_reserva}
-                className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex items-center gap-4 flex-wrap"
-              >
-                {/* Franja de color por estado */}
-                <div className={`w-1.5 self-stretch rounded-full flex-shrink-0 ${color.chip.split(' ')[0]}`} />
-
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <p className="font-bold text-gray-900">{labelInstalacion(r.instalacion)}</p>
-                    <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${color.badge}`}>
-                      {color.label}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-4 mt-1 text-sm text-gray-500 flex-wrap">
-                    <span className="flex items-center gap-1.5">
-                      <Clock size={13} />
-                      {formatoFechaHora(r.fecha_inicio)}
-                      {r.fecha_fin && ` → ${formatoHora(r.fecha_fin)}`}
-                    </span>
-                    {r.nombre_responsable && (
-                      <span className="flex items-center gap-1.5">
-                        <Users size={13} /> {r.nombre_responsable}
-                      </span>
-                    )}
-                  </div>
-                  {r.notas && (
-                    <p className="text-xs text-gray-400 mt-0.5 italic truncate">{r.notas}</p>
-                  )}
-                </div>
-              </div>
-            )
-          })}
-
-          {!loading && !error && reservasFiltradas.length === 0 && (
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-10 text-center text-gray-400 text-sm">
-              No hay reservas de {grupoInfo?.label.toLowerCase()} con esos filtros.
-            </div>
-          )}
-        </div>
       )}
     </div>
   )

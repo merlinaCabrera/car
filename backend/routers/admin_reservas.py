@@ -42,6 +42,31 @@ _ROLES_ADMIN = ("admin_general", "personal_administrativo")
 _ROLES_ESCANEO = ("admin_general", "personal_administrativo", "admin_temporal", "portero_cancha")
 
 
+# Estados en los que una franja efectivamente ocupa la agenda.
+_ESTADOS_OCUPA_AGENDA = ("bloqueada", "confirmada")
+
+
+def _es_bloqueo_manual(reserva: models.ReservaInstalacion) -> bool:
+    """
+    True si la franja es un bloqueo de agenda puro, no la reserva de un socio.
+
+    La regla es "sin socio responsable Y sin orden de pago": así nace una
+    reserva creada por el admin sin registrar cobro (crear_reserva_manual con
+    id_usuario_pago=None) y así nace un bloqueo de bloquear_turno().
+
+    El `estado == 'confirmada'` no es decorativo: deja afuera las pre-reservas
+    huérfanas —'bloqueada' con id_orden NULL— que el socio abandonó a mitad del
+    carrito y que el scheduler todavía no limpió (hallazgo D2 de la auditoría
+    del 06-09, 11 filas dando vueltas). Esas ocupan la agenda igual, pero no son
+    bloqueos del club y no hay que mostrarlas como tales.
+    """
+    return (
+        reserva.id_usuario is None
+        and reserva.id_orden is None
+        and reserva.estado == "confirmada"
+    )
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Listado de reservas (Agenda de Reservas)
 # ─────────────────────────────────────────────────────────────────────────────
@@ -97,6 +122,7 @@ def listar_reservas(
                 nombre_responsable=nombre_responsable,
                 dni_responsable=dni_responsable,
                 notas=r.notas,
+                es_bloqueo_manual=_es_bloqueo_manual(r),
                 num_socios_esperados=r.num_socios_esperados,
                 monto_reintegro_unitario=r.monto_reintegro_unitario,
                 escaneos_realizados=len(r.reintegros),
@@ -262,6 +288,202 @@ def crear_reserva_manual(
         id_usuario=reserva.id_usuario,
         nombre_responsable=payload.nombre_responsable,
         notas=reserva.notas,
+        es_bloqueo_manual=_es_bloqueo_manual(reserva),
+        num_socios_esperados=None,
+        monto_reintegro_unitario=None,
+        escaneos_realizados=0,
+    )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Bloqueos manuales de agenda (mantenimiento, reunión de comisión, evento)
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# Mismo cuidado de orden que la ruta "activas" de más abajo: "/admin/reservas/
+# bloqueo/{id_reserva}" tiene que declararse antes de "/admin/reservas/
+# {id_reserva}", porque int("bloqueo") no valida y FastAPI devolvería 422 en vez
+# de probar la ruta siguiente.
+
+
+@router.post(
+    "/admin/reservas/bloqueo",
+    response_model=schemas.ReservaAdminListResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Bloquear un turno (sin socio ni cobro): mantenimiento, evento del club",
+)
+def bloquear_turno(
+    payload: schemas.BloqueoManualPayload,
+    request: Request,
+    db: Session = Depends(get_db),
+    admin: models.Usuario = Depends(require_roles(*_ROLES_ADMIN)),
+) -> schemas.ReservaAdminListResponse:
+    """
+    Saca un turno de circulación. La franja queda 'confirmada' para que ocupe
+    la agenda —el GET /socio/reservas ya devuelve todo lo que esté 'bloqueada'
+    o 'confirmada', así que el socio la ve ocupada sin ningún cambio del lado
+    de él—, pero sin id_usuario ni id_orden: no hay nadie a quien cobrarle ni a
+    quien reintegrarle.
+
+    Se podría haber hecho con POST /admin/reservas dejando el cobro vacío, que
+    es lo que hacía la agenda vieja. No alcanza: ese endpoint exige un
+    `nombre_responsable` y termina guardando el motivo mezclado con un nombre
+    de persona en el mismo campo de notas. Un bloqueo no es de nadie, y la
+    agenda necesita poder distinguirlo para ofrecer "Quitar bloqueo" en vez del
+    detalle de un pago que no existe.
+    """
+    colision = (
+        db.query(models.ReservaInstalacion)
+        .filter(
+            models.ReservaInstalacion.instalacion == payload.instalacion,
+            models.ReservaInstalacion.estado.in_(_ESTADOS_OCUPA_AGENDA),
+            models.ReservaInstalacion.fecha_inicio < payload.fecha_fin,
+            models.ReservaInstalacion.fecha_fin > payload.fecha_inicio,
+        )
+        .first()
+    )
+    if colision:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                f"Ese turno ya está ocupado en {payload.instalacion} "
+                f"({colision.fecha_inicio.strftime('%d/%m %H:%M')} — "
+                f"{colision.fecha_fin.strftime('%H:%M')})."
+            ),
+        )
+
+    reserva = models.ReservaInstalacion(
+        instalacion=payload.instalacion,
+        fecha_inicio=payload.fecha_inicio,
+        fecha_fin=payload.fecha_fin,
+        estado="confirmada",
+        notas=payload.motivo,
+        id_orden=None,
+        id_usuario=None,
+    )
+    db.add(reserva)
+    db.flush()
+
+    registrar_audit(
+        db=db,
+        actor_id=admin.id_usuario,
+        accion="BLOQUEAR_TURNO",
+        tabla_afectada="reservas_instalaciones",
+        registro_id=reserva.id_reserva,
+        detalle={
+            "instalacion":  payload.instalacion,
+            "fecha_inicio": payload.fecha_inicio.isoformat(),
+            "fecha_fin":    payload.fecha_fin.isoformat(),
+            "motivo":       payload.motivo,
+        },
+        ip=extraer_ip(request),
+    )
+
+    db.commit()
+    db.refresh(reserva)
+
+    return schemas.ReservaAdminListResponse(
+        id_reserva=reserva.id_reserva,
+        instalacion=reserva.instalacion,
+        fecha_inicio=reserva.fecha_inicio,
+        fecha_fin=reserva.fecha_fin,
+        estado=reserva.estado,
+        id_orden=None,
+        estado_orden=None,
+        id_usuario=None,
+        nombre_responsable=None,
+        dni_responsable=None,
+        notas=reserva.notas,
+        es_bloqueo_manual=True,
+        num_socios_esperados=None,
+        monto_reintegro_unitario=None,
+        escaneos_realizados=0,
+    )
+
+
+@router.delete(
+    "/admin/reservas/bloqueo/{id_reserva}",
+    response_model=schemas.ReservaAdminListResponse,
+    summary="Quitar un bloqueo manual y devolver el turno a la agenda",
+)
+def quitar_bloqueo(
+    id_reserva: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    admin: models.Usuario = Depends(require_roles(*_ROLES_ADMIN)),
+) -> schemas.ReservaAdminListResponse:
+    """
+    Libera una franja que no tiene socio ni orden detrás.
+
+    Deliberadamente NO sirve para cancelar la reserva de un socio: para eso
+    están rechazar la orden (POST /admin/ordenes/{id}/rechazar) y suspender
+    (POST /admin/reservas/{id}/suspender), que avisan al socio y le devuelven
+    la plata. Acá no hay a quién avisar ni qué devolver, así que alcanza con
+    marcarla 'liberada'.
+
+    Acepta también una pre-reserva huérfana ('bloqueada' sin orden ni socio):
+    son las que quedan cuando alguien abandona el carrito y el scheduler está
+    dormido (hallazgo D2 del 06-09). Tener cómo sacarlas a mano de la agenda
+    es justamente lo que hoy falta cuando Render duerme el proceso.
+    """
+    reserva = (
+        db.query(models.ReservaInstalacion)
+        .filter(models.ReservaInstalacion.id_reserva == id_reserva)
+        .with_for_update()
+        .first()
+    )
+    if reserva is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Reserva no encontrada.")
+
+    if reserva.id_orden is not None or reserva.id_usuario is not None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=(
+                "Esa franja es la reserva de un socio, no un bloqueo de agenda. "
+                "Rechazá la orden o suspendé la reserva para liberarla, así el "
+                "socio se entera y se le devuelve lo que pagó."
+            ),
+        )
+    if reserva.estado not in _ESTADOS_OCUPA_AGENDA:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"El turno ya está '{reserva.estado}': no ocupa la agenda.",
+        )
+
+    estado_previo = reserva.estado
+    reserva.estado = "liberada"
+
+    registrar_audit(
+        db=db,
+        actor_id=admin.id_usuario,
+        accion="QUITAR_BLOQUEO_TURNO",
+        tabla_afectada="reservas_instalaciones",
+        registro_id=reserva.id_reserva,
+        detalle={
+            "instalacion":   reserva.instalacion,
+            "fecha_inicio":  reserva.fecha_inicio.isoformat(),
+            "fecha_fin":     reserva.fecha_fin.isoformat(),
+            "motivo":        reserva.notas,
+            "estado_previo": estado_previo,
+        },
+        ip=extraer_ip(request),
+    )
+
+    db.commit()
+    db.refresh(reserva)
+
+    return schemas.ReservaAdminListResponse(
+        id_reserva=reserva.id_reserva,
+        instalacion=reserva.instalacion,
+        fecha_inicio=reserva.fecha_inicio,
+        fecha_fin=reserva.fecha_fin,
+        estado=reserva.estado,
+        id_orden=None,
+        estado_orden=None,
+        id_usuario=None,
+        nombre_responsable=None,
+        dni_responsable=None,
+        notas=reserva.notas,
+        es_bloqueo_manual=False,   # ya no ocupa la agenda
         num_socios_esperados=None,
         monto_reintegro_unitario=None,
         escaneos_realizados=0,

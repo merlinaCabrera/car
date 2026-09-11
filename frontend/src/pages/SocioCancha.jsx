@@ -4,7 +4,7 @@
  *
  * Hermana de Reservas.jsx (que es solo para el Quincho, franjas Día/Noche).
  * Acá la cancha se reserva por turno horario (bloques de 1.5 hs, configurable
- * más abajo en `DURACION_TURNO_HORAS`), y se agrega la calculadora visual del
+ * más abajo en `DURACION_TURNO_CANCHA_HORAS`, en utils/reservas.js), y se agrega
  * "reintegro QR": el grupo paga el turno completo por transferencia (dividido
  * entre TODOS los que juegan, sean socios o no), y solo los que SON socios y
  * se presentan con su QR en la puerta de la cancha reciben un 20% de
@@ -20,6 +20,16 @@
  */
 
 import { textoError } from '../utils/errores';
+import {
+  CANCHAS,
+  DIAS_VISIBLES_SOCIO,
+  PORCENTAJE_REINTEGRO,
+  horaLabel,
+  isoDeFechaLocal,
+  rangoTurnoCancha,
+  turnoOcupado,
+  turnosDeCancha,
+} from '../utils/reservas'
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useCart } from '../context/CartContext'
@@ -43,76 +53,23 @@ const formatoMoneda = new Intl.NumberFormat('es-AR', {
   maximumFractionDigits: 0,
 })
 
-// ─── Configuración de canchas ──────────────────────────────────────────────
-// `nombreProducto` tiene que matchear EXACTO el `nombre` del ProductoServicio
-// (categoria='alquiler') dado de alta en el backend para esa cancha.
-// Si el club tiene una sola cancha, dejá un solo elemento en el array.
-const CANCHAS = [
-  { key: 'cancha_1', label: 'Cancha 1', nombreProducto: 'Cancha 1' },
-  { key: 'cancha_2', label: 'Cancha 2', nombreProducto: 'Cancha 2' },
-]
+// ─── Configuración de canchas y turnos ─────────────────────────────────────
+// Canchas, horarios y helpers viven en utils/reservas.js, compartidos con la
+// agenda del admin — que desde el rediseño de la ronda 5 muestra esta misma
+// grilla. Dos definiciones paralelas de "qué turnos hay" serían dos pantallas
+// contradiciéndose sobre el mismo turno.
 
-// ─── Configuración de turnos horarios ──────────────────────────────────────
-// TODO: esto va a pasar a configurarse desde el admin (tabla
-// ConfiguracionInstalacion) en una próxima iteración. Por ahora queda fijo acá.
-const HORA_INICIO = 9   // primer turno arranca 9:00
-const HORA_FIN = 23      // último turno posible arranca a más tardar 21:30 (con duración 1.5)
-const DURACION_TURNO_HORAS = 1.5
-const PORCENTAJE_REINTEGRO = 0.20 // 20%, matchea el default sugerido en el backend
+const rangoTurno = rangoTurnoCancha
+const TURNOS_DEL_DIA = turnosDeCancha()
 
-// ─── Helpers de fecha (sin desfase UTC) ───────────────────────────────────
-
-function isoDeFechaLocal(d) {
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
-}
-
-function generarTurnosDelDia() {
-  const turnos = []
-  for (let h = HORA_INICIO; h + DURACION_TURNO_HORAS <= HORA_FIN + 0.001; h += DURACION_TURNO_HORAS) {
-    turnos.push(h)
-  }
-  return turnos
-}
-
-function horaLabel(horaDecimal) {
-  const h = Math.floor(horaDecimal)
-  const m = Math.round((horaDecimal - h) * 60)
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
-}
-
-function rangoTurno(fechaBase, horaInicioDecimal) {
-  const inicio = new Date(fechaBase)
-  const hIni = Math.floor(horaInicioDecimal)
-  const mIni = Math.round((horaInicioDecimal - hIni) * 60)
-  inicio.setHours(hIni, mIni, 0, 0)
-
-  const fin = new Date(inicio)
-  fin.setMinutes(fin.getMinutes() + DURACION_TURNO_HORAS * 60)
-
-  return { inicio, fin }
-}
-
-function turnoOcupado(reservas, inicio, fin) {
-  return reservas.some(r => {
-    const rInicio = new Date(r.fecha_inicio)
-    const rFin = new Date(r.fecha_fin)
-    return rInicio < fin && rFin > inicio
-  })
-}
-
-const TURNOS_DEL_DIA = generarTurnosDelDia()
-
-// ─── Componente: selector de fecha (14 días desde hoy) ────────────────────
+// ─── Componente: selector de fecha (DIAS_VISIBLES_SOCIO días desde hoy) ────
 
 function SelectorFecha({ fecha, onCambiarFecha }) {
   const hoy = new Date()
   hoy.setHours(0, 0, 0, 0)
 
   const dias = useMemo(() => {
-    return Array.from({ length: 14 }, (_, i) => {
+    return Array.from({ length: DIAS_VISIBLES_SOCIO }, (_, i) => {
       const d = new Date(hoy)
       d.setDate(d.getDate() + i)
       return d

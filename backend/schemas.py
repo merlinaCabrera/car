@@ -661,9 +661,49 @@ class ReservaAdminListResponse(BaseModel):
     nombre_responsable: Optional[str] = None
     dni_responsable: Optional[str] = None
     notas: Optional[str] = None
+    es_bloqueo_manual: bool = Field(
+        default=False,
+        description=(
+            "TRUE si la franja es un bloqueo manual de agenda cargado por el "
+            "admin (mantenimiento, reunión de comisión, etc.) y no la reserva "
+            "de un socio: sin socio responsable y sin orden de pago. La agenda "
+            "lo pinta distinto y ofrece 'Quitar bloqueo' en vez del detalle de "
+            "pago. Lo calcula el backend para que el frontend no tenga que "
+            "adivinar la regla a partir de campos nulos."
+        ),
+    )
     num_socios_esperados: Optional[int] = None
     monto_reintegro_unitario: Optional[Decimal] = None
     escaneos_realizados: int = 0
+
+
+class BloqueoManualPayload(BaseModel):
+    """
+    Bloqueo de agenda puro: el admin saca un turno de circulación sin que haya
+    ningún socio ni ninguna plata de por medio (mantenimiento de la cancha,
+    reunión de comisión, evento del club).
+
+    Es un primo de CrearReservaManualPayload, pero a propósito NO acepta
+    responsable ni cobro: un bloqueo no es de nadie. Lo único obligatorio
+    además del horario es el motivo, porque es lo que va a leer el que abra la
+    agenda dentro de tres semanas y se pregunte por qué ese turno está cerrado.
+    """
+    instalacion: str = Field(
+        description="Clave de la instalación: 'cancha_1', 'cancha_2' o 'quincho'.",
+    )
+    fecha_inicio: datetime = Field(description="Fecha y hora de inicio del turno a bloquear.")
+    fecha_fin:    datetime = Field(description="Fecha y hora de fin del turno a bloquear.")
+    motivo: str = Field(
+        min_length=3,
+        max_length=300,
+        description="Por qué se bloquea: 'Mantenimiento', 'Reunión de comisión', etc.",
+    )
+
+    @model_validator(mode="after")
+    def fechas_coherentes(self) -> "BloqueoManualPayload":
+        if self.fecha_fin <= self.fecha_inicio:
+            raise ValueError("fecha_fin debe ser posterior a fecha_inicio.")
+        return self
 
 class ConfigurarRepartoPayload(BaseModel):
     num_socios_esperados: int = Field(gt=0, le=500)

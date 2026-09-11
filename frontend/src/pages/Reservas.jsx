@@ -15,6 +15,17 @@
  */
 
 import { textoError } from '../utils/errores';
+import {
+  TURNOS_QUINCHO,
+  NOMBRES_MES,
+  NOMBRES_DIA_SEMANA,
+  fechaLocal,
+  isoDeFechaLocal,
+  diasEnMes,
+  indiceDiaSemana,
+  rangoTurnoQuincho,
+  turnoOcupado,
+} from '../utils/reservas'
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useCart } from '../context/CartContext'
@@ -40,67 +51,20 @@ const formatoMoneda = new Intl.NumberFormat('es-AR', {
 })
 
 // ─── Configuración de turnos ──────────────────────────────────────────────
-// TODO: si en algún momento esto se vuelve configurable por instalación,
-// mover a un endpoint / prop en vez de constante fija.
-//
-// `nombreProducto` tiene que matchear EXACTO el `nombre` del ProductoServicio
-// correspondiente (categoria='alquiler') dado de alta en el backend. Si el
-// día de mañana se suman tarifas de semana/fin de semana, acá es donde se
-// bifurca el mapeo (ej. función en vez de objeto fijo).
-const TURNOS = {
-  dia: { label: 'Día', horaInicio: 9, horaFin: 19, Icon: Sun, nombreProducto: 'Quincho — Turno Día' },
-  noche: { label: 'Noche', horaInicio: 19, horaFin: 24, Icon: Moon, nombreProducto: 'Quincho — Turno Noche' },
-}
+// Las franjas (horarios, nombre del producto) viven en utils/reservas.js,
+// compartidas con la agenda del admin: si cada pantalla partiera el día en
+// turnos distintos, el panel mostraría libre un turno que el socio no puede
+// pedir. Acá solo se les cuelga el ícono, que es decisión de esta pantalla.
+const ICONOS_TURNO = { dia: Sun, noche: Moon }
 
-const NOMBRES_MES = [
-  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
-]
+const TURNOS = Object.fromEntries(
+  Object.entries(TURNOS_QUINCHO).map(([key, turno]) => [
+    key,
+    { ...turno, Icon: ICONOS_TURNO[key] },
+  ])
+)
 
-const NOMBRES_DIA_SEMANA = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
-
-// ─── Helpers de fecha (sin desfase UTC) ───────────────────────────────────
-
-function fechaLocal(anio, mes1based, dia) {
-  return new Date(anio, mes1based - 1, dia)
-}
-
-function isoDeFechaLocal(d) {
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
-}
-
-function diasEnMes(anio, mes1based) {
-  return new Date(anio, mes1based, 0).getDate()
-}
-
-/**
- * Convierte el rango horario de un turno, para un día dado, a un par de
- * Date en tiempo local — usado para comparar contra fecha_inicio/fecha_fin
- * de las reservas que devuelve el backend (que vienen en UTC/ISO).
- */
-function rangoTurno(anio, mes1based, dia, turnoKey) {
-  const { horaInicio, horaFin } = TURNOS[turnoKey]
-  const inicio = new Date(anio, mes1based - 1, dia, horaInicio, 0, 0)
-  // horaFin puede ser 24 (medianoche del mismo día → 00:00 del día siguiente)
-  const fin = new Date(anio, mes1based - 1, dia, 0, 0, 0)
-  fin.setHours(horaFin, 0, 0, 0)
-  return { inicio, fin }
-}
-
-/**
- * Determina si una lista de reservas (fecha_inicio/fecha_fin, ISO strings)
- * se superpone con el rango [inicio, fin) de un turno.
- */
-function turnoOcupado(reservas, inicio, fin) {
-  return reservas.some(r => {
-    const rInicio = new Date(r.fecha_inicio)
-    const rFin = new Date(r.fecha_fin)
-    return rInicio < fin && rFin > inicio
-  })
-}
+const rangoTurno = rangoTurnoQuincho
 
 // ─── Componente: celda de turno (Día/Noche) dentro de un día ─────────────
 
@@ -248,7 +212,7 @@ function CalendarioMensual({ instalacion, token, seleccion, onSeleccionar }) {
     return Array.from({ length: total }, (_, i) => {
       const dia = i + 1
       const fecha = fechaLocal(anioVisto, mesVisto, dia)
-      const nombreDiaSemana = NOMBRES_DIA_SEMANA[(fecha.getDay() + 6) % 7] // Lun=0
+      const nombreDiaSemana = NOMBRES_DIA_SEMANA[indiceDiaSemana(fecha)]
       return {
         dia,
         nombreDiaSemana,

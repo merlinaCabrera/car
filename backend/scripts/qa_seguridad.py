@@ -358,6 +358,69 @@ async def run():
         tiene_campo = rlist.status_code == 200 and any("id_orden" in x for x in rlist.json())
         ok("GET /admin/reservas expone id_orden", tiene_campo, f"({rlist.status_code})")
 
+        print("\n── ronda 6 · agenda del admin · bloqueos manuales ──")
+        # La agenda rediseñada muestra la grilla del socio y deja inhabilitar un
+        # turno (mantenimiento, reunión de comisión). Es una franja sin socio y
+        # sin orden: no hay a quién cobrarle ni a quién reintegrarle.
+        ini_bloq = datetime.now(timezone.utc) + timedelta(days=5)
+        fin_bloq = ini_bloq + timedelta(hours=2)
+        cuerpo_bloq = {
+            "instalacion": "cancha_2",
+            "fecha_inicio": ini_bloq.isoformat(),
+            "fecha_fin": fin_bloq.isoformat(),
+            "motivo": "Mantenimiento de la cancha",
+        }
+
+        rb = await cl.post(f"{BASE}/admin/reservas/bloqueo", json=cuerpo_bloq, headers=H(t_admin))
+        bloqueo = rb.json() if rb.status_code == 201 else {}
+        ok("admin bloquea un turno → 201 y viaja es_bloqueo_manual",
+           rb.status_code == 201 and bloqueo.get("es_bloqueo_manual") is True
+           and bloqueo.get("id_usuario") is None and bloqueo.get("id_orden") is None,
+           f"({rb.status_code}, {bloqueo.get('es_bloqueo_manual')})")
+
+        # El motivo es lo único que va a leer el que abra la agenda dentro de un mes.
+        rsin = await cl.post(f"{BASE}/admin/reservas/bloqueo",
+                             json={**cuerpo_bloq, "motivo": "ab"}, headers=H(t_admin))
+        ok("bloqueo sin motivo real → 422", rsin.status_code == 422, f"({rsin.status_code})")
+
+        # Dos bloqueos encimados, o un bloqueo sobre una reserva, tienen que chocar.
+        rdup = await cl.post(f"{BASE}/admin/reservas/bloqueo", json=cuerpo_bloq, headers=H(t_admin))
+        ok("bloquear un turno ya ocupado → 409", rdup.status_code == 409, f"({rdup.status_code})")
+
+        # Un socio no administra la agenda.
+        rperm = await cl.post(f"{BASE}/admin/reservas/bloqueo", json=cuerpo_bloq, headers=H(t_socio))
+        ok("socio → POST /admin/reservas/bloqueo → 403", rperm.status_code == 403, f"({rperm.status_code})")
+
+        # El turno bloqueado tiene que desaparecer de la disponibilidad del socio:
+        # si no, lo agrega al carrito y recién ahí se entera.
+        rdisp = await cl.get(f"{BASE}/socio/reservas/?instalacion=cancha_2", headers=H(t_socio))
+        franjas = rdisp.json() if rdisp.status_code == 200 else []
+        ok("el turno bloqueado le figura ocupado al socio",
+           any(f.get("id_reserva") == bloqueo.get("id_reserva") for f in franjas),
+           f"({rdisp.status_code}, {len(franjas)} franjas)")
+
+        # Quitar el bloqueo lo devuelve a la agenda.
+        rdel = await cl.delete(f"{BASE}/admin/reservas/bloqueo/{bloqueo.get('id_reserva')}",
+                               headers=H(t_admin))
+        ok("quitar bloqueo → 200 y queda 'liberada'",
+           rdel.status_code == 200 and rdel.json().get("estado") == "liberada",
+           f"({rdel.status_code}, {rdel.json().get('estado') if rdel.status_code == 200 else ''})")
+
+        rdisp2 = await cl.get(f"{BASE}/socio/reservas/?instalacion=cancha_2", headers=H(t_socio))
+        franjas2 = rdisp2.json() if rdisp2.status_code == 200 else []
+        ok("quitado el bloqueo, el turno vuelve a estar libre",
+           not any(f.get("id_reserva") == bloqueo.get("id_reserva") for f in franjas2),
+           f"({len(franjas2)} franjas)")
+
+        # Lo importante del endpoint: NO puede usarse para borrar la reserva de un
+        # socio por la puerta de atrás, sin avisarle ni devolverle la plata.
+        rdel_socio = await cl.delete(f"{BASE}/admin/reservas/bloqueo/{rid_s}", headers=H(t_admin))
+        detalle_socio = str(rdel_socio.json().get("detail", "")) if rdel_socio.status_code != 200 else ""
+        ok("quitar-bloqueo sobre la reserva de un socio → 422 (y por ser de un socio, "
+           "no por el estado)",
+           rdel_socio.status_code == 422 and "socio" in detalle_socio,
+           f"({rdel_socio.status_code}, {detalle_socio[:60]})")
+
         print("\n── BUG#1 · pagar N meses acredita N (no N-1) ──")
         # socio con 3 meses de deuda exactos: cobertura vencida hace 3 períodos
         from utils.cuotas_periodos import calcular_estado_financiero, fecha_cubierta_para_meses_adeudados

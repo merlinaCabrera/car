@@ -20,8 +20,6 @@ El proyecto está dividido en dos aplicaciones principales y se apoya en servici
 
 ## Módulos Principales
 
-<img align="left" width="280" src="https://github.com/user-attachments/assets/a5245dfe-04a7-483d-97c6-6d0c43210f35" />
-
 ### 1. Identidad y Control de Accesos
 - **Multi-Rol:** Un mismo usuario puede tener múltiples roles simultáneos (puede ser Socio, Jugador y Personal Técnico al mismo tiempo).
 - **Código QR:** Cada socio posee un QR único. El token subyacente rota automáticamente si hay cambios en su estado financiero.
@@ -42,7 +40,6 @@ El proyecto está dividido en dos aplicaciones principales y se apoya en servici
 - **Audit Log:** Tabla inmutable que registra cada acción sensible dentro del sistema (quién aprobó un pago, quién dio de baja a un socio, etc.) asegurando la trazabilidad total.
 - **Correos:** Para flujos de alta/baja de usuarios o de compras (en general, de un tipo de ítem o mixtas, es decir: cuotas, indumentaria y alquileres) están establecidas notificaciones por correo electrónico, para lo cual se utiliza la plataforma Resend.
 
-<br clear="left"/>
 
 
 

@@ -33,6 +33,8 @@ import {
   ScanLine,
   ChevronRight,
   Clock,
+  Sparkles,
+  Baby,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 
@@ -152,6 +154,27 @@ function TarjetaResultado({ resultado, onSiguiente }) {
           </div>
         </div>
 
+        {/* Avisos operativos: mes de ingreso (BUG-16) y menor de edad (BUG-17).
+            Los dos son informativos — no cambian si el socio entra o no. */}
+        {(resultado.en_mes_ingreso || resultado.es_menor) && (
+          <div className="flex flex-wrap gap-2">
+            {resultado.en_mes_ingreso && (
+              <span className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5
+                               rounded-full bg-white/25 ring-1 ring-white/40">
+                <Sparkles size={13} />
+                Mes de ingreso — 1ª cuota pendiente
+              </span>
+            )}
+            {resultado.es_menor && (
+              <span className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5
+                               rounded-full bg-white/25 ring-1 ring-white/40">
+                <Baby size={13} />
+                Menor de edad{resultado.edad != null ? ` — ${resultado.edad} años` : ''}
+              </span>
+            )}
+          </div>
+        )}
+
         {/* Roles activos */}
         {resultado.roles_activos?.length > 0 && (
           <div className="flex flex-wrap gap-2">
@@ -171,7 +194,7 @@ function TarjetaResultado({ resultado, onSiguiente }) {
           Estado financiero:&nbsp;
           <span className="font-semibold text-white capitalize">
             {resultado.estado_financiero === 'al_dia'
-              ? 'Al día ✓'
+              ? (resultado.en_mes_ingreso ? 'Al día — mes de ingreso' : 'Al día ✓')
               : resultado.estado_financiero === 'moroso'
               ? 'Moroso ✗'
               : resultado.estado_financiero}

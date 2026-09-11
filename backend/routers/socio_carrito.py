@@ -678,45 +678,35 @@ def listar_productos_tienda(
 @router.get(
     "/mis-compras",
     response_model=List[schemas.OrdenResponse],
-    summary="Historial de órdenes de tienda (indumentaria/alquileres) del socio logueado",
+    summary="Historial completo de órdenes del socio logueado",
 )
 def listar_mis_compras(
     db: Session = Depends(get_db),
     current_user: models.Usuario = Depends(require_roles(*_ROLES_COMPRADORES)),
 ) -> List[schemas.OrdenResponse]:
     """
-    Devuelve las órdenes de "tienda" del socio: alquileres, indumentaria, otro.
-    Excluye explícitamente cualquier orden que tenga al menos un ítem de
-    categoría 'cuota_social' — esas se ven en la pantalla dedicada "Mis Cuotas"
-    (socio_cuotas.py), no acá, para no duplicar/confundir el historial.
+    Devuelve TODAS las órdenes del socio: alquileres, indumentaria, otro y
+    también las de cuota social.
 
-    La exclusión se hace con NOT EXISTS en vez de traer todo y filtrar en
-    Python: así una orden mixta (si alguna vez llegara a existir) tampoco
-    se cuela, sin tener que cargar sus detalles primero para decidir.
+    Hasta la decisión D6 (QA del 11-09) esta consulta excluía con un NOT EXISTS
+    cualquier orden que tuviera un ítem de categoría 'cuota_social': el
+    historial de cuotas vive en /socio/cuotas y se quería evitar la
+    duplicación. En la práctica el socio buscaba su compra de cuotas acá y
+    encontraba la pantalla vacía —volvió a reportarse como bug en tres rondas
+    de QA seguidas—, así que ahora aparecen todas.
+
+    La cuota igual NO se detalla acá: el frontend la muestra en una sola línea
+    ("Cuota social — N mes(es) — $X") con un link a /socio/cuotas, que sigue
+    siendo la pantalla dueña del desglose mes por mes. `producto.categoria`
+    viaja en cada detalle, que es lo que le permite al frontend separarlas.
     """
-    subquery_tiene_cuota = (
-        db.query(models.DetalleOrden.id_detalle)
-        .join(
-            models.ProductoServicio,
-            models.DetalleOrden.id_producto == models.ProductoServicio.id_producto,
-        )
-        .filter(
-            models.DetalleOrden.id_orden == models.Orden.id_orden,
-            models.ProductoServicio.categoria == "cuota_social",
-        )
-        .exists()
-    )
-
     ordenes = (
         db.query(models.Orden)
         .options(
             joinedload(models.Orden.detalles).joinedload(models.DetalleOrden.producto),
             joinedload(models.Orden.pago),
         )
-        .filter(
-            models.Orden.id_usuario == current_user.id_usuario,
-            ~subquery_tiene_cuota,
-        )
+        .filter(models.Orden.id_usuario == current_user.id_usuario)
         .order_by(models.Orden.fecha_creacion.desc())
         .all()
     )

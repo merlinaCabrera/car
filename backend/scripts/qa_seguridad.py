@@ -447,6 +447,45 @@ async def run():
            e_pagado_sig.cantidad_meses == 1,
            f"(dio {e_pagado_sig.cantidad_meses}, esperaba 1)")
 
+        print("\n── ronda 5 · BUG-16/17 · el escáner distingue mes de ingreso y menor ──")
+        # La puerta mostraba "Al día" igual para un socio con la cuota paga que
+        # para uno recién asociado que todavía no pagó ninguna, y no decía nada
+        # de la edad. Los dos datos son informativos: no cambian si entra o no.
+        from types import SimpleNamespace
+        from routers.qr_auth import _construir_respuesta_desde_orm
+
+        _rol_socio = SimpleNamespace(nombre="socio", es_activo=True, peso_jerarquico=1)
+        def _socio_qr(*, ingreso, cubierto, nacimiento=None):
+            return SimpleNamespace(
+                id_usuario=0, nombre="QA", apellido="Escaner", foto_perfil_url=None,
+                fecha_baja=None, fecha_ingreso=ingreso, mes_cubierto_hasta=cubierto,
+                fecha_nacimiento=nacimiento, es_becado=False, becado_hasta=None,
+                roles_asignados=[SimpleNamespace(rol=_rol_socio, valido_hasta=None)],
+            )
+
+        r_nuevo = _construir_respuesta_desde_orm(
+            _socio_qr(ingreso=hoy_d1, cubierto=cob_d1), 10)
+        r_pago = _construir_respuesta_desde_orm(
+            _socio_qr(ingreso=hoy_d1, cubierto=cob_pagada), 10)
+        ok("escaner: socio en su mes de ingreso entra y queda marcado",
+           r_nuevo.es_valido and r_nuevo.en_mes_ingreso,
+           f"(valido={r_nuevo.es_valido} ingreso={r_nuevo.en_mes_ingreso})")
+        ok("escaner: el que ya pagó entra SIN la marca de mes de ingreso",
+           r_pago.es_valido and not r_pago.en_mes_ingreso,
+           f"(valido={r_pago.es_valido} ingreso={r_pago.en_mes_ingreso})")
+
+        r_menor = _construir_respuesta_desde_orm(
+            _socio_qr(ingreso=date(2020, 1, 1), cubierto=venc_este_mes,
+                      nacimiento=date(date.today().year - 10, 1, 1)), 10)
+        r_adulto = _construir_respuesta_desde_orm(
+            _socio_qr(ingreso=date(2020, 1, 1), cubierto=venc_este_mes), 10)
+        ok("escaner: el menor viaja marcado, con su edad",
+           r_menor.es_menor and r_menor.edad == 10,
+           f"(menor={r_menor.es_menor} edad={r_menor.edad})")
+        ok("escaner: sin fecha de nacimiento no se asume menor",
+           not r_adulto.es_menor and r_adulto.edad is None,
+           f"(menor={r_adulto.es_menor} edad={r_adulto.edad})")
+
         print("\n── ronda 3 · BUG#12 · el menor paga con descuento en el CARRITO ──")
         # El bug: /socio/cuotas/estado mostraba el precio con descuento pero el
         # checkout del carrito congelaba el precio de adulto.
@@ -461,19 +500,41 @@ async def run():
             id_prod_cuota, precio_lista = prod_cuota.id_producto, prod_cuota.precio_actual
         finally: db.close()
 
-        rest = await cl.get(f"{{BASE}}/socio/cuotas/estado", headers=H(t_socio))
+        rest = await cl.get(f"{BASE}/socio/cuotas/estado", headers=H(t_socio))
         precio_mostrado = Decimal(str(rest.json().get("precio_cuota_actual", "0")))
-        rchk = await cl.post(f"{{BASE}}/socio/carrito/checkout", headers=H(t_socio),
-                             json={{"metodo_pago": "transferencia", "usar_saldo": False,
-                                   "items": [{{"id_producto": id_prod_cuota, "cantidad": 2}}]}})
+        rchk = await cl.post(f"{BASE}/socio/carrito/checkout", headers=H(t_socio),
+                             json={"metodo_pago": "transferencia", "usar_saldo": False,
+                                   "items": [{"id_producto": id_prod_cuota, "cantidad": 2}]})
         monto_cobrado = (Decimal(str(rchk.json().get("monto_total", "0")))
                          if rchk.status_code == 201 else Decimal("-1"))
         ok("menor: el checkout cobra el mismo precio que muestra la pantalla",
            rchk.status_code == 201 and monto_cobrado == precio_mostrado * 2,
-           f"({{rchk.status_code}}, cobro {{monto_cobrado}}, esperaba {{precio_mostrado * 2}})")
+           f"({rchk.status_code}, cobro {monto_cobrado}, esperaba {precio_mostrado * 2})")
         ok("menor: el descuento se aplico de verdad (no es el precio de adulto)",
            precio_mostrado < precio_lista,
-           f"(mostrado {{precio_mostrado}} vs lista {{precio_lista}})")
+           f"(mostrado {precio_mostrado} vs lista {precio_lista})")
+
+        print("\n── ronda 5 · D6 · las cuotas aparecen en /mis-compras ──")
+        # Hasta D6, listar_mis_compras() excluía con NOT EXISTS toda orden que
+        # tuviera un ítem de cuota_social: el socio buscaba su compra de cuotas
+        # y encontraba la pantalla vacía. La orden recién creada arriba es
+        # justamente de cuota, así que sirve de sujeto de prueba.
+        rmc = await cl.get(f"{BASE}/socio/carrito/mis-compras", headers=H(t_socio))
+        ordenes_mc = rmc.json() if rmc.status_code == 200 else []
+        # El checkout devuelve el Pago, no la Orden (patrón Split-Order), así
+        # que la orden de cuota se ubica por su id_pago.
+        id_pago_cuota = rchk.json().get("id_pago") if rchk.status_code == 201 else None
+        ordenes_del_pago = [o for o in ordenes_mc if o.get("id_pago") == id_pago_cuota]
+        ok("la orden de cuota figura en /mis-compras",
+           bool(ordenes_del_pago),
+           f"({rmc.status_code}, {len(ordenes_mc)} ordenes, buscaba pago #{id_pago_cuota})")
+        # El frontend separa cuota de tienda por producto.categoria: si el
+        # schema dejara de mandarla, la pantalla mostraría "Producto x2".
+        detalles_cuota = [d for o in ordenes_del_pago for d in o.get("detalles", [])]
+        ok("cada detalle viaja con producto.categoria (lo usa /mis-compras)",
+           bool(detalles_cuota) and all(
+               (d.get("producto") or {}).get("categoria") for d in detalles_cuota),
+           f"({len(detalles_cuota)} detalles)")
 
         print("\n── sanity permisos ──")
         rs = await cl.get(f"{BASE}/admin/pagos/morosos", headers=H(t_socio))

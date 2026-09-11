@@ -56,7 +56,8 @@ import models
 import schemas
 from database import get_db
 from dependencies import get_current_user, require_roles
-from utils.cuotas_periodos import calcular_estado_financiero
+from utils.cuotas_periodos import EstadoFinanciero, calcular_estado_financiero
+from utils.precios import calcular_edad, es_menor
 
 router = APIRouter(
     prefix="/qr",
@@ -92,6 +93,11 @@ def _minimizar_para_invitado(
     respuesta.roles_activos = []
     respuesta.meses_adeudados = 0
     respuesta.antiguedad_meses = 0
+    # La edad y el estado de socio nuevo son datos internos del club: el
+    # comercio adherido solo necesita saber si el beneficio corresponde.
+    respuesta.es_menor = False
+    respuesta.edad = None
+    respuesta.en_mes_ingreso = False
     if not respuesta.es_valido:
         respuesta.estado_financiero = "no_habilitado"
     return respuesta
@@ -224,7 +230,7 @@ def _calcular_estado_financiero(
     mes_cubierto_hasta: Optional[date],
     fecha_ingreso: Optional[date],
     dia_vencimiento: int = 10,
-) -> tuple[bool, int]:
+) -> EstadoFinanciero:
     """
     Estado financiero para el escáner de la puerta.
 
@@ -240,13 +246,13 @@ def _calcular_estado_financiero(
       · D1 — gracia por mes de ingreso. Un socio recién asociado habría
         quedado rechazado en la puerta el mismo día que se dio de alta.
 
-    Se mantiene la firma `(moroso, cantidad_meses)` para no tocar los
-    llamadores de este módulo.
+    Devuelve el `EstadoFinanciero` completo (no solo `(moroso, meses)`): el
+    escáner necesita además el flag `en_mes_ingreso` para distinguir en la
+    puerta un socio nuevo de uno con la cuota paga (BUG-16 de la QA del 11-09).
     """
-    estado = calcular_estado_financiero(
+    return calcular_estado_financiero(
         mes_cubierto_hasta, fecha_ingreso, dia_vencimiento, _hoy_local()
     )
-    return estado.moroso, estado.cantidad_meses
 
 
 def _roles_activos_list(usuario: models.Usuario) -> list[str]:
@@ -284,7 +290,22 @@ def _construir_respuesta_desde_orm(
     puerto de `calcularEstadoFinanciero` en SocioCuotas.jsx) para que un
     socio nunca vea un resultado distinto entre su pantalla de cuotas y
     el escáner de la puerta.
+
+    La edad se agrega acá, sobre la respuesta ya armada, para que valga por
+    igual en los cinco caminos (baja, no aprobado, becado, al día, moroso)
+    sin repetir el cálculo en cada uno.
     """
+    respuesta = _construir_respuesta_base(usuario, dia_vencimiento)
+    respuesta.edad = calcular_edad(usuario.fecha_nacimiento)
+    respuesta.es_menor = es_menor(usuario.fecha_nacimiento)
+    return respuesta
+
+
+def _construir_respuesta_base(
+    usuario: models.Usuario,
+    dia_vencimiento: int,
+) -> schemas.UsuarioQRValidacionResponse:
+    """Resuelve estado de acceso y estado financiero. Ver el wrapper de arriba."""
     if usuario.fecha_baja is not None:
         return schemas.UsuarioQRValidacionResponse(
             es_valido=False,
@@ -329,13 +350,23 @@ def _construir_respuesta_desde_orm(
             es_becado=True,
         )
 
-    moroso, meses_adeudados = _calcular_estado_financiero(
+    estado_financiero = _calcular_estado_financiero(
         usuario.mes_cubierto_hasta,
         usuario.fecha_ingreso,
         dia_vencimiento,
     )
-    esta_al_dia = not moroso
+    esta_al_dia = not estado_financiero.moroso
     estado = "al_dia" if esta_al_dia else "moroso"
+
+    # El socio en su mes de ingreso entra igual que uno al día (es su primer
+    # mes y la cuota todavía no venció), pero el cartel lo dice: el portero
+    # necesita distinguirlo de uno que efectivamente pagó — BUG-16.
+    if estado_financiero.en_mes_ingreso:
+        mensaje = "SOCIO NUEVO ✓"
+    elif esta_al_dia:
+        mensaje = "SOCIO HABILITADO ✓"
+    else:
+        mensaje = "SOCIO NO HABILITADO ✗"
 
     return schemas.UsuarioQRValidacionResponse(
         es_valido=esta_al_dia,
@@ -345,9 +376,10 @@ def _construir_respuesta_desde_orm(
         estado_financiero=estado,
         roles_activos=roles,
         antiguedad_meses=meses,
-        meses_adeudados=meses_adeudados,
-        mensaje_display="SOCIO HABILITADO ✓" if esta_al_dia else "SOCIO NO HABILITADO ✗",
+        meses_adeudados=estado_financiero.cantidad_meses,
+        mensaje_display=mensaje,
         es_becado=False,
+        en_mes_ingreso=estado_financiero.en_mes_ingreso,
     )
 
 

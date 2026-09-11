@@ -18,6 +18,8 @@ import {
   UploadCloud,
   Loader2,
   CheckCircle,
+  CreditCard,
+  RefreshCw,
 } from "lucide-react";
 
 // Ajustá esta base según tu configuración (proxy de Vite, .env, etc.)
@@ -54,6 +56,43 @@ function resumenItems(detalles) {
   return detalles
     .map((d) => `${d.producto?.nombre ?? "Producto"} x${d.cantidad}`)
     .join(", ");
+}
+
+/**
+ * Separa los ítems de cuota social del resto (decisión D6, QA del 11-09).
+ *
+ * Desde D6 las órdenes de cuota también aparecen en esta pantalla, pero SIN
+ * desglose: el historial mes por mes sigue viviendo en /socio/cuotas, que es
+ * su dueño. Acá se muestran en una línea ("Cuota social — N mes(es) — $X")
+ * con un link a esa pantalla. Para una orden mixta, la línea de cuotas va al
+ * final del listado de ítems, como resumen redundante pero explícito.
+ */
+function separarItems(detalles) {
+  const todos = detalles ?? [];
+  const itemsCuota = todos.filter((d) => d.producto?.categoria === "cuota_social");
+  const itemsOtros = todos.filter((d) => d.producto?.categoria !== "cuota_social");
+
+  const mesesCuota = itemsCuota.reduce((acc, d) => acc + (d.cantidad ?? 0), 0);
+  const montoCuotas = itemsCuota.reduce(
+    (acc, d) => acc + Number(d.precio_unitario_historico ?? 0) * (d.cantidad ?? 0),
+    0
+  );
+
+  return { itemsCuota, itemsOtros, mesesCuota, montoCuotas };
+}
+
+// ─── Link al detalle de cuotas ─────────────────────────────────────────────
+
+function LinkGestionCuotas({ children }) {
+  return (
+    <Link
+      to="/socio/cuotas"
+      className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-600 hover:text-indigo-800 hover:underline"
+    >
+      {children}
+      <ArrowRight className="h-3.5 w-3.5" />
+    </Link>
+  );
 }
 
 // ─── Config visual por estado ──────────────────────────────────────────────
@@ -138,8 +177,8 @@ function EstadoVacio() {
         Todavía no hiciste ninguna compra
       </h3>
       <p className="mt-1 max-w-sm text-sm text-gray-500">
-        Cuando compres indumentaria o reserves instalaciones del club, vas a
-        ver acá el estado de cada pedido.
+        Cuando compres indumentaria, reserves instalaciones del club o pagues
+        tu cuota social, vas a ver acá el estado de cada pedido.
       </p>
       <Link
         to="/shopping"
@@ -174,7 +213,7 @@ function EstadoError({ mensaje, onReintentar }) {
 
 // ─── Upload de comprobante inline ──────────────────────────────────────────
 
-function UploadComprobante({ idPago, token, onExito }) {
+function UploadComprobante({ idPago, token, onExito, esReemplazo = false }) {
   const [file,        setFile]        = useState(null)
   const [isUploading, setIsUploading] = useState(false)
   const [error,       setError]       = useState(null)
@@ -208,7 +247,9 @@ function UploadComprobante({ idPago, token, onExito }) {
     return (
       <div className="mt-3 flex items-center gap-2 rounded-xl bg-green-50 border border-green-200 px-3 py-2 text-sm text-green-700 font-medium">
         <CheckCircle className="h-4 w-4 flex-shrink-0" />
-        ¡Comprobante enviado! Un administrador verificará tu pago.
+        {esReemplazo
+          ? '¡Comprobante reemplazado! Un administrador verificará tu pago.'
+          : '¡Comprobante enviado! Un administrador verificará tu pago.'}
       </div>
     )
   }
@@ -226,7 +267,11 @@ function UploadComprobante({ idPago, token, onExito }) {
       >
         <UploadCloud className={`h-5 w-5 flex-shrink-0 ${file ? 'text-green-500' : 'text-gray-400'}`} />
         <span className={`text-sm ${file ? 'text-green-800 font-medium' : 'text-gray-500'}`}>
-          {file ? file.name : 'Adjuntar comprobante (PNG, JPG, PDF)'}
+          {file
+            ? file.name
+            : esReemplazo
+            ? 'Elegí el comprobante correcto (PNG, JPG, PDF)'
+            : 'Adjuntar comprobante (PNG, JPG, PDF)'}
         </span>
         <input type="file" className="sr-only" accept="image/*,.pdf"
           onChange={e => { if (e.target.files[0]) { setFile(e.target.files[0]); setError(null) } }}
@@ -239,7 +284,9 @@ function UploadComprobante({ idPago, token, onExito }) {
         className="w-full flex items-center justify-center gap-2 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
       >
         {isUploading && <Loader2 className="h-4 w-4 animate-spin" />}
-        {isUploading ? 'Subiendo…' : 'Subir comprobante'}
+        {isUploading
+          ? 'Subiendo…'
+          : esReemplazo ? 'Reemplazar comprobante' : 'Subir comprobante'}
       </button>
     </div>
   )
@@ -248,13 +295,27 @@ function UploadComprobante({ idPago, token, onExito }) {
 // ─── Tarjeta de orden ───────────────────────────────────────────────────────
 
 function TarjetaOrden({ orden, token, onComprobanteCargado }) {
+  const [reemplazando, setReemplazando] = useState(false)
+
   const comprobanteUrl = resolverUrlArchivo(orden.pago?.comprobante_url)
   const esMercadoPago = orden.pago?.metodo_pago === 'mercado_pago'
   // El efectivo se cobra en el club: no hay comprobante que subir. Ofrecer el
   // uploader acá era parte del mismo enredo de BUG-08 (QA del 08-09).
   const esEfectivo = orden.pago?.metodo_pago === 'efectivo'
-  const puedeSubirComprobante =
-    orden.estado === 'pendiente_verificacion' && !comprobanteUrl && !esMercadoPago && !esEfectivo
+
+  const { itemsCuota, itemsOtros, mesesCuota, montoCuotas } = separarItems(orden.detalles)
+  const soloCuota = itemsCuota.length > 0 && itemsOtros.length === 0
+
+  // El comprobante de una orden de SOLO cuota se maneja en /socio/cuotas, que
+  // es la pantalla dueña de ese trámite: acá se muestra el resumen y el link
+  // (decisión D6). Para todo lo demás —alquileres, tienda— el trámite es acá.
+  const gestionaComprobante =
+    orden.estado === 'pendiente_verificacion' && !esMercadoPago && !esEfectivo && !soloCuota
+  const puedeSubirComprobante = gestionaComprobante && !comprobanteUrl
+  // BUG-18 (QA del 11-09): si el socio subió el comprobante equivocado, en
+  // /socio/cuotas podía cambiarlo y acá no. Mismo endpoint, que pisa el
+  // archivo anterior en S3 y reinicia las 48 hs de la orden.
+  const puedeReemplazarComprobante = gestionaComprobante && Boolean(comprobanteUrl)
 
   return (
     <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition hover:shadow-md">
@@ -277,10 +338,41 @@ function TarjetaOrden({ orden, token, onComprobanteCargado }) {
         <EstadoBadge estado={orden.estado} />
       </div>
 
-      <div className="mt-4 flex items-start gap-2 rounded-xl bg-gray-50 px-3 py-2.5">
-        <Package className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" />
-        <p className="text-sm text-gray-700 break-words">{resumenItems(orden.detalles)}</p>
-      </div>
+      {soloCuota ? (
+        /* Orden de solo cuota social: una línea y el link al desglose (D6). */
+        <div className="mt-4 rounded-xl bg-indigo-50 border border-indigo-100 px-3 py-2.5">
+          <div className="flex items-start gap-2">
+            <CreditCard className="mt-0.5 h-4 w-4 shrink-0 text-indigo-400" />
+            <p className="text-sm text-gray-800 break-words">
+              <span className="font-semibold">Cuota social</span>
+              {' — '}{mesesCuota} {mesesCuota === 1 ? 'mes' : 'meses'}
+              {' — '}{formatearARS(montoCuotas)}
+            </p>
+          </div>
+          <div className="mt-2 pl-6">
+            <LinkGestionCuotas>Ver detalle en Gestión de Cuotas</LinkGestionCuotas>
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className="mt-4 flex items-start gap-2 rounded-xl bg-gray-50 px-3 py-2.5">
+            <Package className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" />
+            <p className="text-sm text-gray-700 break-words">{resumenItems(itemsOtros)}</p>
+          </div>
+
+          {/* Orden mixta: la parte de cuotas se resume al final del listado,
+              con el link al lugar donde sí está el desglose (D6). */}
+          {itemsCuota.length > 0 && (
+            <div className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-indigo-50 border border-indigo-100 px-3 py-2.5">
+              <p className="text-sm text-gray-800">
+                <span className="font-semibold">{formatearARS(montoCuotas)}</span> en cuotas
+                {' '}({mesesCuota} {mesesCuota === 1 ? 'mes' : 'meses'})
+              </p>
+              <LinkGestionCuotas>Ver detalle</LinkGestionCuotas>
+            </div>
+          )}
+        </>
+      )}
 
       {orden.estado === "rechazada" && orden.motivo_rechazo && (
         <p className="mt-2 text-xs text-red-600">
@@ -299,22 +391,36 @@ function TarjetaOrden({ orden, token, onComprobanteCargado }) {
       </div>
 
       {comprobanteUrl && (
-        <a
-          href={comprobanteUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-indigo-600 hover:text-indigo-800 hover:underline"
-        >
-          <ImageIcon className="h-3.5 w-3.5" />
-          Ver comprobante adjunto
-        </a>
+        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
+          <a
+            href={comprobanteUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-indigo-600 hover:text-indigo-800 hover:underline"
+          >
+            <ImageIcon className="h-3.5 w-3.5" />
+            Ver comprobante adjunto
+          </a>
+
+          {puedeReemplazarComprobante && (
+            <button
+              type="button"
+              onClick={() => setReemplazando((v) => !v)}
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-gray-800 hover:underline"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              {reemplazando ? 'Cancelar' : 'Cambiar comprobante'}
+            </button>
+          )}
+        </div>
       )}
 
-      {puedeSubirComprobante && (
+      {(puedeSubirComprobante || (puedeReemplazarComprobante && reemplazando)) && (
         <UploadComprobante
           idPago={orden.id_pago}
           token={token}
-          onExito={onComprobanteCargado}
+          esReemplazo={puedeReemplazarComprobante}
+          onExito={() => { setReemplazando(false); onComprobanteCargado() }}
         />
       )}
     </div>
@@ -378,7 +484,7 @@ export default function SocioCompras() {
         <div className="min-w-0">
           <h1 className="text-lg sm:text-xl font-bold text-gray-900">Mis Compras</h1>
           <p className="text-xs sm:text-sm text-gray-500">
-            Historial y estado de tus pedidos en la tienda del club.
+            Historial y estado de tus pedidos: tienda, alquileres y cuota social.
           </p>
         </div>
       </div>

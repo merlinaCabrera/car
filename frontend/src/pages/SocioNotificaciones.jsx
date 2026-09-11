@@ -52,7 +52,14 @@ function NotificationCard({ notificacion, isExpanded, onToggleExpand }) {
   const isUnread = !notificacion.leida;
 
   const isLongText = notificacion.cuerpo && notificacion.cuerpo.length > 120;
-  const hasAction = notificacion.referencia_id && notificacion.referencia_tabla === 'ordenes';
+
+  // `ruta_destino` la calcula el backend (D6): una compra de SOLO cuota social
+  // se detalla en /socio/cuotas y no en /mis-compras. Antes acá se mandaba
+  // siempre a /mis-compras, así que el aviso de "pago de cuota verificado"
+  // caía en una pantalla donde esa compra ni figuraba.
+  const rutaDestino = notificacion.ruta_destino ?? null;
+  const hasAction = Boolean(rutaDestino);
+  const esRutaCuotas = rutaDestino === '/socio/cuotas';
   const hasAccionBeca = notificacion.referencia_tabla === 'usuarios' && notificacion.tipo === 'beca_actualizada';
 
   return (
@@ -95,11 +102,11 @@ function NotificationCard({ notificacion, isExpanded, onToggleExpand }) {
 
             {hasAction && (
               <Link
-                to="/mis-compras"
+                to={rutaDestino}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-gray-200 hover:bg-gray-100 hover:border-gray-300 text-xs font-semibold text-gray-700 transition-colors shadow-sm"
               >
                 <Receipt size={14} />
-                Ver detalle de compra
+                {esRutaCuotas ? 'Ver en Gestión de Cuotas' : 'Ver detalle de compra'}
               </Link>
             )}
 

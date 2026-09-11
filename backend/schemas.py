@@ -445,6 +445,30 @@ class UsuarioQRValidacionResponse(BaseModel):
         default=False,
         description="TRUE si el acceso fue habilitado por beca activa (no por pago de cuota).",
     )
+    en_mes_ingreso: bool = Field(
+        default=False,
+        description=(
+            "TRUE si el socio está habilitado por la gracia de mes de ingreso "
+            "(decisión D1) y no porque haya pagado: es su primer mes en el club "
+            "y la primera cuota todavía está pendiente. El escáner lo muestra "
+            "en verde igual que 'al día', pero diferenciado — BUG-16 de la QA "
+            "del 11-09: el portero no podía distinguir un socio nuevo de uno "
+            "con la cuota efectivamente paga."
+        ),
+    )
+    es_menor: bool = Field(
+        default=False,
+        description=(
+            "TRUE si el socio es menor de edad (misma regla que el descuento y "
+            "que el filtro 'Menores' de /admin/socios: utils.precios.es_menor). "
+            "Dato operativo para la puerta — BUG-17 de la QA del 11-09. Sin "
+            "fecha de nacimiento cargada queda en FALSE."
+        ),
+    )
+    edad: Optional[int] = Field(
+        default=None,
+        description="Edad en años cumplidos, o None si no hay fecha de nacimiento cargada.",
+    )
     ya_registrado: bool = Field(
         default=False,
         description=(
@@ -1668,6 +1692,17 @@ class NotificacionResponse(BaseModel):
     referencia_id: Optional[int] = None
     referencia_tabla: Optional[str] = None
     created_at: datetime
+    ruta_destino: Optional[str] = Field(
+        default=None,
+        description=(
+            "Ruta del frontend donde el socio ve el detalle de esta notificación. "
+            "La calcula el backend porque depende de la CATEGORÍA de lo comprado, "
+            "que el frontend no tiene a mano: una orden/pago de cuota social se "
+            "resuelve en /socio/cuotas y el resto en /mis-compras (decisión D6 de "
+            "la QA del 11-09 — los avisos de pago de cuota mandaban a /mis-compras, "
+            "donde el detalle no está). None = la notificación no tiene acción."
+        ),
+    )
 
 
 class MarcarLeidaPayload(BaseModel):

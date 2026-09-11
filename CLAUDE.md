@@ -343,10 +343,13 @@ Templates existentes:
 
 Estado verificado el 2026-09-06 (ver `docs/auditoria-2026-09-06.md`).
 
-⚠️ Esta tabla cubre solo la auditoría del 06-09. Las rondas de QA manual
-posteriores tienen su propio historial, más actualizado:
-`docs/qa-manual-2026-09-08.md` y `docs/qa-manual-2026-09-11.md` (rondas 1 a 3
-+ las correcciones pendientes de retestear en la ronda 4).
+⚠️ Esta tabla cubre solo la auditoría del 06-09. El historial vivo de QA manual
+—y más actualizado— es **`docs/qa-manual-2026-09-08.md`**: un único documento que
+se va actualizando ronda a ronda (índice de hallazgos BUG-01…BUG-15, una ficha por
+bug con su causa raíz, y una sección "Estado de la ronda N" por cada tanda de
+correcciones). Antes de diagnosticar cualquier bug de cuotas, pagos, mails o roles,
+leer la ficha correspondiente ahí: varias tienen causas raíz que costaron
+2-3 rondas encontrar.
 
 | # | Bug | Estado |
 |---|-----|--------|

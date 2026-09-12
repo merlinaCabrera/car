@@ -41,10 +41,14 @@ const REDES = [
 // pie también lo usa GaleriaCompleta, que no monta los estilos de la landing.
 // Si esto viviera allá, el camotí quedaría quieto en esa página.
 //
-// La pastilla blanca que había antes resolvía un problema real: el Azul Camotí
-// está definido para fondos claros y sobre el pie oscuro casi no se lee. El
-// halo hace el mismo trabajo sin el borde duro — es blanco pleno en el centro,
-// donde apoya la abeja, y se desvanece a nada antes de llegar al borde.
+// El halo reemplaza a la pastilla blanca que había antes. Es apenas una luz
+// tenue por debajo, no un círculo: se apaga a los 55% del radio.
+//
+// ⚠️ Con esta intensidad el halo ya NO sirve para contrastar. El Azul Camotí
+// está definido para fondos claros y sobre el pie oscuro casi no se lee: la
+// pastilla existía por eso. Es una decisión estética tomada a sabiendas — si
+// la abeja queda demasiado apagada, la salida no es subir el halo (vuelve el
+// círculo) sino un camotí claro para soportes oscuros.
 const ESTILOS_CAMOTI = `
   @keyframes camotiFlota {
     0%, 100% { transform: translateY(0)     rotate(-2deg); }
@@ -91,7 +95,7 @@ export default function Footer() {
               <span
                 aria-hidden="true"
                 className="camoti-halo absolute inset-0 rounded-full
-                           bg-[radial-gradient(circle,rgba(255,255,255,0.97)_0%,rgba(255,255,255,0.88)_42%,rgba(255,255,255,0.35)_66%,rgba(255,255,255,0)_78%)]"
+                           bg-[radial-gradient(circle,rgba(255,255,255,0.09)_0%,rgba(255,255,255,0.05)_30%,rgba(255,255,255,0)_55%)]"
               />
               <img
                 src={camotiAzul}

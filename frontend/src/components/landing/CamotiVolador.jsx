@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import camotiAzul from '../../assets/camoti-azul.PNG';
 
 // Easter egg: cada tanto El Camotí cruza la pantalla de punta a punta.
@@ -7,7 +7,14 @@ import camotiAzul from '../../assets/camoti-azul.PNG';
 
 const ESPERA_MIN_MS = 15000;
 const ESPERA_MAX_MS = 45000;
-const DURACION_MS = 1800;   // tiene que coincidir con la duración del CSS
+
+// El primer cruce va mucho antes que el resto. Con la espera normal, el
+// arranque cae en promedio a los 30s: para entonces el visitante ya bajó del
+// Hero, y por eso parecía que la avispa "solo aparece abajo". No era la
+// posición (el top siempre fue relativo a la ventana) sino el reloj.
+const PRIMERA_ESPERA_MIN_MS = 4000;
+const PRIMERA_ESPERA_MAX_MS = 9000;
+const DURACION_MS = 3200;   // tiene que coincidir con la duración del CSS
 
 // El vuelo va en dos elementos y no en uno: el div hace el recorrido y la
 // imagen de adentro hace el espejo. Es obligatorio separarlos — los keyframes
@@ -41,8 +48,8 @@ const CSS = `
     pointer-events: none; /* que no se coma un click al pasar por un botón */
     will-change: transform, opacity;
   }
-  .camoti-volador--derecha   { animation: camotiCruzaDerecha   1.8s linear both; }
-  .camoti-volador--izquierda { animation: camotiCruzaIzquierda 1.8s linear both; }
+  .camoti-volador--derecha   { animation: camotiCruzaDerecha   3.2s linear both; }
+  .camoti-volador--izquierda { animation: camotiCruzaIzquierda 3.2s linear both; }
 
   /* El Azul Camotí es casi el mismo valor que el overlay del Hero, y el primer
      cruce cae entre los 15 y 45 segundos: justo cuando el visitante todavía
@@ -52,8 +59,7 @@ const CSS = `
      borde. Va con filter y no box-shadow, que seguiría la silueta y no la
      caja del <img>. Si algún día hay un camotí blanco, esto sobra. */
   .camoti-volador img {
-    filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.65))
-            drop-shadow(0 1px 3px rgba(17, 20, 32, 0.35));
+    filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.35));
   }
 `;
 
@@ -70,6 +76,8 @@ export default function CamotiVolador() {
   // efecto de abajo no programa el siguiente.
   const [vuelo, setVuelo] = useState(null);
   const [permitido, setPermitido] = useState(() => !prefiereQuietud());
+  // En un ref y no en estado: solo decide la espera, no cambia lo que se pinta.
+  const esPrimerCruce = useRef(true);
 
   // Se escucha el cambio y no solo el valor inicial: si alguien activa
   // "reducir movimiento" con la página abierta, la avispa para sin recargar.
@@ -87,13 +95,18 @@ export default function CamotiVolador() {
   useEffect(() => {
     if (!permitido || vuelo) return;
 
+    const espera = esPrimerCruce.current
+      ? azar(PRIMERA_ESPERA_MIN_MS, PRIMERA_ESPERA_MAX_MS)
+      : azar(ESPERA_MIN_MS, ESPERA_MAX_MS);
+
     const id = setTimeout(() => {
+      esPrimerCruce.current = false;
       setVuelo({
         direccion: Math.random() < 0.5 ? 'derecha' : 'izquierda',
-        y: azar(15, 75),      // % de alto: ni el header ni el pie de la página
+        y: azar(15, 75),      // vh: ni el borde de arriba ni el de abajo de la ventana
         curva: azar(-20, 20), // px que sube o baja en el medio del recorrido
       });
-    }, azar(ESPERA_MIN_MS, ESPERA_MAX_MS));
+    }, espera);
 
     return () => clearTimeout(id);
   }, [permitido, vuelo]);
@@ -117,7 +130,7 @@ export default function CamotiVolador() {
         <div
           aria-hidden="true"
           className={`camoti-volador camoti-volador--${vuelo.direccion}`}
-          style={{ top: `${vuelo.y}%`, '--curva': `${vuelo.curva}px` }}
+          style={{ top: `${vuelo.y}vh`, '--curva': `${vuelo.curva}px` }}
           onAnimationEnd={() => setVuelo(null)}
         >
           <img
@@ -125,7 +138,9 @@ export default function CamotiVolador() {
             alt=""
             draggable={false}
             className="h-12 w-auto object-contain"
-            style={vuelo.direccion === 'izquierda' ? { transform: 'scaleX(-1)' } : undefined}
+            // El asset tiene la cabeza mirando a la DERECHA, así que el espejo
+            // va cuando cruza hacia la derecha para que siempre vuele de frente.
+            style={vuelo.direccion === 'derecha' ? { transform: 'scaleX(-1)' } : undefined}
           />
         </div>
       )}

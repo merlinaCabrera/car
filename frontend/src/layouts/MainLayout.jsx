@@ -413,10 +413,16 @@ export default function MainLayout() {
             después el panel deja de existir para el mouse y para el tab. Sin
             esto, con el menú cerrado los ~20 links seguían siendo alcanzables
             con el teclado.
+          · `inert` (y no `aria-hidden`) con el menú cerrado: aria-hidden solo
+            lo saca del árbol de accesibilidad, y si un link de adentro tenía el
+            foco el navegador lo bloquea ("Blocked aria-hidden on an element
+            because its descendant retained focus"). `inert` oculta Y saca el
+            foco de todos los descendientes. Se pasa como string vacío porque
+            React 18 todavía no reconoce el atributo booleano.
           · El max-w deja siempre al menos 48px del contenido de atrás a la
             vista, para que se lea como panel y no como pantalla nueva. */}
       <aside
-        aria-hidden={!isMenuOpen}
+        {...(!isMenuOpen ? { inert: '' } : {})}
         className={`menu-lateral fixed inset-y-0 left-0 z-50 flex w-72 max-w-[calc(100vw-48px)] flex-col overflow-hidden border-r border-white/10 bg-[#1C1F2D]/80 backdrop-blur-xl [-webkit-backdrop-filter:blur(24px)] transition-all ${
           isMenuOpen
             ? 'translate-x-0 opacity-100 visible duration-300 ease-out'

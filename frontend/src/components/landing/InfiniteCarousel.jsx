@@ -67,8 +67,13 @@ export default function InfiniteCarousel({ items, renderItem, speed = 40, bgClas
 
   return (
     <div className="relative w-full overflow-hidden">
-      <div className={`pointer-events-none absolute left-0 top-0 bottom-0 w-12 sm:w-24 bg-gradient-to-r ${bgClassName} to-transparent z-10`} />
-      <div className={`pointer-events-none absolute right-0 top-0 bottom-0 w-12 sm:w-24 bg-gradient-to-l ${bgClassName} to-transparent z-10`} />
+      {/* Veladuras de borde: tapan el corte del riel donde el loop reengancha.
+         Eran w-12/w-24 y con eso se comían ~96px de cada card en desktop y un
+         cuarto del ancho visible en mobile: las fotos se veían lavadas todo el
+         tiempo. Ahora son apenas un filo — alcanza para disimular el corte sin
+         desaturar el contenido. */}
+      <div className={`pointer-events-none absolute left-0 top-0 bottom-0 w-3 sm:w-8 bg-gradient-to-r ${bgClassName} to-transparent z-10`} />
+      <div className={`pointer-events-none absolute right-0 top-0 bottom-0 w-3 sm:w-8 bg-gradient-to-l ${bgClassName} to-transparent z-10`} />
 
       <div
         ref={trackRef}

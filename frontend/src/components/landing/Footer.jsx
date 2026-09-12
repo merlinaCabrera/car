@@ -35,43 +35,99 @@ const REDES = [
   { Icon: YoutubeIcon, url: 'https://youtube.com/', label: 'YouTube' },
 ];
 
+// Etiqueta de columna: un solo estilo para las tres cabeceras del pie.
+function TituloColumna({ children }) {
+  return (
+    <h3 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/50">
+      {children}
+    </h3>
+  );
+}
+
 export default function Footer() {
   return (
-    <footer className="bg-gray-900 text-gray-300 py-14 px-6 text-center">
-      <div className="max-w-4xl mx-auto space-y-4">
-        <h3 className="font-display text-2xl sm:text-3xl font-semibold text-white tracking-wide">Club Atlético Roberts</h3>
-        <p className="text-sm text-gray-400">Sarmiento y Güemes, Roberts</p>
-        <p className="text-sm text-gray-400">clubatleticoroberts1@gmail.com</p>
+    /* Azul Francia (#1C1F2D) exacto = francia-900 en tailwind.config.js. */
+    <footer className="bg-francia-900 text-white/75">
+      <div className="max-w-6xl mx-auto px-6 lg:px-8 py-16 sm:py-20">
+        <div className="grid gap-12 sm:grid-cols-2 lg:grid-cols-3 lg:gap-10">
+          {/* ── Identidad ─────────────────────────────────────────────── */}
+          <div className="sm:col-span-2 lg:col-span-1">
+            {/* El escudo NO va en el pie (va en cabecera). Acá la marca
+                secundaria: El Camotí, en su tinta oficial Azul Camotí, que
+                está definida para fondos claros — de ahí la pastilla blanca,
+                la misma norma que el manual fija para soportes oscuros. */}
+            <div className="inline-flex rounded-2xl bg-white p-3">
+              <img
+                src={camotiAzul}
+                alt="El Camotí — marca secundaria del Club Atlético Roberts"
+                className="h-12 w-auto object-contain"
+              />
+            </div>
 
-        <div className="flex items-center justify-center gap-5 pt-2">
-          {REDES.map(({ Icon, url, label }) => (
-            <a
-              key={label}
-              href={url}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label={label}
-              className="text-gray-400 hover:text-white transition-colors"
-            >
-              <Icon className="w-5 h-5" />
-            </a>
-          ))}
+            <p className="mt-6 font-display text-2xl font-bold text-white tracking-tight">
+              Club Atlético Roberts
+            </p>
+            <p className="mt-3 max-w-sm text-sm leading-relaxed text-white/60">
+              Deporte, formación y vida social en Roberts, Buenos Aires, desde 1918.
+            </p>
+          </div>
+
+          {/* ── Contacto ──────────────────────────────────────────────── */}
+          <div>
+            <TituloColumna>Contacto</TituloColumna>
+            <ul className="mt-5 space-y-3 text-sm">
+              <li className="text-white/70">Sarmiento y Güemes, Roberts</li>
+              <li>
+                <a
+                  href="mailto:clubatleticoroberts1@gmail.com"
+                  className="text-white/70 hover:text-white transition-colors break-all"
+                >
+                  clubatleticoroberts1@gmail.com
+                </a>
+              </li>
+              <li>
+                <a
+                  href="https://clubatleticoroberts.com"
+                  className="text-white/70 hover:text-white transition-colors"
+                >
+                  clubatleticoroberts.com
+                </a>
+              </li>
+              <li>
+                <Link to="/ayuda" className="text-white/70 hover:text-white transition-colors">
+                  Ayuda y Contacto
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          {/* ── Redes ─────────────────────────────────────────────────── */}
+          <div>
+            <TituloColumna>Seguinos</TituloColumna>
+            <div className="mt-5 flex items-center gap-3">
+              {REDES.map(({ Icon, url, label }) => (
+                <a
+                  key={label}
+                  href={url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={label}
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-xl
+                             border border-white/15 bg-white/5 text-white/70
+                             hover:bg-white hover:text-francia-900 hover:border-white
+                             transition-colors focus:outline-none focus:ring-2 focus:ring-white/40"
+                >
+                  <Icon className="w-[18px] h-[18px]" />
+                </a>
+              ))}
+            </div>
+          </div>
         </div>
 
-        <div className="pt-8 mt-8 border-t border-gray-700 flex flex-col items-center gap-4">
-          {/* El Camotí está definido en dos tintas azules, ambas pensadas para
-              fondos blancos o claros (doc 03). Sobre el Azul Francia del footer
-              desaparecería, así que va sobre pastilla blanca — la misma norma
-              que el escudo en soportes oscuros. */}
-          <div className="rounded-2xl bg-white px-6 py-4">
-            <img src={camotiAzul} alt="El Camotí — marca secundaria del club" className="h-14 w-auto object-contain" />
-          </div>
-          <a href="https://clubatleticoroberts.com" className="text-blue-300 hover:text-white transition-colors font-medium">
-            clubatleticoroberts.com
-          </a>
-          <Link to="/ayuda" className="text-sm text-gray-400 hover:text-white transition-colors underline underline-offset-4">
-            Ayuda y Contacto
-          </Link>
+        <div className="mt-14 pt-8 border-t border-white/10">
+          <p className="text-xs text-white/55">
+            © {new Date().getFullYear()} Club Atlético Roberts. Todos los derechos reservados.
+          </p>
         </div>
       </div>
     </footer>

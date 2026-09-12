@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import camotiAzul from '../../assets/camoti-azul.PNG';
+import camotiBlanco from '../../assets/camoti-blanco.PNG';
 
 // Easter egg: cada tanto El Camotí cruza la pantalla de punta a punta.
 // Va montado solo en la landing (ver Landing.jsx) — adentro de la app, con el
@@ -51,17 +52,31 @@ const CSS = `
   .camoti-volador--derecha   { animation: camotiCruzaDerecha   3.2s linear both; }
   .camoti-volador--izquierda { animation: camotiCruzaIzquierda 3.2s linear both; }
 
-  /* El Azul Camotí es casi el mismo valor que el overlay del Hero, y el primer
-     cruce cae entre los 15 y 45 segundos: justo cuando el visitante todavía
-     está arriba de todo. Sin esto, la avispa pasa invisible en la única
-     ventana en la que se la iba a ver. El halo es blanco y difuso: sobre los
-     fondos blancos de la landing no se nota, y sobre el Hero le dibuja el
-     borde. Va con filter y no box-shadow, que seguiría la silueta y no la
-     caja del <img>. Si algún día hay un camotí blanco, esto sobra. */
-  .camoti-volador img {
-    filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.35));
+  /* Cada variante necesita el contraste al revés, porque la landing alterna
+     fondos claros (secciones) y oscuros (Hero, pie), y el cruce es a pantalla
+     completa: la abeja pasa por los dos en el mismo vuelo.
+
+     - El azul se pierde sobre el Hero (el Azul Camotí es casi el valor del
+       overlay) → una luz blanca apenas le dibuja el borde.
+     - El blanco se pierde sobre las secciones claras → una sombra oscura,
+       igual de tenue, hace el mismo trabajo al revés.
+
+     Van con filter y no box-shadow, que seguiría la caja del <img> y no la
+     silueta. Y van bajos a propósito: alcanza con que la silueta no
+     desaparezca, no con que la abeja brille. */
+  .camoti-volador--azul img {
+    filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.2));
+  }
+  .camoti-volador--blanco img {
+    filter: drop-shadow(0 1px 3px rgba(28, 31, 45, 0.22));
   }
 `;
+
+// El asset se sortea por vuelo: a veces cruza el azul, a veces el blanco.
+const VARIANTES = {
+  azul:   camotiAzul,
+  blanco: camotiBlanco,
+};
 
 const azar = (min, max) => min + Math.random() * (max - min);
 
@@ -103,6 +118,7 @@ export default function CamotiVolador() {
       esPrimerCruce.current = false;
       setVuelo({
         direccion: Math.random() < 0.5 ? 'derecha' : 'izquierda',
+        variante: Math.random() < 0.5 ? 'azul' : 'blanco',
         y: azar(15, 75),      // vh: ni el borde de arriba ni el de abajo de la ventana
         curva: azar(-20, 20), // px que sube o baja en el medio del recorrido
       });
@@ -129,12 +145,12 @@ export default function CamotiVolador() {
       {vuelo && (
         <div
           aria-hidden="true"
-          className={`camoti-volador camoti-volador--${vuelo.direccion}`}
+          className={`camoti-volador camoti-volador--${vuelo.direccion} camoti-volador--${vuelo.variante}`}
           style={{ top: `${vuelo.y}vh`, '--curva': `${vuelo.curva}px` }}
           onAnimationEnd={() => setVuelo(null)}
         >
           <img
-            src={camotiAzul}
+            src={VARIANTES[vuelo.variante]}
             alt=""
             draggable={false}
             className="h-12 w-auto object-contain"

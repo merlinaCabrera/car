@@ -1,4 +1,4 @@
-import camotiAzul from '../../assets/camoti-azul.PNG';
+import camotiBlanco from '../../assets/camoti-blanco.PNG';
 import { Link } from 'react-router-dom';
 
 // lucide-react no incluye logos de marca (Facebook/Instagram/YouTube) a
@@ -41,22 +41,22 @@ const REDES = [
 // pie también lo usa GaleriaCompleta, que no monta los estilos de la landing.
 // Si esto viviera allá, el camotí quedaría quieto en esa página.
 //
-// El halo reemplaza a la pastilla blanca que había antes. Es apenas una luz
-// tenue por debajo, no un círculo: se apaga a los 55% del radio.
+// Acá va el camotí BLANCO, no el azul. El Azul Camotí está definido para
+// fondos claros y sobre el pie oscuro casi no se leía; primero se tapó con una
+// pastilla blanca, después con un halo, y ninguna de las dos era la solución:
+// la solución era el asset claro para soportes oscuros. Ya está.
 //
-// ⚠️ Con esta intensidad el halo ya NO sirve para contrastar. El Azul Camotí
-// está definido para fondos claros y sobre el pie oscuro casi no se lee: la
-// pastilla existía por eso. Es una decisión estética tomada a sabiendas — si
-// la abeja queda demasiado apagada, la salida no es subir el halo (vuelve el
-// círculo) sino un camotí claro para soportes oscuros.
+// Con el camotí blanco el halo dejó de tener trabajo de contraste — la abeja
+// se lee sola. Queda apenas como un respiro de luz atrás, casi al límite de lo
+// perceptible. No subirlo: en cuanto se nota, vuelve a leerse como pastilla.
 const ESTILOS_CAMOTI = `
   @keyframes camotiFlota {
     0%, 100% { transform: translateY(0)     rotate(-2deg); }
     50%      { transform: translateY(-7px)  rotate(2deg);  }
   }
   @keyframes camotiHalo {
-    0%, 100% { transform: scale(1);    opacity: 0.85; }
-    50%      { transform: scale(1.07); opacity: 1;    }
+    0%, 100% { transform: scale(1);    opacity: 0.45; }
+    50%      { transform: scale(1.07); opacity: 0.7;  }
   }
   /* Desfasados a propósito (4.5s y 6s): al no coincidir los ciclos, el
      movimiento no se lee como un loop corto repitiéndose. */
@@ -87,7 +87,7 @@ export default function Footer() {
           {/* ── Identidad ─────────────────────────────────────────────── */}
           <div className="sm:col-span-2 lg:col-span-1">
             {/* El escudo NO va en el pie (va en cabecera). Acá la marca
-                secundaria: El Camotí, en su tinta oficial Azul Camotí. */}
+                secundaria: El Camotí, en su versión blanca para fondo oscuro. */}
             <div className="relative inline-flex items-center justify-center p-4">
               {/* Halo: reemplaza a la pastilla. aria-hidden porque es puro
                   soporte visual — quien usa lector de pantalla ya tiene el alt
@@ -95,10 +95,10 @@ export default function Footer() {
               <span
                 aria-hidden="true"
                 className="camoti-halo absolute inset-0 rounded-full
-                           bg-[radial-gradient(circle,rgba(255,255,255,0.09)_0%,rgba(255,255,255,0.05)_30%,rgba(255,255,255,0)_55%)]"
+                           bg-[radial-gradient(circle,rgba(255,255,255,0.045)_0%,rgba(255,255,255,0.02)_30%,rgba(255,255,255,0)_55%)]"
               />
               <img
-                src={camotiAzul}
+                src={camotiBlanco}
                 alt="El Camotí — marca secundaria del Club Atlético Roberts"
                 className="camoti-flota relative h-14 w-auto object-contain"
               />

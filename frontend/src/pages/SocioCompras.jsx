@@ -87,7 +87,7 @@ function LinkGestionCuotas({ children }) {
   return (
     <Link
       to="/socio/cuotas"
-      className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-600 hover:text-indigo-800 hover:underline"
+      className="inline-flex items-center gap-1 text-xs font-semibold text-camoti-600 hover:text-camoti-800 hover:underline"
     >
       {children}
       <ArrowRight className="h-3.5 w-3.5" />
@@ -106,7 +106,7 @@ const ESTADO_CONFIG = {
   aprobada: {
     label: "Aprobada",
     icon: CheckCircle2,
-    classes: "bg-emerald-100 text-emerald-800 border-emerald-300",
+    classes: "bg-green-100 text-green-800 border-green-300",
   },
   rechazada: {
     label: "Rechazada",
@@ -192,10 +192,10 @@ function TarjetaEsqueleto() {
 function EstadoVacio() {
   return (
     <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-gray-300 bg-white px-6 py-16 text-center">
-      <div className="mb-4 rounded-full bg-indigo-50 p-4">
-        <ShoppingBag className="h-8 w-8 text-indigo-500" />
+      <div className="mb-4 rounded-full bg-camoti-50 p-4">
+        <ShoppingBag className="h-8 w-8 text-camoti-500" />
       </div>
-      <h3 className="text-lg font-semibold text-gray-900">
+      <h3 className="font-display text-lg font-semibold text-gray-900">
         Todavía no hiciste ninguna compra
       </h3>
       <p className="mt-1 max-w-sm text-sm text-gray-500">
@@ -204,7 +204,7 @@ function EstadoVacio() {
       </p>
       <Link
         to="/shopping"
-        className="mt-6 inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700"
+        className="mt-6 inline-flex items-center gap-2 rounded-xl bg-camoti-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-camoti-700"
       >
         Ir a la tienda
         <ArrowRight className="h-4 w-4" />
@@ -284,7 +284,7 @@ function UploadComprobante({ idPago, token, onExito, esReemplazo = false }) {
         </p>
       )}
       <label className={`flex items-center gap-3 w-full px-3 py-2.5 border-2 border-dashed rounded-xl cursor-pointer transition-colors
-        ${file ? 'border-green-300 bg-green-50' : 'border-gray-300 bg-gray-50 hover:border-indigo-400 hover:bg-indigo-50'}
+        ${file ? 'border-green-300 bg-green-50' : 'border-gray-300 bg-gray-50 hover:border-camoti-400 hover:bg-camoti-50'}
         ${isUploading ? 'opacity-60 cursor-not-allowed' : ''}`}
       >
         <UploadCloud className={`h-5 w-5 flex-shrink-0 ${file ? 'text-green-500' : 'text-gray-400'}`} />
@@ -303,7 +303,7 @@ function UploadComprobante({ idPago, token, onExito, esReemplazo = false }) {
       <button
         onClick={handleUpload}
         disabled={!file || isUploading}
-        className="w-full flex items-center justify-center gap-2 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        className="w-full flex items-center justify-center gap-2 py-2 rounded-xl bg-camoti-600 hover:bg-camoti-700 text-white text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
       >
         {isUploading && <Loader2 className="h-4 w-4 animate-spin" />}
         {isUploading
@@ -362,9 +362,9 @@ function TarjetaOrden({ orden, token, onComprobanteCargado }) {
 
       {soloCuota ? (
         /* Orden de solo cuota social: una línea y el link al desglose (D6). */
-        <div className="mt-4 rounded-xl bg-indigo-50 border border-indigo-100 px-3 py-2.5">
+        <div className="mt-4 rounded-xl bg-camoti-50 border border-camoti-100 px-3 py-2.5">
           <div className="flex items-start gap-2">
-            <CreditCard className="mt-0.5 h-4 w-4 shrink-0 text-indigo-400" />
+            <CreditCard className="mt-0.5 h-4 w-4 shrink-0 text-camoti-400" />
             <p className="text-sm text-gray-800 break-words">
               <span className="font-semibold">Cuota social</span>
               {' — '}{mesesCuota} {mesesCuota === 1 ? 'mes' : 'meses'}
@@ -385,7 +385,7 @@ function TarjetaOrden({ orden, token, onComprobanteCargado }) {
           {/* Orden mixta: la parte de cuotas se resume al final del listado,
               con el link al lugar donde sí está el desglose (D6). */}
           {itemsCuota.length > 0 && (
-            <div className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-indigo-50 border border-indigo-100 px-3 py-2.5">
+            <div className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-camoti-50 border border-camoti-100 px-3 py-2.5">
               <p className="text-sm text-gray-800">
                 <span className="font-semibold">{formatearARS(montoCuotas)}</span> en cuotas
                 {' '}({mesesCuota} {mesesCuota === 1 ? 'mes' : 'meses'})
@@ -408,7 +408,7 @@ function TarjetaOrden({ orden, token, onComprobanteCargado }) {
         </p>
       )}
 
-      <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3">
+      <div className="mt-4 flex items-center justify-between border-t border-gray-200 pt-3">
         <div className="flex items-center gap-1.5 text-xs text-gray-400">
           <Receipt className="h-3.5 w-3.5" />
           Total
@@ -424,7 +424,7 @@ function TarjetaOrden({ orden, token, onComprobanteCargado }) {
             href={comprobanteUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 text-xs font-medium text-indigo-600 hover:text-indigo-800 hover:underline"
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-camoti-600 hover:text-camoti-800 hover:underline"
           >
             <ImageIcon className="h-3.5 w-3.5" />
             Ver comprobante adjunto
@@ -506,8 +506,8 @@ export default function SocioCompras() {
   return (
     <div className="mx-auto max-w-3xl px-4 py-6 sm:py-8">
       <div className="mb-6 flex items-center gap-3">
-        <div className="rounded-xl bg-indigo-100 p-2 sm:p-2.5 flex-shrink-0">
-          <ShoppingBag className="h-5 w-5 sm:h-6 sm:w-6 text-indigo-600" />
+        <div className="rounded-xl bg-camoti-100 p-2 sm:p-2.5 flex-shrink-0">
+          <ShoppingBag className="h-5 w-5 sm:h-6 sm:w-6 text-camoti-600" />
         </div>
         <div className="min-w-0">
           <h1 className="text-lg sm:text-xl font-bold text-gray-900">Mis Compras</h1>

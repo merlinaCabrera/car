@@ -20,7 +20,7 @@ export default function Beneficios() {
   return (
     <section className="py-16 bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <h2 className="text-3xl font-bold mb-10 text-center text-blue-900">Beneficios</h2>
+        <h2 className="font-display text-3xl font-semibold mb-10 text-center text-blue-600">Beneficios</h2>
       </div>
 
       <InfiniteCarousel
@@ -29,7 +29,7 @@ export default function Beneficios() {
         renderItem={(beneficio, i) => (
           <div
             key={`${beneficio.id_comercio}-${i}`}
-            className="mx-3 sm:mx-4 flex-shrink-0 w-56 sm:w-64 rounded-xl shadow-lg overflow-hidden bg-slate-50 border border-slate-100"
+            className="mx-3 sm:mx-4 flex-shrink-0 w-56 sm:w-64 rounded-2xl shadow-sm overflow-hidden bg-white border border-gray-200"
           >
             <img
               src={beneficio.imagen_url}
@@ -38,11 +38,11 @@ export default function Beneficios() {
               draggable={false}
             />
             <div className="p-4">
-              <h3 className="font-bold text-blue-900 text-sm sm:text-base">{beneficio.nombre_fantasia}</h3>
+              <h3 className="font-semibold text-blue-600 text-sm sm:text-base">{beneficio.nombre_fantasia}</h3>
               {beneficio.rubro && (
-                <p className="text-xs text-slate-400 mb-1">{beneficio.rubro}</p>
+                <p className="text-xs text-gray-400 mb-1 uppercase tracking-wide">{beneficio.rubro}</p>
               )}
-              <p className="text-sm text-slate-600">{beneficio.beneficio_ofrecido}</p>
+              <p className="text-sm text-gray-600 leading-relaxed">{beneficio.beneficio_ofrecido}</p>
             </div>
           </div>
         )}

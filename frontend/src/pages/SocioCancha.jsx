@@ -161,15 +161,15 @@ function CalculadoraReintegro({ precioTotal, totalParticipantes, numSocios, onCa
   }
 
   return (
-    <div className="bg-emerald-900/40 border border-emerald-500/50 rounded-2xl p-5 relative overflow-hidden">
-      <div className="absolute top-0 right-0 bg-emerald-600 text-xs font-bold px-3 py-1 rounded-bl-xl text-white tracking-wider flex items-center gap-1">
+    <div className="bg-green-900/40 border border-green-500/50 rounded-2xl p-5 relative overflow-hidden">
+      <div className="absolute top-0 right-0 bg-green-600 text-xs font-bold px-3 py-1 rounded-bl-xl text-white tracking-wider flex items-center gap-1">
         <QrCode size={12} /> BENEFICIO QR
       </div>
 
-      <h3 className="font-bold text-emerald-300 text-lg mb-1 flex items-center gap-2">
+      <h3 className="font-display font-semibold text-green-300 text-lg mb-1 flex items-center gap-2">
         <Percent size={18} /> Reintegro por escaneo QR
       </h3>
-      <p className="text-sm text-slate-300 leading-relaxed mb-4">
+      <p className="text-sm text-gray-300 leading-relaxed mb-4">
         La reserva se paga completa por transferencia y se reparte entre TODOS los que juegan
         (sean socios o no). Pero el <strong className="text-white">20% de reintegro</strong> solo
         aplica a los que son socios y se presentan con su QR en la cancha.
@@ -177,54 +177,54 @@ function CalculadoraReintegro({ precioTotal, totalParticipantes, numSocios, onCa
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
         <div className="flex items-center gap-3">
-          <Users size={16} className="text-slate-300 flex-shrink-0" />
-          <label className="text-sm text-slate-300 flex-1">Juegan en total</label>
+          <Users size={16} className="text-gray-300 flex-shrink-0" />
+          <label className="text-sm text-gray-300 flex-1">Juegan en total</label>
           <input
             type="number"
             min={1}
             max={40}
             value={totalParticipantes}
             onChange={(e) => onCambiarTotal(Math.max(1, Number(e.target.value) || 1))}
-            className="w-16 p-2 text-center bg-slate-900 border border-slate-700 rounded-lg text-white font-bold"
+            className="w-16 p-2 text-center bg-gray-900 border border-gray-700 rounded-lg text-white font-bold"
           />
         </div>
         <div className="flex items-center gap-3">
-          <QrCode size={16} className="text-emerald-300 flex-shrink-0" />
-          <label className="text-sm text-slate-300 flex-1">De esos, son socios</label>
+          <QrCode size={16} className="text-green-300 flex-shrink-0" />
+          <label className="text-sm text-gray-300 flex-1">De esos, son socios</label>
           <input
             type="number"
             min={0}
             max={totalParticipantes}
             value={numSocios}
             onChange={(e) => handleCambiarSocios(Math.max(0, Number(e.target.value) || 0))}
-            className="w-16 p-2 text-center bg-slate-900 border border-slate-700 rounded-lg text-white font-bold"
+            className="w-16 p-2 text-center bg-gray-900 border border-gray-700 rounded-lg text-white font-bold"
           />
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-2 text-center mb-2">
-        <div className="bg-slate-900/60 rounded-xl p-3">
-          <p className="text-[10px] text-slate-400 uppercase mb-1">Total cancha</p>
+        <div className="bg-gray-900/60 rounded-xl p-3">
+          <p className="text-[10px] text-gray-400 uppercase mb-1">Total cancha</p>
           <p className="font-bold text-white text-sm">{formatoMoneda.format(precioTotal || 0)}</p>
         </div>
-        <div className="bg-slate-900/60 rounded-xl p-3">
-          <p className="text-[10px] text-slate-400 uppercase mb-1">Parte c/u ({totalParticipantes})</p>
+        <div className="bg-gray-900/60 rounded-xl p-3">
+          <p className="text-[10px] text-gray-400 uppercase mb-1">Parte c/u ({totalParticipantes})</p>
           <p className="font-bold text-white text-sm">{formatoMoneda.format(parte || 0)}</p>
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-2 text-center">
-        <div className="bg-emerald-950/60 border border-emerald-500/30 rounded-xl p-3">
-          <p className="text-[10px] text-emerald-300 uppercase mb-1">Reintegro por socio</p>
-          <p className="font-bold text-emerald-300 text-sm">{formatoMoneda.format(reintegroPorSocio || 0)}</p>
+        <div className="bg-green-950/60 border border-green-500/30 rounded-xl p-3">
+          <p className="text-[10px] text-green-300 uppercase mb-1">Reintegro por socio</p>
+          <p className="font-bold text-green-300 text-sm">{formatoMoneda.format(reintegroPorSocio || 0)}</p>
         </div>
-        <div className="bg-emerald-950/60 border border-emerald-500/30 rounded-xl p-3">
-          <p className="text-[10px] text-emerald-300 uppercase mb-1">Reintegro total ({numSocios} socios)</p>
-          <p className="font-bold text-emerald-300 text-sm">{formatoMoneda.format(reintegroTotal || 0)}</p>
+        <div className="bg-green-950/60 border border-green-500/30 rounded-xl p-3">
+          <p className="text-[10px] text-green-300 uppercase mb-1">Reintegro total ({numSocios} socios)</p>
+          <p className="font-bold text-green-300 text-sm">{formatoMoneda.format(reintegroTotal || 0)}</p>
         </div>
       </div>
 
-      <p className="text-[11px] text-slate-400 mt-3">
+      <p className="text-[11px] text-gray-400 mt-3">
         El reintegro se acredita al momento de escanear el QR en la puerta: en efectivo, transferencia instantánea o cupón para la tienda del club.
       </p>
     </div>
@@ -357,14 +357,14 @@ export default function SocioCancha() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-900 p-4 pb-20 text-slate-100 space-y-6">
+    <div className="min-h-screen bg-gray-900 p-4 pb-20 text-gray-100 space-y-6">
 
       <div className="mb-2">
-        <h2 className="text-2xl font-bold text-white tracking-wide flex items-center gap-2">
-          <CalendarClock size={22} className="text-slate-400" />
+        <h2 className="font-display text-2xl font-semibold text-white tracking-wide flex items-center gap-2">
+          <CalendarClock size={22} className="text-gray-400" />
           Reserva de Cancha
         </h2>
-        <p className="text-slate-400 text-sm mt-1">
+        <p className="text-gray-400 text-sm mt-1">
           Elegí cancha, día y horario. El costo se reparte entre el grupo y cada socio con QR recibe su reintegro.
         </p>
       </div>
@@ -380,7 +380,7 @@ export default function SocioCancha() {
               className={`flex-1 py-2.5 rounded-xl text-sm font-bold border transition-colors ${
                 canchaKey === c.key
                   ? 'bg-blue-600 border-blue-600 text-white'
-                  : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'
+                  : 'bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700'
               }`}
             >
               {c.label}
@@ -397,7 +397,7 @@ export default function SocioCancha() {
       )}
 
       {/* Calendario / disponibilidad */}
-      <div className="bg-slate-800 rounded-3xl shadow-xl p-5 border border-slate-700/50 space-y-4">
+      <div className="bg-gray-800 rounded-3xl shadow-xl p-5 border border-gray-700/50 space-y-4">
         <SelectorFecha fecha={fecha} onCambiarFecha={(d) => { setFecha(d); setSeleccion(null) }} />
 
         <div className="flex items-center justify-between">
@@ -411,7 +411,7 @@ export default function SocioCancha() {
 
         {loading && (
           <div className="flex justify-center py-10">
-            <Loader2 className="animate-spin text-slate-500" size={26} />
+            <Loader2 className="animate-spin text-gray-500" size={26} />
           </div>
         )}
 
@@ -432,16 +432,16 @@ export default function SocioCancha() {
 
         {/* Leyenda */}
         <div className="flex flex-wrap gap-x-4 gap-y-1.5 pt-1">
-          <span className="inline-flex items-center gap-1.5 text-xs text-slate-400">
+          <span className="inline-flex items-center gap-1.5 text-xs text-gray-400">
             <span className="w-2 h-2 rounded-full inline-block bg-green-500" /> Libre
           </span>
-          <span className="inline-flex items-center gap-1.5 text-xs text-slate-400">
+          <span className="inline-flex items-center gap-1.5 text-xs text-gray-400">
             <span className="w-2 h-2 rounded-full inline-block bg-red-500" /> Ocupado
           </span>
-          <span className="inline-flex items-center gap-1.5 text-xs text-slate-400">
+          <span className="inline-flex items-center gap-1.5 text-xs text-gray-400">
             <span className="w-2 h-2 rounded-full inline-block bg-blue-600" /> Seleccionado
           </span>
-          <span className="inline-flex items-center gap-1.5 text-xs text-slate-500">
+          <span className="inline-flex items-center gap-1.5 text-xs text-gray-500">
             <Lock size={10} /> Turno vencido
           </span>
         </div>

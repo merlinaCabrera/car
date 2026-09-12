@@ -333,7 +333,7 @@ export default function FaqBlock() {
       {loading && <div className="p-6 text-center text-gray-400 text-sm">Cargando…</div>}
 
       {!loading && entries.length === 0 && (
-        <div className="p-6 text-center text-gray-500 text-sm bg-white rounded-2xl border border-gray-100">
+        <div className="p-6 text-center text-gray-500 text-sm bg-white rounded-2xl border border-gray-200">
           Todavía no hay preguntas cargadas.
         </div>
       )}
@@ -341,7 +341,7 @@ export default function FaqBlock() {
       {!loading && [...porCategoria.entries()].map(([categoria, items]) => {
         const colapsada = categoriasColapsadas.has(categoria)
         return (
-          <div key={categoria} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <div key={categoria} className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
             <button
               onClick={() => toggleCategoria(categoria)}
               className="w-full flex items-center justify-between gap-3 p-3.5 bg-gray-50/70 hover:bg-gray-100 transition-colors"

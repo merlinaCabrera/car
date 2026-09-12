@@ -16,7 +16,7 @@ import { useEffect, useRef } from 'react';
  * Uso:
  *   <InfiniteCarousel items={sponsors} renderItem={(s, i) => <a key={i}>...</a>} />
  */
-export default function InfiniteCarousel({ items, renderItem, speed = 40, bgClassName = 'from-slate-50' }) {
+export default function InfiniteCarousel({ items, renderItem, speed = 40, bgClassName = 'from-gray-50' }) {
   const trackRef = useRef(null);
   const isPaused = useRef(false);
   const resumeTimeout = useRef(null);

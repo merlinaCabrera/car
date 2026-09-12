@@ -109,14 +109,14 @@ export default function CambiarPasswordObligatorio() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
-      <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 space-y-6">
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <div className="max-w-md w-full bg-white rounded-2xl border border-gray-200 shadow-lg p-8 space-y-6">
         <div className="text-center">
           <div className="mx-auto w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center mb-3">
             <KeyRound size={22} className="text-blue-600" />
           </div>
-          <h1 className="text-2xl font-bold text-slate-800">Cambiá tu contraseña</h1>
-          <p className="text-slate-500 mt-2 text-sm">
+          <h1 className="text-2xl font-semibold text-gray-900">Cambiá tu contraseña</h1>
+          <p className="text-gray-500 mt-2 text-sm">
             Tu cuenta se creó con una contraseña temporal. Antes de seguir, elegí una nueva
             que solo vos conozcas.
           </p>
@@ -129,7 +129,7 @@ export default function CambiarPasswordObligatorio() {
             value={passwordActual}
             onChange={e => setPasswordActual(e.target.value)}
             required
-            className="w-full p-3 rounded-lg border bg-slate-50 focus:border-blue-500 focus:ring-blue-500"
+            className="w-full p-3 rounded-xl border border-gray-300 bg-white text-gray-900 placeholder-gray-400 transition-colors focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/25"
           />
           <div className="relative">
             <input
@@ -138,12 +138,12 @@ export default function CambiarPasswordObligatorio() {
               value={passwordNuevo}
               onChange={e => setPasswordNuevo(e.target.value)}
               required
-              className="w-full p-3 pr-10 rounded-lg border bg-slate-50 focus:border-blue-500 focus:ring-blue-500"
+              className="w-full p-3 pr-11 rounded-xl border border-gray-300 bg-white text-gray-900 placeholder-gray-400 transition-colors focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/25"
             />
             <button
               type="button"
               onClick={() => setMostrar(m => !m)}
-              className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500 hover:text-gray-700"
+              className="absolute inset-y-0 right-0 flex items-center pr-3.5 text-gray-400 hover:text-blue-600 transition-colors"
             >
               {mostrar ? <EyeOff size={20} /> : <Eye size={20} />}
             </button>
@@ -154,13 +154,13 @@ export default function CambiarPasswordObligatorio() {
             value={passwordConfirmacion}
             onChange={e => setPasswordConfirmacion(e.target.value)}
             required
-            className="w-full p-3 rounded-lg border bg-slate-50 focus:border-blue-500 focus:ring-blue-500"
+            className="w-full p-3 rounded-xl border border-gray-300 bg-white text-gray-900 placeholder-gray-400 transition-colors focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/25"
           />
 
-          {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+          {error && <p className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-xl px-3 py-2.5 text-center">{error}</p>}
 
           {exito && (
-            <p className="text-emerald-600 text-sm text-center flex items-center justify-center gap-1.5">
+            <p className="text-green-600 text-sm text-center flex items-center justify-center gap-1.5">
               <CheckCircle2 size={16} />
               Contraseña actualizada. Entrando…
             </p>
@@ -169,7 +169,7 @@ export default function CambiarPasswordObligatorio() {
           <button
             type="submit"
             disabled={loading || exito}
-            className="w-full flex justify-center py-3 px-4 rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:bg-slate-400 disabled:cursor-not-allowed transition-colors"
+            className="w-full flex justify-center py-3.5 px-4 rounded-xl text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors"
           >
             {exito ? 'Listo' : loading ? 'Guardando…' : 'Cambiar contraseña y continuar'}
           </button>

@@ -1,0 +1,61 @@
+/* ============================================================================
+   Club Atlético Roberts — Tokens de marca
+   ----------------------------------------------------------------------------
+   Fuente: Manual de Marca Oficial v1.0 (docs 01 a 06).
+
+   PALETA CERRADA — 4 tintas. No agregar colores institucionales acá.
+   El gris, el rojo, el ámbar y el verde que viven más abajo NO son colores de
+   marca: son neutros y estados funcionales (bordes, error, pendiente, ok).
+
+   Estas variables son la fuente de verdad "legible". La aplicación práctica se
+   hace desde tailwind.config.js, que mapea las escalas de Tailwind sobre estos
+   mismos valores para que toda la app quede dentro de la paleta sin tener que
+   reescribir 22.000 líneas de clases.
+   ========================================================================== */
+
+:root {
+  /* ── 4 tintas oficiales ──────────────────────────────────────────────── */
+  --car-azul-roberts: #183F7C;   /* Primario: escudo, botones, cabeceras     */
+  --car-azul-camoti:  #26348C;   /* Marca secundaria: acentos, hovers        */
+  --car-azul-francia: #1C1F2D;   /* Contraste: textos, footer, sellos        */
+  --car-blanco:       #FFFFFF;   /* Fondos limpios, bastones, texto invertido */
+
+  /* Alias semánticos de uso corriente */
+  --car-primario:        var(--car-azul-roberts);
+  --car-primario-hover:  var(--car-azul-camoti);
+  --car-texto:           var(--car-azul-francia);
+  --car-superficie:      var(--car-blanco);
+
+  /* ── Tipografía ─────────────────────────────────────────────────────────
+     Playfair Display  → identidad, títulos, cabeceras del club.
+                         Itálica SOLO para partidos y citas solemnes.
+     Inter             → todo lo funcional: cuerpo, UI, datos, carnet.        */
+  --car-font-display: 'Playfair Display', 'Iowan Old Style', Georgia, 'Times New Roman', serif;
+  --car-font-sans:    'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+
+  /* ── Neutros funcionales (NO son color institucional) ────────────────────
+     Escala fría, emparentada con el Azul Francia en su extremo oscuro, para
+     que los grises de la interfaz no peleen con los azules de la marca.      */
+  --car-neutro-50:  #F7F8F9;
+  --car-neutro-100: #EFF1F3;
+  --car-neutro-200: #E2E5E9;
+  --car-neutro-300: #CBD0D8;
+  --car-neutro-400: #8A92A1;
+  --car-neutro-500: #6E7787;
+  --car-neutro-600: #545C6C;
+  --car-neutro-700: #3E4553;
+  --car-neutro-800: #2A303C;
+  --car-neutro-900: var(--car-azul-francia);
+
+  /* ── Estados funcionales ─────────────────────────────────────────────────
+     Único permiso fuera de la paleta, y solo para comunicar estado.          */
+  --car-estado-ok:        #2F6B4F;  /* al día, aprobado, confirmado          */
+  --car-estado-pendiente: #A96A12;  /* en verificación, en proceso           */
+  --car-estado-error:     #BE2E2E;  /* moroso, rechazado, error de form      */
+
+  /* ── Forma ───────────────────────────────────────────────────────────────
+     Un solo radio de tarjeta y una sola familia de sombras en toda la app.   */
+  --car-radio-tarjeta: 1rem;      /* = rounded-2xl */
+  --car-radio-control: 0.75rem;   /* = rounded-xl  (botones, inputs, pills)  */
+  --car-borde-sutil:   var(--car-neutro-200);
+}

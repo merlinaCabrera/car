@@ -47,7 +47,7 @@ const ESTADO_CONFIG = {
   presente:   { label: 'Presente',   icon: CheckCircle2, classes: 'bg-green-100 text-green-800'   },
   ausente:    { label: 'Ausente',    icon: XCircle,      classes: 'bg-red-100 text-red-800'       },
   confirmado: { label: 'Confirmado', icon: CheckCircle2, classes: 'bg-blue-100 text-blue-800'     },
-  citado:     { label: 'Citado',     icon: HelpCircle,   classes: 'bg-yellow-100 text-yellow-800' },
+  citado:     { label: 'Citado',     icon: HelpCircle,   classes: 'bg-amber-100 text-amber-800' },
   rechazado:  { label: 'Rechazado',  icon: XCircle,      classes: 'bg-gray-100 text-gray-600'    },
 }
 
@@ -132,7 +132,7 @@ function IngresoManualModal({ evento, onClose, onSuccess, token }) {
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4">
         <div className="flex items-start justify-between">
           <div>
-            <h2 className="text-lg font-bold text-gray-800">Registrar ingreso</h2>
+            <h2 className="font-display text-lg font-semibold text-gray-800">Registrar ingreso</h2>
             <p className="text-xs text-gray-500 mt-0.5">{evento.titulo}</p>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100">
@@ -238,7 +238,7 @@ function PlanillaEvento({ evento, token, onVolver }) {
   return (
     <div className="space-y-4">
       {/* Header del evento seleccionado */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
         <div className="flex items-start justify-between gap-3 flex-wrap">
           <div>
             <button
@@ -247,7 +247,7 @@ function PlanillaEvento({ evento, token, onVolver }) {
             >
               ← Volver a la lista
             </button>
-            <h2 className="text-lg font-bold text-gray-900">{evento.titulo}</h2>
+            <h2 className="font-display text-lg font-semibold text-gray-900">{evento.titulo}</h2>
             <p className="text-sm text-gray-500 mt-0.5">{formatoFechaCorta(evento.fecha_inicio)}</p>
             {evento.ubicacion && (
               <p className="text-xs text-gray-400 mt-0.5">{evento.ubicacion}</p>
@@ -269,7 +269,7 @@ function PlanillaEvento({ evento, token, onVolver }) {
         </div>
 
         {/* Acciones */}
-        <div className="flex flex-wrap gap-3 mt-4 pt-4 border-t border-gray-100 items-center">
+        <div className="flex flex-wrap gap-3 mt-4 pt-4 border-t border-gray-200 items-center">
           {!eventoCerrado ? (
             <>
               <button
@@ -330,7 +330,7 @@ function PlanillaEvento({ evento, token, onVolver }) {
       )}
 
       {/* Planilla de convocados */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-x-auto">
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-100">
           <thead className="bg-gray-50">
             <tr>
@@ -518,7 +518,7 @@ export default function Asistencias() {
 
       <div className="space-y-3">
         {loading && [...Array(4)].map((_, i) => (
-          <div key={i} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 h-20 animate-pulse" />
+          <div key={i} className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 h-20 animate-pulse" />
         ))}
 
         {!loading && eventos.length === 0 && (
@@ -534,7 +534,7 @@ export default function Asistencias() {
             <button
               key={evento.id_evento}
               onClick={() => setEventoSeleccionado(evento)}
-              className="w-full bg-white rounded-2xl border border-gray-100 shadow-sm p-5 text-left hover:border-blue-200 hover:bg-blue-50/30 transition-colors flex items-center gap-4"
+              className="w-full bg-white rounded-2xl border border-gray-200 shadow-sm p-5 text-left hover:border-blue-200 hover:bg-blue-50/30 transition-colors flex items-center gap-4"
             >
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">

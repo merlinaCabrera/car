@@ -43,7 +43,7 @@ export default function MetricCard({
   return (
     <div
       onClick={compacto ? irAlDestino : undefined}
-      className={`bg-white rounded-2xl shadow-sm border border-gray-100 p-3 sm:p-6 flex flex-col gap-2 sm:gap-4 ${
+      className={`bg-white rounded-2xl shadow-sm border border-gray-200 p-3 sm:p-6 flex flex-col gap-2 sm:gap-4 ${
         span ? 'md:col-span-2' : ''
       } ${compacto && ctaPath ? 'cursor-pointer active:bg-gray-50 sm:cursor-default sm:active:bg-white' : ''}`}
     >
@@ -52,7 +52,7 @@ export default function MetricCard({
           <Icon size={18} className="sm:w-5 sm:h-5" />
         </div>
         {proximamente && (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-100 text-amber-700">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-50 text-amber-800 ring-1 ring-amber-200">
             <Clock size={11} /> Próximamente
           </span>
         )}
@@ -63,7 +63,7 @@ export default function MetricCard({
       </div>
 
       <div className="flex-1 min-w-0">
-        <h3 className="text-xs sm:text-sm font-semibold text-gray-500 uppercase tracking-wide truncate">{titulo}</h3>
+        <h3 className="text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider truncate">{titulo}</h3>
 
         {/* Estado: cargando */}
         {loading && (
@@ -85,7 +85,7 @@ export default function MetricCard({
 
         {/* Estado: contador numérico (modo original) */}
         {!loading && !error && children === undefined && (
-          <p className={`text-2xl sm:text-3xl font-bold mt-1 ${
+          <p className={`text-2xl sm:text-3xl font-bold tabular-nums mt-1 ${
             valorColor ?? (valor > 0 ? 'text-blue-600' : 'text-gray-900')
           }`}>
             {valor}

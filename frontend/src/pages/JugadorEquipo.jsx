@@ -38,9 +38,9 @@ const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 // ─── Config ───────────────────────────────────────────────────────────────────
 
 const TIPO_CONFIG = {
-  partido:       { label: 'Partido',       icon: Trophy,       classes: 'bg-emerald-100 text-emerald-800' },
-  entrenamiento: { label: 'Entrenamiento', icon: Dumbbell,     classes: 'bg-blue-100 text-blue-800'      },
-  torneo:        { label: 'Torneo',        icon: Trophy,       classes: 'bg-purple-100 text-purple-800'  },
+  partido:       { label: 'Partido',       icon: Trophy,       classes: 'bg-roberts-50 text-roberts-600' },
+  entrenamiento: { label: 'Entrenamiento', icon: Dumbbell,     classes: 'bg-francia-50 text-francia-700' },
+  torneo:        { label: 'Torneo',        icon: Trophy,       classes: 'bg-camoti-50 text-camoti-600'   },
   institucional: { label: 'Institucional', icon: Building2,    classes: 'bg-gray-100 text-gray-700'      },
   otro:          { label: 'Evento',        icon: CalendarDays, classes: 'bg-gray-100 text-gray-700'      },
 }
@@ -67,13 +67,12 @@ const resolverFotoUrl = (foto) => {
 // Color determinístico para el avatar, en base al id (así cada compañero
 // tiene siempre el mismo color entre renders/recargas).
 const COLORES_AVATAR = [
-  'bg-blue-100 text-blue-700',
-  'bg-purple-100 text-purple-700',
-  'bg-emerald-100 text-emerald-700',
-  'bg-amber-100 text-amber-700',
-  'bg-rose-100 text-rose-700',
-  'bg-teal-100 text-teal-700',
-  'bg-indigo-100 text-indigo-700',
+  'bg-roberts-50  text-roberts-600',
+  'bg-camoti-50   text-camoti-600',
+  'bg-francia-50  text-francia-700',
+  'bg-roberts-100 text-roberts-800',
+  'bg-camoti-100  text-camoti-800',
+  'bg-francia-100 text-francia-800',
 ]
 const colorAvatar = (id) => COLORES_AVATAR[id % COLORES_AVATAR.length]
 
@@ -111,14 +110,14 @@ function CategoriaTabs({ equipos, activa, onChange }) {
 function ProximoEventoCard({ evento }) {
   if (!evento) {
     return (
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 text-center text-sm text-gray-500">
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 text-center text-sm text-gray-500">
         No hay eventos programados para esta categoría por ahora.
       </div>
     )
   }
   const fecha = new Date(evento.fecha_inicio)
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-3">
+    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 space-y-3">
       <div className="flex items-center justify-between gap-3">
         <TipoBadge tipo={evento.tipo} />
         <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Próximo evento</span>
@@ -148,7 +147,7 @@ function ProximoEventoCard({ evento }) {
 
 function PresentismoCard({ presentes, ausentes, total, porcentaje }) {
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
+    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold text-gray-500 flex items-center gap-2">
           <TrendingUp size={16} className="text-gray-400" />
@@ -167,13 +166,13 @@ function PresentismoCard({ presentes, ausentes, total, porcentaje }) {
         <>
           <div className="w-full h-2.5 rounded-full bg-gray-100 overflow-hidden">
             <div
-              className="h-full rounded-full bg-emerald-500 transition-all"
+              className="h-full rounded-full bg-green-500 transition-all"
               style={{ width: `${porcentaje}%` }}
             />
           </div>
           <div className="flex items-center gap-5 text-sm">
             <span className="flex items-center gap-1.5 text-gray-600">
-              <CheckCircle2 size={15} className="text-emerald-600" />
+              <CheckCircle2 size={15} className="text-green-600" />
               {presentes} presente{presentes !== 1 ? 's' : ''}
             </span>
             <span className="flex items-center gap-1.5 text-gray-600">
@@ -199,7 +198,7 @@ function CompaneroCard({ companero, esVos }) {
   return (
     <div
       className={`flex-shrink-0 w-40 snap-start rounded-2xl overflow-hidden border shadow-sm bg-white ${
-        esVos ? 'border-blue-300 ring-2 ring-blue-100' : 'border-gray-100'
+        esVos ? 'border-blue-300 ring-2 ring-blue-100' : 'border-gray-200'
       }`}
     >
       <div className={`relative w-40 h-40 flex items-center justify-center overflow-hidden ${colorAvatar(companero.id_usuario)}`}>
@@ -337,13 +336,13 @@ export default function JugadorEquipo() {
       {loading && (
         <div className="space-y-4">
           <div className="h-10 bg-gray-100 rounded-xl animate-pulse w-64" />
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm h-40 animate-pulse" />
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm h-64 animate-pulse" />
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm h-40 animate-pulse" />
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm h-64 animate-pulse" />
         </div>
       )}
 
       {!loading && !error && equipos.length === 0 && (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-10 text-center space-y-2">
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-10 text-center space-y-2">
           <Users size={32} className="mx-auto text-gray-300" />
           <p className="text-gray-500 text-sm">
             Todavía no estás inscripto en el plantel de ninguna categoría.
@@ -361,7 +360,7 @@ export default function JugadorEquipo() {
           {/* Encabezado de la categoría */}
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <div>
-              <h2 className="text-lg font-bold text-gray-800">{equipo.categoria?.nombre}</h2>
+              <h2 className="font-display text-lg font-semibold text-gray-800">{equipo.categoria?.nombre}</h2>
               {equipo.categoria?.descripcion && (
                 <p className="text-sm text-gray-500">{equipo.categoria.descripcion}</p>
               )}
@@ -384,7 +383,7 @@ export default function JugadorEquipo() {
 
           {/* Plantel */}
           <section className="space-y-3">
-            <h2 className="text-lg font-bold text-gray-800">Plantel</h2>
+            <h2 className="font-display text-lg font-semibold text-gray-800">Plantel</h2>
             <PlantelCarousel companeros={equipo.companeros} idUsuarioActual={user?.id_usuario} />
           </section>
         </>

@@ -109,34 +109,38 @@ export default function Login() {
     };
 
     return (
-        <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4 relative">
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4 relative">
             <Link
                 to="/"
-                className="absolute top-4 left-4 sm:top-6 sm:left-6 p-2 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-200 transition-colors"
+                className="absolute top-4 left-4 sm:top-6 sm:left-6 p-2 rounded-xl text-gray-500 hover:text-blue-600 hover:bg-white transition-colors"
                 title="Volver al inicio"
             >
                 <ArrowLeft size={22} />
             </Link>
-            <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 space-y-6">
+            <div className="max-w-md w-full bg-white rounded-2xl border border-gray-200 shadow-lg p-8 space-y-6">
                 <div className="text-center">
-                    <h1 className="text-3xl font-bold text-slate-800">Iniciar Sesión</h1>
-                    <p className="text-slate-500 mt-2">Accede a tu panel de socio.</p>
+                {/* Cabecera de identidad: el escudo completo, sobre fondo
+                    claro y con margen perimetral (doc 02). Las pantallas de
+                    acceso no llevaban ninguna marca del club. */}
+                <img src="/escudo-car.png" alt="Escudo Club Atlético Roberts" className="h-20 w-auto object-contain mx-auto mb-4" />
+                    <h1 className="text-3xl font-semibold text-gray-900">Iniciar Sesión</h1>
+                    <p className="text-gray-500 text-sm mt-2">Accede a tu panel de socio.</p>
                 </div>
 
                 {pedidoReactivacion ? (
                     <div className="text-center space-y-4 py-2">
                         {reactivacionEnviada ? (
                             <>
-                                <h2 className="text-lg font-bold text-green-700">¡Listo!</h2>
-                                <p className="text-sm text-slate-600">
+                                <h2 className="font-display text-lg font-semibold text-green-700">¡Listo!</h2>
+                                <p className="text-sm text-gray-600">
                                     Tu pedido de reactivación fue enviado al club. Te van a avisar por mail
                                     cuando esté resuelto.
                                 </p>
                             </>
                         ) : (
                             <>
-                                <h2 className="text-lg font-bold text-orange-600">Esta cuenta fue dada de baja</h2>
-                                <p className="text-sm text-slate-600">
+                                <h2 className="font-display text-lg font-semibold text-amber-700">Esta cuenta fue dada de baja</h2>
+                                <p className="text-sm text-gray-600">
                                     Ya existe una cuenta registrada con ese DNI, pero está dada de baja del club.
                                     Si querés volver, podés pedirle al club que la reactive.
                                 </p>
@@ -144,14 +148,14 @@ export default function Login() {
                                     <button
                                         onClick={handleSolicitarReactivacion}
                                         disabled={enviandoReactivacion}
-                                        className="px-4 py-2.5 rounded-lg bg-green-600 hover:bg-green-700 disabled:opacity-60 text-white text-sm font-semibold transition-colors"
+                                        className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white text-sm font-bold transition-colors"
                                     >
                                         {enviandoReactivacion ? 'Enviando…' : 'Solicitar reactivación'}
                                     </button>
                                     <button
                                         onClick={() => setPedidoReactivacion(null)}
                                         disabled={enviandoReactivacion}
-                                        className="text-sm text-slate-500 hover:text-slate-700 font-medium"
+                                        className="text-sm text-gray-500 hover:text-gray-800 font-medium"
                                     >
                                         Cancelar
                                     </button>
@@ -161,34 +165,34 @@ export default function Login() {
                     </div>
                 ) : (
                 <form onSubmit={handleSubmit} className="space-y-4">
-                    <input type="text" name="dni" placeholder="DNI" value={formData.dni} onChange={handleChange} required className="w-full p-3 rounded-lg border bg-slate-50 focus:border-blue-500 focus:ring-blue-500" />
+                    <input type="text" name="dni" placeholder="DNI" value={formData.dni} onChange={handleChange} required className="w-full p-3 rounded-xl border border-gray-300 bg-white text-gray-900 placeholder-gray-400 transition-colors focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/25" />
                     <div className="relative">
-                        <input type={showPassword ? 'text' : 'password'} name="password" placeholder="Contraseña" value={formData.password} onChange={handleChange} required className="w-full p-3 pr-10 rounded-lg border bg-slate-50 focus:border-blue-500 focus:ring-blue-500" />
+                        <input type={showPassword ? 'text' : 'password'} name="password" placeholder="Contraseña" value={formData.password} onChange={handleChange} required className="w-full p-3 pr-11 rounded-xl border border-gray-300 bg-white text-gray-900 placeholder-gray-400 transition-colors focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/25" />
                         <button
                             type="button"
                             onClick={() => setShowPassword(prev => !prev)}
-                            className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500 hover:text-gray-700"
+                            className="absolute inset-y-0 right-0 flex items-center pr-3.5 text-gray-400 hover:text-blue-600 transition-colors"
                         >
                             {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                         </button>
                     </div>
                     
                     <div className="text-right">
-                        <Link to="/recuperar-password" className="text-sm text-blue-600 hover:text-blue-500">
+                        <Link to="/recuperar-password" className="text-sm font-medium text-blue-600 hover:text-blue-700">
                             ¿Olvidaste tu contraseña?
                         </Link>
                     </div>
 
-                    {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+                    {error && <p className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-xl px-3 py-2.5 text-center">{error}</p>}
 
-                    <button type="submit" disabled={loading} className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-slate-400 disabled:cursor-not-allowed">
+                    <button type="submit" disabled={loading} className="w-full flex justify-center py-3.5 px-4 rounded-xl text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-600/40 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed">
                         {loading ? 'Ingresando...' : 'Ingresar'}
                     </button>
                 </form>
                 )}
-                <p className="text-center text-sm text-slate-600">
+                <p className="text-center text-sm text-gray-500">
                     ¿No tienes cuenta?{' '}
-                    <Link to="/registro" className="font-medium text-blue-600 hover:text-blue-500">Regístrate aquí</Link>
+                    <Link to="/registro" className="font-semibold text-blue-600 hover:text-blue-700 underline-offset-2 hover:underline">Regístrate aquí</Link>
                 </p>
             </div>
         </div>

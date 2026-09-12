@@ -23,14 +23,14 @@ export default function ConfirmDialog({
 }) {
   const colorBoton = variante === 'peligro'
     ? 'bg-red-600 hover:bg-red-700'
-    : 'bg-green-600 hover:bg-green-700'
+    : 'bg-blue-600 hover:bg-blue-700'
 
   return (
     <div
       className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
       onClick={e => { if (e.target === e.currentTarget && !cargando) onCancel() }}
     >
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4">
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-xl w-full max-w-sm p-6 space-y-4">
         <div className="flex items-start gap-3">
           {variante === 'peligro' && (
             <div className="p-2 rounded-full bg-red-50 flex-shrink-0">
@@ -38,8 +38,8 @@ export default function ConfirmDialog({
             </div>
           )}
           <div>
-            <h2 className="text-base font-bold text-gray-900">{titulo}</h2>
-            {mensaje && <p className="text-sm text-gray-500 mt-1">{mensaje}</p>}
+            <h2 className="text-base font-semibold text-gray-900">{titulo}</h2>
+            {mensaje && <p className="text-sm text-gray-500 mt-1 leading-relaxed">{mensaje}</p>}
           </div>
         </div>
 
@@ -47,14 +47,14 @@ export default function ConfirmDialog({
           <button
             onClick={onCancel}
             disabled={cargando}
-            className="px-4 py-2 rounded-xl text-gray-600 hover:bg-gray-100 text-sm font-semibold transition-colors disabled:opacity-50"
+            className="px-4 py-2 rounded-xl text-gray-600 hover:bg-gray-100 text-sm font-medium transition-colors disabled:opacity-50"
           >
             {cancelLabel}
           </button>
           <button
             onClick={onConfirm}
             disabled={cargando}
-            className={`px-4 py-2 rounded-xl text-white text-sm font-semibold transition-colors disabled:opacity-60 ${colorBoton}`}
+            className={`px-4 py-2 rounded-xl text-white text-sm font-bold transition-colors disabled:opacity-60 ${colorBoton}`}
           >
             {cargando ? 'Procesando…' : confirmLabel}
           </button>

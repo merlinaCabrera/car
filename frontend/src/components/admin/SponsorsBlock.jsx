@@ -111,7 +111,7 @@ function SponsorFormModal({ sponsor, onClose, onSaved, token }) {
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md flex flex-col max-h-[92dvh]">
         <div className="p-6 border-b flex-shrink-0 flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-bold text-gray-800">
+            <h2 className="font-display text-xl font-semibold text-gray-800">
               {isEditMode ? 'Editar Sponsor' : 'Nuevo Sponsor'}
             </h2>
             <p className="text-sm text-gray-500 mt-1">
@@ -386,7 +386,7 @@ export default function SponsorsBlock() {
       )}
 
       {/* Tarjetas — mobile */}
-      <div className="md:hidden bg-white rounded-2xl shadow-sm border border-gray-100 divide-y divide-gray-50">
+      <div className="md:hidden bg-white rounded-2xl shadow-sm border border-gray-200 divide-y divide-gray-50">
         {loading
           ? [...Array(3)].map((_, i) => (
               <div key={i} className="p-4 animate-pulse space-y-2">
@@ -412,7 +412,7 @@ export default function SponsorsBlock() {
       </div>
 
       {/* Tabla — desktop */}
-      <div className="hidden md:block bg-white rounded-2xl shadow-sm border border-gray-100 overflow-x-auto">
+      <div className="hidden md:block bg-white rounded-2xl shadow-sm border border-gray-200 overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-100">
           <thead className="bg-gray-50">
             <tr>

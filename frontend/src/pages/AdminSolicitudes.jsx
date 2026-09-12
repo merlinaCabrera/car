@@ -24,7 +24,7 @@ const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 
 function EstadoVacio({ mensaje }) {
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 p-12">
+    <div className="bg-white rounded-2xl border border-gray-200 p-12">
       <div className="flex flex-col items-center justify-center text-center text-gray-500">
         <CheckCircle size={48} strokeWidth={1.5} className="text-green-500 mb-4" />
         <p className="font-semibold text-lg text-gray-700">¡Todo en orden!</p>
@@ -38,7 +38,7 @@ function EstadoVacio({ mensaje }) {
 
 function EstadoSinPermiso() {
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 p-12">
+    <div className="bg-white rounded-2xl border border-gray-200 p-12">
       <div className="flex flex-col items-center justify-center text-center text-gray-500">
         <ShieldAlert size={48} strokeWidth={1.5} className="text-amber-500 mb-4" />
         <p className="font-semibold text-lg text-gray-700">No tenés acceso a esta sección</p>
@@ -68,7 +68,7 @@ function EstadoError({ mensaje, onReintentar }) {
 
 function SkeletonCard() {
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 animate-pulse">
+    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 animate-pulse">
       <div className="h-4 bg-gray-200 rounded-md w-2/3 mb-2" />
       <div className="h-3 bg-gray-100 rounded-md w-1/3" />
     </div>
@@ -86,7 +86,7 @@ function TarjetaSolicitud({ u, onAprobar, onRechazar, aprobando, rechazando, mot
   const pidiendoMotivo = motivoAbierto === u.id_usuario
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
       <button
         type="button"
         onClick={() => setExpandido(e => !e)}
@@ -105,7 +105,7 @@ function TarjetaSolicitud({ u, onAprobar, onRechazar, aprobando, rechazando, mot
       </button>
 
       {expandido && (
-        <div className="px-4 pb-4 space-y-2.5 border-t border-gray-50 pt-3">
+        <div className="px-4 pb-4 space-y-2.5 border-t border-gray-200 pt-3">
           <p className="text-xs text-gray-400 sm:hidden">
             Registrado el {new Date(u.creado_at).toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: 'numeric' })}
           </p>
@@ -128,7 +128,7 @@ function TarjetaSolicitud({ u, onAprobar, onRechazar, aprobando, rechazando, mot
 
           {/* Cuadro de motivo — solo aparece si tocás "Rechazar" */}
           {pidiendoMotivo ? (
-            <div className="pt-2 border-t border-gray-50 space-y-2">
+            <div className="pt-2 border-t border-gray-200 space-y-2">
               <input
                 type="text"
                 value={motivo}
@@ -155,7 +155,7 @@ function TarjetaSolicitud({ u, onAprobar, onRechazar, aprobando, rechazando, mot
               </div>
             </div>
           ) : (
-            <div className="flex items-center gap-2 pt-2 border-t border-gray-50">
+            <div className="flex items-center gap-2 pt-2 border-t border-gray-200">
               <button
                 onClick={() => onAprobar(u.id_usuario, `${u.nombre} ${u.apellido}`)}
                 disabled={enProceso}

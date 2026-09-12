@@ -10,18 +10,18 @@
  */
 
 const CATEGORIA_CONFIG = {
-  cuota:        { label: 'Cuota',        classes: 'bg-blue-100 text-blue-700' },
-  alquiler:     { label: 'Alquiler',     classes: 'bg-purple-100 text-purple-700' },
-  indumentaria: { label: 'Indumentaria', classes: 'bg-teal-100 text-teal-700' },
-  otro:         { label: 'Otro',         classes: 'bg-gray-100 text-gray-700' },
-  mixta:        { label: 'Mixta',        classes: 'bg-amber-100 text-amber-800 border border-amber-300' },
+  cuota:        { label: 'Cuota',        classes: 'bg-roberts-50 text-roberts-600 ring-1 ring-roberts-200' },
+  alquiler:     { label: 'Alquiler',     classes: 'bg-camoti-50 text-camoti-600 ring-1 ring-camoti-200' },
+  indumentaria: { label: 'Indumentaria', classes: 'bg-francia-50 text-francia-700 ring-1 ring-francia-200' },
+  otro:         { label: 'Otro',         classes: 'bg-gray-100 text-gray-600 ring-1 ring-gray-200' },
+  mixta:        { label: 'Mixta',        classes: 'bg-amber-50 text-amber-800 ring-1 ring-amber-300' },
 }
 
 export default function CategoriaOrdenBadge({ categoria, className = '' }) {
   const config = CATEGORIA_CONFIG[categoria] ?? CATEGORIA_CONFIG.otro
   return (
     <span
-      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold flex-shrink-0 ${config.classes} ${className}`}
+      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium flex-shrink-0 ${config.classes} ${className}`}
     >
       {config.label}
     </span>

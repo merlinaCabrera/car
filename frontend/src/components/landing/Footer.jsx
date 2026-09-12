@@ -37,11 +37,11 @@ const REDES = [
 
 export default function Footer() {
   return (
-    <footer className="bg-slate-900 text-slate-300 py-12 px-6 text-center">
+    <footer className="bg-gray-900 text-gray-300 py-14 px-6 text-center">
       <div className="max-w-4xl mx-auto space-y-4">
-        <h3 className="text-2xl font-bold text-white tracking-widest">CLUB ATLÉTICO ROBERTS</h3>
-        <p className="text-sm">Sarmiento y Güemes, Roberts</p>
-        <p className="text-sm">clubatleticoroberts1@gmail.com</p>
+        <h3 className="font-display text-2xl sm:text-3xl font-semibold text-white tracking-wide">Club Atlético Roberts</h3>
+        <p className="text-sm text-gray-400">Sarmiento y Güemes, Roberts</p>
+        <p className="text-sm text-gray-400">clubatleticoroberts1@gmail.com</p>
 
         <div className="flex items-center justify-center gap-5 pt-2">
           {REDES.map(({ Icon, url, label }) => (
@@ -51,19 +51,25 @@ export default function Footer() {
               target="_blank"
               rel="noopener noreferrer"
               aria-label={label}
-              className="text-slate-400 hover:text-blue-400 transition-colors"
+              className="text-gray-400 hover:text-white transition-colors"
             >
               <Icon className="w-5 h-5" />
             </a>
           ))}
         </div>
 
-        <div className="pt-6 mt-6 border-t border-slate-700 flex flex-col items-center gap-4">
-          <img src={camotiAzul} alt="Mascota Camoti Azul" className="h-16 w-auto object-contain opacity-80 hover:opacity-100 transition-opacity drop-shadow-md" />
-          <a href="https://clubatleticoroberts.com" className="text-blue-400 hover:text-blue-300 transition-colors font-medium">
+        <div className="pt-8 mt-8 border-t border-gray-700 flex flex-col items-center gap-4">
+          {/* El Camotí está definido en dos tintas azules, ambas pensadas para
+              fondos blancos o claros (doc 03). Sobre el Azul Francia del footer
+              desaparecería, así que va sobre pastilla blanca — la misma norma
+              que el escudo en soportes oscuros. */}
+          <div className="rounded-2xl bg-white px-6 py-4">
+            <img src={camotiAzul} alt="El Camotí — marca secundaria del club" className="h-14 w-auto object-contain" />
+          </div>
+          <a href="https://clubatleticoroberts.com" className="text-blue-300 hover:text-white transition-colors font-medium">
             clubatleticoroberts.com
           </a>
-          <Link to="/ayuda" className="text-sm text-slate-300 hover:text-white transition-colors underline underline-offset-4">
+          <Link to="/ayuda" className="text-sm text-gray-400 hover:text-white transition-colors underline underline-offset-4">
             Ayuda y Contacto
           </Link>
         </div>

@@ -117,7 +117,7 @@ function TarjetaResultado({ resultado, onSiguiente }) {
           <Icon size={72} className={`${iconCls} drop-shadow-lg`} strokeWidth={1.5} />
         </div>
 
-        <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight uppercase leading-tight
+        <h2 className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight uppercase leading-tight
                        drop-shadow-sm max-w-xs">
           {resultado.mensaje_display}
         </h2>
@@ -247,7 +247,7 @@ function MiraEscaner() {
       ))}
       {/* Línea de escaneo animada */}
       <div className="absolute top-[20%] left-[15%] right-[15%] h-0.5
-                      bg-gradient-to-r from-transparent via-green-400 to-transparent
+                      bg-gradient-to-r from-transparent via-blue-300 to-transparent
                       animate-[scan_2s_ease-in-out_infinite]" />
     </div>
   )
@@ -359,7 +359,7 @@ export default function AdminScanner() {
             onClick={() => setModoDNI(value)}
             className={`flex-1 py-2.5 transition-colors ${
               modoDNI === value
-                ? 'bg-indigo-600 text-white'
+                ? 'bg-camoti-600 text-white'
                 : 'bg-gray-800 text-gray-400 hover:text-white'
             }`}
           >
@@ -395,14 +395,14 @@ export default function AdminScanner() {
                 disabled={loading}
                 className="w-full py-4 px-4 rounded-xl text-xl font-mono tracking-widest
                            text-center bg-gray-800 text-white border border-gray-600
-                           focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40
+                           focus:outline-none focus:border-camoti-500 focus:ring-2 focus:ring-camoti-500/40
                            disabled:opacity-50 transition-all"
               />
               <button
                 type="submit"
                 disabled={loading || manualDni.length < 7}
                 className="w-full py-4 rounded-xl font-bold text-lg
-                           bg-indigo-600 hover:bg-indigo-500 active:scale-95
+                           bg-camoti-600 hover:bg-camoti-500 active:scale-95
                            disabled:bg-gray-700 disabled:text-gray-500 disabled:cursor-not-allowed
                            text-white transition-all shadow-lg"
               >
@@ -419,7 +419,7 @@ export default function AdminScanner() {
         ) : (
           /* ── Modo Cámara ───────────────────────────────────────────── */
           <div className="relative w-full rounded-2xl overflow-hidden bg-black
-                          aspect-square max-h-[65dvh] shadow-2xl border border-gray-800">
+                          aspect-square max-h-[65dvh] shadow-xl border border-gray-800">
 
             {/* Scanner — siempre montado; paused cuando loading o resultado */}
             <Scanner

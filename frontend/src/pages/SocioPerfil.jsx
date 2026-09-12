@@ -81,10 +81,10 @@ const fortalezaPassword = (pwd) => {
 
 const FORTALEZA_CONFIG = [
   { label: 'Muy débil', color: 'bg-red-500'    },
-  { label: 'Débil',     color: 'bg-orange-400' },
-  { label: 'Regular',   color: 'bg-yellow-400' },
+  { label: 'Débil',     color: 'bg-amber-600' },
+  { label: 'Regular',   color: 'bg-amber-400' },
   { label: 'Buena',     color: 'bg-blue-500'   },
-  { label: 'Fuerte',    color: 'bg-emerald-500' },
+  { label: 'Fuerte',    color: 'bg-green-600' },
 ]
 
 // ─── Sub-componentes ──────────────────────────────────────────────────────────
@@ -107,7 +107,7 @@ function Aviso({ tipo, mensaje, onCerrar, autoDismissMs }) {
       className={`flex items-center gap-3 p-4 rounded-xl border text-sm transition-all ${
         esError
           ? 'bg-red-50 border-red-200 text-red-700'
-          : 'bg-emerald-50 border-emerald-200 text-emerald-700'
+          : 'bg-green-50 border-green-200 text-green-700'
       }`}
     >
       <Icon size={18} className="flex-shrink-0" />
@@ -231,7 +231,7 @@ function IndicadorFortaleza({ password }) {
         ))}
       </div>
       <p className={`text-[11px] font-semibold ${
-        score <= 1 ? 'text-red-500' : score <= 2 ? 'text-yellow-600' : 'text-emerald-600'
+        score <= 1 ? 'text-red-500' : score <= 2 ? 'text-amber-600' : 'text-green-600'
       }`}>
         {config.label}
       </p>
@@ -244,7 +244,7 @@ function PerfilSkeleton() {
   return (
     <div className="p-6 max-w-2xl mx-auto space-y-6 animate-pulse">
       <div className="h-7 bg-gray-100 rounded-lg w-36" />
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-6">
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 space-y-6">
         <div className="flex items-center gap-5">
           <div className="w-28 h-28 rounded-full bg-gray-100 flex-shrink-0" />
           <div className="space-y-2">
@@ -252,7 +252,7 @@ function PerfilSkeleton() {
             <div className="h-4 bg-gray-100 rounded w-24" />
           </div>
         </div>
-        <div className="grid sm:grid-cols-2 gap-4 pt-4 border-t border-gray-50">
+        <div className="grid sm:grid-cols-2 gap-4 pt-4 border-t border-gray-200">
           {[...Array(4)].map((_, i) => (
             <div key={i} className="space-y-1">
               <div className="h-3 bg-gray-100 rounded w-16" />
@@ -261,7 +261,7 @@ function PerfilSkeleton() {
           ))}
         </div>
       </div>
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 h-24" />
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 h-24" />
     </div>
   )
 }
@@ -472,7 +472,7 @@ export default function SocioPerfil() {
       {exito  && <Aviso tipo="exito" mensaje={exito}  onCerrar={() => setExito(null)} autoDismissMs={4000} />}
 
       {/* ── Card principal ──────────────────────────────────────────────── */}
-      <form onSubmit={handleGuardar} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-6">
+      <form onSubmit={handleGuardar} className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 space-y-6">
 
         {/* Foto + nombre */}
         <div className="flex items-center gap-5">
@@ -484,14 +484,14 @@ export default function SocioPerfil() {
             onSeleccionarArchivo={handleSubirFoto}
           />
           <div>
-            <h2 className="text-lg font-bold text-gray-900">{perfil.apellido}, {perfil.nombre}</h2>
+            <h2 className="font-display text-lg font-semibold text-gray-900">{perfil.apellido}, {perfil.nombre}</h2>
             <p className="text-sm text-gray-500">DNI {perfil.dni}</p>
             <p className="text-xs text-gray-400 mt-1">JPG, PNG o WEBP · máximo 5 MB</p>
           </div>
         </div>
 
         {/* Datos de solo lectura */}
-        <div className="grid sm:grid-cols-2 gap-y-4 gap-x-6 pt-4 border-t border-gray-50">
+        <div className="grid sm:grid-cols-2 gap-y-4 gap-x-6 pt-4 border-t border-gray-200">
           <CampoSoloLectura icon={IdCard} label="DNI"   valor={perfil.dni} />
           <CampoSoloLectura icon={Mail}   label="Email" valor={perfil.email} />
           <CampoSoloLectura
@@ -502,7 +502,7 @@ export default function SocioPerfil() {
         </div>
 
         {/* Datos editables */}
-        <div className="grid sm:grid-cols-2 gap-4 pt-4 border-t border-gray-50">
+        <div className="grid sm:grid-cols-2 gap-4 pt-4 border-t border-gray-200">
           <div>
             <label htmlFor="telefono" className={L + " flex items-center gap-1.5"}>
               <Phone size={12} /> Teléfono
@@ -544,7 +544,7 @@ export default function SocioPerfil() {
       </form>
 
       {/* ── Card contraseña ─────────────────────────────────────────────── */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-4">
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 space-y-4">
         <button
           type="button"
           onClick={() => {
@@ -564,7 +564,7 @@ export default function SocioPerfil() {
         </button>
 
         {mostrarPassword && (
-          <form onSubmit={handleCambiarPassword} className="space-y-4 pt-4 border-t border-gray-50">
+          <form onSubmit={handleCambiarPassword} className="space-y-4 pt-4 border-t border-gray-200">
             {errorPassword && <Aviso tipo="error" mensaje={errorPassword} onCerrar={() => setErrorPassword(null)} />}
             {exitoPassword && <Aviso tipo="exito" mensaje={exitoPassword} autoDismissMs={4000} onCerrar={() => setExitoPassword(null)} />}
 
@@ -636,7 +636,7 @@ export default function SocioPerfil() {
             <div className="flex items-center justify-between flex-wrap gap-3 pt-2">
               {/* Indicador visual de seguridad */}
               {fortalezaPassword(passwordForm.password_nuevo) >= 3 && (
-                <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-600">
+                <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-green-600">
                   <ShieldCheck size={14} />
                   Contraseña segura
                 </span>

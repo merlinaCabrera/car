@@ -120,7 +120,7 @@ export default function AdminInicio() {
         <div className="grid grid-cols-2 gap-3 sm:gap-4">
           <MetricCard
             icon={UserPlus}
-            iconColor="bg-amber-100 text-amber-700"
+            iconColor="bg-amber-50 text-amber-700"
             titulo="Socios"
             descripcion={
               !solicitudes.loading && !solicitudes.error && solicitudes.data === 0
@@ -136,7 +136,7 @@ export default function AdminInicio() {
 
           <MetricCard
             icon={CreditCard}
-            iconColor="bg-orange-100 text-orange-700"
+            iconColor="bg-amber-50 text-amber-700"
             titulo="Verificaciones"
             descripcion={
               !verificacionesLoading && !verificacionesError && verificacionesTotal === 0
@@ -157,7 +157,7 @@ export default function AdminInicio() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
           <MetricCard
             icon={CalendarCheck}
-            iconColor="bg-green-100 text-green-700"
+            iconColor="bg-roberts-50 text-roberts-600"
             titulo="Alquileres"
             descripcion={
               resumen.data?.reservas_semana != null
@@ -176,7 +176,7 @@ export default function AdminInicio() {
 
           <MetricCard
             icon={CalendarDays}
-            iconColor="bg-indigo-100 text-indigo-700"
+            iconColor="bg-roberts-50 text-roberts-600"
             titulo="Eventos"
             descripcion={
               resumen.data?.proximos_eventos?.length
@@ -193,7 +193,7 @@ export default function AdminInicio() {
 
           <MetricCard
             icon={Package}
-            iconColor="bg-teal-100 text-teal-700"
+            iconColor="bg-roberts-50 text-roberts-600"
             titulo="Catálogo de Productos"
             descripcion={
               resumen.data
@@ -210,7 +210,7 @@ export default function AdminInicio() {
 
           <MetricCard
             icon={Store}
-            iconColor="bg-purple-100 text-purple-700"
+            iconColor="bg-roberts-50 text-roberts-600"
             titulo="Comercios Adheridos"
             descripcion={
               resumen.data

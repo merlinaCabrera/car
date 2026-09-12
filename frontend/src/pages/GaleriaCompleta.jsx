@@ -29,13 +29,13 @@ export default function GaleriaCompleta() {
         </Link>
 
         <h1 className="text-3xl sm:text-4xl font-bold text-blue-900 mb-2 text-center">Galería</h1>
-        <p className="text-slate-600 text-center mb-10">Momentos del Club Atlético Roberts</p>
+        <p className="text-gray-600 text-center mb-10">Momentos del Club Atlético Roberts</p>
 
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 sm:gap-6">
           {FOTOS.map((foto, i) => (
             <figure
               key={i}
-              className="aspect-square rounded-xl shadow-md overflow-hidden bg-slate-100 hover:scale-[1.02] transition-transform duration-300"
+              className="aspect-square rounded-xl shadow-md overflow-hidden bg-gray-100 hover:scale-[1.02] transition-transform duration-300"
             >
               <img
                 src={foto.src}

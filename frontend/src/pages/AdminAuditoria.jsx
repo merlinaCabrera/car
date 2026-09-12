@@ -44,7 +44,7 @@ function TarjetaAuditoria({ item }) {
   const horaStr = fecha.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
       <button
         type="button"
         onClick={() => tieneDetalle && setExpandido(e => !e)}
@@ -68,7 +68,7 @@ function TarjetaAuditoria({ item }) {
       </button>
 
       {expandido && tieneDetalle && (
-        <div className="px-4 pb-4 border-t border-gray-50 pt-3">
+        <div className="px-4 pb-4 border-t border-gray-200 pt-3">
           <pre className="text-xs bg-gray-50 rounded-lg p-3 overflow-x-auto text-gray-600 whitespace-pre-wrap break-words">
             {JSON.stringify(item.detalle, null, 2)}
           </pre>
@@ -199,7 +199,7 @@ export default function AdminAuditoria() {
       {!error && (
         <div className="space-y-3">
           {loading && [...Array(4)].map((_, i) => (
-            <div key={i} className="bg-white rounded-2xl border border-gray-100 shadow-sm h-16 animate-pulse" />
+            <div key={i} className="bg-white rounded-2xl border border-gray-200 shadow-sm h-16 animate-pulse" />
           ))}
 
           {!loading && itemsFiltrados.map(item => (
@@ -207,7 +207,7 @@ export default function AdminAuditoria() {
           ))}
 
           {!loading && itemsFiltrados.length === 0 && (
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-10 text-center text-gray-400 text-sm">
+            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-10 text-center text-gray-400 text-sm">
               No hay movimientos que coincidan con esos filtros.
             </div>
           )}

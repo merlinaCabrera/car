@@ -41,23 +41,23 @@ const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 // ─── Config ───────────────────────────────────────────────────────────────────
 
 const TIPO_CONFIG = {
-  partido:       { label: 'Partido',       icon: Trophy,      classes: 'bg-emerald-100 text-emerald-800' },
-  entrenamiento: { label: 'Entrenamiento', icon: Dumbbell,    classes: 'bg-blue-100 text-blue-800'      },
-  torneo:        { label: 'Torneo',        icon: Trophy,      classes: 'bg-purple-100 text-purple-800'  },
+  partido:       { label: 'Partido',       icon: Trophy,      classes: 'bg-roberts-50 text-roberts-600' },
+  entrenamiento: { label: 'Entrenamiento', icon: Dumbbell,    classes: 'bg-francia-50 text-francia-700' },
+  torneo:        { label: 'Torneo',        icon: Trophy,      classes: 'bg-camoti-50 text-camoti-600'   },
   institucional: { label: 'Institucional', icon: Building2,   classes: 'bg-gray-100 text-gray-700'      },
   otro:          { label: 'Evento',        icon: CalendarDays, classes: 'bg-gray-100 text-gray-700'     },
 }
 
 // Color del chip en el calendario según estado de convocatoria del jugador
 const CHIP_ESTADO = {
-  citado:     'bg-yellow-400 text-yellow-900',
+  citado:     'bg-amber-400 text-amber-900',
   confirmado: 'bg-green-500 text-white',
   rechazado:  'bg-red-400 text-white',
   sin_estado: 'bg-gray-300 text-gray-700',
 }
 
 const ESTADO_CONFIG = {
-  citado:     { label: 'Citado',     icon: HelpCircle,  classes: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
+  citado:     { label: 'Citado',     icon: HelpCircle,  classes: 'bg-amber-100 text-amber-800 border-amber-200' },
   confirmado: { label: 'Confirmado', icon: CheckCircle, classes: 'bg-green-100 text-green-800 border-green-200'   },
   rechazado:  { label: 'Rechazado',  icon: XCircle,     classes: 'bg-red-100 text-red-800 border-red-200'         },
 }
@@ -124,7 +124,7 @@ function TarjetaEvento({ evento, miConvocatoria, isUpdating, onConfirmar, destac
   const fecha = new Date(evento.fecha_inicio)
   return (
     <div className={`bg-white rounded-2xl shadow-sm p-5 sm:p-6 space-y-4 ${
-      destacada ? 'border-2 border-blue-100' : 'border border-gray-100'
+      destacada ? 'border-2 border-blue-100' : 'border border-gray-200'
     }`}>
       <div className="flex items-start justify-between gap-3">
         <div>
@@ -158,7 +158,7 @@ function TarjetaEvento({ evento, miConvocatoria, isUpdating, onConfirmar, destac
       )}
 
       {miConvocatoria && (
-        <div className="pt-4 border-t border-gray-100 space-y-3">
+        <div className="pt-4 border-t border-gray-200 space-y-3">
           <h4 className="text-sm font-semibold text-gray-500">Tu convocatoria:</h4>
           <div className="flex flex-wrap items-center justify-between gap-4">
             <EstadoConvocatoriaBadge estado={miConvocatoria.estado} />
@@ -318,7 +318,7 @@ export default function JugadorCalendario() {
       {vista === 'calendario' && (
         <div className="space-y-4">
           {loading ? (
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm h-96 animate-pulse" />
+            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm h-96 animate-pulse" />
           ) : (
             <>
               <CalendarioMensual
@@ -373,10 +373,10 @@ export default function JugadorCalendario() {
         <>
           {/* Próximo evento destacado */}
           <section className="space-y-3">
-            <h2 className="text-lg font-bold text-gray-800">Próximo Evento</h2>
+            <h2 className="font-display text-lg font-semibold text-gray-800">Próximo Evento</h2>
 
             {loading && (
-              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 h-28 animate-pulse" />
+              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 h-28 animate-pulse" />
             )}
 
             {!loading && !error && proximoEvento && (() => {
@@ -395,7 +395,7 @@ export default function JugadorCalendario() {
             })()}
 
             {!loading && !error && !proximoEvento && (
-              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 text-center text-gray-500">
+              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 text-center text-gray-500">
                 No tenés eventos programados por ahora.
               </div>
             )}
@@ -404,7 +404,7 @@ export default function JugadorCalendario() {
           {/* Resto del calendario, agrupado por día */}
           {!loading && !error && eventosAgrupados.length > 0 && (
             <section className="space-y-4">
-              <h2 className="text-lg font-bold text-gray-800">Más Adelante</h2>
+              <h2 className="font-display text-lg font-semibold text-gray-800">Más Adelante</h2>
 
               {eventosAgrupados.map(([clave, eventosDelDia]) => (
                 <div key={clave} className="space-y-2">

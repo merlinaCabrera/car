@@ -43,9 +43,9 @@ const formatoARS = (monto) =>
     maximumFractionDigits: 0,
   })
 
-const COLOR_CUOTAS = '#f59e0b'     // amber-500  — mismo espíritu que la card "Cuotas"
-const COLOR_COMPRAS = '#3b82f6'    // blue-500   — mismo espíritu que la card "Órdenes"
-const COLOR_ALQUILERES = '#8b5cf6' // violet-500 — mismo espíritu que la card "Alquileres"
+const COLOR_CUOTAS = '#183F7C'     // Azul Roberts — mismo espíritu que la card "Cuotas"
+const COLOR_COMPRAS = '#26348C'    // Azul Camotí  — mismo espíritu que la card "Órdenes"
+const COLOR_ALQUILERES = '#6B7BA0' // Azul Francia claro — card "Alquileres"
 
 export default function AdminEstadisticas() {
   const [rangoMeses, setRangoMeses] = useState(6)
@@ -114,7 +114,7 @@ export default function AdminEstadisticas() {
 
         <KpiCard
           icon={CheckCircle2}
-          iconColor="bg-emerald-100 text-emerald-700"
+          iconColor="bg-green-100 text-green-700"
           titulo="Socios al día"
           loading={loading}
         >
@@ -138,7 +138,7 @@ export default function AdminEstadisticas() {
 
         <KpiCard
           icon={CheckCircle2}
-          iconColor="bg-teal-100 text-teal-700"
+          iconColor="bg-francia-100 text-francia-700"
           titulo="Estado de socios"
           loading={loading}
         >
@@ -152,7 +152,7 @@ export default function AdminEstadisticas() {
 
       {/* Ingresos por mes (2/3) + Más vendidos (1/3), lado a lado en desktop */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-100 shadow-sm p-4 sm:p-5">
+        <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-200 shadow-sm p-4 sm:p-5">
           <div className="flex flex-col gap-2 mb-1">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <h2 className="font-bold text-gray-900">Ingresos por mes</h2>
@@ -173,7 +173,7 @@ export default function AdminEstadisticas() {
         </div>
 
         {/* Top productos */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 sm:p-5">
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 sm:p-5">
           <h2 className="font-bold text-gray-900 mb-1 flex items-center gap-2">
             <Package size={17} /> Más vendidos
           </h2>
@@ -195,7 +195,7 @@ export default function AdminEstadisticas() {
 
 function KpiCard({ icon: Icon, iconColor, titulo, loading, children }) {
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
       <div className={`w-9 h-9 rounded-xl flex items-center justify-center mb-2 ${iconColor}`}>
         <Icon size={17} />
       </div>
@@ -216,7 +216,7 @@ function VariacionBadge({ variacion }) {
   const subio = Number(variacion) > 0
   const igual = Number(variacion) === 0
   const Icono = igual ? Minus : subio ? TrendingUp : TrendingDown
-  const color = igual ? 'text-gray-400' : subio ? 'text-emerald-600' : 'text-red-600'
+  const color = igual ? 'text-gray-400' : subio ? 'text-green-600' : 'text-red-600'
   return (
     <p className={`text-sm font-semibold mt-1 flex items-center gap-1 ${color}`}>
       <Icono size={14} />
@@ -279,7 +279,7 @@ function Leyenda({ ocultas, onToggle }) {
           >
             <span
               className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-              style={{ backgroundColor: oculta ? '#e5e7eb' : it.color }}
+              style={{ backgroundColor: oculta ? '#E2E5E9' : it.color }}
             />
             <span className={oculta ? 'line-through decoration-gray-300' : ''}>{it.label}</span>
           </button>
@@ -328,8 +328,8 @@ function GraficoBarrasApiladas({ meses, ocultas }) {
         const y = PAD_SUP + altoUtil - escalaY(valor)
         return (
           <g key={valor}>
-            <line x1={PAD_IZQ} y1={y} x2={ANCHO - 8} y2={y} stroke="#f1f5f9" strokeWidth="1" />
-            <text x={PAD_IZQ - 8} y={y + 4} textAnchor="end" fontSize="10" fill="#94a3b8">
+            <line x1={PAD_IZQ} y1={y} x2={ANCHO - 8} y2={y} stroke="#EFF1F3" strokeWidth="1" />
+            <text x={PAD_IZQ - 8} y={y + 4} textAnchor="end" fontSize="10" fill="#98A0AE">
               {valor >= 1000 ? `${Math.round(valor / 1000)}k` : valor}
             </text>
           </g>
@@ -371,7 +371,7 @@ function GraficoBarrasApiladas({ meses, ocultas }) {
               textAnchor="middle"
               fontSize="11"
               fontWeight="600"
-              fill="#64748b"
+              fill="#6E7787"
             >
               {m.mes_label}
             </text>
@@ -419,11 +419,11 @@ function DonutSocios({ alDia, morosos, compacto = false }) {
       aria-label="Socios al día vs. morosos"
     >
       <g transform="translate(75, 75) rotate(-90)">
-        <circle r={RADIO} fill="none" stroke="#fee2e2" strokeWidth={GROSOR} />
+        <circle r={RADIO} fill="none" stroke="#E2E5E9" strokeWidth={GROSOR} />
         <circle
           r={RADIO}
           fill="none"
-          stroke="#10b981"
+          stroke="#2F6B4F"
           strokeWidth={GROSOR}
           strokeDasharray={`${largoAlDia} ${CIRCUNFERENCIA - largoAlDia}`}
           strokeLinecap={fraccionAlDia > 0 && fraccionAlDia < 1 ? 'butt' : 'round'}
@@ -431,10 +431,10 @@ function DonutSocios({ alDia, morosos, compacto = false }) {
       </g>
       {!compacto && (
         <>
-          <text x="75" y="70" textAnchor="middle" fontSize="22" fontWeight="700" fill="#111827">
+          <text x="75" y="70" textAnchor="middle" fontSize="22" fontWeight="700" fill="#1C1F2D">
             {Math.round(fraccionAlDia * 100)}%
           </text>
-          <text x="75" y="88" textAnchor="middle" fontSize="10" fill="#94a3b8">al día</text>
+          <text x="75" y="88" textAnchor="middle" fontSize="10" fill="#98A0AE">al día</text>
         </>
       )}
     </svg>
@@ -457,7 +457,7 @@ function DonutSocios({ alDia, morosos, compacto = false }) {
       {svg}
       <div className="space-y-3 text-sm">
         <div className="flex items-center gap-2">
-          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+          <span className="w-2.5 h-2.5 rounded-full bg-green-500" />
           <span className="font-semibold text-gray-800">{alDia}</span>
           <span className="text-gray-400">al día</span>
         </div>

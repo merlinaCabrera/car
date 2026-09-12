@@ -146,7 +146,7 @@ function OrdenGeneradaModal({ cartTotal, cartPayload, saldoDisponible = 0, token
         {/* Header */}
         <div className="p-6 border-b flex-shrink-0 flex items-start justify-between">
           <div>
-            <h2 className="text-xl font-bold text-gray-800">
+            <h2 className="font-display text-xl font-semibold text-gray-800">
               {paso === 'metodo'        && 'Finalizar compra'}
               {paso === 'transferencia' && (orden ? '¡Compra generada!' : 'Confirmar compra')}
               {paso === 'efectivo'      && (orden ? '¡Compra registrada!' : 'Confirmar compra')}
@@ -185,39 +185,39 @@ function OrdenGeneradaModal({ cartTotal, cartPayload, saldoDisponible = 0, token
               </div>
             )}
 
-            <div className="text-center p-4 rounded-xl bg-indigo-50 border border-indigo-200">
-              <p className="text-sm font-semibold text-indigo-900">Total a abonar</p>
+            <div className="text-center p-4 rounded-xl bg-camoti-50 border border-camoti-200">
+              <p className="text-sm font-semibold text-camoti-900">Total a abonar</p>
               {usarSaldo && saldoDisponible > 0 ? (
                 <>
-                  <p className="text-3xl font-bold text-indigo-900 mt-1">
+                  <p className="text-3xl font-bold text-camoti-900 mt-1">
                     {formatoMoneda.format(Math.max(0, cartTotal - saldoDisponible))}
                   </p>
                   <p className="text-xs text-gray-400 line-through mt-1">
                     {formatoMoneda.format(cartTotal)}
                   </p>
-                  <p className="text-xs text-emerald-600 font-semibold">
+                  <p className="text-xs text-green-600 font-semibold">
                     − {formatoMoneda.format(Math.min(saldoDisponible, cartTotal))} de saldo a favor
                   </p>
                 </>
               ) : (
-                <p className="text-3xl font-bold text-indigo-900 mt-1">{formatoMoneda.format(cartTotal)}</p>
+                <p className="text-3xl font-bold text-camoti-900 mt-1">{formatoMoneda.format(cartTotal)}</p>
               )}
             </div>
 
             {/* Checkbox saldo a favor */}
             {saldoDisponible > 0 && (
               <label className={`flex items-center justify-between gap-3 p-3 rounded-xl border-2 cursor-pointer transition-colors
-                ${usarSaldo ? 'border-emerald-400 bg-emerald-50' : 'border-gray-200 bg-gray-50 hover:border-emerald-300'}`}>
+                ${usarSaldo ? 'border-green-400 bg-green-50' : 'border-gray-200 bg-gray-50 hover:border-green-300'}`}>
                 <div className="flex items-center gap-3">
                   <input type="checkbox" checked={usarSaldo} onChange={e => setUsarSaldo(e.target.checked)}
-                    className="w-4 h-4 accent-emerald-600" />
+                    className="w-4 h-4 accent-green-600" />
                   <div>
                     <p className="text-sm font-semibold text-gray-800">Usar saldo a favor</p>
-                    <p className="text-xs text-emerald-600 font-medium">{formatoMoneda.format(saldoDisponible)} disponibles</p>
+                    <p className="text-xs text-green-600 font-medium">{formatoMoneda.format(saldoDisponible)} disponibles</p>
                   </div>
                 </div>
                 {usarSaldo && saldoDisponible >= cartTotal && (
-                  <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-2 py-1 rounded-lg">Cubre todo ✓</span>
+                  <span className="text-xs font-bold text-green-700 bg-green-100 px-2 py-1 rounded-lg">Cubre todo ✓</span>
                 )}
                 {usarSaldo && saldoDisponible < cartTotal && (
                   <span className="text-xs text-gray-500">Resta {formatoMoneda.format(cartTotal - saldoDisponible)}</span>
@@ -230,7 +230,7 @@ function OrdenGeneradaModal({ cartTotal, cartPayload, saldoDisponible = 0, token
               <button
                 onClick={() => handleConfirmar('transferencia')}
                 disabled={isConfirming}
-                className="w-full flex items-center justify-center gap-2 p-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold transition-colors disabled:opacity-50"
+                className="w-full flex items-center justify-center gap-2 p-4 rounded-xl bg-green-600 hover:bg-green-700 text-white font-bold transition-colors disabled:opacity-50"
               >
                 {isConfirming && <Loader2 size={16} className="animate-spin" />}
                 {isConfirming ? 'Procesando...' : '✓ Confirmar compra con saldo'}
@@ -242,13 +242,13 @@ function OrdenGeneradaModal({ cartTotal, cartPayload, saldoDisponible = 0, token
                 </p>
                 <div className="space-y-3">
                   <button onClick={() => handleConfirmar('transferencia')} disabled={isConfirming}
-                    className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-indigo-200 bg-indigo-50 hover:bg-indigo-100 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed">
+                    className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-camoti-200 bg-camoti-50 hover:bg-camoti-100 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed">
                     <span className="text-2xl">🏦</span>
                     <div>
-                      <p className="font-bold text-indigo-900 text-sm">Transferencia bancaria</p>
-                      <p className="text-xs text-indigo-600 mt-0.5">Alias CLUB.ROBERTS · Requiere comprobante</p>
+                      <p className="font-bold text-camoti-900 text-sm">Transferencia bancaria</p>
+                      <p className="text-xs text-camoti-600 mt-0.5">Alias CLUB.ROBERTS · Requiere comprobante</p>
                     </div>
-                    {isConfirming && <Loader2 size={16} className="animate-spin ml-auto text-indigo-500" />}
+                    {isConfirming && <Loader2 size={16} className="animate-spin ml-auto text-camoti-500" />}
                   </button>
                   <button onClick={() => handleConfirmar('efectivo')} disabled={isConfirming}
                     className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-gray-200 bg-gray-50 hover:bg-gray-100 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed">
@@ -281,13 +281,13 @@ function OrdenGeneradaModal({ cartTotal, cartPayload, saldoDisponible = 0, token
           <div className="p-6 space-y-4 overflow-y-auto flex-1">
             <div className="text-center py-4">
               <span className="text-5xl">✅</span>
-              <h3 className="mt-4 font-bold text-gray-800 text-lg">¡Compra aprobada!</h3>
+              <h3 className="font-display mt-4 font-semibold text-gray-800 text-lg">¡Compra aprobada!</h3>
               <p className="text-sm text-gray-500 mt-2 leading-relaxed">
                 Tu saldo a favor cubrió el total de la orden <strong>#{orden.id_pago}</strong>.
                 La compra fue aprobada automáticamente, sin necesidad de comprobante.
               </p>
             </div>
-            <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-sm text-emerald-800 text-center">
+            <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-sm text-green-800 text-center">
               Se descontaron <strong>{formatoMoneda.format(orden.saldo_aplicado)}</strong> de tu saldo a favor.
             </div>
           </div>
@@ -318,11 +318,11 @@ function OrdenGeneradaModal({ cartTotal, cartPayload, saldoDisponible = 0, token
                 <div className="flex items-center justify-between px-4 py-3">
                   <div>
                     <p className="text-xs text-gray-400">Alias</p>
-                    <p className="font-bold text-indigo-700 tracking-widest">CLUB.ROBERTS</p>
+                    <p className="font-bold text-camoti-700 tracking-widest">CLUB.ROBERTS</p>
                   </div>
                   <button
                     onClick={copiarAlias}
-                    className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-600 transition-colors"
+                    className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-camoti-50 hover:bg-camoti-100 text-camoti-600 transition-colors"
                   >
                     {copiado ? '✓ Copiado' : 'Copiar'}
                   </button>
@@ -335,9 +335,9 @@ function OrdenGeneradaModal({ cartTotal, cartPayload, saldoDisponible = 0, token
                   <p className="text-xs text-gray-400">Banco</p>
                   <p className="font-semibold text-gray-700">Banco Nación</p>
                 </div>
-                <div className="px-4 py-3 bg-indigo-50">
+                <div className="px-4 py-3 bg-camoti-50">
                   <p className="text-xs text-gray-400">Total a transferir</p>
-                  <p className="font-bold text-indigo-900 text-lg">{formatoMoneda.format(orden.monto_total)}</p>
+                  <p className="font-bold text-camoti-900 text-lg">{formatoMoneda.format(orden.monto_total)}</p>
                 </div>
               </div>
             </div>
@@ -354,7 +354,7 @@ function OrdenGeneradaModal({ cartTotal, cartPayload, saldoDisponible = 0, token
               <label
                 className={`mt-1.5 relative flex justify-center w-full px-6 py-7 border-2 border-dashed
                   rounded-xl cursor-pointer transition-colors
-                  ${file ? 'border-green-300 bg-green-50' : 'border-gray-300 bg-white hover:border-indigo-400 hover:bg-indigo-50'}
+                  ${file ? 'border-green-300 bg-green-50' : 'border-gray-300 bg-white hover:border-camoti-400 hover:bg-camoti-50'}
                   ${(isUploading || uploadOk) ? 'opacity-60 cursor-not-allowed' : ''}
                 `}
               >
@@ -379,7 +379,7 @@ function OrdenGeneradaModal({ cartTotal, cartPayload, saldoDisponible = 0, token
           <div className="p-6 space-y-4 overflow-y-auto flex-1">
             <div className="text-center py-4">
               <span className="text-5xl">✅</span>
-              <h3 className="mt-4 font-bold text-gray-800 text-lg">¡Orden registrada!</h3>
+              <h3 className="font-display mt-4 font-semibold text-gray-800 text-lg">¡Orden registrada!</h3>
               <p className="text-sm text-gray-500 mt-2 leading-relaxed">
                 Tu orden <strong>#{orden.id_pago}</strong> por{' '}
                 <strong>{formatoMoneda.format(orden.monto_total)}</strong> fue generada.
@@ -404,7 +404,7 @@ function OrdenGeneradaModal({ cartTotal, cartPayload, saldoDisponible = 0, token
             <div className="p-6 space-y-4 overflow-y-auto flex-1">
               <div className="text-center py-6">
                 <Loader2 size={48} className="animate-spin text-blue-500 mx-auto" />
-                <h3 className="mt-4 font-bold text-gray-800 text-lg">Generando link de pago…</h3>
+                <h3 className="font-display mt-4 font-semibold text-gray-800 text-lg">Generando link de pago…</h3>
                 <p className="text-sm text-gray-500 mt-2">
                   En un momento te redirigimos a Mercado Pago para completar el pago de{' '}
                   <strong>{formatoMoneda.format(orden.monto_total)}</strong>.
@@ -440,7 +440,7 @@ function OrdenGeneradaModal({ cartTotal, cartPayload, saldoDisponible = 0, token
               type="button"
               onClick={handleUpload}
               disabled={!file || isUploading || uploadOk}
-              className="px-4 py-2 rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 font-semibold disabled:opacity-50 transition-colors flex items-center gap-2"
+              className="px-4 py-2 rounded-lg text-white bg-camoti-600 hover:bg-camoti-700 font-semibold disabled:opacity-50 transition-colors flex items-center gap-2"
             >
               {isUploading && <Loader2 size={14} className="animate-spin" />}
               {isUploading ? 'Subiendo…' : 'Subir Comprobante'}
@@ -510,14 +510,14 @@ function CarritoVacio() {
       <div className="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center mb-5">
         <PackageX size={36} className="text-gray-400" />
       </div>
-      <h2 className="text-xl font-bold text-gray-700">Tu carrito está vacío</h2>
+      <h2 className="font-display text-xl font-semibold text-gray-700">Tu carrito está vacío</h2>
       <p className="text-gray-400 text-sm mt-2 max-w-xs">
         Todavía no agregaste nada. Explorá la tienda para encontrar lo que necesitás.
       </p>
       <Link
         to="/shopping"
         className="mt-6 inline-flex items-center gap-2 px-6 py-3 rounded-xl
-                   bg-indigo-600 hover:bg-indigo-700 text-white font-bold
+                   bg-camoti-600 hover:bg-camoti-700 text-white font-bold
                    transition-colors shadow-sm"
       >
         <ShoppingBag size={16} />
@@ -713,7 +713,7 @@ export default function SocioCarrito() {
       </div>
 
       {/* Lista de ítems */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 divide-y divide-gray-50 overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 divide-y divide-gray-50 overflow-hidden">
         {cart.map(item => (
           <ItemCarrito
             key={`${item.id}-${item.qty}`} // Usamos una combinación única
@@ -732,7 +732,7 @@ export default function SocioCarrito() {
       )}
 
       {/* Resumen y acción */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 space-y-4">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 space-y-4">
 
         {/* Total calculado localmente (orientativo — el backend recalcula) */}
         <div className="flex items-center justify-between">
@@ -761,7 +761,7 @@ export default function SocioCarrito() {
           <button
             onClick={handleAbrirCheckout}
             disabled={isCheckingOut || !cart.length}
-            className="flex-1 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700
+            className="flex-1 py-3 rounded-xl bg-camoti-600 hover:bg-camoti-700
                        text-white font-bold text-sm transition-colors
                        disabled:opacity-50 disabled:cursor-not-allowed
                        flex items-center justify-center gap-2 shadow-sm active:scale-95"

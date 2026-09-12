@@ -23,7 +23,7 @@ const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 function PreguntaItem({ entry }) {
   const [abierta, setAbierta] = useState(false)
   return (
-    <div className="border-b border-gray-100 last:border-0">
+    <div className="border-b border-gray-200 last:border-0">
       <button
         onClick={() => setAbierta(a => !a)}
         className="w-full flex items-center justify-between gap-3 py-3.5 text-left"
@@ -82,7 +82,7 @@ function FormularioContacto() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-3 bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+    <form onSubmit={handleSubmit} className="space-y-3 bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
       {error && (
         <div className="flex items-center gap-2 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
           <AlertCircle size={14} className="flex-shrink-0" /> {error}
@@ -166,14 +166,14 @@ export default function Ayuda() {
       )}
 
       {!loading && [...porCategoria.entries()].map(([categoria, items]) => (
-        <div key={categoria} className="bg-white rounded-2xl border border-gray-100 shadow-sm px-5">
+        <div key={categoria} className="bg-white rounded-2xl border border-gray-200 shadow-sm px-5">
           <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wider pt-4 pb-1">{categoria}</h2>
           {items.map(e => <PreguntaItem key={e.id_faq} entry={e} />)}
         </div>
       ))}
 
       <div>
-        <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2 mb-3">
+        <h2 className="font-display text-lg font-semibold text-gray-900 flex items-center gap-2 mb-3">
           <Mail size={18} className="text-gray-500" /> Contactanos
         </h2>
         <FormularioContacto />

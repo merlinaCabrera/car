@@ -107,22 +107,22 @@ const ESTADO_CONFIG = {
     textoClase: 'text-blue-400',
   },
   becado: {
-    card: 'bg-teal-50 border-teal-300',
-    label: 'text-teal-900',
-    dot: 'bg-teal-400',
+    card: 'bg-francia-50 border-francia-300',
+    label: 'text-francia-900',
+    dot: 'bg-francia-400',
     texto: 'Becado',
-    textoClase: 'text-teal-700',
+    textoClase: 'text-francia-700',
   },
   // Mes en que el socio se dio de alta (decisión D1). Se muestra aparte a
   // propósito: NO es 'pagado' —esa cuota se debe y se cobra— pero tampoco
   // 'adeudado', porque durante ese mes el socio figura al día. Antes caía en
   // 'pagado' y el mes de ingreso quedaba saldado gratis.
   mes_ingreso: {
-    card: 'bg-indigo-50 border-indigo-200',
-    label: 'text-indigo-900',
-    dot: 'bg-indigo-400',
+    card: 'bg-camoti-50 border-camoti-200',
+    label: 'text-camoti-900',
+    dot: 'bg-camoti-400',
     texto: 'Mes de ingreso',
-    textoClase: 'text-indigo-700',
+    textoClase: 'text-camoti-700',
   },
 }
 
@@ -188,8 +188,8 @@ function CeldaMes({ nombreMes, estado, esHoy, diaVencimiento }) {
         {estado === 'adeudado' && <AlertTriangle size={14} className="text-red-500" />}
         {estado === 'a_vencer' && <CalendarClock size={14} className="text-amber-600" />}
         {estado === 'futuro'   && <div className="w-3 h-3 rounded-full border-2 border-blue-300" />}
-        {estado === 'becado'   && <Gift size={14} className="text-teal-600" />}
-        {estado === 'mes_ingreso' && <UserPlus size={14} className="text-indigo-600" />}
+        {estado === 'becado'   && <Gift size={14} className="text-francia-600" />}
+        {estado === 'mes_ingreso' && <UserPlus size={14} className="text-camoti-600" />}
       </div>
 
       {/* Nombre del mes */}
@@ -263,9 +263,9 @@ function CalendarioAnual({ estado }) {
   }, [meses])
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
       {/* Header del calendario */}
-      <div className="px-4 sm:px-5 pt-4 sm:pt-5 pb-4 border-b border-gray-100">
+      <div className="px-4 sm:px-5 pt-4 sm:pt-5 pb-4 border-b border-gray-200">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="min-w-0">
             <h2 className="text-base font-bold text-gray-900 flex items-center gap-2">
@@ -316,8 +316,8 @@ function CalendarioAnual({ estado }) {
             </span>
           )}
           {resumen.becado > 0 && (
-            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-teal-700">
-              <span className="w-2 h-2 rounded-full bg-teal-400 inline-block" />
+            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-francia-700">
+              <span className="w-2 h-2 rounded-full bg-francia-400 inline-block" />
               {resumen.becado} becado{resumen.becado !== 1 ? 's' : ''}
             </span>
           )}
@@ -328,8 +328,8 @@ function CalendarioAnual({ estado }) {
             </span>
           )}
           {resumen.mes_ingreso > 0 && (
-            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-700">
-              <span className="w-2 h-2 rounded-full bg-indigo-400 inline-block" />
+            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-camoti-700">
+              <span className="w-2 h-2 rounded-full bg-camoti-400 inline-block" />
               mes de ingreso
             </span>
           )}
@@ -429,7 +429,7 @@ function OrdenGeneradaModal({ orden, onClose, token }) {
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md flex flex-col max-h-[92dvh]">
         <div className="p-5 sm:p-6 border-b flex-shrink-0 flex items-start justify-between">
           <div>
-            <h2 className="text-xl font-bold text-gray-800">Transferencia Bancaria</h2>
+            <h2 className="font-display text-xl font-semibold text-gray-800">Transferencia Bancaria</h2>
             <p className="text-sm text-gray-500 mt-1">Pago #{orden.id_pago} (Orden #{orden.id_orden})</p>
           </div>
           <button onClick={onClose} disabled={isUploading} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
@@ -527,7 +527,7 @@ function SeleccionMesesModal({ precioCuota, idProducto, onClose }) {
     >
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm flex flex-col">
         <div className="p-5 sm:p-6 border-b flex items-center justify-between">
-          <h2 className="text-lg font-bold text-gray-800">Pagar Cuotas</h2>
+          <h2 className="font-display text-lg font-semibold text-gray-800">Pagar Cuotas</h2>
           <button onClick={onClose} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
             <X size={18} />
           </button>
@@ -620,7 +620,7 @@ function SeleccionMesesModal({ precioCuota, idProducto, onClose }) {
 function EstadoCard({ estado, loading, error, ordenPendiente, onAbrirCarrito }) {
   if (loading) {
     return (
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 animate-pulse space-y-3">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 animate-pulse space-y-3">
         <div className="h-5 w-32 bg-gray-200 rounded-full" />
         <div className="h-7 w-56 bg-gray-200 rounded-md" />
         <div className="h-4 w-44 bg-gray-200 rounded-md" />
@@ -634,16 +634,16 @@ function EstadoCard({ estado, loading, error, ordenPendiente, onAbrirCarrito }) 
   // Bypass: si es becado, el estado siempre es "al día" independientemente de mes_cubierto_hasta
   if (estado.es_becado) {
     return (
-      <div className="rounded-2xl shadow-sm border p-4 sm:p-6 bg-teal-50 border-teal-200 flex items-center gap-3 sm:gap-4">
-        <div className="p-2.5 sm:p-3 rounded-xl flex-shrink-0 bg-teal-100 text-teal-700">
+      <div className="rounded-2xl shadow-sm border p-4 sm:p-6 bg-francia-50 border-francia-200 flex items-center gap-3 sm:gap-4">
+        <div className="p-2.5 sm:p-3 rounded-xl flex-shrink-0 bg-francia-100 text-francia-700">
           <ShieldCheck size={22} />
         </div>
         <div className="space-y-1">
-          <p className="text-xs font-semibold uppercase tracking-wide text-teal-700">Estado de Cuenta</p>
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-teal-100 text-teal-800 border border-teal-200">
+          <p className="text-xs font-semibold uppercase tracking-wide text-francia-700">Estado de Cuenta</p>
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-francia-100 text-francia-800 border border-francia-200">
             <CheckCircle2 size={11} /> Acceso activo — Becado
           </span>
-          <p className="text-sm font-medium text-teal-800 leading-snug">
+          <p className="text-sm font-medium text-francia-800 leading-snug">
             Tu membresía está cubierta por una beca. No generás deuda de cuotas.
           </p>
         </div>
@@ -690,7 +690,7 @@ function EstadoCard({ estado, loading, error, ordenPendiente, onAbrirCarrito }) 
     ? esGrave
       ? { card: 'bg-red-50 border-red-200',    icon: 'bg-red-100 text-red-700',    label: 'text-red-700',    sub: 'text-red-700',    aux: 'text-red-500',    badge: 'bg-red-100 text-red-700 border border-red-200',    btn: 'bg-red-600 hover:bg-red-700' }
       : { card: 'bg-amber-50 border-amber-200', icon: 'bg-amber-100 text-amber-700', label: 'text-amber-700', sub: 'text-amber-700', aux: 'text-amber-500', badge: 'bg-amber-100 text-amber-800 border border-amber-200', btn: 'bg-amber-600 hover:bg-amber-700' }
-    : { card: 'bg-white border-gray-100',       icon: 'bg-green-100 text-green-700', label: 'text-gray-500',  sub: 'text-gray-600',  aux: 'text-gray-400',  badge: 'bg-green-100 text-green-700 border border-green-200',  btn: '' }
+    : { card: 'bg-white border-gray-200',       icon: 'bg-green-100 text-green-700', label: 'text-gray-500',  sub: 'text-gray-600',  aux: 'text-gray-400',  badge: 'bg-green-100 text-green-700 border border-green-200',  btn: '' }
 
   return (
     <div className={`rounded-2xl shadow-sm border p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-5 ${paleta.card}`}>
@@ -897,7 +897,7 @@ export default function SocioCuotas() {
                   </span>
                 ) : comprobanteUrl ? (
                   <>
-                    <span className="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-700">
+                    <span className="inline-flex items-center gap-1.5 text-sm font-medium text-green-700">
                       <CheckCircle size={14} />
                       Comprobante en revisión
                     </span>
@@ -982,19 +982,19 @@ export default function SocioCuotas() {
 
       {/* Botón "Pagar Cuotas" → SeleccionMesesModal (oculto si becado o hay orden pendiente) */}
       {estado?.es_becado ? (
-        <div className="flex items-start gap-4 p-5 rounded-2xl bg-teal-50 border-2 border-teal-200">
-          <div className="p-3 rounded-xl bg-teal-100 text-teal-700 flex-shrink-0">
+        <div className="flex items-start gap-4 p-5 rounded-2xl bg-francia-50 border-2 border-francia-200">
+          <div className="p-3 rounded-xl bg-francia-100 text-francia-700 flex-shrink-0">
             <Gift size={22} />
           </div>
           <div className="min-w-0">
-            <p className="font-bold text-teal-900 text-base">Acceso Bonificado</p>
-            <p className="text-sm text-teal-700 mt-0.5 leading-snug">
+            <p className="font-bold text-francia-900 text-base">Acceso Bonificado</p>
+            <p className="text-sm text-francia-700 mt-0.5 leading-snug">
               Tu membresía está cubierta por una beca.{' '}
               {estado.becado_hasta
                 ? <>La beca está activa hasta el <strong>{new Date(estado.becado_hasta + 'T00:00:00').toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' })}</strong>.</>
                 : 'Tu beca es indefinida.'}
             </p>
-            <p className="text-xs text-teal-600 mt-1.5">
+            <p className="text-xs text-francia-600 mt-1.5">
               No necesitás abonar cuotas por el momento. Ante cualquier consulta, contactá a la administración del club.
             </p>
           </div>
@@ -1024,7 +1024,7 @@ export default function SocioCuotas() {
         <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wide mb-3">
           Historial de Pagos
         </h2>
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 divide-y divide-gray-50">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 divide-y divide-gray-50">
           {historial.map(pago => {
             // comprobante_url viene directo en HistorialPagoCuotaResponse
             // (el backend lo mapea desde pago.comprobante_url al construir la lista)

@@ -19,21 +19,21 @@ export default function Sponsors() {
   if (!cargado || sponsors.length === 0) return null;
 
   return (
-    <section className="pt-6 pb-16 bg-slate-50">
+    <section className="pt-6 pb-16 bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <h2 className="text-3xl font-bold mb-10 text-center text-blue-900">Sponsors</h2>
+        <h2 className="font-display text-3xl font-semibold mb-10 text-center text-blue-600">Sponsors</h2>
       </div>
 
       <InfiniteCarousel
         items={sponsors}
-        bgClassName="from-slate-50"
+        bgClassName="from-gray-50"
         renderItem={(sponsor, i) => (
           <a
             key={`${sponsor.id_sponsor}-${i}`}
             href={sponsor.url_destino}
             target="_blank"
             rel="noopener noreferrer"
-            className="mx-3 sm:mx-4 flex-shrink-0 w-40 h-40 sm:w-52 sm:h-52 md:w-64 md:h-64 bg-blue-900 rounded-lg shadow-md p-3 sm:p-4 md:p-6 flex items-center justify-center hover:shadow-xl hover:bg-blue-950 transition-all duration-300"
+            className="mx-3 sm:mx-4 flex-shrink-0 w-40 h-40 sm:w-52 sm:h-52 md:w-64 md:h-64 bg-white border border-gray-200 rounded-2xl shadow-sm p-4 sm:p-6 md:p-8 flex items-center justify-center hover:shadow-md hover:border-blue-300 transition-all duration-200"
           >
             <img
               src={sponsor.imagen_url}

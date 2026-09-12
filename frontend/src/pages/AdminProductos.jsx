@@ -50,11 +50,14 @@ const CATEGORIA_LABELS = {
   otro:         'Otro',
 }
 
+// Misma codificación que components/admin/CategoriaOrdenBadge.jsx y que
+// SocioShopping: cuota = Azul Roberts, alquiler = Azul Camotí,
+// indumentaria = Azul Francia, otro = neutro.
 const CATEGORIA_BADGE_CLASSES = {
-  cuota_social: 'bg-blue-100 text-blue-800',
-  alquiler:     'bg-purple-100 text-purple-800',
-  indumentaria: 'bg-orange-100 text-orange-800',
-  otro:         'bg-gray-100 text-gray-700',
+  cuota_social: 'bg-roberts-50 text-roberts-600 ring-1 ring-roberts-200',
+  alquiler:     'bg-camoti-50 text-camoti-600 ring-1 ring-camoti-200',
+  indumentaria: 'bg-francia-50 text-francia-700 ring-1 ring-francia-200',
+  otro:         'bg-gray-100 text-gray-600 ring-1 ring-gray-200',
 }
 
 // Mismo patrón de filtro que AdminVerificaciones.jsx. Sin 'cuota_social'
@@ -167,7 +170,7 @@ function ProductoFormModal({ producto, onClose, onSave, cuotaSocialExists }) {
         {/* Header */}
         <div className="p-6 border-b flex-shrink-0 flex items-start justify-between">
           <div>
-            <h2 className="text-xl font-bold text-gray-800">
+            <h2 className="font-display text-xl font-semibold text-gray-800">
               {isEditMode ? 'Editar Producto' : 'Nuevo Producto o Servicio'}
             </h2>
             <p className="text-sm text-gray-500 mt-1">
@@ -281,7 +284,7 @@ function ProductoFormModal({ producto, onClose, onSave, cuotaSocialExists }) {
                 aria-checked={formData.es_activo}
                 onClick={() => setFormData({ ...formData, es_activo: !formData.es_activo })}
                 className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors flex-shrink-0 ${
-                  formData.es_activo ? 'bg-emerald-500' : 'bg-gray-300'
+                  formData.es_activo ? 'bg-green-500' : 'bg-gray-300'
                 }`}
               >
                 <span
@@ -662,10 +665,10 @@ export default function AdminProductos() {
         {isLoadingDia ? (
           <div className="bg-gray-100 rounded-xl sm:rounded-2xl h-28 sm:h-36 animate-pulse" />
         ) : (
-          <div className="relative bg-indigo-50 border-2 border-indigo-200 rounded-xl sm:rounded-2xl p-2.5 sm:p-5 shadow-sm">
+          <div className="relative bg-camoti-50 border-2 border-camoti-200 rounded-xl sm:rounded-2xl p-2.5 sm:p-5 shadow-sm">
             {isEditingDia ? (
               <Fragment>
-                <p className="text-[10px] sm:text-xs font-bold text-indigo-900 leading-tight mb-1.5 sm:mb-2">Día de Venc.</p>
+                <p className="text-[10px] sm:text-xs font-bold text-camoti-900 leading-tight mb-1.5 sm:mb-2">Día de Venc.</p>
                 <input
                   type="number"
                   min="1" max="28"
@@ -679,7 +682,7 @@ export default function AdminProductos() {
                   <button
                     onClick={handleSaveDiaVencimiento}
                     disabled={isLoadingDia}
-                    className="flex-1 flex items-center justify-center p-1.5 rounded-md sm:rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+                    className="flex-1 flex items-center justify-center p-1.5 rounded-md sm:rounded-lg text-white bg-camoti-600 hover:bg-camoti-700 disabled:opacity-50 transition-colors"
                     title="Guardar"
                   >
                     {isLoadingDia ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
@@ -697,17 +700,17 @@ export default function AdminProductos() {
               <Fragment>
                 <button
                   onClick={() => { setIsEditingDia(true); setNuevoDia(diaVencimiento); setErrorDia(null); setSuccessDia(null); }}
-                  className="absolute top-1.5 right-1.5 sm:top-3 sm:right-3 p-1 sm:p-1.5 rounded-md sm:rounded-lg text-indigo-400 hover:text-indigo-700 hover:bg-white/70 transition-colors"
+                  className="absolute top-1.5 right-1.5 sm:top-3 sm:right-3 p-1 sm:p-1.5 rounded-md sm:rounded-lg text-camoti-400 hover:text-camoti-700 hover:bg-white/70 transition-colors"
                   title="Editar"
                 >
                   <Edit size={13} className="sm:hidden" />
                   <Edit size={15} className="hidden sm:block" />
                 </button>
-                <div className="w-7 h-7 sm:w-11 sm:h-11 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center mb-1.5 sm:mb-3">
+                <div className="w-7 h-7 sm:w-11 sm:h-11 rounded-full bg-camoti-100 text-camoti-600 flex items-center justify-center mb-1.5 sm:mb-3">
                   <CalendarDays size={14} className="sm:hidden" />
                   <CalendarDays size={20} className="hidden sm:block" />
                 </div>
-                <h2 className="text-[10px] sm:text-sm font-bold text-indigo-900 leading-tight">Día de Vencimiento</h2>
+                <h2 className="text-[10px] sm:text-sm font-bold text-camoti-900 leading-tight">Día de Vencimiento</h2>
                 <p className="text-base sm:text-2xl font-extrabold text-gray-900 tracking-tight mt-0.5 sm:mt-1">
                   Día {diaVencimiento}
                 </p>
@@ -726,10 +729,10 @@ export default function AdminProductos() {
         {isLoadingDescuento ? (
           <div className="bg-gray-100 rounded-xl sm:rounded-2xl h-28 sm:h-36 animate-pulse" />
         ) : (
-          <div className="relative bg-teal-50 border-2 border-teal-200 rounded-xl sm:rounded-2xl p-2.5 sm:p-5 shadow-sm">
+          <div className="relative bg-francia-50 border-2 border-francia-200 rounded-xl sm:rounded-2xl p-2.5 sm:p-5 shadow-sm">
             {isEditingDescuento ? (
               <Fragment>
-                <p className="text-[10px] sm:text-xs font-bold text-teal-900 leading-tight mb-1.5 sm:mb-2">% Desc. Menor</p>
+                <p className="text-[10px] sm:text-xs font-bold text-francia-900 leading-tight mb-1.5 sm:mb-2">% Desc. Menor</p>
                 <div className="relative">
                   <input
                     type="number"
@@ -746,7 +749,7 @@ export default function AdminProductos() {
                   <button
                     onClick={handleSaveDescuentoMenor}
                     disabled={isLoadingDescuento}
-                    className="flex-1 flex items-center justify-center p-1.5 rounded-md sm:rounded-lg text-white bg-teal-600 hover:bg-teal-700 disabled:opacity-50 transition-colors"
+                    className="flex-1 flex items-center justify-center p-1.5 rounded-md sm:rounded-lg text-white bg-francia-600 hover:bg-francia-700 disabled:opacity-50 transition-colors"
                     title="Guardar"
                   >
                     {isLoadingDescuento ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
@@ -764,17 +767,17 @@ export default function AdminProductos() {
               <Fragment>
                 <button
                   onClick={() => { setIsEditingDescuento(true); setNuevoDescuento(descuentoMenor); setErrorDescuento(null); setSuccessDescuento(null); }}
-                  className="absolute top-1.5 right-1.5 sm:top-3 sm:right-3 p-1 sm:p-1.5 rounded-md sm:rounded-lg text-teal-500 hover:text-teal-700 hover:bg-white/70 transition-colors"
+                  className="absolute top-1.5 right-1.5 sm:top-3 sm:right-3 p-1 sm:p-1.5 rounded-md sm:rounded-lg text-francia-500 hover:text-francia-700 hover:bg-white/70 transition-colors"
                   title="Editar"
                 >
                   <Edit size={13} className="sm:hidden" />
                   <Edit size={15} className="hidden sm:block" />
                 </button>
-                <div className="w-7 h-7 sm:w-11 sm:h-11 rounded-full bg-teal-100 text-teal-600 flex items-center justify-center mb-1.5 sm:mb-3">
+                <div className="w-7 h-7 sm:w-11 sm:h-11 rounded-full bg-francia-100 text-francia-600 flex items-center justify-center mb-1.5 sm:mb-3">
                   <Percent size={14} className="sm:hidden" />
                   <Percent size={20} className="hidden sm:block" />
                 </div>
-                <h2 className="text-[10px] sm:text-sm font-bold text-teal-900 leading-tight">Desc. Menores</h2>
+                <h2 className="text-[10px] sm:text-sm font-bold text-francia-900 leading-tight">Desc. Menores</h2>
                 <p className="text-base sm:text-2xl font-extrabold text-gray-900 tracking-tight mt-0.5 sm:mt-1">
                   {descuentoMenor}%
                 </p>
@@ -797,7 +800,7 @@ export default function AdminProductos() {
 
       {/* Tarjetas — mobile (skeleton de carga) */}
       {loading && (
-        <div className="md:hidden bg-white rounded-2xl shadow-sm border border-gray-100 divide-y divide-gray-50">
+        <div className="md:hidden bg-white rounded-2xl shadow-sm border border-gray-200 divide-y divide-gray-50">
           {[...Array(5)].map((_, i) => (
             <div key={i} className="p-4 animate-pulse space-y-2">
               <div className="h-4 bg-gray-200 rounded-md w-2/3" />
@@ -809,7 +812,7 @@ export default function AdminProductos() {
 
       {/* Tarjetas — mobile */}
       {!loading && (
-        <div className="md:hidden bg-white rounded-2xl shadow-sm border border-gray-100 divide-y divide-gray-50">
+        <div className="md:hidden bg-white rounded-2xl shadow-sm border border-gray-200 divide-y divide-gray-50">
           {otrosProductos.map(p => (
             <div key={p.id_producto} className="p-4 space-y-3">
               <div className="flex items-start justify-between gap-3">
@@ -840,7 +843,7 @@ export default function AdminProductos() {
                   {formatoMoneda.format(p.precio_actual)}
                 </span>
                 {p.stock == null ? (
-                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-camoti-100 text-camoti-800">
                     <InfinityIcon size={12} /> Ilimitado
                   </span>
                 ) : (
@@ -848,7 +851,7 @@ export default function AdminProductos() {
                 )}
               </div>
 
-              <div className="pt-2 border-t border-gray-50">
+              <div className="pt-2 border-t border-gray-200">
                 <button
                   onClick={() => openModalForEdit(p)}
                   className="w-full inline-flex items-center justify-center gap-1.5 p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-100 rounded-lg transition-colors text-xs font-medium"
@@ -871,7 +874,7 @@ export default function AdminProductos() {
       )}
 
       {/* Tabla — desktop */}
-      <div className="hidden md:block bg-white rounded-2xl shadow-sm border border-gray-100 overflow-x-auto">
+      <div className="hidden md:block bg-white rounded-2xl shadow-sm border border-gray-200 overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-100">
           <thead className="bg-gray-50">
             <tr>
@@ -911,7 +914,7 @@ export default function AdminProductos() {
                 </td>
                 <td className="px-6 py-4 text-sm">
                   {p.stock == null ? (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-camoti-100 text-camoti-800">
                       <InfinityIcon size={12} /> Ilimitado
                     </span>
                   ) : (

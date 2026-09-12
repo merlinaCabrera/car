@@ -1,10 +1,97 @@
+@import './styles/variables.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ============================================================================
+   Base tipográfica — Manual de marca, doc 04
+   ----------------------------------------------------------------------------
+   Inter para todo lo funcional; Playfair Display para la identidad.
+
+   El <h1> de cada pantalla es "cabecera del club" y va en Playfair. De h2 para
+   abajo NO se aplica por regla global: en esta app muchos <h2> son etiquetas
+   chiquitas en mayúsculas (text-xs uppercase tracking-wider) donde una serif de
+   alto contraste se rompe. Los títulos de sección que sí ameritan Playfair usan
+   la clase `font-display` de forma explícita.
+   ========================================================================== */
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply font-sans text-gray-900 antialiased;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  }
+
+  h1 {
+    font-family: var(--car-font-display);
+    letter-spacing: -0.01em;
+  }
+
+  /* Datos numéricos tabulares (importes, DNI, contadores): que no bailen las
+     columnas al actualizarse. El manual pide Inter para datos numéricos. */
+  th, td {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* La itálica está reservada a anuncios de partido y citas solemnes
+     (regla estricta del manual). `.matchday` es el único lugar donde se usa. */
+  .matchday {
+    font-family: var(--car-font-display);
+    font-style: italic;
+    font-weight: 600;
+  }
+}
+
 @layer components {
   .form-input {
-    @apply block w-full px-3 py-2 bg-white border border-gray-300 rounded-lg
-           shadow-sm placeholder-gray-400 text-sm
-           focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500;
+    @apply block w-full px-3 py-2 bg-white border border-gray-300 rounded-xl
+           shadow-sm placeholder-gray-400 text-sm text-gray-900
+           transition-colors
+           focus:outline-none focus:ring-2 focus:ring-blue-600/30 focus:border-blue-600;
   }
+
+  /* Botonera institucional. Los componentes existentes siguen usando sus
+     clases inline (que ya caen en la paleta por el remapeo de tailwind.config);
+     estas clases son para código nuevo y para unificar lo que se vaya tocando. */
+  .btn-primario {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl
+           bg-blue-600 text-white text-sm font-bold
+           transition-colors hover:bg-blue-700
+           focus:outline-none focus:ring-2 focus:ring-blue-600/40 focus:ring-offset-2
+           disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed;
+  }
+
+  .btn-secundario {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl
+           border border-blue-600 bg-white text-blue-600 text-sm font-semibold
+           transition-colors hover:bg-blue-50
+           focus:outline-none focus:ring-2 focus:ring-blue-600/30 focus:ring-offset-2
+           disabled:border-gray-300 disabled:text-gray-400 disabled:cursor-not-allowed;
+  }
+
+  /* Tarjeta estándar: un solo radio y una sola sombra en toda la app. */
+  .card-car {
+    @apply bg-white rounded-2xl border border-gray-200 shadow-sm;
+  }
+
+  .badge-car {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full
+           text-xs font-medium;
+  }
+}
+
+/* ── Scrollbar sobria y acorde a la paleta (solo navegadores que la soportan) */
+@supports (scrollbar-color: auto) {
+  * {
+    scrollbar-color: var(--car-neutro-300) transparent;
+    scrollbar-width: thin;
+  }
+}
+
+::selection {
+  background-color: var(--car-azul-roberts);
+  color: var(--car-blanco);
 }

@@ -127,7 +127,7 @@ function NuevaCategoriaModal({ onClose, onSave }) {
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md flex flex-col max-h-[92dvh]">
         <div className="p-6 border-b flex-shrink-0 flex items-start justify-between">
           <div>
-            <h2 className="text-xl font-bold text-gray-800">Nueva Categoría</h2>
+            <h2 className="font-display text-xl font-semibold text-gray-800">Nueva Categoría</h2>
             <p className="text-sm text-gray-500 mt-1">Ej: Sub-15, Primera División, Veteranos.</p>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
@@ -163,7 +163,7 @@ function NuevaCategoriaModal({ onClose, onSave }) {
 
             <div className="pt-2 border-t">
               <p className="text-sm font-semibold text-gray-700 flex items-center gap-1.5 mb-1">
-                <Wand2 size={14} className="text-purple-500" />
+                <Wand2 size={14} className="text-camoti-500" />
                 Cortes de edad (para Autocompletar)
               </p>
               <p className="text-xs text-gray-500 mb-3">
@@ -257,7 +257,7 @@ function EditarCategoriaModal({ categoria, onClose, onSave }) {
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md flex flex-col max-h-[92dvh]">
         <div className="p-6 border-b flex-shrink-0 flex items-start justify-between">
           <div>
-            <h2 className="text-xl font-bold text-gray-800">Editar Categoría</h2>
+            <h2 className="font-display text-xl font-semibold text-gray-800">Editar Categoría</h2>
             <p className="text-sm text-gray-500 mt-1">{categoria.nombre}</p>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
@@ -292,13 +292,13 @@ function EditarCategoriaModal({ categoria, onClose, onSave }) {
             />
 
             <label className="flex items-center gap-3 p-3 rounded-xl border-2 border-gray-200 bg-white cursor-pointer select-none">
-              <input type="checkbox" checked={esActiva} onChange={e => setEsActiva(e.target.checked)} className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+              <input type="checkbox" checked={esActiva} onChange={e => setEsActiva(e.target.checked)} className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-600" />
               <span className="text-sm font-semibold text-gray-700">Categoría activa</span>
             </label>
 
             <div className="pt-2 border-t">
               <p className="text-sm font-semibold text-gray-700 flex items-center gap-1.5 mb-1">
-                <Wand2 size={14} className="text-purple-500" />
+                <Wand2 size={14} className="text-camoti-500" />
                 Cortes de edad (para Autocompletar)
               </p>
               <p className="text-xs text-gray-500 mb-3">
@@ -408,7 +408,7 @@ function InscribirJugadorModal({ categoria, temporada, onClose, onSave }) {
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md flex flex-col max-h-[92dvh]">
         <div className="p-6 border-b flex-shrink-0 flex items-start justify-between">
           <div>
-            <h2 className="text-xl font-bold text-gray-800">Inscribir Jugador</h2>
+            <h2 className="font-display text-xl font-semibold text-gray-800">Inscribir Jugador</h2>
             <p className="text-sm text-gray-500 mt-1">{categoria.nombre} · Temporada {temporada}</p>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
@@ -449,7 +449,7 @@ function InscribirJugadorModal({ categoria, temporada, onClose, onSave }) {
                   <button
                     key={u.id_usuario}
                     onClick={() => setSocioSeleccionado(u)}
-                    className="w-full text-left px-4 py-2.5 rounded-lg hover:bg-blue-50 border border-gray-100 transition-colors flex items-center justify-between"
+                    className="w-full text-left px-4 py-2.5 rounded-lg hover:bg-blue-50 border border-gray-200 transition-colors flex items-center justify-between"
                   >
                     <span className="font-medium text-gray-800">{u.apellido}, {u.nombre}</span>
                     <span className="text-xs text-gray-400 font-mono">DNI {u.dni}</span>
@@ -470,7 +470,7 @@ function InscribirJugadorModal({ categoria, temporada, onClose, onSave }) {
               </div>
 
               <label className="flex items-center gap-3 p-3 rounded-xl border-2 border-gray-200 bg-white cursor-pointer select-none">
-                <input type="checkbox" checked={esCapitan} onChange={e => setEsCapitan(e.target.checked)} className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+                <input type="checkbox" checked={esCapitan} onChange={e => setEsCapitan(e.target.checked)} className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-600" />
                 <span className="text-sm font-semibold text-gray-700 flex items-center gap-1.5">
                   <Star size={14} className="text-amber-500" /> Marcar como capitán
                 </span>
@@ -634,7 +634,7 @@ function GestionTecnicosModal({ categoria, onClose }) {
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md flex flex-col max-h-[92dvh]">
         <div className="p-6 border-b flex-shrink-0 flex items-start justify-between">
           <div>
-            <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+            <h2 className="font-display text-xl font-semibold text-gray-800 flex items-center gap-2">
               <UserCog size={20} className="text-gray-500" />
               Gestión de Técnicos
             </h2>
@@ -687,16 +687,16 @@ function GestionTecnicosModal({ categoria, onClose }) {
                     key={u.id_usuario}
                     onClick={() => !yaAsignado && handleAsignar(u)}
                     disabled={yaAsignado || asignando === u.id_usuario}
-                    className="w-full text-left px-4 py-2.5 rounded-lg hover:bg-emerald-50 border border-gray-100 transition-colors flex items-center justify-between disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                    className="w-full text-left px-4 py-2.5 rounded-lg hover:bg-green-50 border border-gray-200 transition-colors flex items-center justify-between disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent"
                   >
                     <span className="font-medium text-gray-800">{u.apellido}, {u.nombre}</span>
                     <span className="text-xs text-gray-400 flex items-center gap-2">
                       <span className="font-mono">DNI {u.dni}</span>
                       {yaAsignado
-                        ? <span className="text-emerald-600 font-semibold">Ya asignado</span>
+                        ? <span className="text-green-600 font-semibold">Ya asignado</span>
                         : asignando === u.id_usuario
                           ? <Loader2 size={13} className="animate-spin" />
-                          : <PlusCircle size={14} className="text-emerald-600" />
+                          : <PlusCircle size={14} className="text-green-600" />
                       }
                     </span>
                   </button>
@@ -720,7 +720,7 @@ function GestionTecnicosModal({ categoria, onClose }) {
               {asignados.map(a => (
                 <div
                   key={a.id_usuario}
-                  className="flex items-center justify-between px-4 py-2.5 rounded-lg bg-gray-50 border border-gray-100"
+                  className="flex items-center justify-between px-4 py-2.5 rounded-lg bg-gray-50 border border-gray-200"
                 >
                   <div className="min-w-0">
                     <p className="font-medium text-gray-800 truncate">
@@ -780,11 +780,11 @@ function AutocompletarModal({ categoria, temporada, onClose, onConfirm }) {
     >
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md flex flex-col">
         <div className="p-6 border-b flex items-start gap-3">
-          <div className="p-2.5 rounded-xl bg-purple-100 text-purple-600 flex-shrink-0">
+          <div className="p-2.5 rounded-xl bg-camoti-100 text-camoti-600 flex-shrink-0">
             <Wand2 size={20} />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-gray-800">Autocompletar Plantel</h2>
+            <h2 className="font-display text-xl font-semibold text-gray-800">Autocompletar Plantel</h2>
             <p className="text-sm text-gray-500 mt-1">{categoria.nombre} · Temporada {temporada}</p>
           </div>
         </div>
@@ -818,7 +818,7 @@ function AutocompletarModal({ categoria, temporada, onClose, onConfirm }) {
           <button
             onClick={handleConfirmar}
             disabled={isSubmitting}
-            className="px-4 py-2 rounded-lg text-white bg-purple-600 hover:bg-purple-700 font-semibold disabled:opacity-50 transition-colors flex items-center gap-2"
+            className="px-4 py-2 rounded-lg text-white bg-camoti-600 hover:bg-camoti-700 font-semibold disabled:opacity-50 transition-colors flex items-center gap-2"
           >
             {isSubmitting && <Loader2 size={14} className="animate-spin" />}
             {isSubmitting ? 'Autocompletando…' : 'Confirmar Autocompletar'}
@@ -1052,7 +1052,7 @@ function VistaPlantel({ categoria, onVolver, onCategoriaActualizada }) {
                   ? 'Inscribir masivamente por fecha de nacimiento'
                   : 'Configurá los cortes de edad desde "Editar" antes de autocompletar'
               }
-              className="inline-flex items-center justify-center sm:justify-start gap-2 p-2.5 sm:px-4 sm:py-2 rounded-xl bg-purple-600 text-white font-semibold hover:bg-purple-700 disabled:bg-gray-200 disabled:text-gray-400 transition-colors shadow-sm"
+              className="inline-flex items-center justify-center sm:justify-start gap-2 p-2.5 sm:px-4 sm:py-2 rounded-xl bg-camoti-600 text-white font-semibold hover:bg-camoti-700 disabled:bg-gray-200 disabled:text-gray-400 transition-colors shadow-sm"
             >
               <Wand2 size={18} className="sm:w-4 sm:h-4" />
               <span className="hidden sm:inline">Autocompletar</span>
@@ -1064,7 +1064,7 @@ function VistaPlantel({ categoria, onVolver, onCategoriaActualizada }) {
             <button
               onClick={() => setModalTecnicosAbierto(true)}
               title="Gestión Técnicos"
-              className="inline-flex items-center justify-center sm:justify-start gap-2 p-2.5 sm:px-4 sm:py-2 rounded-xl bg-slate-700 text-white font-semibold hover:bg-slate-800 transition-colors shadow-sm"
+              className="inline-flex items-center justify-center sm:justify-start gap-2 p-2.5 sm:px-4 sm:py-2 rounded-xl bg-gray-700 text-white font-semibold hover:bg-gray-800 transition-colors shadow-sm"
             >
               <UserCog size={18} className="sm:w-4 sm:h-4" />
               <span className="hidden sm:inline">Gestión Técnicos</span>
@@ -1093,7 +1093,7 @@ function VistaPlantel({ categoria, onVolver, onCategoriaActualizada }) {
       )}
 
       {resultadoAutocompletar && (
-        <div className="flex items-start gap-3 p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm">
+        <div className="flex items-start gap-3 p-4 rounded-xl bg-green-50 border border-green-200 text-green-800 text-sm">
           <CheckCircle2 size={18} className="flex-shrink-0 mt-0.5" />
           <div className="flex-1">
             <p className="font-semibold">Autocompletado terminado.</p>
@@ -1103,7 +1103,7 @@ function VistaPlantel({ categoria, onVolver, onCategoriaActualizada }) {
               (el resto ya estaba en el plantel).
             </p>
           </div>
-          <button onClick={() => setResultadoAutocompletar(null)} className="text-emerald-600 hover:text-emerald-900">
+          <button onClick={() => setResultadoAutocompletar(null)} className="text-green-600 hover:text-green-900">
             <X size={16} />
           </button>
         </div>
@@ -1120,7 +1120,7 @@ function VistaPlantel({ categoria, onVolver, onCategoriaActualizada }) {
       )}
 
       {/* Plantel — cards en mobile, tabla en desktop (mismo patrón que /admin/socios) */}
-      <div className="md:hidden bg-white rounded-2xl shadow-sm border border-gray-100 divide-y divide-gray-50">
+      <div className="md:hidden bg-white rounded-2xl shadow-sm border border-gray-200 divide-y divide-gray-50">
         {loading && [...Array(4)].map((_, i) => (
           <div key={i} className="p-4"><div className="h-4 bg-gray-200 rounded-md animate-pulse" /></div>
         ))}
@@ -1139,7 +1139,7 @@ function VistaPlantel({ categoria, onVolver, onCategoriaActualizada }) {
               </span>
             </div>
 
-            <div className="flex items-center gap-1 pt-2 border-t border-gray-50 -mx-1">
+            <div className="flex items-center gap-1 pt-2 border-t border-gray-200 -mx-1">
               <button
                 onClick={() => handleToggleCapitan(j.id_usuario, j.es_capitan)}
                 disabled={capitanEnCurso === j.id_usuario}
@@ -1173,7 +1173,7 @@ function VistaPlantel({ categoria, onVolver, onCategoriaActualizada }) {
         )}
       </div>
 
-      <div className="hidden md:block bg-white rounded-2xl shadow-sm border border-gray-100 overflow-x-auto">
+      <div className="hidden md:block bg-white rounded-2xl shadow-sm border border-gray-200 overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-100">
           <thead className="bg-gray-50">
             <tr>
@@ -1374,7 +1374,7 @@ export default function TecnicoPlanteles() {
 
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
         {loading && [...Array(3)].map((_, i) => (
-          <div key={i} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 h-28 animate-pulse" />
+          <div key={i} className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 h-28 animate-pulse" />
         ))}
 
         {!loading && categorias.map(cat => {
@@ -1382,7 +1382,7 @@ export default function TecnicoPlanteles() {
             <button
               key={cat.id_categoria}
               onClick={() => setCategoriaSeleccionada(cat)}
-              className="text-left bg-white rounded-2xl border border-gray-100 shadow-sm p-5 hover:shadow-md hover:border-blue-200 transition-all"
+              className="text-left bg-white rounded-2xl border border-gray-200 shadow-sm p-5 hover:shadow-md hover:border-blue-200 transition-all"
             >
               <div className="flex items-start justify-between gap-2">
                 <p className="font-bold text-gray-900">{cat.nombre}</p>

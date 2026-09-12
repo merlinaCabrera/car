@@ -42,9 +42,9 @@ const JSPDF_CDN =
   'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'
 
 const COLORES = {
-  azulOscuro: [15, 30, 80],    // #0F1E50 — membrete
-  azulMedio:  [30, 80, 160],   // #1E50A0 — encabezado tabla
-  grisClaro:  [245, 246, 248], // #F5F6F8 — filas alternas
+  azulOscuro: [28, 31, 45],    // #1C1F2D — Azul Francia (membrete)
+  azulMedio:  [24, 63, 124],   // #183F7C — Azul Roberts (encabezado tabla)
+  grisClaro:  [247, 248, 249], // #F7F8F9 — neutro 50 (filas alternas)
   grisTexto:  [80, 80, 90],    // texto secundario
   negro:      [20, 20, 20],
 }

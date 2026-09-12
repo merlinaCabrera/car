@@ -100,9 +100,9 @@ export default function CalendarioMensual({ eventos = [], mes, onMesChange, rend
     mes.getMonth() === new Date().getMonth()
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
       {/* Navegación */}
-      <div className="flex items-center justify-between px-3 sm:px-5 py-3 sm:py-4 border-b border-gray-100">
+      <div className="flex items-center justify-between px-3 sm:px-5 py-3 sm:py-4 border-b border-gray-200">
         <button
           onClick={irAlMesAnterior}
           className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors"
@@ -135,7 +135,7 @@ export default function CalendarioMensual({ eventos = [], mes, onMesChange, rend
       </div>
 
       {/* Encabezado de días */}
-      <div className="grid grid-cols-7 border-b border-gray-100">
+      <div className="grid grid-cols-7 border-b border-gray-200">
         {DIAS_SEMANA.map(dia => (
           <div
             key={dia}

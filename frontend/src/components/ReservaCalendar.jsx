@@ -138,17 +138,19 @@ export default function ReservaCalendar({ instalacion, onSeleccionar }) {
     [eventos, instalacion, addToCart]
   )
 
-  // Colorea bloqueada (ámbar, pago pendiente) vs confirmada (rojo, ocupado en firme)
+  // Colorea bloqueada (ámbar, pago pendiente) vs confirmada (verde, ocupado
+  // en firme). Antes "confirmada" se pintaba de ROJO, que en el resto de la
+  // app significa rechazo/error — y el manual reserva el rojo para eso.
   const eventPropGetter = useCallback((event) => ({
     style: {
-      backgroundColor: event.estado === 'confirmada' ? '#dc2626' : '#f59e0b',
-      borderColor: event.estado === 'confirmada' ? '#b91c1c' : '#d97706',
+      backgroundColor: event.estado === 'confirmada' ? '#2F6B4F' : '#A96A12',
+      borderColor: event.estado === 'confirmada' ? '#265842' : '#854E12',
       opacity: 0.9,
     },
   }), [])
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4">
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wide">
           Disponibilidad — {instalacion}

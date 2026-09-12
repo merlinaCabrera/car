@@ -207,10 +207,10 @@ export default function MainLayout({ userRole }) {
   const itemCount = cart.reduce((acc, item) => acc + item.qty, 0);
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans flex flex-col">
+    <div className="min-h-screen bg-gray-50 font-sans flex flex-col">
 
       {/* Header Principal */}
-      <header className="bg-slate-900 text-slate-100 sticky top-0 z-40 shadow-lg border-b border-slate-800">
+      <header className="bg-blue-600 text-white sticky top-0 z-40 shadow-md border-b border-blue-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="relative flex items-center justify-between py-3">
 
@@ -218,7 +218,7 @@ export default function MainLayout({ userRole }) {
             <div>
               <button
                 onClick={() => setIsMenuOpen(true)}
-                className="p-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 focus:outline-none transition-colors"
+                className="p-2 rounded-xl bg-white/10 text-white/90 hover:text-white hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-white/40 transition-colors"
               >
                 <Menu className="h-6 w-6" />
               </button>
@@ -226,8 +226,12 @@ export default function MainLayout({ userRole }) {
 
             {/* Logo */}
             <div className="absolute left-1/2 transform -translate-x-1/2">
-              <Link to={esAdminGeneral ? '/admin' : esSocio ? '/socio' : '/'} className="block transition-transform hover:scale-105 active:scale-95">
-                <img src={escudoCar} alt="Escudo Club" className="h-16 sm:h-20 w-auto object-contain drop-shadow-xl" />
+              <Link
+                to={esAdminGeneral ? '/admin' : esSocio ? '/socio' : '/'}
+                className="block rounded-2xl bg-white p-2 sm:p-2.5 shadow-sm transition-transform hover:scale-105 active:scale-95"
+                aria-label="Ir al inicio"
+              >
+                <img src={escudoCar} alt="Escudo Club Atlético Roberts" className="h-12 sm:h-16 w-auto object-contain" />
               </Link>
             </div>
 
@@ -237,11 +241,11 @@ export default function MainLayout({ userRole }) {
                 {/* Notificaciones */}
                 <Link
                   to="/notificaciones"
-                  className="flex p-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 transition-colors relative"
+                  className="flex p-2 rounded-xl bg-white/10 text-white/90 hover:text-white hover:bg-white/20 transition-colors relative"
                 >
                   <Bell className="h-6 w-6" />
                   {unreadCount > 0 && (
-                    <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white ring-2 ring-slate-900">
+                    <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white ring-2 ring-blue-600">
                       {unreadCount}
                     </span>
                   )}
@@ -250,11 +254,11 @@ export default function MainLayout({ userRole }) {
                 {/* Carrito */}
                 <Link
                   to="/carrito"
-                  className="flex p-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 transition-colors relative"
+                  className="flex p-2 rounded-xl bg-white/10 text-white/90 hover:text-white hover:bg-white/20 transition-colors relative"
                 >
                   <ShoppingCart className="h-6 w-6" />
                   {itemCount > 0 && (
-                    <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white ring-2 ring-slate-900">
+                    <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white ring-2 ring-blue-600">
                       {itemCount}
                     </span>
                   )}
@@ -275,13 +279,13 @@ export default function MainLayout({ userRole }) {
       )}
 
       <div
-        className={`fixed inset-y-0 left-0 z-50 w-72 bg-slate-900 shadow-2xl transform transition-transform duration-300 ease-in-out flex flex-col border-r border-slate-800 ${
+        className={`fixed inset-y-0 left-0 z-50 w-72 bg-gray-900 shadow-xl transform transition-transform duration-300 ease-in-out flex flex-col border-r border-gray-800/60 ${
           isMenuOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        <div className="p-5 border-b border-slate-800 flex justify-between items-center bg-slate-950">
-          <span className="font-bold text-white tracking-widest text-lg">MENÚ</span>
-          <button onClick={closeMenu} className="p-2 text-slate-400 hover:text-white bg-slate-800 rounded-lg transition-colors">
+        <div className="p-5 border-b border-gray-800 flex justify-between items-center bg-gray-950">
+          <span className="font-display font-semibold text-white tracking-widest text-lg">Menú</span>
+          <button onClick={closeMenu} className="p-2 text-gray-400 hover:text-white bg-gray-800 rounded-lg transition-colors">
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -294,35 +298,35 @@ export default function MainLayout({ userRole }) {
           {esAdminGeneral && (
             <div>
               <Link to="/admin" onClick={closeMenu}
-                className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors">
+                className="flex items-center gap-3 px-4 py-3 text-gray-300 hover:bg-gray-800 hover:text-white rounded-xl font-semibold transition-colors">
                 <LayoutDashboard size={18} /><span>Inicio</span>
               </Link>
-              <hr className="border-gray-700 my-2" /><p className="px-2 mb-2 text-xs text-gray-400 uppercase tracking-wider font-semibold">Gestión</p>
-              <Link to="/admin/socios" onClick={closeMenu} className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors">
+              <hr className="border-gray-700/70 my-2" /><p className="px-2 mb-2 text-xs text-gray-400 uppercase tracking-wider font-semibold">Gestión</p>
+              <Link to="/admin/socios" onClick={closeMenu} className="flex items-center gap-3 px-4 py-3 text-gray-300 hover:bg-gray-800 hover:text-white rounded-xl font-semibold transition-colors">
                 <Users size={18} /><span>Socios</span>
               </Link>
-              <Link to="/admin/verificaciones" onClick={closeMenu} className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors">
+              <Link to="/admin/verificaciones" onClick={closeMenu} className="flex items-center gap-3 px-4 py-3 text-gray-300 hover:bg-gray-800 hover:text-white rounded-xl font-semibold transition-colors">
                 <Wallet size={18} /><span>Verificaciones</span>
               </Link>
-              <Link to="/admin/estadisticas" onClick={closeMenu} className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors">
+              <Link to="/admin/estadisticas" onClick={closeMenu} className="flex items-center gap-3 px-4 py-3 text-gray-300 hover:bg-gray-800 hover:text-white rounded-xl font-semibold transition-colors">
                 <TrendingUp size={18} /><span>Estadísticas</span>
               </Link>
-              <Link to="/admin/reservas" onClick={closeMenu} className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors">
+              <Link to="/admin/reservas" onClick={closeMenu} className="flex items-center gap-3 px-4 py-3 text-gray-300 hover:bg-gray-800 hover:text-white rounded-xl font-semibold transition-colors">
                 <Calendar size={18} /><span>Alquileres</span>
               </Link>
-              <Link to="/gestion-eventos" onClick={closeMenu} className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors">
+              <Link to="/gestion-eventos" onClick={closeMenu} className="flex items-center gap-3 px-4 py-3 text-gray-300 hover:bg-gray-800 hover:text-white rounded-xl font-semibold transition-colors">
                 <CalendarDays size={18} /><span>Eventos</span>
               </Link>
-              <Link to="/gestion-planteles" onClick={closeMenu} className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors">
+              <Link to="/gestion-planteles" onClick={closeMenu} className="flex items-center gap-3 px-4 py-3 text-gray-300 hover:bg-gray-800 hover:text-white rounded-xl font-semibold transition-colors">
                 <ClipboardList size={18} /><span>Planteles</span>
               </Link>
-              <Link to="/admin/productos" onClick={closeMenu} className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors">
+              <Link to="/admin/productos" onClick={closeMenu} className="flex items-center gap-3 px-4 py-3 text-gray-300 hover:bg-gray-800 hover:text-white rounded-xl font-semibold transition-colors">
                 <Package size={18} /><span>Catálogo</span>
               </Link>
-              <Link to="/admin/comercios" onClick={closeMenu} className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors">
+              <Link to="/admin/comercios" onClick={closeMenu} className="flex items-center gap-3 px-4 py-3 text-gray-300 hover:bg-gray-800 hover:text-white rounded-xl font-semibold transition-colors">
                 <Store size={18} /><span>Comercios</span>
               </Link>
-              <Link to="/admin/auditoria" onClick={closeMenu} className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors">
+              <Link to="/admin/auditoria" onClick={closeMenu} className="flex items-center gap-3 px-4 py-3 text-gray-300 hover:bg-gray-800 hover:text-white rounded-xl font-semibold transition-colors">
                 <History size={18} /><span>Historial</span>
               </Link>
             </div>
@@ -331,7 +335,7 @@ export default function MainLayout({ userRole }) {
           {/* ══ VER COMO... — 6 roles plegables, solo para admin ══════════ */}
           {esAdminGeneral && (
             <div>
-              <hr className="border-gray-700 my-4" />
+              <hr className="border-gray-700/70 my-4" />
               <p className="px-2 mb-2 text-xs text-gray-400 uppercase tracking-wider font-semibold">Ver como...</p>
 
               {[
@@ -344,15 +348,15 @@ export default function MainLayout({ userRole }) {
               ].map(({ key, label, icon: Icon, nav }) => (
                 <div key={key}>
                   <button onClick={() => toggleSeccion(key)}
-                    className="flex items-center justify-between w-full px-4 py-3 text-slate-400 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors">
+                    className="flex items-center justify-between w-full px-4 py-3 text-gray-400 hover:bg-gray-800 hover:text-white rounded-xl font-semibold transition-colors">
                     <span className="flex items-center gap-3"><Icon size={18} /> {label}</span>
                     <ChevronDown size={16} className={`transition-transform ${seccionesAbiertas[key] ? 'rotate-180' : ''}`} />
                   </button>
                   {seccionesAbiertas[key] && (
-                    <div className="ml-4 border-l border-slate-700 pl-2 mb-1">
+                    <div className="ml-4 border-l border-gray-700 pl-2 mb-1">
                       {nav.map((link) => (
                         <Link key={link.path} to={link.path} onClick={closeMenu}
-                          className="flex items-center gap-3 px-4 py-2.5 text-slate-400 hover:bg-slate-800 hover:text-white rounded-xl text-sm font-medium transition-colors">
+                          className="flex items-center gap-3 px-4 py-2.5 text-gray-400 hover:bg-gray-800 hover:text-white rounded-xl text-sm font-medium transition-colors">
                           <link.icon size={16} /><span>{link.name}</span>
                         </Link>
                       ))}
@@ -375,7 +379,7 @@ export default function MainLayout({ userRole }) {
                 <div>
                   {NAV_SOCIO.map((link) => (
                     <Link key={link.path} to={link.path} onClick={closeMenu}
-                      className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors">
+                      className="flex items-center gap-3 px-4 py-3 text-gray-300 hover:bg-gray-800 hover:text-white rounded-xl font-semibold transition-colors">
                       <link.icon size={18} /><span>{link.name}</span>
                     </Link>
                   ))}
@@ -389,17 +393,17 @@ export default function MainLayout({ userRole }) {
                 esJugador && { key: 'own_jugador', label: 'Deportivo', icon: Users, nav: NAV_JUGADOR },
               ].filter(Boolean).map(({ key, label, icon: Icon, nav }, idx) => (
                 <div key={key}>
-                  {idx === 0 && <hr className="border-gray-700 my-4" />}
+                  {idx === 0 && <hr className="border-gray-700/70 my-4" />}
                   <button onClick={() => toggleSeccion(key)}
-                    className="flex items-center justify-between w-full px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-colors">
+                    className="flex items-center justify-between w-full px-4 py-3 text-gray-300 hover:bg-gray-800 hover:text-white rounded-xl font-semibold transition-colors">
                     <span className="flex items-center gap-3"><Icon size={18} /> {label}</span>
                     <ChevronDown size={16} className={`transition-transform ${seccionesAbiertas[key] ? 'rotate-180' : ''}`} />
                   </button>
                   {seccionesAbiertas[key] && (
-                    <div className="ml-4 border-l border-slate-700 pl-2 mb-1">
+                    <div className="ml-4 border-l border-gray-700 pl-2 mb-1">
                       {nav.map((link) => (
                         <Link key={link.path} to={link.path} onClick={closeMenu}
-                          className="flex items-center gap-3 px-4 py-2.5 text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl text-sm font-medium transition-colors">
+                          className="flex items-center gap-3 px-4 py-2.5 text-gray-300 hover:bg-gray-800 hover:text-white rounded-xl text-sm font-medium transition-colors">
                           <link.icon size={16} /><span>{link.name}</span>
                         </Link>
                       ))}
@@ -412,8 +416,8 @@ export default function MainLayout({ userRole }) {
 
         </nav>
 
-        <div className="p-6 border-t border-slate-800 bg-slate-950">
-          <Link to="/ayuda" onClick={closeMenu} className="w-full flex items-center justify-center gap-2 px-4 py-3 mb-3 border border-slate-700 text-slate-300 rounded-xl hover:text-white hover:bg-slate-800 transition-colors font-semibold">
+        <div className="p-6 border-t border-gray-800 bg-gray-950">
+          <Link to="/ayuda" onClick={closeMenu} className="w-full flex items-center justify-center gap-2 px-4 py-3 mb-3 border border-gray-700 text-gray-300 rounded-xl hover:text-white hover:bg-gray-800 transition-colors font-semibold">
             <HelpCircle size={18} />
             <span>Ayuda</span>
           </Link>

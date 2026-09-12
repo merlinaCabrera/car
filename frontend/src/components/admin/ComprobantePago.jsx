@@ -108,7 +108,7 @@ export default function ComprobantePago({
         type="button"
         onClick={() => inputRef.current?.click()}
         disabled={subiendo}
-        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors disabled:opacity-50"
+        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 transition-colors disabled:opacity-50"
       >
         {subiendo ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
         {subiendo ? 'Subiendo…' : url ? 'Reemplazar' : 'Adjuntar'}

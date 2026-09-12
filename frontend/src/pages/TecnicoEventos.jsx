@@ -74,9 +74,9 @@ const normalizarTexto = (s) =>
   (s ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
 
 const TIPO_CONFIG = {
-  partido:       { label: 'Partido',       icon: Trophy,      classes: 'bg-emerald-100 text-emerald-800', chip: 'bg-emerald-500' },
-  entrenamiento: { label: 'Entrenamiento', icon: Dumbbell,    classes: 'bg-blue-100 text-blue-800',      chip: 'bg-blue-500'    },
-  torneo:        { label: 'Torneo',        icon: Trophy,      classes: 'bg-purple-100 text-purple-800',  chip: 'bg-purple-500'  },
+  partido:       { label: 'Partido',       icon: Trophy,      classes: 'bg-roberts-50 text-roberts-600', chip: 'bg-roberts-600' },
+  entrenamiento: { label: 'Entrenamiento', icon: Dumbbell,    classes: 'bg-francia-50 text-francia-700', chip: 'bg-francia-500' },
+  torneo:        { label: 'Torneo',        icon: Trophy,      classes: 'bg-camoti-50 text-camoti-600',   chip: 'bg-camoti-600'  },
   institucional: { label: 'Institucional', icon: Building2,   classes: 'bg-gray-100 text-gray-700',      chip: 'bg-gray-400'    },
   otro:          { label: 'Evento',        icon: CalendarDays, classes: 'bg-gray-100 text-gray-700',     chip: 'bg-gray-400'    },
 }
@@ -134,7 +134,7 @@ function TipoBadge({ tipo }) {
 }
 
 const ESTADO_CONVOCATORIA_CONFIG = {
-  citado:     { label: 'Citado',     icon: HelpCircle,   classes: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
+  citado:     { label: 'Citado',     icon: HelpCircle,   classes: 'bg-amber-100 text-amber-800 border-amber-200' },
   confirmado: { label: 'Confirmado', icon: CheckCircle,  classes: 'bg-green-100 text-green-800 border-green-200'   },
   rechazado:  { label: 'Rechazado',  icon: XCircle,      classes: 'bg-red-100 text-red-800 border-red-200'         },
 }
@@ -239,7 +239,7 @@ function ConvocatoriaModal({ evento, onClose, onSaveSuccess }) {
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl flex flex-col max-h-[90dvh]">
         <div className="p-6 border-b flex-shrink-0 flex items-start justify-between">
           <div>
-            <h2 className="text-xl font-bold text-gray-800">Armar Convocatoria</h2>
+            <h2 className="font-display text-xl font-semibold text-gray-800">Armar Convocatoria</h2>
             <p className="text-sm text-gray-500 mt-1">{evento.titulo}</p>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
@@ -288,15 +288,15 @@ function ConvocatoriaModal({ evento, onClose, onSaveSuccess }) {
                       key={usuario.id_usuario}
                       className="flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-colors"
                       style={{
-                        backgroundColor: selectedIds.has(usuario.id_usuario) ? '#eff6ff' : '#ffffff',
-                        borderColor: selectedIds.has(usuario.id_usuario) ? '#93c5fd' : '#e5e7eb',
+                        backgroundColor: selectedIds.has(usuario.id_usuario) ? '#EEF2F9' : '#FFFFFF',
+                        borderColor: selectedIds.has(usuario.id_usuario) ? '#8AA5CF' : '#E2E5E9',
                       }}
                     >
                       <input
                         type="checkbox"
                         checked={selectedIds.has(usuario.id_usuario)}
                         onChange={() => handleTogglePlayer(usuario.id_usuario)}
-                        className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-600"
                       />
                       <span className="font-medium text-gray-800">{usuario.apellido}, {usuario.nombre}</span>
                       <span className="ml-auto text-xs text-gray-400 font-mono">DNI {usuario.dni}</span>
@@ -482,7 +482,7 @@ function EventoFormModal({ evento, onClose, onSaveSuccess }) {
       <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-xl w-full max-w-lg flex flex-col max-h-[90dvh]">
         <div className="p-6 border-b flex-shrink-0 flex items-start justify-between">
           <div>
-            <h2 className="text-xl font-bold text-gray-800">{esEdicion ? 'Editar Evento' : 'Nuevo Evento'}</h2>
+            <h2 className="font-display text-xl font-semibold text-gray-800">{esEdicion ? 'Editar Evento' : 'Nuevo Evento'}</h2>
             <p className="text-sm text-gray-500 mt-1">
               {esEdicion ? 'Modificá los datos del evento.' : 'Crear un partido, entrenamiento u otro.'}
             </p>
@@ -858,7 +858,7 @@ export default function TecnicoEventos() {
             onClick={() => setMostrarFinalizados(prev => !prev)}
             className={`flex-shrink-0 inline-flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl font-semibold text-xs sm:text-sm transition-colors ${
               mostrarFinalizados
-                ? 'bg-slate-800 text-white hover:bg-slate-900'
+                ? 'bg-gray-800 text-white hover:bg-gray-900'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
             }`}
             title="Incluir eventos ya finalizados (para exportar su planilla de asistencia)"
@@ -915,7 +915,7 @@ export default function TecnicoEventos() {
       {vista === 'calendario' && (
         <div className="space-y-3">
           {loading ? (
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm h-96 animate-pulse" />
+            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm h-96 animate-pulse" />
           ) : (
             <>
               <CalendarioMensual
@@ -962,7 +962,7 @@ export default function TecnicoEventos() {
           </div>
 
           {loading && [...Array(3)].map((_, i) => (
-            <div key={i} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 h-24 animate-pulse" />
+            <div key={i} className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 h-24 animate-pulse" />
           ))}
 
           {!loading && eventosFiltrados.length === 0 && (
@@ -985,7 +985,7 @@ export default function TecnicoEventos() {
               <div
                 key={evento.id_evento}
                 className={`rounded-2xl border shadow-sm overflow-hidden ${
-                  esFinalizado ? 'bg-gray-50 border-gray-200' : 'bg-white border-gray-100'
+                  esFinalizado ? 'bg-gray-50 border-gray-200' : 'bg-white border-gray-200'
                 }`}
               >
                 {/* Fila colapsada: SOLO título + fecha, tocable para expandir */}
@@ -1016,12 +1016,12 @@ export default function TecnicoEventos() {
                     eventos no ocupe toda la pantalla con info que no
                     siempre hace falta ver. */}
                 {isExpanded && (
-                  <div className="px-4 sm:px-5 pb-4 sm:pb-5 space-y-4 border-t border-gray-100 pt-4">
+                  <div className="px-4 sm:px-5 pb-4 sm:pb-5 space-y-4 border-t border-gray-200 pt-4">
                     <div className="flex items-start justify-between gap-3 flex-wrap">
                       <div className="inline-flex items-center gap-2 flex-wrap">
                         <TipoBadge tipo={evento.tipo} />
                         {evento.estado === 'finalizado' && (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-200 text-slate-700">
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-200 text-gray-700">
                             <History size={12} /> Finalizado
                           </span>
                         )}
@@ -1038,7 +1038,7 @@ export default function TecnicoEventos() {
                       </span>
                     )}
 
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2 border-t border-gray-100">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2 border-t border-gray-200">
                       {/* Contador de convocados */}
                       <div className="flex items-center gap-1.5 text-sm">
                         <Users size={15} className="text-gray-400 flex-shrink-0" />
@@ -1113,7 +1113,7 @@ export default function TecnicoEventos() {
                     </div>
 
                     {convocatoriasOrdenadas.length > 0 && (
-                      <div className="pt-3 border-t border-gray-100 space-y-2">
+                      <div className="pt-3 border-t border-gray-200 space-y-2">
                         <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Lista de Convocados</h4>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2">
                           {convocatoriasOrdenadas.map(conv => (

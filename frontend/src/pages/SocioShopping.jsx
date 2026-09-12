@@ -57,18 +57,19 @@ const CATEGORIAS = [
   { key: 'otro',         label: 'Otros',         Icon: Package },
 ]
 
+// Misma codificación que AdminProductos y CategoriaOrdenBadge.
 const COLORES_CATEGORIA = {
-  indumentaria: { badge: 'bg-violet-100 text-violet-700', dot: 'bg-violet-500' },
-  alquiler:     { badge: 'bg-amber-100  text-amber-700',  dot: 'bg-amber-500'  },
-  otro:         { badge: 'bg-slate-100  text-slate-600',  dot: 'bg-slate-400'  },
-  cuota_social: { badge: 'bg-blue-100   text-blue-700',   dot: 'bg-blue-500'   },
+  indumentaria: { badge: 'bg-francia-50 text-francia-700', dot: 'bg-francia-600' },
+  alquiler:     { badge: 'bg-camoti-50  text-camoti-600',  dot: 'bg-camoti-600'  },
+  otro:         { badge: 'bg-gray-100   text-gray-600',    dot: 'bg-gray-400'    },
+  cuota_social: { badge: 'bg-roberts-50 text-roberts-600', dot: 'bg-roberts-600' },
 }
 
 // ─── Skeleton de tarjeta de producto ─────────────────────────────────────────
 
 function ProductoSkeleton() {
   return (
-    <div className="bg-white rounded-2xl overflow-hidden border border-gray-100 animate-pulse">
+    <div className="bg-white rounded-2xl overflow-hidden border border-gray-200 animate-pulse">
       <div className="aspect-[4/3] bg-gray-200" />
       <div className="p-4 space-y-3">
         <div className="h-3 bg-gray-200 rounded-full w-1/3" />
@@ -95,7 +96,7 @@ function ImagenProducto({ src, nombre, categoria }) {
   if (!src || error) {
     return (
       <div className={`w-full h-full flex flex-col items-center justify-center gap-2
-                       bg-gradient-to-br from-gray-50 to-gray-100`}>
+                       bg-gray-100`}>
         <div className={`p-3 rounded-full ${colores.badge}`}>
           <IconCat size={28} strokeWidth={1.5} />
         </div>
@@ -172,8 +173,8 @@ function TarjetaProducto({ producto, onAgregar, recienAgregado }) {
       className={`
         group relative bg-white rounded-2xl overflow-hidden border transition-all duration-300
         ${sinStock
-          ? 'border-gray-100 opacity-75'
-          : 'border-gray-100 hover:border-gray-200 hover:shadow-lg hover:-translate-y-0.5'
+          ? 'border-gray-200 opacity-75'
+          : 'border-gray-200 hover:border-gray-200 hover:shadow-lg hover:-translate-y-0.5'
         }
       `}
     >
@@ -215,7 +216,7 @@ function TarjetaProducto({ producto, onAgregar, recienAgregado }) {
 
         {/* Nombre */}
         <h3 className="font-bold text-gray-900 text-base leading-snug line-clamp-2
-                        group-hover:text-indigo-700 transition-colors">
+                        group-hover:text-camoti-700 transition-colors">
           {producto.nombre}
         </h3>
 
@@ -248,7 +249,7 @@ function TarjetaProducto({ producto, onAgregar, recienAgregado }) {
               ? 'bg-green-500 text-white cursor-default shadow-sm'
               : esAlquiler
               ? 'bg-amber-600 hover:bg-amber-700 text-white shadow-sm hover:shadow-md'
-              : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm hover:shadow-md'
+              : 'bg-camoti-600 hover:bg-camoti-700 text-white shadow-sm hover:shadow-md'
             }
           `}
         >
@@ -282,7 +283,7 @@ function TabsCategorias({ activa, onChange }) {
               flex-shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold
               transition-all duration-200
               ${isActive
-                ? 'bg-indigo-600 text-white shadow-sm'
+                ? 'bg-camoti-600 text-white shadow-sm'
                 : 'bg-white text-gray-600 border border-gray-200 hover:border-gray-300 hover:bg-gray-50'
               }
             `}
@@ -307,9 +308,9 @@ function CartFAB({ itemCount }) {
       className="
         fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-30
         flex items-center gap-2 sm:gap-3
-        bg-indigo-600 hover:bg-indigo-700 active:scale-95
+        bg-camoti-600 hover:bg-camoti-700 active:scale-95
         text-white font-bold text-sm
-        px-4 py-3 sm:px-5 sm:py-3.5 rounded-2xl shadow-xl shadow-indigo-600/30
+        px-4 py-3 sm:px-5 sm:py-3.5 rounded-2xl shadow-xl shadow-camoti-600/30
         transition-all duration-200
         group
       "
@@ -320,9 +321,9 @@ function CartFAB({ itemCount }) {
           absolute -top-2.5 -right-2.5
           min-w-[18px] h-[18px] px-1
           flex items-center justify-center
-          rounded-full bg-white text-indigo-700
+          rounded-full bg-white text-camoti-700
           text-[10px] font-extrabold
-          ring-2 ring-indigo-600
+          ring-2 ring-camoti-600
         ">
           {itemCount > 99 ? '99+' : itemCount}
         </span>
@@ -435,13 +436,13 @@ export default function SocioShopping() {
       <CartFAB itemCount={totalItems} />
 
       {/* Header */}
-      <div className="bg-white border-b border-gray-100 sticky top-0 z-20 shadow-sm">
+      <div className="bg-white border-b border-gray-200 sticky top-0 z-20 shadow-sm">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 space-y-3">
 
           <div className="flex items-center justify-between gap-4">
             <div>
               <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-                <ShoppingBag size={20} className="text-indigo-600" />
+                <ShoppingBag size={20} className="text-camoti-600" />
                 Tienda Oficial
               </h1>
               <p className="text-xs text-gray-400 mt-0.5">

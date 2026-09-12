@@ -120,8 +120,8 @@ const COLOR_ORDEN = {
 // Reserva manual del admin con cobro en ventanilla: hay socio, pero no pasó por
 // el circuito de comprobantes.
 const COLOR_SIN_ORDEN = {
-  celda: 'bg-indigo-50 border-indigo-300 text-indigo-900 hover:bg-indigo-100',
-  badge: 'bg-indigo-100 text-indigo-700',
+  celda: 'bg-camoti-50 border-camoti-300 text-camoti-900 hover:bg-camoti-100',
+  badge: 'bg-camoti-100 text-camoti-700',
   label: 'Carga manual',
 }
 
@@ -179,7 +179,7 @@ function ModalAccionesTurno({ turno, onClose, onAsignar, onInhabilitar }) {
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <h2 className="text-lg font-bold text-gray-900">Turno libre</h2>
+            <h2 className="font-display text-lg font-semibold text-gray-900">Turno libre</h2>
             <p className="text-xs text-gray-500 mt-0.5">
               {labelInstalacion(turno.instalacion)} · {turno.etiqueta}
             </p>
@@ -191,7 +191,7 @@ function ModalAccionesTurno({ turno, onClose, onAsignar, onInhabilitar }) {
 
         <button
           onClick={onAsignar}
-          className="w-full flex items-start gap-3 p-3.5 rounded-xl border-2 border-slate-900 bg-slate-900 text-white text-left hover:bg-slate-800 transition-colors"
+          className="w-full flex items-start gap-3 p-3.5 rounded-xl border-2 border-gray-900 bg-gray-900 text-white text-left hover:bg-gray-800 transition-colors"
         >
           <UserPlus size={18} className="flex-shrink-0 mt-0.5" />
           <span>
@@ -268,7 +268,7 @@ function ModalBloquearTurno({ turno, onClose, onBloqueado }) {
       <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h2 className="text-lg font-bold text-gray-900">Inhabilitar turno</h2>
+            <h2 className="font-display text-lg font-semibold text-gray-900">Inhabilitar turno</h2>
             <p className="text-xs text-gray-500 mt-0.5">
               {labelInstalacion(turno.instalacion)} · {turno.etiqueta}
             </p>
@@ -295,7 +295,7 @@ function ModalBloquearTurno({ turno, onClose, onBloqueado }) {
             onChange={e => { setMotivo(e.target.value); setError(null) }}
             placeholder="Mantenimiento de la cancha, reunión de comisión…"
             maxLength={300}
-            className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:border-blue-500 focus:ring-blue-500"
+            className="w-full px-3 py-2.5 rounded-xl border border-gray-300 text-sm focus:border-blue-600 focus:ring-blue-600/25"
           />
           <p className="text-[11px] text-gray-400 mt-1.5">
             El turno deja de ofrecerse a los socios. No hay cobro ni socio asociado:
@@ -349,7 +349,7 @@ function ModalDetalleReserva({ reserva, onClose, onRechazar, onSuspender, onQuit
     >
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4 max-h-[90dvh] overflow-y-auto">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold text-gray-900">{labelInstalacion(reserva.instalacion)}</h2>
+          <h2 className="font-display text-lg font-semibold text-gray-900">{labelInstalacion(reserva.instalacion)}</h2>
           <button onClick={onClose} className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100">
             <X size={18} />
           </button>
@@ -408,7 +408,7 @@ function ModalDetalleReserva({ reserva, onClose, onRechazar, onSuspender, onQuit
           )}
         </div>
 
-        <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+        <div className="flex items-center justify-between pt-3 border-t border-gray-200">
           <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
             {bloqueo ? 'Tipo' : 'Estado del pago'}
           </span>
@@ -436,7 +436,7 @@ function ModalDetalleReserva({ reserva, onClose, onRechazar, onSuspender, onQuit
           <button
             onClick={() => setConfirmarQuitar(true)}
             disabled={quitando}
-            className="w-full py-2.5 rounded-xl bg-slate-900 text-white text-sm font-bold hover:bg-slate-800 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+            className="w-full py-2.5 rounded-xl bg-gray-900 text-white text-sm font-bold hover:bg-gray-800 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
           >
             {quitando && <Loader2 size={14} className="animate-spin" />}
             {quitando ? 'Quitando…' : 'Quitar bloqueo y liberar el turno'}
@@ -470,7 +470,7 @@ function ModalDetalleReserva({ reserva, onClose, onRechazar, onSuspender, onQuit
                 onChange={e => setMotivoSusp(e.target.value)}
                 placeholder="Motivo (ej: Lluvia)"
                 maxLength={300}
-                className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:border-blue-500 focus:ring-blue-500"
+                className="w-full px-3 py-2.5 rounded-xl border border-gray-300 text-sm focus:border-blue-600 focus:ring-blue-600/25"
               />
               <p className="text-xs text-gray-500">
                 Se libera el turno, se le acredita el importe al socio como saldo a
@@ -700,7 +700,7 @@ function ModalAsignarTurno({ turno, onClose, onGuardado }) {
       >
         <div className="p-6 border-b flex items-start justify-between gap-3 flex-shrink-0">
           <div className="min-w-0">
-            <h2 className="text-lg font-bold text-gray-900">Asignar turno a un socio</h2>
+            <h2 className="font-display text-lg font-semibold text-gray-900">Asignar turno a un socio</h2>
             <p className="text-xs text-gray-500 mt-0.5">
               {labelInstalacion(turno.instalacion)} · {turno.etiqueta}
             </p>
@@ -765,7 +765,7 @@ function ModalAsignarTurno({ turno, onClose, onGuardado }) {
                     onChange={e => setBusquedaSocio(e.target.value)}
                     placeholder={cargandoUsuarios ? 'Cargando socios…' : 'Buscar por nombre o DNI'}
                     disabled={cargandoUsuarios}
-                    className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-gray-300 text-sm focus:border-blue-500 focus:ring-blue-500 disabled:bg-gray-50"
+                    className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-gray-300 text-sm focus:border-blue-600 focus:ring-blue-600/25 disabled:bg-gray-50"
                   />
                 </div>
                 {usuariosFiltrados.length > 0 && (
@@ -815,7 +815,7 @@ function ModalAsignarTurno({ turno, onClose, onGuardado }) {
                   onClick={() => setMetodoPago(key)}
                   className={`flex items-center justify-center gap-2 py-2.5 rounded-xl border text-sm font-semibold transition-colors ${
                     metodoPago === key
-                      ? 'bg-slate-900 text-white border-slate-900'
+                      ? 'bg-gray-900 text-white border-gray-900'
                       : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
                   }`}
                 >
@@ -833,7 +833,7 @@ function ModalAsignarTurno({ turno, onClose, onGuardado }) {
               onChange={e => setNotasExtra(e.target.value)}
               maxLength={400}
               placeholder="Cumpleaños, referencia de la transferencia…"
-              className="w-full px-3 py-2.5 rounded-xl border border-gray-300 text-sm focus:border-blue-500 focus:ring-blue-500"
+              className="w-full px-3 py-2.5 rounded-xl border border-gray-300 text-sm focus:border-blue-600 focus:ring-blue-600/25"
             />
           </div>
 
@@ -848,7 +848,7 @@ function ModalAsignarTurno({ turno, onClose, onGuardado }) {
           <button
             type="submit"
             disabled={guardando || !persona || !producto}
-            className="flex-1 py-2.5 rounded-xl bg-slate-900 text-white text-sm font-bold hover:bg-slate-800 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+            className="flex-1 py-2.5 rounded-xl bg-gray-900 text-white text-sm font-bold hover:bg-gray-800 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
           >
             {guardando && <Loader2 size={14} className="animate-spin" />}
             {guardando ? 'Asignando…' : 'Asignar y registrar el cobro'}
@@ -925,7 +925,7 @@ function Leyenda() {
     { color: 'bg-green-500',  texto: 'Libre' },
     { color: 'bg-blue-500',   texto: 'Reservado y pagado' },
     { color: 'bg-amber-500',  texto: 'Reservado, pago pendiente' },
-    { color: 'bg-indigo-500', texto: 'Carga manual del admin' },
+    { color: 'bg-camoti-500', texto: 'Carga manual del admin' },
     { color: 'bg-red-500',    texto: 'Inhabilitado por el club' },
   ]
   return (
@@ -979,8 +979,8 @@ function AgendaQuincho({ reservas, anio, mes, onCambiarMes, onAbrirTurno, onTurn
   }, [dias, reservas, anio, mes])
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-      <div className="px-4 sm:px-5 pt-4 sm:pt-5 pb-4 border-b border-gray-100">
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+      <div className="px-4 sm:px-5 pt-4 sm:pt-5 pb-4 border-b border-gray-200">
         <NavegadorMes anio={anio} mes={mes} onCambiar={onCambiarMes}>
           <h2 className="text-base font-bold text-gray-900 flex items-center gap-2">
             <Tent size={17} className="text-gray-400 flex-shrink-0" />
@@ -1141,7 +1141,7 @@ function AgendaCanchas({
             onClick={() => onCambiarCancha(c.key)}
             className={`flex-1 sm:flex-none px-4 py-2 rounded-xl text-sm font-bold border transition-colors ${
               canchaKey === c.key
-                ? 'bg-slate-900 text-white border-slate-900'
+                ? 'bg-gray-900 text-white border-gray-900'
                 : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
             }`}
           >
@@ -1151,8 +1151,8 @@ function AgendaCanchas({
       </div>
 
       {/* Calendario mensual: elegir día */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="px-4 sm:px-5 pt-4 sm:pt-5 pb-4 border-b border-gray-100">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+        <div className="px-4 sm:px-5 pt-4 sm:pt-5 pb-4 border-b border-gray-200">
           <NavegadorMes anio={anio} mes={mes} onCambiar={onCambiarMes}>
             <h2 className="text-base font-bold text-gray-900 flex items-center gap-2">
               <Volleyball size={17} className="text-gray-400 flex-shrink-0" />
@@ -1164,7 +1164,7 @@ function AgendaCanchas({
           </NavegadorMes>
         </div>
 
-        <div className="grid grid-cols-7 border-b border-gray-100">
+        <div className="grid grid-cols-7 border-b border-gray-200">
           {NOMBRES_DIA_SEMANA.map(d => (
             <div key={d} className="py-1.5 text-center text-[9px] sm:text-[11px] font-semibold text-gray-400 uppercase tracking-wide">
               {d}
@@ -1186,7 +1186,7 @@ function AgendaCanchas({
                 key={dia}
                 onClick={() => onSeleccionarDia(dia)}
                 className={`bg-white min-h-[52px] sm:min-h-[62px] p-1 flex flex-col items-center justify-start gap-1 transition-colors ${
-                  seleccionado ? 'ring-2 ring-inset ring-slate-900 bg-slate-50' : 'hover:bg-gray-50'
+                  seleccionado ? 'ring-2 ring-inset ring-gray-900 bg-gray-50' : 'hover:bg-gray-50'
                 }`}
               >
                 <span className={`text-xs font-semibold w-6 h-6 flex items-center justify-center rounded-full ${
@@ -1217,8 +1217,8 @@ function AgendaCanchas({
 
       {/* Turnos del día elegido */}
       {fechaDia && (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="px-4 sm:px-5 py-3.5 border-b border-gray-100 flex items-center justify-between gap-3">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+          <div className="px-4 sm:px-5 py-3.5 border-b border-gray-200 flex items-center justify-between gap-3">
             <h3 className="text-sm font-bold text-gray-900 capitalize">
               {fechaDia.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })}
             </h3>
@@ -1538,10 +1538,10 @@ export default function AdminReservas() {
       )}
 
       {aviso && (
-        <div className="flex items-start gap-2 p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm">
+        <div className="flex items-start gap-2 p-3.5 rounded-xl bg-green-50 border border-green-200 text-green-800 text-sm">
           <CheckCircle2 size={16} className="flex-shrink-0 mt-0.5" />
           <span className="flex-1">{aviso}</span>
-          <button onClick={() => setAviso(null)} className="flex-shrink-0 text-emerald-500 hover:text-emerald-700">
+          <button onClick={() => setAviso(null)} className="flex-shrink-0 text-green-500 hover:text-green-700">
             <X size={15} />
           </button>
         </div>

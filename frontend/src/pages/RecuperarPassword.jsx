@@ -118,16 +118,17 @@ export default function RecuperarPassword() {
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
-      <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 space-y-6">
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <div className="max-w-md w-full bg-white rounded-2xl border border-gray-200 shadow-lg p-8 space-y-6">
 
         <div className="text-center">
-          <h1 className="text-3xl font-bold text-slate-800">
+          <img src="/escudo-car.png" alt="Escudo Club Atlético Roberts" className="h-20 w-auto object-contain mx-auto mb-4" />
+          <h1 className="text-3xl font-semibold text-gray-900">
             {!token
               ? 'Recuperar contraseña'
               : tokenEstado === 'invalido' ? 'Link no válido' : 'Nueva contraseña'}
           </h1>
-          <p className="text-slate-500 mt-2">
+          <p className="text-gray-500 text-sm mt-2">
             {!token
               ? 'Te enviaremos un link para restablecer tu acceso.'
               : tokenEstado === 'invalido'
@@ -139,7 +140,7 @@ export default function RecuperarPassword() {
         {/* ── Éxito ── */}
         {isSuccess && (
           <div className="space-y-4">
-            <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-xl p-4 text-sm leading-relaxed">
+            <div className="bg-amber-50 border border-amber-200 text-amber-800 rounded-xl p-4 text-sm leading-relaxed">
               {token
                 ? '✅ ¡Contraseña actualizada! Ya podés iniciar sesión con tu nueva clave.'
                 : '📬 Te enviamos un correo con el link para cambiar tu contraseña. Revisá también la carpeta de spam.'}
@@ -162,18 +163,18 @@ export default function RecuperarPassword() {
               value={identificador}
               onChange={e => setIdentificador(e.target.value)}
               required
-              className="w-full p-3 rounded-lg border bg-slate-50 focus:border-blue-500 focus:ring-blue-500"
+              className="w-full p-3 rounded-xl border border-gray-300 bg-white text-gray-900 placeholder-gray-400 transition-colors focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/25"
             />
-            {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+            {error && <p className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-xl px-3 py-2.5 text-center">{error}</p>}
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 px-4 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:bg-slate-400 disabled:cursor-not-allowed"
+              className="w-full py-3 px-4 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
             >
               {loading ? 'Enviando...' : 'Enviar solicitud'}
             </button>
-            <p className="text-center text-sm text-slate-600">
-              <Link to="/login" className="font-medium text-blue-600 hover:text-blue-500">
+            <p className="text-center text-sm text-gray-500">
+              <Link to="/login" className="font-semibold text-blue-600 hover:text-blue-700 underline-offset-2 hover:underline">
                 ← Volver al Login
               </Link>
             </p>
@@ -193,8 +194,8 @@ export default function RecuperarPassword() {
             >
               Pedir un link nuevo
             </button>
-            <p className="text-center text-sm text-slate-600">
-              <Link to="/login" className="font-medium text-blue-600 hover:text-blue-500">
+            <p className="text-center text-sm text-gray-500">
+              <Link to="/login" className="font-semibold text-blue-600 hover:text-blue-700 underline-offset-2 hover:underline">
                 ← Volver al Login
               </Link>
             </p>
@@ -203,7 +204,7 @@ export default function RecuperarPassword() {
 
         {/* ── Chequeando el link ── */}
         {!isSuccess && token && tokenEstado === 'chequeando' && (
-          <p className="text-center text-sm text-slate-500 py-4">Verificando el link…</p>
+          <p className="text-center text-sm text-gray-500 py-4">Verificando el link…</p>
         )}
 
         {/* ── Paso 2: nueva contraseña ── */}
@@ -217,12 +218,12 @@ export default function RecuperarPassword() {
                 onChange={e => setPassword(e.target.value)}
                 required
                 minLength={8}
-                className="w-full p-3 pr-10 rounded-lg border bg-slate-50 focus:border-blue-500 focus:ring-blue-500"
+                className="w-full p-3 pr-11 rounded-xl border border-gray-300 bg-white text-gray-900 placeholder-gray-400 transition-colors focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/25"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(p => !p)}
-                className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500 hover:text-gray-700"
+                className="absolute inset-y-0 right-0 flex items-center pr-3.5 text-gray-400 hover:text-blue-600 transition-colors"
               >
                 {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
               </button>
@@ -234,21 +235,21 @@ export default function RecuperarPassword() {
                 value={confirmPassword}
                 onChange={e => setConfirmPassword(e.target.value)}
                 required
-                className="w-full p-3 pr-10 rounded-lg border bg-slate-50 focus:border-blue-500 focus:ring-blue-500"
+                className="w-full p-3 pr-11 rounded-xl border border-gray-300 bg-white text-gray-900 placeholder-gray-400 transition-colors focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/25"
               />
               <button
                 type="button"
                 onClick={() => setShowConfirm(p => !p)}
-                className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500 hover:text-gray-700"
+                className="absolute inset-y-0 right-0 flex items-center pr-3.5 text-gray-400 hover:text-blue-600 transition-colors"
               >
                 {showConfirm ? <EyeOff size={20} /> : <Eye size={20} />}
               </button>
             </div>
-            {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+            {error && <p className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-xl px-3 py-2.5 text-center">{error}</p>}
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 px-4 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:bg-slate-400 disabled:cursor-not-allowed"
+              className="w-full py-3 px-4 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
             >
               {loading ? 'Guardando...' : 'Guardar nueva contraseña'}
             </button>

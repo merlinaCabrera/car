@@ -119,7 +119,7 @@ function estadoVisualDeOrden(orden, resueltosEnSesion) {
 const METODO_PAGO_BADGE = {
   mercado_pago: { label: '💳 MP', classes: 'bg-blue-100 text-blue-800' },
   efectivo: { label: '💵 Efectivo', classes: 'bg-gray-100 text-gray-700' },
-  transferencia: { label: '🏦 Transfer.', classes: 'bg-indigo-100 text-indigo-700' },
+  transferencia: { label: '🏦 Transfer.', classes: 'bg-camoti-100 text-camoti-700' },
 }
 
 // Estado a nivel Pago (no por Orden) para el badge de la tarjeta colapsada.
@@ -268,7 +268,7 @@ function VerificacionModal({ orden, onClose, onActionSuccess, token, comprobante
         <div className="p-6 border-b flex-shrink-0 flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="text-xl font-bold text-gray-800">Verificar Orden</h2>
+              <h2 className="font-display text-xl font-semibold text-gray-800">Verificar Orden</h2>
               <CategoriaOrdenBadge categoria={orden.categoria_resumen} />
             </div>
             <p className="text-sm text-gray-500 mt-1 truncate">
@@ -454,7 +454,7 @@ function TarjetaPago({
   const EstadoIcon = estadoPago.icon
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
       {/* Header del Pago — colapsado, solo lo esencial: #pago, socio, estado
           y monto. El método de pago, si hay varias órdenes, y el desglose
           completo quedan en el desplegable. */}
@@ -485,7 +485,7 @@ function TarjetaPago({
       {expandido && (
         <>
           {/* Método de pago — antes vivía en el header colapsado */}
-          <div className="px-4 sm:px-5 py-2.5 bg-gray-50 border-t border-b border-gray-100 flex items-center gap-2">
+          <div className="px-4 sm:px-5 py-2.5 bg-gray-50 border-t border-b border-gray-200 flex items-center gap-2">
             <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${metodo.classes}`}>
               {metodo.label}
             </span>
@@ -496,7 +496,7 @@ function TarjetaPago({
               se abre únicamente para órdenes pendientes: una vez aprobada o
               rechazada la orden, el club se quedaba sin ninguna forma de mirar
               el comprobante (BUG-05, ronda 2). */}
-          <div className="px-4 sm:px-5 py-3 border-b border-gray-100">
+          <div className="px-4 sm:px-5 py-3 border-b border-gray-200">
             <ComprobantePago
               idPago={pago?.id_pago}
               comprobanteUrl={comprobanteUrl}
@@ -510,14 +510,14 @@ function TarjetaPago({
               Con una sola orden pendiente no aporta nada sobre el botón
               individual de la fila, así que no se muestra. */}
           {esMultiple && pendientes.length > 1 && (
-            <div className="px-4 sm:px-5 py-3 bg-emerald-50 border-b border-emerald-100 flex items-center justify-between gap-3 flex-wrap">
-              <p className="text-xs text-emerald-800">
+            <div className="px-4 sm:px-5 py-3 bg-green-50 border-b border-green-100 flex items-center justify-between gap-3 flex-wrap">
+              <p className="text-xs text-green-800">
                 {pendientes.length} de {ordenes.length} órdenes siguen pendientes en este comprobante.
               </p>
               <button
                 onClick={(e) => { e.stopPropagation(); onAprobarTodo(pago, pendientes) }}
                 disabled={aprobandoTodo}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs transition-colors disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-600 hover:bg-green-700 text-white font-semibold text-xs transition-colors disabled:opacity-50"
               >
                 {aprobandoTodo ? <Loader2 size={13} className="animate-spin" /> : <CheckCheck size={13} />}
                 Aprobar Pago Completo
@@ -857,7 +857,7 @@ export default function AdminVerificaciones() {
       {/* ── Bandeja agrupada por Pago ────────────────────────────────────────── */}
       <div className="space-y-4">
         <div>
-          <h2 className="text-lg font-bold text-gray-900">
+          <h2 className="font-display text-lg font-semibold text-gray-900">
             {FILTROS_ESTADO.find(f => f.value === filtroEstado)?.label ?? 'Órdenes'}
           </h2>
           <p className="text-sm text-gray-500 mt-0.5">
@@ -878,7 +878,7 @@ export default function AdminVerificaciones() {
         {ordenesResource.loading && (
           <div className="space-y-3">
             {[...Array(3)].map((_, i) => (
-              <div key={i} className="bg-white rounded-2xl border border-gray-100 shadow-sm h-28 animate-pulse" />
+              <div key={i} className="bg-white rounded-2xl border border-gray-200 shadow-sm h-28 animate-pulse" />
             ))}
           </div>
         )}
@@ -922,7 +922,7 @@ export default function AdminVerificaciones() {
             })}
 
             {gruposPorPago.length === 0 && (
-              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-12 text-center text-gray-500 text-sm">
+              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-12 text-center text-gray-500 text-sm">
                 {busquedaDebounced
                   ? `Sin resultados para "${busquedaDebounced}" en este filtro.`
                   : filtroEstado === 'pendiente_verificacion'

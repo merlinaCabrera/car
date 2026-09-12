@@ -238,9 +238,9 @@ function CalendarioMensual({ instalacion, token, seleccion, onSeleccionar }) {
   }, [dias, reservas, anioVisto, mesVisto])
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
       {/* Header */}
-      <div className="px-4 sm:px-5 pt-4 sm:pt-5 pb-4 border-b border-gray-100">
+      <div className="px-4 sm:px-5 pt-4 sm:pt-5 pb-4 border-b border-gray-200">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="min-w-0">
             <h2 className="text-base font-bold text-gray-900 flex items-center gap-2">

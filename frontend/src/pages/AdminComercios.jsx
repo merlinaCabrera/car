@@ -135,7 +135,7 @@ function ComercioFormModal({ comercio, onClose, onSave, usuarios, token }) {
 
         {/* Header fijo */}
         <div className="p-6 border-b flex-shrink-0">
-          <h2 className="text-xl font-bold text-gray-800">
+          <h2 className="font-display text-xl font-semibold text-gray-800">
             {isEditMode ? 'Editar Comercio' : 'Nuevo Comercio Asociado'}
           </h2>
           <p className="text-sm text-gray-500 mt-1">
@@ -237,7 +237,7 @@ function ComercioFormModal({ comercio, onClose, onSave, usuarios, token }) {
                 type="checkbox"
                 checked={formData.es_activo}
                 onChange={e => setFormData({ ...formData, es_activo: e.target.checked })}
-                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-600"
               />
               <span className="text-sm font-semibold text-gray-700">Comercio activo</span>
             </label>
@@ -302,7 +302,7 @@ function TarjetaComercioMobile({ comercio, onEditar, onReactivar, onDarBaja }) {
 
       {/* Detalle — solo si está expandida */}
       {expandido && (
-        <div className="px-4 pb-4 space-y-3 border-t border-gray-50 pt-3">
+        <div className="px-4 pb-4 space-y-3 border-t border-gray-200 pt-3">
           <p className="text-sm text-gray-600">{comercio.beneficio_ofrecido}</p>
 
           <div className="text-sm">
@@ -319,7 +319,7 @@ function TarjetaComercioMobile({ comercio, onEditar, onReactivar, onDarBaja }) {
             )}
           </div>
 
-          <div className="flex items-center gap-1 pt-1 border-t border-gray-50 -mx-1">
+          <div className="flex items-center gap-1 pt-1 border-t border-gray-200 -mx-1">
             <button
               onClick={(e) => { e.stopPropagation(); onEditar(comercio) }}
               className="flex-1 inline-flex items-center justify-center gap-1.5 p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-100 rounded-lg transition-colors text-xs font-medium"
@@ -565,7 +565,7 @@ export default function AdminComercios() {
 
       {/* Tarjetas — mobile (skeleton de carga) */}
       {loading && (
-        <div className="md:hidden bg-white rounded-2xl shadow-sm border border-gray-100 divide-y divide-gray-50">
+        <div className="md:hidden bg-white rounded-2xl shadow-sm border border-gray-200 divide-y divide-gray-50">
           {[...Array(5)].map((_, i) => (
             <div key={i} className="p-4 animate-pulse space-y-2">
               <div className="h-4 bg-gray-200 rounded-md w-2/3" />
@@ -577,7 +577,7 @@ export default function AdminComercios() {
 
       {/* Tarjetas — mobile */}
       {!loading && (
-        <div className="md:hidden bg-white rounded-2xl shadow-sm border border-gray-100 divide-y divide-gray-50">
+        <div className="md:hidden bg-white rounded-2xl shadow-sm border border-gray-200 divide-y divide-gray-50">
           {comerciosFiltrados.map(comercio => (
             <TarjetaComercioMobile
               key={comercio.id_comercio}
@@ -599,7 +599,7 @@ export default function AdminComercios() {
       )}
 
       {/* Tabla — desktop */}
-      <div className="hidden md:block bg-white rounded-2xl shadow-sm border border-gray-100 overflow-x-auto">
+      <div className="hidden md:block bg-white rounded-2xl shadow-sm border border-gray-200 overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-100">
           <thead className="bg-gray-50">
             <tr>
@@ -697,14 +697,14 @@ export default function AdminComercios() {
       )}
 
       {/* ═══ Bloque: Sponsors (desplegable) ═══ */}
-      <div className="pt-2 border-t border-gray-100">
+      <div className="pt-2 border-t border-gray-200">
         <button
           type="button"
           onClick={() => setSponsorsAbierto(o => !o)}
           className="w-full flex items-start justify-between gap-3 text-left pt-4"
         >
           <div>
-            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2 sm:gap-3">
+            <h2 className="font-display text-xl sm:text-2xl font-semibold text-gray-900 flex items-center gap-2 sm:gap-3">
               <Image size={22} className="text-gray-500 flex-shrink-0" />
               Sponsors
             </h2>
@@ -725,14 +725,14 @@ export default function AdminComercios() {
       </div>
 
       {/* ═══ Bloque: Preguntas Frecuentes (desplegable) ═══ */}
-      <div className="pt-2 border-t border-gray-100">
+      <div className="pt-2 border-t border-gray-200">
         <button
           type="button"
           onClick={() => setFaqAbierto(o => !o)}
           className="w-full flex items-start justify-between gap-3 text-left pt-4"
         >
           <div>
-            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2 sm:gap-3">
+            <h2 className="font-display text-xl sm:text-2xl font-semibold text-gray-900 flex items-center gap-2 sm:gap-3">
               <HelpCircle size={22} className="text-gray-500 flex-shrink-0" />
               Preguntas Frecuentes
             </h2>

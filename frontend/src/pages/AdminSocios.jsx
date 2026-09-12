@@ -147,7 +147,7 @@ function RolCheckbox({ rol, checked, onChange, disabled }) {
         flex items-start gap-3 p-3 rounded-xl border-2 cursor-pointer
         transition-all duration-150 select-none
         ${checked
-          ? 'border-indigo-400 bg-indigo-50'
+          ? 'border-camoti-400 bg-camoti-50'
           : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50'
         }
         ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
@@ -156,7 +156,7 @@ function RolCheckbox({ rol, checked, onChange, disabled }) {
       <div className={`
         mt-0.5 flex-shrink-0 w-5 h-5 rounded-md border-2 flex items-center justify-center
         transition-colors
-        ${checked ? 'bg-indigo-600 border-indigo-600' : 'bg-white border-gray-300'}
+        ${checked ? 'bg-camoti-600 border-camoti-600' : 'bg-white border-gray-300'}
       `}>
         {checked && (
           <svg viewBox="0 0 12 10" fill="none" className="w-3 h-3">
@@ -174,7 +174,7 @@ function RolCheckbox({ rol, checked, onChange, disabled }) {
       />
 
       <div className="min-w-0">
-        <p className={`text-sm font-semibold capitalize ${checked ? 'text-indigo-900' : 'text-gray-800'}`}>
+        <p className={`text-sm font-semibold capitalize ${checked ? 'text-camoti-900' : 'text-gray-800'}`}>
           {rol.nombre.replace(/_/g, ' ')}
         </p>
         {rol.descripcion && (
@@ -216,23 +216,23 @@ function SeccionRoles({ catalogoRoles, selectedRoles, onToggle, loadingRoles, er
 
       {/* Rol Socio — base obligatorio, siempre activo, no editable */}
       {rolSocio && (
-        <div className="flex items-start gap-3 p-3 rounded-xl border-2 border-indigo-400 bg-indigo-50 opacity-70 cursor-not-allowed" title="El rol Socio es obligatorio y no puede quitarse desde aquí.">
-          <div className="mt-0.5 flex-shrink-0 w-5 h-5 rounded-md border-2 flex items-center justify-center bg-indigo-600 border-indigo-600">
+        <div className="flex items-start gap-3 p-3 rounded-xl border-2 border-camoti-400 bg-camoti-50 opacity-70 cursor-not-allowed" title="El rol Socio es obligatorio y no puede quitarse desde aquí.">
+          <div className="mt-0.5 flex-shrink-0 w-5 h-5 rounded-md border-2 flex items-center justify-center bg-camoti-600 border-camoti-600">
             <svg viewBox="0 0 12 10" fill="none" className="w-3 h-3">
               <path d="M1 5l3.5 3.5L11 1" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-semibold capitalize text-indigo-900">{rolSocio.nombre}</p>
+            <p className="text-sm font-semibold capitalize text-camoti-900">{rolSocio.nombre}</p>
             {rolSocio.descripcion && <p className="text-xs text-gray-500 mt-0.5 leading-snug">{rolSocio.descripcion}</p>}
-            <p className="text-xs text-indigo-600 mt-0.5 font-medium">Rol base — no se puede quitar</p>
+            <p className="text-xs text-camoti-600 mt-0.5 font-medium">Rol base — no se puede quitar</p>
           </div>
         </div>
       )}
 
       {loadingRoles && (
         <div className="flex items-center gap-2 text-sm text-gray-500 py-2">
-          <Loader2 size={15} className="animate-spin text-indigo-500" />
+          <Loader2 size={15} className="animate-spin text-camoti-500" />
           Cargando roles actuales…
         </div>
       )}
@@ -583,7 +583,7 @@ function SocioFormModal({ socio, onClose, onSave, catalogoRoles, token, esAdminG
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md flex flex-col max-h-[92dvh]">
 
         <div className="p-6 border-b flex-shrink-0">
-          <h2 className="text-xl font-bold text-gray-800">
+          <h2 className="font-display text-xl font-semibold text-gray-800">
             {isEditMode ? 'Editar Socio' : 'Nuevo Socio'}
           </h2>
           <p className="text-sm text-gray-500 mt-1">
@@ -693,25 +693,25 @@ function SocioFormModal({ socio, onClose, onSave, catalogoRoles, token, esAdminG
 
             {/* ── Sección Beca (solo en modo edición) ─────────────────────── */}
             {isEditMode && (
-              <div className="rounded-xl border-2 border-teal-200 bg-teal-50 overflow-hidden">
+              <div className="rounded-xl border-2 border-francia-200 bg-francia-50 overflow-hidden">
                 <button
                   type="button"
                   onClick={() => setBecaAbierta(o => !o)}
                   className="w-full flex items-center justify-between gap-3 p-4 text-left"
                 >
                   <div>
-                    <p className="text-sm font-bold text-teal-900">Socio Becado</p>
-                    <p className="text-xs text-teal-700 mt-0.5">
+                    <p className="text-sm font-bold text-francia-900">Socio Becado</p>
+                    <p className="text-xs text-francia-700 mt-0.5">
                       {formData.es_becado ? '✓ Beca activa' : 'Sin beca'}
                     </p>
                   </div>
-                  {becaAbierta ? <ChevronUp size={18} className="text-teal-500 flex-shrink-0" /> : <ChevronDown size={18} className="text-teal-500 flex-shrink-0" />}
+                  {becaAbierta ? <ChevronUp size={18} className="text-francia-500 flex-shrink-0" /> : <ChevronDown size={18} className="text-francia-500 flex-shrink-0" />}
                 </button>
 
                 {becaAbierta && (
                 <div className="px-4 pb-4 space-y-3">
                 <div className="flex items-center justify-between">
-                  <p className="text-xs text-teal-700">
+                  <p className="text-xs text-francia-700">
                     El socio no paga cuota y nunca aparece como moroso mientras la beca esté activa.
                   </p>
                   <button
@@ -722,7 +722,7 @@ function SocioFormModal({ socio, onClose, onSave, catalogoRoles, token, esAdminG
                       becado_hasta: !prev.es_becado ? prev.becado_hasta : '',
                     }))}
                     className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none ${
-                      formData.es_becado ? 'bg-teal-600' : 'bg-gray-300'
+                      formData.es_becado ? 'bg-francia-600' : 'bg-gray-300'
                     }`}
                   >
                     <span
@@ -735,14 +735,14 @@ function SocioFormModal({ socio, onClose, onSave, catalogoRoles, token, esAdminG
 
                 {formData.es_becado && (
                   <div>
-                    <label className="text-xs font-semibold text-teal-800 uppercase tracking-wider">
-                      Vencimiento de beca <span className="font-normal normal-case text-teal-600">(opcional — dejar vacío si es indefinida)</span>
+                    <label className="text-xs font-semibold text-francia-800 uppercase tracking-wider">
+                      Vencimiento de beca <span className="font-normal normal-case text-francia-600">(opcional — dejar vacío si es indefinida)</span>
                     </label>
                     <input
                       type="date"
                       value={formData.becado_hasta}
                       onChange={e => setFormData(prev => ({ ...prev, becado_hasta: e.target.value }))}
-                      className="form-input mt-1.5 border-teal-300 focus:ring-teal-500 focus:border-teal-500"
+                      className="form-input mt-1.5 border-francia-300 focus:ring-francia-500 focus:border-francia-500"
                     />
                   </div>
                 )}
@@ -778,7 +778,7 @@ function SocioFormModal({ socio, onClose, onSave, catalogoRoles, token, esAdminG
                 </p>
 
                 {/* Saldo actual */}
-                <div className="flex items-center justify-between bg-white rounded-lg px-4 py-2.5 border border-amber-200">
+                <div className="flex items-center justify-between bg-white rounded-2xl px-4 py-2.5 border border-amber-200">
                   <span className="text-sm text-amber-800 font-medium">Saldo actual</span>
                   <span className="text-lg font-bold text-amber-900">
                     ${saldoActual.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
@@ -879,10 +879,10 @@ function SocioFormModal({ socio, onClose, onSave, catalogoRoles, token, esAdminG
                   const estado = calcularEstadoFinanciero(mesCubiertoHastaActual, fechaIngresoActual, diaVencimiento)
                   const detalle = listarMesesAdeudados(mesCubiertoHastaActual, fechaIngresoActual, diaVencimiento)
                   return (
-                    <div className="bg-white rounded-lg px-4 py-2.5 border border-blue-200 space-y-1.5">
+                    <div className="bg-white rounded-2xl px-4 py-2.5 border border-blue-200 space-y-1.5">
                       <div className="flex items-center justify-between">
                         <span className="text-sm text-blue-800 font-medium">Estado actual</span>
-                        <span className={`text-sm font-bold ${estado.moroso ? 'text-red-600' : estado.enMesIngreso ? 'text-indigo-600' : 'text-green-600'}`}>
+                        <span className={`text-sm font-bold ${estado.moroso ? 'text-red-600' : estado.enMesIngreso ? 'text-camoti-600' : 'text-green-600'}`}>
                           {estado.moroso
                             ? `MOROSO — ${estado.mesesAdeudados} mes(es)`
                             : estado.enMesIngreso ? 'MES DE INGRESO' : 'AL DÍA'}
@@ -1006,16 +1006,16 @@ function SocioFormModal({ socio, onClose, onSave, catalogoRoles, token, esAdminG
             )}
 
             {isEditMode && (
-              <div className="rounded-xl border-2 border-indigo-200 bg-indigo-50 overflow-hidden">
+              <div className="rounded-xl border-2 border-camoti-200 bg-camoti-50 overflow-hidden">
                 <button
                   type="button"
                   onClick={() => setRolesAbiertos(o => !o)}
                   className="w-full flex items-center justify-between gap-3 p-4 text-left"
                 >
-                  <p className="text-sm font-bold text-indigo-900 flex items-center gap-2">
+                  <p className="text-sm font-bold text-camoti-900 flex items-center gap-2">
                     <ShieldCheck size={16} /> Roles del Usuario
                   </p>
-                  {rolesAbiertos ? <ChevronUp size={18} className="text-indigo-500 flex-shrink-0" /> : <ChevronDown size={18} className="text-indigo-500 flex-shrink-0" />}
+                  {rolesAbiertos ? <ChevronUp size={18} className="text-camoti-500 flex-shrink-0" /> : <ChevronDown size={18} className="text-camoti-500 flex-shrink-0" />}
                 </button>
 
                 {rolesAbiertos && (
@@ -1132,7 +1132,7 @@ function CobroModal({ socio, precioCuota, onClose, onSave, diaVencimiento }) {
 
         <div className="p-6 border-b flex-shrink-0 flex items-start justify-between">
           <div>
-            <h2 className="text-xl font-bold text-gray-800">Registrar Pago en Ventanilla</h2>
+            <h2 className="font-display text-xl font-semibold text-gray-800">Registrar Pago en Ventanilla</h2>
             <p className="text-sm text-gray-500 mt-1">
               {socio.apellido}, {socio.nombre} — DNI {socio.dni}
             </p>
@@ -1203,7 +1203,7 @@ function CobroModal({ socio, precioCuota, onClose, onSave, diaVencimiento }) {
                   onClick={() => setMetodoPago(opcion.value)}
                   className={`px-3 py-2 rounded-xl text-sm font-semibold border transition-colors ${
                     metodoPago === opcion.value
-                      ? 'bg-slate-900 text-white border-slate-900'
+                      ? 'bg-gray-900 text-white border-gray-900'
                       : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
                   }`}
                 >
@@ -1235,7 +1235,7 @@ function CobroModal({ socio, precioCuota, onClose, onSave, diaVencimiento }) {
           </button>
           <button
             type="button" onClick={handleConfirmar} disabled={isSubmitting}
-            className="px-4 py-2 rounded-lg text-white bg-emerald-600 hover:bg-emerald-700 font-semibold disabled:opacity-50 transition-colors flex items-center gap-2"
+            className="px-4 py-2 rounded-lg text-white bg-green-600 hover:bg-green-700 font-semibold disabled:opacity-50 transition-colors flex items-center gap-2"
           >
             {isSubmitting && <Loader2 size={14} className="animate-spin" />}
             {isSubmitting ? 'Procesando…' : 'Confirmar Pago'}
@@ -1260,7 +1260,7 @@ const FILTROS_TIPO_COMPRA = [
 
 const ESTADO_ORDEN_CONFIG = {
   pendiente_verificacion: { label: 'Pendiente',  icon: Clock,          classes: 'bg-amber-100 text-amber-800 border-amber-200'   },
-  aprobada:               { label: 'Aprobada',   icon: CheckCircle2,   classes: 'bg-emerald-100 text-emerald-800 border-emerald-200' },
+  aprobada:               { label: 'Aprobada',   icon: CheckCircle2,   classes: 'bg-green-100 text-green-800 border-green-200' },
   rechazada:              { label: 'Rechazada',  icon: XCircle,        classes: 'bg-red-100 text-red-800 border-red-200'         },
   cancelada_socio:        { label: 'Cancelada',  icon: XCircle,        classes: 'bg-gray-100 text-gray-700 border-gray-200'      },
   expirada:               { label: 'Expirada',   icon: AlertTriangle,  classes: 'bg-gray-100 text-gray-700 border-gray-200'      },
@@ -1329,7 +1329,7 @@ function ComprasSocioModal({ socio, token, refreshTick, onClose, onCobrar }) {
 
         <div className="p-6 border-b flex-shrink-0 flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+            <h2 className="font-display text-xl font-semibold text-gray-800 flex items-center gap-2">
               <Receipt size={20} className="text-gray-400" />
               Compras de {socio.nombre} {socio.apellido}
             </h2>
@@ -1349,7 +1349,7 @@ function ComprasSocioModal({ socio, token, refreshTick, onClose, onCobrar }) {
                 onClick={() => setFiltroTipo(f.value)}
                 className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
                   filtroTipo === f.value
-                    ? 'bg-slate-900 text-white'
+                    ? 'bg-gray-900 text-white'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
               >
@@ -1361,7 +1361,7 @@ function ComprasSocioModal({ socio, token, refreshTick, onClose, onCobrar }) {
           {!socio.fecha_baja && (
             <button
               onClick={() => onCobrar(socio)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold transition-colors shadow-sm flex-shrink-0"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-green-600 hover:bg-green-700 text-white text-xs font-semibold transition-colors shadow-sm flex-shrink-0"
             >
               <Banknote size={14} />
               Registrar pago en efectivo
@@ -1416,7 +1416,7 @@ function ComprasSocioModal({ socio, token, refreshTick, onClose, onCobrar }) {
                 <p className="mt-1.5 text-xs text-gray-400 italic">{orden.notas_admin}</p>
               )}
 
-              <div className="mt-3 flex items-center justify-between border-t border-gray-100 pt-2.5">
+              <div className="mt-3 flex items-center justify-between border-t border-gray-200 pt-2.5">
                 <span className="text-xs text-gray-400">
                   {etiquetaMetodoPago(orden.pago?.metodo_pago)}
                 </span>
@@ -1427,7 +1427,7 @@ function ComprasSocioModal({ socio, token, refreshTick, onClose, onCobrar }) {
                   verlo, así que el club no podía revisar el respaldo de un pago
                   ya resuelto desde acá (BUG-05, ronda 2). */}
               {orden.id_pago != null && (
-                <div className="mt-3 border-t border-gray-100 pt-3">
+                <div className="mt-3 border-t border-gray-200 pt-3">
                   <ComprobantePago
                     idPago={orden.id_pago}
                     comprobanteUrl={comprobantesPorPago[orden.id_pago] ?? orden.pago?.comprobante_url}
@@ -1494,7 +1494,7 @@ function TarjetaSocioMobile({
               <UserX size={11} /> Inactivo
             </span>
           ) : socioBecaActiva ? (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-teal-100 text-teal-800">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-francia-100 text-francia-800">
               Becado
             </span>
           ) : socioMoroso ? (
@@ -1512,7 +1512,7 @@ function TarjetaSocioMobile({
 
       {/* Detalle — solo si está expandida */}
       {expandido && (
-        <div className="px-4 pb-4 space-y-3 border-t border-gray-50 pt-3">
+        <div className="px-4 pb-4 space-y-3 border-t border-gray-200 pt-3">
           {socio.email && <div className="text-xs text-gray-400 truncate">{socio.email}</div>}
 
           {!socio.fecha_baja && !socioBecaActiva && socioMoroso && (
@@ -1521,11 +1521,11 @@ function TarjetaSocioMobile({
             </span>
           )}
 
-          <div className="flex items-center gap-1 pt-1 border-t border-gray-50 -mx-1">
+          <div className="flex items-center gap-1 pt-1 border-t border-gray-200 -mx-1">
             {!socio.fecha_baja && (
               <button
                 onClick={(e) => { e.stopPropagation(); onVerCompras(socio) }}
-                className="flex-1 inline-flex items-center justify-center gap-1.5 p-2 text-gray-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors text-xs font-medium"
+                className="flex-1 inline-flex items-center justify-center gap-1.5 p-2 text-gray-500 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors text-xs font-medium"
                 title="Ver compras y registrar pago"
               >
                 <Receipt size={16} /> Compras
@@ -2243,7 +2243,7 @@ export default function AdminSocios() {
 
       {/* Tabla de Socios — skeleton de carga en mobile */}
       {loading && (
-        <div className="md:hidden bg-white rounded-2xl shadow-sm border border-gray-100 divide-y divide-gray-50">
+        <div className="md:hidden bg-white rounded-2xl shadow-sm border border-gray-200 divide-y divide-gray-50">
           {[...Array(5)].map((_, i) => (
             <div key={i} className="p-4 animate-pulse space-y-2">
               <div className="h-4 bg-gray-200 rounded-md w-2/3" />
@@ -2255,7 +2255,7 @@ export default function AdminSocios() {
 
       {/* Vista de tarjetas — mobile */}
       {!loading && (
-        <div className="md:hidden bg-white rounded-2xl shadow-sm border border-gray-100 divide-y divide-gray-50">
+        <div className="md:hidden bg-white rounded-2xl shadow-sm border border-gray-200 divide-y divide-gray-50">
           {filteredSocios.map(socio => (
             <TarjetaSocioMobile
               key={socio.id_usuario}
@@ -2282,7 +2282,7 @@ export default function AdminSocios() {
       )}
 
       {/* Tabla de Socios — desktop */}
-      <div className="hidden md:block bg-white rounded-2xl shadow-sm border border-gray-100 overflow-x-auto">
+      <div className="hidden md:block bg-white rounded-2xl shadow-sm border border-gray-200 overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-100">
           <thead className="bg-gray-50">
             <tr>
@@ -2321,7 +2321,7 @@ export default function AdminSocios() {
                   <div className="font-medium text-gray-900 flex items-center gap-2 flex-wrap">
                     {socio.apellido}, {socio.nombre}
                     {socio.es_becado && (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-teal-100 text-teal-700 border border-teal-200 flex-shrink-0">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-francia-100 text-francia-700 border border-francia-200 flex-shrink-0">
                         🎓 Becado
                       </span>
                     )}
@@ -2332,7 +2332,7 @@ export default function AdminSocios() {
                 <td className="px-6 py-4 text-sm text-gray-500">{socio.email ?? '—'}</td>
                 <td className="px-6 py-4">
                   {socioBecaActiva2 ? (
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-teal-100 text-teal-800">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-francia-100 text-francia-800">
                       🎓 Becado
                     </span>
                   ) : socioMoroso ? (
@@ -2361,7 +2361,7 @@ export default function AdminSocios() {
                   {!socio.fecha_baja && (
                     <button
                       onClick={() => setSocioCompras(socio)}
-                      className="p-2 text-gray-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
+                      className="p-2 text-gray-500 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
                       title="Ver compras y registrar pago"
                     >
                       <Receipt size={16} />

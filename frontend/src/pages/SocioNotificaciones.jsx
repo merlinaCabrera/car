@@ -38,9 +38,9 @@ function formatRelativeTime(isoString) {
 }
 
 const NOTIFICATION_ICONS = {
-  orden_aprobada: { Icon: CheckCircle2, color: 'text-emerald-600' },
+  orden_aprobada: { Icon: CheckCircle2, color: 'text-green-600' },
   orden_rechazada: { Icon: XCircle, color: 'text-red-600' },
-  beca_actualizada: { Icon: GraduationCap, color: 'text-teal-600' },
+  beca_actualizada: { Icon: GraduationCap, color: 'text-francia-600' },
   sistema: { Icon: Info, color: 'text-blue-600' },
   default: { Icon: Bell, color: 'text-gray-500' },
 };
@@ -68,7 +68,7 @@ function NotificationCard({ notificacion, isExpanded, onToggleExpand }) {
         flex items-start gap-4 p-4 rounded-2xl border transition-colors
         ${isUnread
           ? 'bg-blue-50 border-blue-200'
-          : 'bg-white border-gray-100'
+          : 'bg-white border-gray-200'
         }
       `}
     >
@@ -128,7 +128,7 @@ function NotificationCard({ notificacion, isExpanded, onToggleExpand }) {
 
 function SkeletonCard() {
   return (
-    <div className="flex items-start gap-4 p-4 rounded-2xl border border-gray-100 bg-white animate-pulse">
+    <div className="flex items-start gap-4 p-4 rounded-2xl border border-gray-200 bg-white animate-pulse">
       <div className="mt-1 w-5 h-5 rounded-full bg-gray-200" />
       <div className="flex-1 space-y-2">
         <div className="flex justify-between">

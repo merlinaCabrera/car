@@ -132,14 +132,14 @@ function SelectorReserva({ onSeleccionar }) {
 
       <div className="space-y-3">
         {loading && [...Array(2)].map((_, i) => (
-          <div key={i} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 h-20 animate-pulse" />
+          <div key={i} className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 h-20 animate-pulse" />
         ))}
 
         {!loading && reservas.map(reserva => (
           <button
             key={reserva.id_reserva}
             onClick={() => onSeleccionar(reserva)}
-            className="w-full text-left bg-white rounded-2xl border border-gray-100 shadow-sm p-5 hover:shadow-md hover:border-emerald-200 transition-all flex items-center justify-between gap-4"
+            className="w-full text-left bg-white rounded-2xl border border-gray-200 shadow-sm p-5 hover:shadow-md hover:border-green-200 transition-all flex items-center justify-between gap-4"
           >
             <div className="min-w-0">
               <p className="font-bold text-gray-900 capitalize">{reserva.instalacion.replace(/_/g, ' ')}</p>
@@ -163,14 +163,14 @@ function SelectorReserva({ onSeleccionar }) {
                 <p className="text-xs text-gray-400 mt-1 truncate">{reserva.notas}</p>
               )}
             </div>
-            <span className="text-xs font-semibold text-emerald-700 bg-emerald-100 px-3 py-1.5 rounded-full flex-shrink-0">
+            <span className="text-xs font-semibold text-green-700 bg-green-100 px-3 py-1.5 rounded-full flex-shrink-0">
               Escanear
             </span>
           </button>
         ))}
 
         {!loading && !error && reservas.length === 0 && (
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 text-center text-gray-500">
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8 text-center text-gray-500">
             No hay turnos de cancha activos en este momento.
           </div>
         )}
@@ -235,7 +235,7 @@ function ModalFormaReintegro({ reintegro, onResuelto }) {
               key={forma}
               disabled={enviando}
               onClick={() => elegir(forma)}
-              className="flex flex-col items-center gap-1.5 p-4 rounded-xl border border-gray-200 hover:border-emerald-300 hover:bg-emerald-50 disabled:opacity-40 transition-colors text-center"
+              className="flex flex-col items-center gap-1.5 p-4 rounded-xl border border-gray-200 hover:border-green-300 hover:bg-green-50 disabled:opacity-40 transition-colors text-center"
             >
               <Icon size={22} className="text-gray-600" />
               <span className="text-sm font-semibold text-gray-800">{label}</span>
@@ -469,7 +469,7 @@ export default function AdminScannerCancha() {
           />
           <button
             onClick={volverAEscanear}
-            className="w-full py-3 rounded-xl bg-slate-900 text-white font-bold hover:bg-slate-800 transition-colors"
+            className="w-full py-3 rounded-xl bg-gray-900 text-white font-bold hover:bg-gray-800 transition-colors"
           >
             Escanear siguiente
           </button>
@@ -495,7 +495,7 @@ export default function AdminScannerCancha() {
                 className="form-input flex-1"
                 autoFocus
               />
-              <button type="submit" disabled={procesando} className="px-4 py-2 rounded-lg bg-slate-900 text-white font-semibold hover:bg-slate-800 disabled:opacity-50 transition-colors flex-shrink-0">
+              <button type="submit" disabled={procesando} className="px-4 py-2 rounded-lg bg-gray-900 text-white font-semibold hover:bg-gray-800 disabled:opacity-50 transition-colors flex-shrink-0">
                 Buscar
               </button>
               <button type="button" onClick={() => setModoManual(false)} className="px-3 py-2 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors flex-shrink-0">

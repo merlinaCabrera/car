@@ -32,7 +32,10 @@ import {
 } from 'lucide-react'
 
 // Importación del asset real
-import escudoCar from '../assets/escudo-car.PNG';
+// Versión MONOCROMA BLANCA del escudo: el header es azul Roberts, así que el
+// escudo va estampado directo sobre el fondo, sin la pastilla blanca que
+// antes lo encajonaba. (La de color sigue en uso donde el fondo es claro.)
+import escudoCar from '../assets/escudo-car-blanco.png';
 
 // ─── Definición de bloques de navegación por rol ───────────────────────────
 // Cada bloque sabe qué rol(es) lo habilitan y qué enlaces contiene.
@@ -108,7 +111,7 @@ const NAV_ADMIN_GENERAL = [
   { name: 'Historial', path: '/admin/auditoria', icon: History },
 ];
 
-export default function MainLayout({ userRole }) {
+export default function MainLayout() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [seccionesAbiertas, setSeccionesAbiertas] = useState({});
@@ -245,7 +248,7 @@ export default function MainLayout({ userRole }) {
   // cada Link. La altura la define quien lo use (before:h-6 / before:h-4).
   const BARRA_ACTIVA =
     'bg-white/5 text-white before:absolute before:left-0 before:top-1/2 ' +
-    'before:w-[3px] before:-translate-y-1/2 before:rounded-r-full before:bg-[#183F7C]';
+    'before:w-[3px] before:-translate-y-1/2 before:rounded-r-full before:bg-[#5B80B4]';
 
   // Comparación exacta de pathname: `/admin` no tiene que marcarse como activo
   // mientras estás en `/admin/socios`.
@@ -306,10 +309,16 @@ export default function MainLayout({ userRole }) {
             <div className="absolute left-1/2 transform -translate-x-1/2">
               <Link
                 to={esAdminGeneral ? '/admin' : esSocio ? '/socio' : '/'}
-                className="block rounded-2xl bg-white p-2 sm:p-2.5 shadow-sm transition-transform hover:scale-105 active:scale-95"
+                className="block transition-transform hover:scale-105 active:scale-95"
                 aria-label="Ir al inicio"
               >
-                <img src={escudoCar} alt="Escudo Club Atlético Roberts" className="h-12 sm:h-16 w-auto object-contain" />
+                {/* drop-shadow suave (no el halo del Hero): despega la silueta si
+                    el header se aclara por el scroll o por un fondo distinto. */}
+                <img
+                  src={escudoCar}
+                  alt="Escudo Club Atlético Roberts"
+                  className="h-9 sm:h-10 w-auto object-contain [filter:drop-shadow(0_1px_6px_rgba(255,255,255,0.25))]"
+                />
               </Link>
             </div>
 

@@ -38,6 +38,7 @@ import {
   Plus,
   CalendarClock,
 } from 'lucide-react'
+import { Revelar } from '../components/landing/animaciones'
 
 const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 
@@ -171,7 +172,7 @@ function TarjetaProducto({ producto, onAgregar, recienAgregado }) {
   return (
     <div
       className={`
-        group relative bg-white rounded-2xl overflow-hidden border transition-all duration-300
+        group relative h-full bg-white rounded-2xl overflow-hidden border transition-all duration-300
         ${sinStock
           ? 'border-gray-200 opacity-75'
           : 'border-gray-200 hover:border-gray-200 hover:shadow-lg hover:-translate-y-0.5'
@@ -440,7 +441,7 @@ export default function SocioShopping() {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 space-y-3">
 
           <div className="flex items-center justify-between gap-4">
-            <div>
+            <div className="anim-entrada">
               <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
                 <ShoppingBag size={20} className="text-camoti-600" />
                 Tienda Oficial
@@ -486,13 +487,19 @@ export default function SocioShopping() {
           {loading && [...Array(8)].map((_, i) => <ProductoSkeleton key={i} />)}
 
           {/* Tarjetas reales */}
+          {/* El catálogo puede ser largo y la grilla arranca debajo del
+              pliegue, así que van con <Revelar> y no con delays fijos.
+              El `h-full` del envoltorio (más el de la tarjeta) mantiene las
+              tarjetas de una misma fila a la misma altura: el div que agrega
+              Revelar pasa a ser el ítem de la grilla. */}
           {!loading && productosFiltrados.map(producto => (
-            <TarjetaProducto
-              key={producto.id_producto}
-              producto={producto}
-              onAgregar={handleAgregar}
-              recienAgregado={agregadosReciente.has(producto.id_producto)}
-            />
+            <Revelar key={producto.id_producto} className="h-full">
+              <TarjetaProducto
+                producto={producto}
+                onAgregar={handleAgregar}
+                recienAgregado={agregadosReciente.has(producto.id_producto)}
+              />
+            </Revelar>
           ))}
 
           {/* Estado vacío */}

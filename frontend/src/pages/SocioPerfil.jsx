@@ -456,8 +456,9 @@ export default function SocioPerfil() {
   return (
     <div className="p-6 max-w-2xl mx-auto space-y-6">
 
-      {/* Header */}
-      <div>
+      {/* Header. Escalonado de 3 pasos: header → card de datos → card de
+          contraseña. Alcanza y sobra para esta página (tope del sistema: 4). */}
+      <div className="anim-entrada">
         <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
           <User size={24} className="text-gray-500" />
           Mi Perfil
@@ -472,7 +473,7 @@ export default function SocioPerfil() {
       {exito  && <Aviso tipo="exito" mensaje={exito}  onCerrar={() => setExito(null)} autoDismissMs={4000} />}
 
       {/* ── Card principal ──────────────────────────────────────────────── */}
-      <form onSubmit={handleGuardar} className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 space-y-6">
+      <form onSubmit={handleGuardar} className="anim-entrada anim-d1 bg-white rounded-2xl border border-gray-200 shadow-sm p-6 space-y-6">
 
         {/* Foto + nombre */}
         <div className="flex items-center gap-5">
@@ -544,7 +545,7 @@ export default function SocioPerfil() {
       </form>
 
       {/* ── Card contraseña ─────────────────────────────────────────────── */}
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 space-y-4">
+      <div className="anim-entrada anim-d2 bg-white rounded-2xl border border-gray-200 shadow-sm p-6 space-y-4">
         <button
           type="button"
           onClick={() => {

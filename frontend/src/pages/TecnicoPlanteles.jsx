@@ -597,7 +597,6 @@ function GestionTecnicosModal({ categoria, onClose }) {
         throw new Error(textoError(body?.detail, 'No se pudo asignar el técnico.'))
       }
       setBusqueda('')
-      setResultados([])
       await fetchAsignados()
     } catch (err) {
       setError(err.message)

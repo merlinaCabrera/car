@@ -40,6 +40,7 @@ import {
   ArrowLeft,
   PackageX,
 } from 'lucide-react'
+import { Revelar } from '../components/landing/animaciones'
 
 const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 
@@ -693,7 +694,7 @@ export default function SocioCarrito() {
       )}
 
       {/* Header */}
-      <div className="flex items-center gap-3">
+      <div className="anim-entrada flex items-center gap-3">
         <button
           onClick={() => navigate(-1)}
           className="p-2 rounded-xl text-gray-500 hover:bg-gray-100 transition-colors"
@@ -714,12 +715,16 @@ export default function SocioCarrito() {
 
       {/* Lista de ítems */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 divide-y divide-gray-50 overflow-hidden">
+        {/* El carrito no tiene tope de ítems, así que van con <Revelar> y no
+            con delays fijos. El div que agrega Revelar pasa a ser el hijo
+            directo del contenedor, o sea que el `divide-y` lo sigue tomando. */}
         {cart.map(item => (
-          <ItemCarrito
-            key={`${item.id}-${item.qty}`} // Usamos una combinación única
-            item={item}
-            onRemove={() => handleRemove(item)}
-          />
+          <Revelar key={`${item.id}-${item.qty}`}>
+            <ItemCarrito
+              item={item}
+              onRemove={() => handleRemove(item)}
+            />
+          </Revelar>
         ))}
       </div>
 

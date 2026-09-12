@@ -3,7 +3,6 @@ import CamotiVolador from '../components/landing/CamotiVolador';
 import Hero from '../components/landing/Hero';
 import Historia from '../components/landing/Historia';
 import Galeria from '../components/landing/Galeria';
-import Calendario from '../components/landing/Calendario';
 import Beneficios from '../components/landing/Beneficios';
 import Sponsors from '../components/landing/Sponsors';
 import Footer from '../components/landing/Footer';
@@ -46,8 +45,6 @@ export default function Landing() {
       <Hero ctaProps={ctaProps} />
 
       <Revelar><Historia /></Revelar>
-      {/* Calendario hoy no renderiza nada: sin envolver, para no dejar un div vacío. */}
-      <Calendario />
       <Revelar><Beneficios /></Revelar>
       <Revelar><Sponsors /></Revelar>
       <Revelar><Footer /></Revelar>

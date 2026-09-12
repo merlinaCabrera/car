@@ -184,7 +184,7 @@ export default function ReservaCalendar({ instalacion, onSeleccionar }) {
         selectable
         onSelectSlot={handleSelectSlot}
         eventPropGetter={eventPropGetter}
-        defaultView="week"s
+        defaultView="week"
         views={['week', 'day']}
         step={30}
         timeslots={2}

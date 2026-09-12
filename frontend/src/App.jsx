@@ -58,7 +58,7 @@ function App() {
                 persona pueda navegar a otro lado antes de cambiar la
                 contraseña temporal. */}
             <Route path="/cambiar-password-obligatorio" element={<CambiarPasswordObligatorio />} />
-            <Route element={<MainLayout userRole="socio" />}>
+            <Route element={<MainLayout />}>
               {/* Socio / Jugador — cualquier rol de miembro (no invitado ni admin_temporal sueltos) */}
               <Route element={<RequireRole any={ROLES_AREA_SOCIO} />}>
                 <Route path="/socio" element={<SocioInicio />} />

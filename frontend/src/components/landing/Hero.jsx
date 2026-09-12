@@ -9,55 +9,14 @@ import heroBg from '../../assets/hero-bg.PNG';
 // no se sirva una copia vieja cacheada.
 import escudoCar from '../../assets/escudo-car-blanco.png';
 import { useAuth } from '../../context/AuthContext';
-
-// Animación de entrada institucional. Va como <style> local y no en index.css
-// ni en tailwind.config porque es exclusiva del hero de la landing: si algún
-// día se rediseña esta sección, se borra el componente y no queda CSS muerto
-// dando vueltas en los archivos compartidos.
-//
-// Coreografía (una sola pasada, sin loop):
-//   0.0s → 0.6s   escudo (scale 0.75 → 1)
-//   0.6s → 1.0s   pausa: el escudo solo, respirando
-//   1.0s → 1.4s   eyebrow
-//   1.2s → 1.7s   titular
-//   1.5s → 1.9s   subtítulo
-//   1.8s → 2.2s   botones
-//
-// `both` como fill-mode es lo que hace que cada elemento arranque invisible
-// (aplica el frame `from` durante el delay) y se quede en su estado final.
-const estilosEntrada = `
-  @keyframes heroScaleIn {
-    from { opacity: 0; transform: scale(0.75); }
-    to   { opacity: 1; transform: scale(1); }
-  }
-  @keyframes heroFadeUp {
-    from { opacity: 0; transform: translateY(12px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
-
-  .hero-escudo    { animation: heroScaleIn 0.6s ease-out 0s   both; }
-  .hero-eyebrow   { animation: heroFadeUp  0.4s ease-out 1.0s both; }
-  .hero-titulo    { animation: heroFadeUp  0.5s ease-out 1.2s both; }
-  .hero-subtitulo { animation: heroFadeUp  0.4s ease-out 1.5s both; }
-  .hero-botones   { animation: heroFadeUp  0.4s ease-out 1.8s both; }
-
-  /* Quien pidió menos movimiento ve el hero ya armado, sin esperar 2.3s. */
-  @media (prefers-reduced-motion: reduce) {
-    .hero-escudo,
-    .hero-eyebrow,
-    .hero-titulo,
-    .hero-subtitulo,
-    .hero-botones { animation: none; }
-  }
-`;
+// Las clases hero-* las define EstilosLanding, que Landing monta una sola
+// vez. La coreografía y los delays están documentados ahí.
 
 export default function Hero() {
   const { isAuthenticated } = useAuth();
 
   return (
     <section className="relative min-h-[100svh] flex flex-col overflow-hidden">
-      <style>{estilosEntrada}</style>
-
       {/* Foto de fondo como <img> y no como background-image: así se puede
           encuadrar con object-position (los jugadores y el paredón "CLUB
           ATLETICO" quedan en el tercio inferior de la toma). */}
@@ -107,12 +66,6 @@ export default function Hero() {
             nos mueve la pasión
           </h1>
 
-          <p className="hero-subtitulo mt-6 mx-auto max-w-xl text-base sm:text-lg leading-relaxed text-white/80">
-            Portal oficial de socios del Club Atlético Roberts. Gestioná tu cuota,
-            reservá las canchas y el quincho, y accedé a los beneficios del club
-            desde el celular.
-          </p>
-
           <div className="hero-botones mt-10 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 sm:gap-4">
             {isAuthenticated ? (
               <Link
@@ -138,6 +91,16 @@ export default function Hero() {
               </>
             )}
           </div>
+
+          {/* Bajada informativa. Va DESPUÉS de los botones y en cuerpo chico a
+              propósito: entre el lema y el CTA cortaba la composición. Acá
+              explica de qué se trata el sitio a quien siga leyendo, sin
+              disputarle el protagonismo al lema. */}
+          <p className="hero-subtitulo mt-8 mx-auto max-w-lg text-sm sm:text-base leading-relaxed text-white/60 [text-wrap:pretty]">
+            Portal oficial de socios del Club Atlético Roberts. Gestioná tu cuota,
+            reservá las canchas y el quincho, y accedé a los beneficios del club
+            desde el celular.
+          </p>
         </div>
       </div>
 

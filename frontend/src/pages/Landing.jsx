@@ -1,3 +1,4 @@
+import { EstilosLanding, Revelar } from '../components/landing/animaciones';
 import Hero from '../components/landing/Hero';
 import Historia from '../components/landing/Historia';
 import Galeria from '../components/landing/Galeria';
@@ -30,12 +31,22 @@ export default function Landing() {
 
   return (
     <div className="flex flex-col min-h-screen bg-white">
+      <EstilosLanding />
+
+      {/* El Hero se anima solo al cargar (está sobre el pliegue). Las secciones
+          de abajo van envueltas en <Revelar>: aparecen cuando el scroll las
+          alcanza, así la animación no se gasta fuera de pantalla.
+          El envoltorio va acá y no dentro de cada sección porque Footer y
+          Beneficios se reusan en otras páginas — ver el comentario en
+          components/landing/animaciones.jsx. */}
       <Hero ctaProps={ctaProps} />
-      <Historia />
+
+      <Revelar><Historia /></Revelar>
+      {/* Calendario hoy no renderiza nada: sin envolver, para no dejar un div vacío. */}
       <Calendario />
-      <Beneficios />      
-      <Sponsors />
-      <Footer />
+      <Revelar><Beneficios /></Revelar>
+      <Revelar><Sponsors /></Revelar>
+      <Revelar><Footer /></Revelar>
     </div>
   );
 }

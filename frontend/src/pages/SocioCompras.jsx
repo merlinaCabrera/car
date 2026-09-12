@@ -1,5 +1,6 @@
 import { textoError } from '../utils/errores';
 import { resolverUrlArchivo } from '../utils/archivos';
+import { Revelar } from '../components/landing/animaciones';
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -505,7 +506,7 @@ export default function SocioCompras() {
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-6 sm:py-8">
-      <div className="mb-6 flex items-center gap-3">
+      <div className="anim-entrada mb-6 flex items-center gap-3">
         <div className="rounded-xl bg-camoti-100 p-2 sm:p-2.5 flex-shrink-0">
           <ShoppingBag className="h-5 w-5 sm:h-6 sm:w-6 text-camoti-600" />
         </div>
@@ -537,12 +538,13 @@ export default function SocioCompras() {
       {!cargando && !error && ordenes.length > 0 && (
         <div className="space-y-4">
           {ordenes.map((orden) => (
-            <TarjetaOrden
-              key={orden.id_orden}
-              orden={orden}
-              token={token}
-              onComprobanteCargado={() => setRecargarTick((t) => t + 1)}
-            />
+            <Revelar key={orden.id_orden}>
+              <TarjetaOrden
+                orden={orden}
+                token={token}
+                onComprobanteCargado={() => setRecargarTick((t) => t + 1)}
+              />
+            </Revelar>
           ))}
         </div>
       )}

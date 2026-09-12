@@ -423,7 +423,7 @@ export default function AdminScannerCancha() {
       )}
 
       {/* Header con la reserva activa */}
-      <div className="flex items-center gap-3">
+      <div className="anim-entrada flex items-center gap-3">
         <button
           onClick={() => setReservaActiva(null)}
           className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors flex-shrink-0"
@@ -441,7 +441,7 @@ export default function AdminScannerCancha() {
 
       {/* Cámara */}
       {escaneando && !modoManual && (
-        <div className="rounded-2xl overflow-hidden border border-gray-200 shadow-sm aspect-square bg-black">
+        <div className="anim-entrada anim-d1 rounded-2xl overflow-hidden border border-gray-200 shadow-sm aspect-square bg-black">
           <Scanner
             onScan={handleScan}
             onError={() => setResultado({ tipo: 'error', mensaje: 'No se pudo acceder a la cámara.' })}

@@ -444,7 +444,7 @@ export default function Reservas() {
 
   return (
     <div className="p-4 sm:p-6 max-w-4xl mx-auto space-y-5 sm:space-y-6">
-      <div>
+      <div className="anim-entrada">
         <h1 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2 sm:gap-3">
           <CalendarClock size={22} className="text-gray-500 flex-shrink-0" />
           Reservas
@@ -461,6 +461,7 @@ export default function Reservas() {
         </div>
       )}
 
+      <div className="anim-entrada anim-d1">
       <CalendarioMensual
         key={refreshKey}
         instalacion={instalacion}
@@ -468,6 +469,7 @@ export default function Reservas() {
         seleccion={seleccion}
         onSeleccionar={handleSeleccionar}
       />
+      </div>
 
       {agregado && !seleccion && (
         <div className="flex items-center gap-2 p-4 bg-green-50 border border-green-200 text-green-700 rounded-2xl text-sm font-medium">

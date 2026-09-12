@@ -303,7 +303,7 @@ export default function JugadorEquipo() {
     <div className="p-6 max-w-3xl mx-auto space-y-6">
 
       {/* Header */}
-      <div className="flex items-start justify-between gap-4 flex-wrap">
+      <div className="anim-entrada flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
             <Shield size={24} className="text-gray-500" />
@@ -358,7 +358,7 @@ export default function JugadorEquipo() {
           <CategoriaTabs equipos={equipos} activa={categoriaActiva} onChange={setCategoriaActiva} />
 
           {/* Encabezado de la categoría */}
-          <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div className="anim-entrada anim-d1 flex items-center justify-between gap-3 flex-wrap">
             <div>
               <h2 className="font-display text-lg font-semibold text-gray-800">{equipo.categoria?.nombre}</h2>
               {equipo.categoria?.descripcion && (

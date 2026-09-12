@@ -9,8 +9,8 @@ import heroBg from '../../assets/hero-bg.PNG';
 // no se sirva una copia vieja cacheada.
 import escudoCar from '../../assets/escudo-car-blanco.png';
 import { useAuth } from '../../context/AuthContext';
-// Las clases hero-* las define EstilosLanding, que Landing monta una sola
-// vez. La coreografía y los delays están documentados ahí.
+// Las clases hero-* las define src/index.css, junto con el resto del sistema
+// de animaciones de la app. La coreografía y los delays están documentados ahí.
 
 export default function Hero() {
   const { isAuthenticated } = useAuth();

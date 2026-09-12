@@ -33,6 +33,7 @@ import {
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useCart } from '../context/CartContext'
+import { Revelar } from '../components/landing/animaciones';
 import {
   CalendarClock,
   Loader2,
@@ -359,7 +360,7 @@ export default function SocioCancha() {
   return (
     <div className="min-h-screen bg-gray-900 p-4 pb-20 text-gray-100 space-y-6">
 
-      <div className="mb-2">
+      <div className="anim-entrada mb-2">
         <h2 className="font-display text-2xl font-semibold text-white tracking-wide flex items-center gap-2">
           <CalendarClock size={22} className="text-gray-400" />
           Reserva de Cancha
@@ -371,7 +372,7 @@ export default function SocioCancha() {
 
       {/* Selector de cancha */}
       {CANCHAS.length > 1 && (
-        <div className="flex gap-2">
+        <div className="anim-entrada anim-d1 flex gap-2">
           {CANCHAS.map((c) => (
             <button
               key={c.key}
@@ -397,7 +398,7 @@ export default function SocioCancha() {
       )}
 
       {/* Calendario / disponibilidad */}
-      <div className="bg-gray-800 rounded-3xl shadow-xl p-5 border border-gray-700/50 space-y-4">
+      <div className="anim-entrada anim-d2 bg-gray-800 rounded-3xl shadow-xl p-5 border border-gray-700/50 space-y-4">
         <SelectorFecha fecha={fecha} onCambiarFecha={(d) => { setFecha(d); setSeleccion(null) }} />
 
         <div className="flex items-center justify-between">
@@ -449,13 +450,15 @@ export default function SocioCancha() {
 
       {/* Calculadora de reparto + reintegro */}
       {producto && (
-        <CalculadoraReintegro
-          precioTotal={Number(producto.precio_actual)}
-          totalParticipantes={totalParticipantes}
-          numSocios={numSocios}
-          onCambiarTotal={setTotalParticipantes}
-          onCambiarSocios={setNumSocios}
-        />
+        <Revelar>
+          <CalculadoraReintegro
+            precioTotal={Number(producto.precio_actual)}
+            totalParticipantes={totalParticipantes}
+            numSocios={numSocios}
+            onCambiarTotal={setTotalParticipantes}
+            onCambiarSocios={setNumSocios}
+          />
+        </Revelar>
       )}
 
       {agregado && !seleccion && (

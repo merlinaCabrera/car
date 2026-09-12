@@ -16,6 +16,7 @@ import {
   UserPlus,
 } from 'lucide-react';
 import Beneficios from '../components/landing/Beneficios';
+import { Revelar } from '../components/landing/animaciones';
 import { calcularEstadoFinanciero } from '../utils/cuotas';
 import escudoCar from '../assets/escudo-car.PNG';
 import camotiAzul from '../assets/camoti-azul.PNG';
@@ -193,7 +194,7 @@ export default function SocioInicio() {
 
   return (
     <div className="p-4 sm:p-6 max-w-4xl mx-auto space-y-5 sm:space-y-6">
-      <div>
+      <div className="anim-entrada">
         <h1 className="text-2xl sm:text-3xl font-semibold text-gray-900">¡Hola, {nombreCorto}!</h1>
         <p className="text-gray-500 text-sm mt-1">Bienvenido a tu portal personal.</p>
       </div>
@@ -201,7 +202,7 @@ export default function SocioInicio() {
       <div className="flex flex-col lg:flex-row gap-4 sm:gap-6">
         {/* Estado Financiero */}
         <div
-          className={`flex-1 rounded-2xl p-5 sm:p-6 border-2 flex flex-col justify-between min-h-[180px] sm:min-h-[200px] ${
+          className={`anim-entrada anim-d1 flex-1 rounded-2xl p-5 sm:p-6 border-2 flex flex-col justify-between min-h-[180px] sm:min-h-[200px] ${
             esMoroso ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-200'
           }`}
         >
@@ -240,7 +241,7 @@ export default function SocioInicio() {
             QR, y el bloque de datos del socio (nombre en Playfair, datos en
             Inter). El Camotí va de marca de agua sutil — nunca sobre el QR,
             que necesita contraste limpio para que el escáner lo lea. */}
-        <div className="flex-1 rounded-2xl overflow-hidden bg-white border border-gray-200 shadow-md">
+        <div className="anim-escala anim-d2 flex-1 rounded-2xl overflow-hidden bg-white border border-gray-200 shadow-md">
 
           {/* Cabecera institucional */}
           <div className="flex items-center gap-3 px-5 py-4 bg-white border-b border-gray-200">
@@ -386,7 +387,7 @@ export default function SocioInicio() {
       </div>
 
       {/* Acceso rápido a Beneficios — mensaje contextual según estado financiero */}
-      <div className="pt-2">
+      <div className="anim-entrada anim-d3 pt-2">
         {enVerificacion ? (
           <div className="flex items-center gap-3 p-4 rounded-2xl bg-blue-50 border border-blue-200 text-blue-800">
             <AlertTriangle size={20} className="flex-shrink-0" />
@@ -420,7 +421,7 @@ export default function SocioInicio() {
             </p>
           </div>
         )}
-        <Beneficios />
+        <Revelar><Beneficios /></Revelar>
       </div>
     </div>
   );

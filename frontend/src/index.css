@@ -95,3 +95,90 @@
   background-color: var(--car-azul-roberts);
   color: var(--car-blanco);
 }
+
+/* ============================================================================
+   Animaciones de entrada — sistema único de toda la app
+   ----------------------------------------------------------------------------
+   Vivían en un <style> dentro de components/landing/animaciones.jsx, que solo
+   monta Landing.jsx. Mientras fueron exclusivas de la landing alcanzaba; desde
+   que las usan también las páginas del socio y de roles, ahí no servían: esas
+   pantallas nunca pasan por Landing, así que los keyframes no existían y las
+   clases no hacían nada (sin error — simplemente no animaba).
+
+   Por eso están acá: index.css lo carga main.jsx, o sea siempre y en cualquier
+   ruta. No duplicar keyframes en componentes sueltos.
+
+   Dos excepciones que siguen siendo <style> local, a propósito, porque son de
+   un componente y no del sistema: el camotí del Footer (que también usa
+   GaleriaCompleta) y CamotiVolador.
+   ========================================================================== */
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Dos escalas distintas a propósito:
+     · scaleIn      — 0.75, para la entrada del escudo en la landing, que es
+                      presentación y se banca el gesto grande.
+     · scaleInSuave — 0.96, para UI adentro de la app (el carnet del socio).
+                      Con 0.75 una tarjeta "salta" y marea; acá la animación es
+                      fluidez, no espectáculo. */
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.75); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes scaleInSuave {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@layer components {
+  /* ── Entrada al montar ───────────────────────────────────────────────────
+     `both` como fill-mode es lo que hace que el elemento arranque invisible
+     (aplica el frame `from` durante el delay) y se quede en su estado final.
+     Sin eso, un elemento con delay parpadea visible antes de empezar. */
+  .anim-entrada   { animation: fadeUp       0.4s  ease-out both; }
+  .anim-entrada-l { animation: fadeUp       0.45s ease-out both; }
+  .anim-escala    { animation: scaleInSuave 0.5s  ease-out both; }
+
+  /* Escalonado. Tope deliberado en 4 pasos: más que eso y la última tarjeta
+     entra cuando el usuario ya la está mirando, que se lee como lentitud y no
+     como animación. Si hay más de 4 elementos, los que sobran comparten -4. */
+  .anim-d1 { animation-delay: 0.10s; }
+  .anim-d2 { animation-delay: 0.20s; }
+  .anim-d3 { animation-delay: 0.30s; }
+  .anim-d4 { animation-delay: 0.40s; }
+
+  /* ── Revelado por scroll ─────────────────────────────────────────────────
+     Lo usa el componente <Revelar>, que agrega .revelar-visible cuando la
+     sección entra en pantalla. Arranca oculto. */
+  .revelar         { opacity: 0; }
+  .revelar-visible { animation: fadeUp 0.4s ease-out both; }
+
+  /* ── Entrada del Hero de la landing ──────────────────────────────────────
+     Delays fijos, en el orden VISUAL de arriba a abajo. Si movés un elemento
+     de lugar en el JSX, reacomodá el delay: si no, la página se arma salteada
+     y se nota. */
+  .hero-escudo  { animation: scaleIn 0.6s ease-out 0s   both; }
+  .hero-eyebrow { animation: fadeUp  0.4s ease-out 1.0s both; }
+  .hero-titulo  { animation: fadeUp  0.5s ease-out 1.2s both; }
+  .hero-botones { animation: fadeUp  0.4s ease-out 1.5s both; }
+}
+
+/* Con "reducir movimiento" se ve todo armado, sin esperas ni scroll.
+   El `opacity: 1` de .revelar no es opcional: si solo apagáramos la animación,
+   ese contenido se quedaría invisible para siempre. */
+@media (prefers-reduced-motion: reduce) {
+  .anim-entrada,
+  .anim-entrada-l,
+  .anim-escala,
+  .revelar-visible,
+  .hero-escudo,
+  .hero-eyebrow,
+  .hero-titulo,
+  .hero-botones {
+    animation: none;
+  }
+  .revelar { opacity: 1; }
+}

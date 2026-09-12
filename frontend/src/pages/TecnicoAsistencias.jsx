@@ -488,7 +488,7 @@ export default function Asistencias() {
   // Vista: lista de eventos para elegir
   return (
     <div className="p-6 max-w-4xl mx-auto space-y-6">
-      <div className="flex items-start justify-between gap-4">
+      <div className="anim-entrada flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
             <ClipboardCheck size={24} className="text-gray-500" />
@@ -516,7 +516,7 @@ export default function Asistencias() {
         </div>
       )}
 
-      <div className="space-y-3">
+      <div className="anim-entrada anim-d1 space-y-3">
         {loading && [...Array(4)].map((_, i) => (
           <div key={i} className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 h-20 animate-pulse" />
         ))}

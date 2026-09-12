@@ -1334,7 +1334,7 @@ export default function TecnicoPlanteles() {
         <NuevaCategoriaModal onClose={() => setModalCategoriaAbierto(false)} onSave={handleCrearCategoria} />
       )}
 
-      <div className="flex items-start justify-between gap-4">
+      <div className="anim-entrada flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
             <Shield size={24} className="text-gray-500" />
@@ -1372,7 +1372,7 @@ export default function TecnicoPlanteles() {
         </div>
       )}
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
+      <div className="anim-entrada anim-d1 grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
         {loading && [...Array(3)].map((_, i) => (
           <div key={i} className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 h-28 animate-pulse" />
         ))}

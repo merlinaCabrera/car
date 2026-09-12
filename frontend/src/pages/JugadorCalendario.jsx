@@ -281,7 +281,7 @@ export default function JugadorCalendario() {
     <div className="p-6 max-w-3xl mx-auto space-y-8">
 
       {/* Header */}
-      <div className="flex items-start justify-between gap-4 flex-wrap">
+      <div className="anim-entrada flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
             <CalendarDays size={24} className="text-gray-500" />
@@ -316,7 +316,7 @@ export default function JugadorCalendario() {
 
       {/* ── Vista Calendario ─────────────────────────────────────────────── */}
       {vista === 'calendario' && (
-        <div className="space-y-4">
+        <div className="anim-entrada anim-d1 space-y-4">
           {loading ? (
             <div className="bg-white rounded-2xl border border-gray-200 shadow-sm h-96 animate-pulse" />
           ) : (

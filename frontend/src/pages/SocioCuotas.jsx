@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext'
 import { resolverUrlArchivo } from '../utils/archivos'
 import { useCart } from '../context/CartContext'
 import ConfirmDialog from '../components/ConfirmDialog'
+import { Revelar } from '../components/landing/animaciones';
 import { parsearISO, calcularEstadoFinanciero, estadoDeMes } from '../utils/cuotas'
 import {
   Wallet,
@@ -861,7 +862,7 @@ export default function SocioCuotas() {
       )}
 
       {/* Header */}
-      <div>
+      <div className="anim-entrada">
         <h1 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2 sm:gap-3">
           <Wallet size={22} className="text-gray-500 flex-shrink-0" />
           Gestión de Cuotas
@@ -966,6 +967,7 @@ export default function SocioCuotas() {
       )}
 
       {/* Estado de Cuenta */}
+      <div className="anim-entrada anim-d1">
       <EstadoCard
         estado={estado}
         loading={false}
@@ -973,11 +975,14 @@ export default function SocioCuotas() {
         ordenPendiente={ordenPendiente}
         onAbrirCarrito={() => setMostrarSeleccionMeses(true)}
       />
+      </div>
 
       {/* ── Calendario Anual Interactivo ────────────────────────────────────── */}
       {/* Se muestra solo cuando ya tenemos el estado del socio cargado        */}
       {estado?.fecha_ingreso && (
-        <CalendarioAnual estado={estado} />
+        <div className="anim-entrada anim-d2">
+          <CalendarioAnual estado={estado} />
+        </div>
       )}
 
       {/* Botón "Pagar Cuotas" → SeleccionMesesModal (oculto si becado o hay orden pendiente) */}
@@ -1020,7 +1025,7 @@ export default function SocioCuotas() {
       )}
 
       {/* Historial de Pagos */}
-      <div>
+      <Revelar>
         <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wide mb-3">
           Historial de Pagos
         </h2>
@@ -1080,7 +1085,7 @@ export default function SocioCuotas() {
             </div>
           )}
         </div>
-      </div>
+      </Revelar>
     </div>
   )
 }

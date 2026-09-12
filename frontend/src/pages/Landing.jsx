@@ -1,4 +1,4 @@
-import { EstilosLanding, Revelar } from '../components/landing/animaciones';
+import { Revelar } from '../components/landing/animaciones';
 import CamotiVolador from '../components/landing/CamotiVolador';
 import Hero from '../components/landing/Hero';
 import Historia from '../components/landing/Historia';
@@ -32,8 +32,6 @@ export default function Landing() {
 
   return (
     <div className="flex flex-col min-h-screen bg-white">
-      <EstilosLanding />
-
       {/* Easter egg: cada tanto El Camotí cruza la pantalla. Va acá suelto y
           no dentro de una sección porque se posiciona fixed sobre toda la
           ventana. Solo en la landing: en MainLayout molestaría al socio. */}

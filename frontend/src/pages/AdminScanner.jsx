@@ -339,7 +339,7 @@ export default function AdminScanner() {
     <div className="flex flex-col min-h-[calc(100dvh-4rem)] bg-gray-950">
 
       {/* Header compacto */}
-      <div className="px-5 pt-5 pb-3 text-center">
+      <div className="anim-entrada px-5 pt-5 pb-3 text-center">
         <h1 className="text-xl font-bold text-white tracking-tight">Control de Acceso</h1>
         <p className="text-gray-400 text-xs mt-0.5">
           {modoDNI
@@ -349,7 +349,7 @@ export default function AdminScanner() {
       </div>
 
       {/* Toggle cámara / DNI */}
-      <div className="flex mx-5 mb-4 rounded-xl overflow-hidden border border-gray-700 text-sm font-semibold">
+      <div className="anim-entrada anim-d1 flex mx-5 mb-4 rounded-xl overflow-hidden border border-gray-700 text-sm font-semibold">
         {[
           { label: '📷  Cámara QR', value: false },
           { label: '⌨️  DNI Manual', value: true  },
@@ -369,7 +369,7 @@ export default function AdminScanner() {
       </div>
 
       {/* ── Bloque principal: visor o input ────────────────────────────── */}
-      <div className="flex-1 flex flex-col px-5 gap-4">
+      <div className="anim-entrada anim-d2 flex-1 flex flex-col px-5 gap-4">
 
         {modoDNI ? (
           /* ── Modo DNI ──────────────────────────────────────────────── */

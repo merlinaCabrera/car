@@ -826,7 +826,7 @@ export default function TecnicoEventos() {
       )}
 
       {/* Header */}
-      <div className="space-y-4">
+      <div className="anim-entrada space-y-4">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-3">
             <Calendar size={22} className="text-gray-500 flex-shrink-0" />

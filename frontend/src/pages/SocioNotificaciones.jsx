@@ -3,6 +3,7 @@ import { textoError } from '../utils/errores';
 import { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { Revelar } from '../components/landing/animaciones';
 import {
   Bell,
   ArrowLeft,
@@ -209,7 +210,7 @@ export default function SocioNotificaciones() {
   return (
     <div className="p-4 sm:p-6 max-w-2xl mx-auto space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-3">
+      <div className="anim-entrada flex items-center gap-3">
         <button
           onClick={() => navigate(-1)}
           className="p-2 rounded-xl text-gray-500 hover:bg-gray-100 transition-colors"
@@ -259,12 +260,13 @@ export default function SocioNotificaciones() {
 
         {!loading && !error && notificaciones.length > 0 && (
           notificaciones.map(notif => (
-            <NotificationCard
-              key={notif.id_notificacion}
-              notificacion={notif}
-              isExpanded={expandedId === notif.id_notificacion}
-              onToggleExpand={() => handleToggleExpand(notif.id_notificacion)}
-            />
+            <Revelar key={notif.id_notificacion}>
+              <NotificationCard
+                notificacion={notif}
+                isExpanded={expandedId === notif.id_notificacion}
+                onToggleExpand={() => handleToggleExpand(notif.id_notificacion)}
+              />
+            </Revelar>
           ))
         )}
       </div>

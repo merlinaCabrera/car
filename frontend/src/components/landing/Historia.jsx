@@ -8,9 +8,19 @@ const placeholders = [1, 2, 3, 4];
 
 export default function Historia() {
   return (
-    <section className="bg-white pt-8 pb-24 sm:pb-28">
+    <section className="bg-white pt-16 sm:pt-20 pb-24 sm:pb-28">
       <div className="max-w-3xl mx-auto px-6 lg:px-8 text-center">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-blue-600/70">
+        {/* Bajada institucional. Antes vivía en el Hero, debajo del lema, y le
+            robaba el primer golpe de vista en mobile. Acá cumple mejor: es lo
+            primero que se lee ya sobre el fondo blanco, y en cursiva se lee
+            como voz del club y no como otro título más. */}
+        <p className="italic text-lg sm:text-xl leading-relaxed text-gray-500 [text-wrap:pretty]">
+          Portal oficial de socios del Club Atlético Roberts. Gestioná tu cuota,
+          reservá las canchas y el quincho, y accedé a los beneficios del club
+          desde el celular.
+        </p>
+
+        <p className="mt-14 text-[11px] font-semibold uppercase tracking-[0.22em] text-blue-600/70">
           El club
         </p>
         <h2 className="mt-4 font-display text-3xl sm:text-4xl lg:text-[2.75rem] font-bold text-blue-600 leading-tight tracking-tight">

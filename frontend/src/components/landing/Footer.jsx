@@ -35,6 +35,35 @@ const REDES = [
   { Icon: YoutubeIcon, url: 'https://youtube.com/', label: 'YouTube' },
 ];
 
+// El Camotí es una abeja, así que en vez de estar clavado en una caja, flota.
+//
+// El CSS va acá y no en components/landing/animaciones.jsx a propósito: este
+// pie también lo usa GaleriaCompleta, que no monta los estilos de la landing.
+// Si esto viviera allá, el camotí quedaría quieto en esa página.
+//
+// La pastilla blanca que había antes resolvía un problema real: el Azul Camotí
+// está definido para fondos claros y sobre el pie oscuro casi no se lee. El
+// halo hace el mismo trabajo sin el borde duro — es blanco pleno en el centro,
+// donde apoya la abeja, y se desvanece a nada antes de llegar al borde.
+const ESTILOS_CAMOTI = `
+  @keyframes camotiFlota {
+    0%, 100% { transform: translateY(0)     rotate(-2deg); }
+    50%      { transform: translateY(-7px)  rotate(2deg);  }
+  }
+  @keyframes camotiHalo {
+    0%, 100% { transform: scale(1);    opacity: 0.85; }
+    50%      { transform: scale(1.07); opacity: 1;    }
+  }
+  /* Desfasados a propósito (4.5s y 6s): al no coincidir los ciclos, el
+     movimiento no se lee como un loop corto repitiéndose. */
+  .camoti-flota { animation: camotiFlota 4.5s ease-in-out infinite; }
+  .camoti-halo  { animation: camotiHalo  6s   ease-in-out infinite; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .camoti-flota, .camoti-halo { animation: none; }
+  }
+`;
+
 // Etiqueta de columna: un solo estilo para las tres cabeceras del pie.
 function TituloColumna({ children }) {
   return (
@@ -48,19 +77,26 @@ export default function Footer() {
   return (
     /* Azul Francia (#1C1F2D) exacto = francia-900 en tailwind.config.js. */
     <footer className="bg-francia-900 text-white/75">
+      <style>{ESTILOS_CAMOTI}</style>
       <div className="max-w-6xl mx-auto px-6 lg:px-8 py-16 sm:py-20">
         <div className="grid gap-12 sm:grid-cols-2 lg:grid-cols-3 lg:gap-10">
           {/* ── Identidad ─────────────────────────────────────────────── */}
           <div className="sm:col-span-2 lg:col-span-1">
             {/* El escudo NO va en el pie (va en cabecera). Acá la marca
-                secundaria: El Camotí, en su tinta oficial Azul Camotí, que
-                está definida para fondos claros — de ahí la pastilla blanca,
-                la misma norma que el manual fija para soportes oscuros. */}
-            <div className="inline-flex rounded-2xl bg-white p-3">
+                secundaria: El Camotí, en su tinta oficial Azul Camotí. */}
+            <div className="relative inline-flex items-center justify-center p-4">
+              {/* Halo: reemplaza a la pastilla. aria-hidden porque es puro
+                  soporte visual — quien usa lector de pantalla ya tiene el alt
+                  de la imagen. */}
+              <span
+                aria-hidden="true"
+                className="camoti-halo absolute inset-0 rounded-full
+                           bg-[radial-gradient(circle,rgba(255,255,255,0.97)_0%,rgba(255,255,255,0.88)_42%,rgba(255,255,255,0.35)_66%,rgba(255,255,255,0)_78%)]"
+              />
               <img
                 src={camotiAzul}
                 alt="El Camotí — marca secundaria del Club Atlético Roberts"
-                className="h-12 w-auto object-contain"
+                className="camoti-flota relative h-14 w-auto object-contain"
               />
             </div>
 

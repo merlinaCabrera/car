@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import InfiniteCarousel from './InfiniteCarousel';
 
 const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8000';
 
@@ -32,10 +33,11 @@ export default function Sponsors() {
       {/* ─────────────────────────────────────────────────────────────────────
           POR QUÉ LAS PLACAS SON OSCURAS Y NO BLANCAS
           ---------------------------------------------------------------------
-          Los 5 logos cargados hoy en el bucket público son arte BLANCO sobre
+          Los logos cargados hoy en el bucket público son arte BLANCO sobre
           fondo transparente (verificado pixel a pixel: el 100% de los píxeles
           con alfa tienen luminancia > 235). Sobre blanco no se ven lavados:
-          no se ven, punto. Es el mismo caso que el escudo blanco del Hero.
+          no se ven, punto. Es el mismo caso que el escudo blanco del Hero y el
+          de los logos de Beneficios, que usa esta misma placa.
 
           No hay filtro CSS que arreglar — acá no hay ninguno. Con estos
           archivos, la única forma de que el logo se lea es darle un fondo
@@ -46,21 +48,24 @@ export default function Sponsors() {
           en la placa `bg-francia-900 border-white/10` por
           `bg-white border-gray-100` y listo, es esa línea nada más.
           ───────────────────────────────────────────────────────────────────── */}
-      <div className="mx-auto mt-14 max-w-6xl px-6 lg:px-8">
-        <div className="grid grid-cols-2 gap-4 sm:gap-6 md:grid-cols-3 lg:grid-cols-4">
-          {sponsors.map((sponsor) => (
+      <div className="mt-14">
+        <InfiniteCarousel
+          items={sponsors}
+          bgClassName="from-white"
+          renderItem={(sponsor, i) => (
             <a
-              key={sponsor.id_sponsor}
+              key={`sponsor-${sponsor.id_sponsor}-${i}`}
               href={sponsor.url_destino}
               target="_blank"
               rel="noopener noreferrer"
               title={sponsor.nombre}
-              className="relative block overflow-hidden rounded-2xl border border-white/10
-                         bg-francia-900 aspect-[2/1] transition-shadow duration-200
+              className="relative mx-2.5 sm:mx-3 flex-shrink-0 w-56 sm:w-64 aspect-[2/1]
+                         block overflow-hidden rounded-2xl border border-white/10
+                         bg-francia-900 transition-shadow duration-200
                          hover:shadow-lg focus:outline-none focus:ring-2
                          focus:ring-blue-600/40 focus:ring-offset-2"
             >
-              {/* Los 5 archivos cargados son exports de Instagram: lienzo 4:5
+              {/* Los archivos cargados son exports de Instagram: lienzo 4:5
                   con el logo chiquito y centrado (el arte real ocupa entre 18% y
                   30% del alto). Con object-contain el logo entraba entero pero
                   se veía diminuto, porque lo que entraba era el margen vacío.
@@ -76,9 +81,10 @@ export default function Sponsors() {
                 draggable={false}
               />
             </a>
-          ))}
-        </div>
+          )}
+        />
       </div>
+
     </section>
   );
 }

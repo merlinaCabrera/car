@@ -38,7 +38,7 @@ export default function Hero() {
       <div className="absolute inset-0 bg-francia-900/45" />
       <div className="absolute inset-0 bg-gradient-to-b from-francia-950/85 via-francia-950/25 to-francia-950/90" />
 
-      <header className="relative z-10 w-full px-6 pt-8 pb-4 sm:pt-10 lg:px-12 flex justify-center">
+      <header className="relative z-10 w-full px-6 pt-8 pb-12 sm:pt-10 sm:pb-16 lg:px-12 flex justify-center">
         {/* El escudo va estampado directo sobre la foto, sin la pastilla blanca
             que pedía el manual (doc 05, "regla de oro"): decisión de producto
             del 12-09 para que la entrada animada no arrastre una caja blanca.
@@ -50,7 +50,7 @@ export default function Hero() {
         <img
           src={escudoCar}
           alt="Escudo del Club Atlético Roberts"
-          className="hero-escudo h-24 sm:h-28 w-auto object-contain [filter:drop-shadow(0_2px_8px_rgba(0,0,0,0.4))]"
+          className="hero-escudo h-32 sm:h-36 w-auto object-contain [filter:drop-shadow(0_2px_8px_rgba(0,0,0,0.4))]"
         />
       </header>
 
@@ -91,16 +91,6 @@ export default function Hero() {
               </>
             )}
           </div>
-
-          {/* Bajada informativa. Va DESPUÉS de los botones y en cuerpo chico a
-              propósito: entre el lema y el CTA cortaba la composición. Acá
-              explica de qué se trata el sitio a quien siga leyendo, sin
-              disputarle el protagonismo al lema. */}
-          <p className="hero-subtitulo mt-8 mx-auto max-w-lg text-sm sm:text-base leading-relaxed text-white/60 [text-wrap:pretty]">
-            Portal oficial de socios del Club Atlético Roberts. Gestioná tu cuota,
-            reservá las canchas y el quincho, y accedé a los beneficios del club
-            desde el celular.
-          </p>
         </div>
       </div>
 

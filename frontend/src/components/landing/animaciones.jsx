@@ -13,7 +13,6 @@ import { useEffect, useRef, useState } from 'react';
 //        1.0s → 1.4s   eyebrow
 //        1.2s → 1.7s   titular
 //        1.5s → 1.9s   botones
-//        1.8s → 2.2s   bajada
 //      El orden de los delays sigue el orden VISUAL de arriba a abajo. Si
 //      movés un elemento de lugar en el JSX, reacomodá el delay también: si no,
 //      la página se arma salteado y se nota.
@@ -39,7 +38,6 @@ const CSS = `
   .hero-eyebrow   { animation: heroFadeUp  0.4s ease-out 1.0s both; }
   .hero-titulo    { animation: heroFadeUp  0.5s ease-out 1.2s both; }
   .hero-botones   { animation: heroFadeUp  0.4s ease-out 1.5s both; }
-  .hero-subtitulo { animation: heroFadeUp  0.4s ease-out 1.8s both; }
 
   /* Arranca oculto y recién se anima cuando el observer agrega .revelar-visible.
      El recorrido es un toque más largo y más lejos que el del hero: en el hero
@@ -48,7 +46,7 @@ const CSS = `
   .revelar-visible { animation: heroFadeUp 0.55s ease-out both; }
 
   /* Con "reducir movimiento" activado se ve la landing armada, sin esperas:
-     el hero no retiene 2.2s y las secciones no dependen del scroll para
+     el hero no retiene 1.9s y las secciones no dependen del scroll para
      aparecer (importante: si acá solo apagáramos la animación sin forzar el
      opacity, .revelar se quedaría invisible para siempre). */
   @media (prefers-reduced-motion: reduce) {
@@ -56,7 +54,6 @@ const CSS = `
     .hero-eyebrow,
     .hero-titulo,
     .hero-botones,
-    .hero-subtitulo,
     .revelar-visible { animation: none; }
     .revelar { opacity: 1; }
   }

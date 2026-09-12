@@ -1,11 +1,13 @@
 import { Link } from 'react-router-dom';
 import heroBg from '../../assets/hero-bg.PNG';
-// BUG (rediseño 2026-09-12): antes acá se referenciaba "/escudo-car-1.png",
-// que es la versión MONOCROMA BLANCA del escudo. Sobre la pastilla blanca que
-// exige el manual quedaba blanco-sobre-blanco: se veía la pastilla vacía.
-// El escudo institucional a color es este, y va importado (no por ruta suelta
-// en /public) para que Vite lo versione y no se sirva cacheado y viejo.
-import escudoCar from '../../assets/escudo-car.PNG';
+// Versión MONOCROMA BLANCA del escudo. Es la que corresponde acá y no la de
+// color: sin la pastilla blanca de fondo, el escudo queda estampado sobre la
+// foto, y el blanco pleno es lo que sostiene el contraste contra el overlay
+// oscuro. (Ojo al editar: sobre fondo claro esta versión desaparece — para
+// fondos claros va "escudo-car.PNG", la de color, como en MainLayout.)
+// Va importado y no por ruta suelta en /public para que Vite le ponga hash y
+// no se sirva una copia vieja cacheada.
+import escudoCar from '../../assets/escudo-car-blanco.png';
 import { useAuth } from '../../context/AuthContext';
 
 // Animación de entrada institucional. Va como <style> local y no en index.css
@@ -81,9 +83,11 @@ export default function Hero() {
         {/* El escudo va estampado directo sobre la foto, sin la pastilla blanca
             que pedía el manual (doc 05, "regla de oro"): decisión de producto
             del 12-09 para que la entrada animada no arrastre una caja blanca.
-            El drop-shadow reemplaza el zócalo como separador del fondo — tiene
-            que ser filter y no box-shadow: box-shadow dibuja el rectángulo del
-            <img>, no la silueta del escudo. */}
+            El drop-shadow reemplaza el zócalo como separador del fondo: la
+            foto tiene zonas claras (el humo de la tribuna) donde un escudo
+            blanco pleno se empastaría sin él. Tiene que ser filter y no
+            box-shadow: box-shadow dibuja el rectángulo del <img>, no la
+            silueta del escudo. */}
         <img
           src={escudoCar}
           alt="Escudo del Club Atlético Roberts"

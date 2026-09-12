@@ -2,7 +2,6 @@ import { Revelar } from '../components/landing/animaciones';
 import CamotiVolador from '../components/landing/CamotiVolador';
 import Hero from '../components/landing/Hero';
 import Historia from '../components/landing/Historia';
-import Galeria from '../components/landing/Galeria';
 import Beneficios from '../components/landing/Beneficios';
 import Sponsors from '../components/landing/Sponsors';
 import Footer from '../components/landing/Footer';

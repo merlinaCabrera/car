@@ -18,6 +18,7 @@ import {
 import Beneficios from '../components/landing/Beneficios';
 import { Revelar } from '../components/landing/animaciones';
 import { calcularEstadoFinanciero } from '../utils/cuotas';
+import { resolverUrlArchivo } from '../utils/archivos';
 import escudoCar from '../assets/escudo-car.PNG';
 import camotiAzul from '../assets/camoti-azul.PNG';
 
@@ -43,6 +44,11 @@ const formatearDNI = (dni) =>
 
 const formatearNroSocio = (id) =>
   id ? String(id).padStart(5, '0') : '—';
+
+// Iniciales para el fallback del avatar del carnet: el espacio nunca queda
+// vacío. Mismo criterio que SocioPerfil (nombre + apellido).
+const iniciales = (nombre, apellido) =>
+  `${nombre?.[0] ?? ''}${apellido?.[0] ?? ''}`.toUpperCase() || '—';
 
 const formatearVencimiento = (iso) => {
   if (!iso) return '—';
@@ -70,6 +76,7 @@ export default function SocioInicio() {
   const [errorQR, setErrorQR] = useState(null);
   const [online, setOnline] = useState(navigator.onLine);
   const [ordenPendiente, setOrdenPendiente] = useState(null);
+  const [fotoFallo, setFotoFallo] = useState(false);
 
   const fetchTimerRef = useRef(null);
   const countdownTimerRef = useRef(null);
@@ -87,7 +94,11 @@ export default function SocioInicio() {
         ]);
         if (res.ok) setPerfil(await res.json());
         if (resPend.ok) setOrdenPendiente(await resPend.json().catch(() => null));
-      } catch {} finally {
+      } catch {
+        // Sin red o backend caído: se deja el perfil como está (o en null, y
+        // la pantalla muestra el skeleton vacío) en vez de romper la home. El
+        // QR se re-consulta solo cada 55 s, así que se recupera sin recargar.
+      } finally {
         setLoading(false);
       }
     };
@@ -179,6 +190,11 @@ export default function SocioInicio() {
   // pagarla.
   const enVerificacion = !!ordenPendiente && (esMoroso || enMesIngreso);
   const nombreCorto = perfil?.nombre?.split(' ')[0] ?? 'Socio';
+
+  // Foto del carnet. `fotoFallo` cubre el caso de la presigned URL vencida o
+  // del archivo faltante en filas viejas: sin esto se vería el ícono de imagen
+  // rota adentro del carnet.
+  const fotoPerfil = fotoFallo ? null : resolverUrlArchivo(perfil?.foto_perfil_url);
 
   if (loading) {
     return (
@@ -324,6 +340,26 @@ export default function SocioInicio() {
               className="pointer-events-none select-none absolute -right-4 -bottom-6 h-28 w-auto object-contain opacity-[0.055]"
             />
             <div className="relative">
+              {/* Foto del socio (doc 06): va arriba del nombre y centrada, como
+                  en un carnet físico. El ring blanco la separa de la marca de
+                  agua del Camotí que vive en este mismo bloque. Sin foto va el
+                  círculo con iniciales — el hueco vacío arruinaría el carnet. */}
+              {fotoPerfil ? (
+                <img
+                  src={fotoPerfil}
+                  alt="Foto del socio"
+                  className="mx-auto mb-3 h-20 w-20 rounded-full object-cover ring-2 ring-white/30 shadow-sm"
+                  onError={() => setFotoFallo(true)}
+                />
+              ) : (
+                <div
+                  aria-hidden="true"
+                  className="mx-auto mb-3 flex h-20 w-20 items-center justify-center rounded-full
+                             bg-roberts-600 text-2xl font-bold text-white ring-2 ring-white/30 shadow-sm"
+                >
+                  {iniciales(perfil?.nombre, perfil?.apellido)}
+                </div>
+              )}
               <p className="text-[10px] text-gray-400 uppercase tracking-[0.16em]">Socio</p>
               <p className="font-display text-xl sm:text-2xl font-bold text-gray-900 leading-tight mt-0.5 break-words">
                 {[perfil?.nombre, perfil?.apellido].filter(Boolean).join(' ') || nombreCorto}

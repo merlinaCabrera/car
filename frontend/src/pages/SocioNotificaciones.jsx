@@ -7,7 +7,6 @@ import { Revelar } from '../components/landing/animaciones';
 import {
   Bell,
   ArrowLeft,
-  Loader2,
   AlertTriangle,
   CheckCircle2,
   XCircle,

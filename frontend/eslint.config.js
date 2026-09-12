@@ -28,6 +28,18 @@ export default [
       ...react.configs.recommended.rules,
       ...react.configs['jsx-runtime'].rules,
       ...reactHooks.configs.recommended.rules,
+      // El proyecto no usa PropTypes en ningún componente (y no va a usarlos:
+      // para tipar props en serio el camino es TypeScript, no esta runtime).
+      // Con la regla encendida eran ~890 errores que tapaban por completo los
+      // no-unused-vars, que sí marcan código muerto real — el import huérfano
+      // de Galeria en Landing.jsx pasó desapercibido justo por eso.
+      'react/prop-types': 'off',
+
+      // `const { confirmPassword, ...payload } = formData` es el idiom de
+      // React para SACAR un campo del payload: la variable nombrada se declara
+      // justamente para no usarla. Sin esta opción se reporta como código
+      // muerto y es exactamente lo contrario.
+      'no-unused-vars': ['error', { ignoreRestSiblings: true }],
       'react/jsx-no-target-blank': 'off',
       'react-refresh/only-export-components': [
         'warn',

@@ -37,6 +37,11 @@ import {
 // antes lo encajonaba. (La de color sigue en uso donde el fondo es claro.)
 import escudoCar from '../assets/escudo-car-blanco.png';
 
+// Las fotos de perfil llegan de /usuarios/me como presigned URL absoluta de S3,
+// pero las filas viejas todavía guardan la ruta local (`/uploads/...`). Este
+// helper (utils/archivos.js) es el mismo que usa el resto de las pantallas.
+import { resolverUrlArchivo } from '../utils/archivos';
+
 // ─── Definición de bloques de navegación por rol ───────────────────────────
 // Cada bloque sabe qué rol(es) lo habilitan y qué enlaces contiene.
 // Esto permite que un mismo usuario con varios roles (ej: socio + jugador)
@@ -115,9 +120,20 @@ export default function MainLayout() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [seccionesAbiertas, setSeccionesAbiertas] = useState({});
+  const [fotoFallo, setFotoFallo] = useState(false);
   const { user, token, logout } = useAuth();
   const navigate = useNavigate();
   const { cart } = useCart();
+
+  // El escudo del header cede el lugar al avatar del socio cuando tiene foto
+  // cargada. `fotoFallo` se levanta desde el onError del <img> para volver al
+  // escudo si la URL no carga.
+  const fotoPerfil = fotoFallo ? null : resolverUrlArchivo(user?.foto_perfil_url);
+
+  // Si el socio cambia su foto (o cierra sesión y entra otro), hay que darle
+  // otra chance a la imagen: sin esto, un fallo puntual deja el escudo puesto
+  // para el resto de la sesión.
+  useEffect(() => { setFotoFallo(false); }, [user?.foto_perfil_url]);
 
   const closeMenu = () => setIsMenuOpen(false);
 
@@ -312,13 +328,29 @@ export default function MainLayout() {
                 className="block transition-transform hover:scale-105 active:scale-95"
                 aria-label="Ir al inicio"
               >
-                {/* drop-shadow suave (no el halo del Hero): despega la silueta si
-                    el header se aclara por el scroll o por un fondo distinto. */}
-                <img
-                  src={escudoCar}
-                  alt="Escudo Club Atlético Roberts"
-                  className="h-9 sm:h-10 w-auto object-contain [filter:drop-shadow(0_1px_6px_rgba(255,255,255,0.25))]"
-                />
+                {/* Con foto cargada, el avatar reemplaza al escudo. El ring lo
+                    despega del azul del header (sin borde, una foto oscura se
+                    pega al fondo y deja de leerse como avatar), y el onError
+                    vuelve al escudo si la presigned URL venció o el archivo
+                    ya no está — mejor eso que el ícono de imagen rota justo
+                    en el centro del header. */}
+                {fotoPerfil ? (
+                  <img
+                    src={fotoPerfil}
+                    alt="Mi foto de perfil"
+                    className="h-9 w-9 sm:h-10 sm:w-10 rounded-full object-cover ring-2 ring-white/20 [filter:drop-shadow(0_1px_6px_rgba(255,255,255,0.25))]"
+                    onError={() => setFotoFallo(true)}
+                  />
+                ) : (
+                  /* drop-shadow suave (no el halo del Hero): despega la
+                     silueta si el header se aclara por el scroll o por un
+                     fondo distinto. */
+                  <img
+                    src={escudoCar}
+                    alt="Escudo Club Atlético Roberts"
+                    className="h-9 sm:h-10 w-auto object-contain [filter:drop-shadow(0_1px_6px_rgba(255,255,255,0.25))]"
+                  />
+                )}
               </Link>
             </div>
 

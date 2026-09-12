@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import jugadoresImg from '../../assets/jugadores.PNG';
+import jugadoresImg from '../../assets/jugadores.webp';
 import InfiniteCarousel from './InfiniteCarousel';
 
 // Mock iterable para generar el carrusel. Cuando haya fotos reales,

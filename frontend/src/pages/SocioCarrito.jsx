@@ -73,7 +73,7 @@ const formatoMoneda = new Intl.NumberFormat('es-AR', {
 //
 // PASO 1c (mercado pago): deshabilitado, placeholder para futura integración.
 
-function OrdenGeneradaModal({ cartTotal, cartPayload, saldoDisponible = 0, token, onClose, onCheckout }) {
+function OrdenGeneradaModal({ cartTotal, saldoDisponible = 0, token, onClose, onCheckout }) {
   // Paso: 'metodo' | 'transferencia' | 'efectivo' | 'mercadopago'
   const [paso,        setPaso]        = useState('metodo')
   const [isConfirming, setIsConfirming] = useState(false)
@@ -684,7 +684,6 @@ export default function SocioCarrito() {
       {modalAbierto && (
         <OrdenGeneradaModal
           cartTotal={cartTotal}
-          cartPayload={cart}
           saldoDisponible={Number(user?.saldo_a_favor ?? 0)}
           orden={ordenGenerada}
           token={token}

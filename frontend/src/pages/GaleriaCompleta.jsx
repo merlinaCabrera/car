@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
-import jugadoresImg from '../assets/jugadores.PNG';
+import jugadoresImg from '../assets/jugadores.webp';
 import Footer from '../components/landing/Footer';
 
 // Fotos de la galería completa. Para agregar una foto nueva:

@@ -106,6 +106,14 @@ function App() {
               </Route>
             </Route>
             </Route>
+
+            {/* Catch-all. Sin esto, cualquier URL mal escrita no matchea
+                ninguna <Route> y React Router renderiza nada: pantalla en
+                blanco, sin header ni menú, o sea sin forma de volver.
+                Va ÚLTIMO y fuera de RutaPrivada: el redirect tiene que
+                funcionar también sin sesión. Cuando exista una página de 404
+                propia, reemplazar el Navigate por ella. */}
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </BrowserRouter>
       </CartProvider>

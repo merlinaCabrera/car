@@ -1,5 +1,4 @@
-import { Link } from 'react-router-dom';
-import jugadoresImg from '../../assets/jugadores.PNG';
+import jugadoresImg from '../../assets/jugadores.webp';
 import InfiniteCarousel from './InfiniteCarousel';
 
 // Mismo placeholder que usa Galería. Cuando haya fotos reales,
@@ -55,16 +54,6 @@ export default function Historia() {
             </div>
           )}
         />
-      </div>
-
-      <div className="flex justify-center mt-12">
-        <Link
-          to="/galeria"
-          className="inline-flex items-center gap-2 px-7 py-3 rounded-xl border border-blue-600 text-blue-600 font-semibold hover:bg-blue-600 hover:text-white transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-600/30 focus:ring-offset-2"
-        >
-          Ver galería completa
-          <span aria-hidden="true">→</span>
-        </Link>
       </div>
     </section>
   );

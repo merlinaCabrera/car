@@ -150,6 +150,16 @@
   .anim-d3 { animation-delay: 0.30s; }
   .anim-d4 { animation-delay: 0.40s; }
 
+  /* ── Ítems del menú lateral (MainLayout) ─────────────────────────────────
+     Entrada escalonada de los links del drawer. Es más corta que
+     .anim-entrada (0.28s vs 0.4s) porque son hasta ~12 elementos seguidos:
+     con 0.4s cada uno, el menú termina de armarse cuando el usuario ya
+     decidió a dónde iba.
+     El delay NO sale de .anim-d1..d4 (escalones de 0.10s, tope en 4): el menú
+     necesita un escalón de 0.05s y más pasos, así que MainLayout lo pone
+     inline ítem por ítem. */
+  .anim-menu-item { animation: fadeUp 0.28s ease-out both; }
+
   /* ── Revelado por scroll ─────────────────────────────────────────────────
      Lo usa el componente <Revelar>, que agrega .revelar-visible cuando la
      sección entra en pantalla. Arranca oculto. */
@@ -173,6 +183,7 @@
   .anim-entrada,
   .anim-entrada-l,
   .anim-escala,
+  .anim-menu-item,
   .revelar-visible,
   .hero-escudo,
   .hero-eyebrow,
@@ -181,4 +192,22 @@
     animation: none;
   }
   .revelar { opacity: 1; }
+
+  /* El panel del menú lateral entra y sale con translateX. Con "reducir
+     movimiento" tiene que aparecer y desaparecer sin desplazamiento, así que
+     se le apaga el transform y queda solo el fade.
+     `transform: none` lo deja SIEMPRE en su posición final — por eso importa
+     que el estado cerrado además lleve `invisible`: con opacidad 0 y sin
+     transform seguiría tapando los primeros 288px de la pantalla. */
+  .menu-lateral {
+    transform: none !important;
+    transition-property: opacity, visibility !important;
+    transition-duration: 0.01s !important;
+  }
+
+  /* El overlay acompaña al panel: si el panel aparece instantáneo, el fondo de
+     atrás no puede seguir oscureciéndose durante 300ms. */
+  .menu-overlay {
+    transition-duration: 0.01s !important;
+  }
 }

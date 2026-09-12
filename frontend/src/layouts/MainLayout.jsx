@@ -92,6 +92,22 @@ const NAV_INVITADO = [
   { name: 'Escáner General', path: '/admin/escaner', icon: ScanLine },
 ];
 
+// Menú curado del admin_general, el que va después del link a "Inicio".
+// Antes eran diez <Link> escritos a mano repitiendo la misma tira de clases;
+// como array se escribe una sola vez y además se puede escalonar la animación
+// de entrada por índice. Mismos paths, mismos íconos y mismo orden que antes.
+const NAV_ADMIN_GENERAL = [
+  { name: 'Socios', path: '/admin/socios', icon: Users },
+  { name: 'Verificaciones', path: '/admin/verificaciones', icon: Wallet },
+  { name: 'Estadísticas', path: '/admin/estadisticas', icon: TrendingUp },
+  { name: 'Alquileres', path: '/admin/reservas', icon: Calendar },
+  { name: 'Eventos', path: '/gestion-eventos', icon: CalendarDays },
+  { name: 'Planteles', path: '/gestion-planteles', icon: ClipboardList },
+  { name: 'Catálogo', path: '/admin/productos', icon: Package },
+  { name: 'Comercios', path: '/admin/comercios', icon: Store },
+  { name: 'Historial', path: '/admin/auditoria', icon: History },
+];
+
 export default function MainLayout({ userRole }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -206,6 +222,62 @@ export default function MainLayout({ userRole }) {
 
   const itemCount = cart.reduce((acc, item) => acc + item.qty, 0);
 
+  // ─── Estilos del panel lateral ────────────────────────────────────────────
+  // El panel es flotante: fondo semitransparente + backdrop-blur, sin fondo
+  // sólido. Por eso ningún hijo puede llevar un `bg-` opaco — antes la cabecera
+  // y el pie del panel eran `bg-gray-950` y tapaban el blur justo en las dos
+  // franjas donde más se nota.
+  //
+  // Las tiras de clases están acá arriba porque los mismos estilos se repiten
+  // en ~20 <Link>: escritas inline una por una se desincronizan sin que se note.
+  const ITEM =
+    'relative flex items-center gap-3 rounded-xl px-4 py-3 font-medium ' +
+    'text-white/80 transition-colors hover:bg-white/5';
+  const SUBITEM =
+    'relative flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium ' +
+    'text-white/60 transition-colors hover:bg-white/5';
+  const TRIGGER =
+    'flex w-full items-center justify-between rounded-xl px-4 py-3 font-medium ' +
+    'text-white/70 transition-colors hover:bg-white/5';
+  const ROTULO = 'px-2 mb-2 text-xs font-semibold uppercase tracking-wider text-white/40';
+  // Indicador del ítem activo: barra de 3px en Azul Roberts pegada al borde
+  // izquierdo. Va como pseudo-elemento para no meter un <span> extra adentro de
+  // cada Link. La altura la define quien lo use (before:h-6 / before:h-4).
+  const BARRA_ACTIVA =
+    'bg-white/5 text-white before:absolute before:left-0 before:top-1/2 ' +
+    'before:w-[3px] before:-translate-y-1/2 before:rounded-r-full before:bg-[#183F7C]';
+
+  // Comparación exacta de pathname: `/admin` no tiene que marcarse como activo
+  // mientras estás en `/admin/socios`.
+  const esActivo = (path) => location.pathname === path;
+
+  // Entrada escalonada de los ítems. Arranca en 0.15s —cuando el panel ya
+  // terminó de entrar— y suma 0.05s por ítem, con tope a los 10 pasos: más que
+  // eso y el último ítem aparece cuando el usuario ya lo está mirando.
+  //
+  // La clase de animación se aplica SOLO con el menú abierto. Si estuviera
+  // siempre, el fadeUp se dispararía al cargar la página con el panel cerrado y
+  // quedaría gastado para cuando el usuario abre el menú.
+  const propsItem = (path, i) => ({
+    className: `${ITEM} ${esActivo(path) ? `${BARRA_ACTIVA} before:h-6` : ''} ${
+      isMenuOpen ? 'anim-menu-item' : ''
+    }`,
+    style: { animationDelay: `${(0.15 + Math.min(i, 10) * 0.05).toFixed(2)}s` },
+  });
+
+  // Los sub-ítems de los desplegables se montan al expandir la sección, así que
+  // animan en ese momento: no les corresponde el retraso inicial del panel.
+  const propsSubitem = (path, i) => ({
+    className: `${SUBITEM} ${esActivo(path) ? `${BARRA_ACTIVA} before:h-4` : ''} anim-menu-item`,
+    style: { animationDelay: `${(Math.min(i, 8) * 0.04).toFixed(2)}s` },
+  });
+
+  // Retraso del bloque desplegable número `idx` de la lista de roles, contando
+  // los ítems planos que vengan antes.
+  const retrasoBloque = (idx, previos) => ({
+    animationDelay: `${(0.15 + Math.min(previos + idx, 10) * 0.05).toFixed(2)}s`,
+  });
+
   return (
     <div className="min-h-screen bg-gray-50 font-sans flex flex-col">
 
@@ -218,9 +290,15 @@ export default function MainLayout({ userRole }) {
             <div>
               <button
                 onClick={() => setIsMenuOpen(true)}
+                aria-label="Abrir menú"
+                aria-expanded={isMenuOpen}
                 className="p-2 rounded-xl bg-white/10 text-white/90 hover:text-white hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-white/40 transition-colors"
               >
-                <Menu className="h-6 w-6" />
+                <Menu
+                  className={`h-6 w-6 transition-transform duration-[250ms] ease-in-out ${
+                    isMenuOpen ? 'rotate-90' : 'rotate-0'
+                  }`}
+                />
               </button>
             </div>
 
@@ -270,73 +348,86 @@ export default function MainLayout({ userRole }) {
         </div>
       </header>
 
-      {/* Modal del Menú */}
-      {isMenuOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm transition-opacity"
-          onClick={closeMenu}
-        ></div>
-      )}
-
+      {/* Overlay del menú — negro puro al 40%, sin color de marca ni blur (el
+          blur ahora vive en el panel). Queda SIEMPRE montado: antes era
+          `{isMenuOpen && <div/>}` y desmontarlo mata el fade, porque no hay a
+          qué transicionar si el nodo desaparece del DOM. */}
       <div
-        className={`fixed inset-y-0 left-0 z-50 w-72 bg-gray-900 shadow-xl transform transition-transform duration-300 ease-in-out flex flex-col border-r border-gray-800/60 ${
-          isMenuOpen ? 'translate-x-0' : '-translate-x-full'
+        onClick={closeMenu}
+        aria-hidden="true"
+        className={`menu-overlay fixed inset-0 z-40 bg-black transition-opacity ${
+          isMenuOpen
+            ? 'opacity-40 duration-300 ease-out'
+            : 'opacity-0 pointer-events-none duration-[220ms] ease-in'
+        }`}
+      />
+
+      {/* Panel del menú.
+          · El cierre es más rápido que la apertura (220ms ease-in vs 300ms
+            ease-out): al abrir se quiere ver el gesto, al cerrar se quiere que
+            se vaya.
+          · `visible/invisible` se transiciona junto al resto. visibility es una
+            propiedad discreta y se mantiene en `visible` durante toda la
+            salida, así que la animación de cierre se ve completa y recién
+            después el panel deja de existir para el mouse y para el tab. Sin
+            esto, con el menú cerrado los ~20 links seguían siendo alcanzables
+            con el teclado.
+          · El max-w deja siempre al menos 48px del contenido de atrás a la
+            vista, para que se lea como panel y no como pantalla nueva. */}
+      <aside
+        aria-hidden={!isMenuOpen}
+        className={`menu-lateral fixed inset-y-0 left-0 z-50 flex w-72 max-w-[calc(100vw-48px)] flex-col overflow-hidden border-r border-white/10 bg-[#1C1F2D]/80 backdrop-blur-xl [-webkit-backdrop-filter:blur(24px)] transition-all ${
+          isMenuOpen
+            ? 'translate-x-0 opacity-100 visible duration-300 ease-out'
+            : '-translate-x-full opacity-0 invisible duration-[220ms] ease-in'
         }`}
       >
-        <div className="p-5 border-b border-gray-800 flex justify-between items-center bg-gray-950">
+        {/* Halos difusos: son los que dan profundidad ahora que no hay fondo
+            sólido ni sombra de caja. `pointer-events-none` para no comerse los
+            clics; el `overflow-hidden` del panel los recorta. */}
+        <div aria-hidden="true" className="pointer-events-none absolute -left-10 -top-16 h-52 w-52 rounded-full bg-[#183F7C]/25 blur-3xl" />
+        <div aria-hidden="true" className="pointer-events-none absolute -bottom-12 -right-12 h-40 w-40 rounded-full bg-[#26348C]/15 blur-3xl" />
+
+        {/* Los tres bloques de contenido van `relative` a propósito: los halos
+            están posicionados, y un elemento posicionado pinta por encima del
+            contenido en flujo de sus hermanos siguientes. Sin esto los halos
+            quedarían ENCIMA del texto del menú. */}
+        <div className="relative flex items-center justify-between border-b border-white/10 p-5">
           <span className="font-display font-semibold text-white tracking-widest text-lg">Menú</span>
-          <button onClick={closeMenu} className="p-2 text-gray-400 hover:text-white bg-gray-800 rounded-lg transition-colors">
+          <button
+            onClick={closeMenu}
+            aria-label="Cerrar menú"
+            className="rounded-lg bg-white/5 p-2 text-white/70 transition-all duration-[250ms] hover:rotate-90 hover:bg-white/10 hover:text-white"
+          >
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
+        <nav className="relative flex-1 px-4 py-6 space-y-2 overflow-y-auto">
 
           {/* ══ ADMIN GENERAL: su menú curado va PRIMERO, sin compartir
               condición con personal_administrativo (ese tiene su propio
               bloque desplegable más abajo, junto al resto de roles) ══ */}
           {esAdminGeneral && (
             <div>
-              <Link to="/admin" onClick={closeMenu}
-                className="flex items-center gap-3 px-4 py-3 text-gray-300 hover:bg-gray-800 hover:text-white rounded-xl font-semibold transition-colors">
+              <Link to="/admin" onClick={closeMenu} {...propsItem('/admin', 0)}>
                 <LayoutDashboard size={18} /><span>Inicio</span>
               </Link>
-              <hr className="border-gray-700/70 my-2" /><p className="px-2 mb-2 text-xs text-gray-400 uppercase tracking-wider font-semibold">Gestión</p>
-              <Link to="/admin/socios" onClick={closeMenu} className="flex items-center gap-3 px-4 py-3 text-gray-300 hover:bg-gray-800 hover:text-white rounded-xl font-semibold transition-colors">
-                <Users size={18} /><span>Socios</span>
-              </Link>
-              <Link to="/admin/verificaciones" onClick={closeMenu} className="flex items-center gap-3 px-4 py-3 text-gray-300 hover:bg-gray-800 hover:text-white rounded-xl font-semibold transition-colors">
-                <Wallet size={18} /><span>Verificaciones</span>
-              </Link>
-              <Link to="/admin/estadisticas" onClick={closeMenu} className="flex items-center gap-3 px-4 py-3 text-gray-300 hover:bg-gray-800 hover:text-white rounded-xl font-semibold transition-colors">
-                <TrendingUp size={18} /><span>Estadísticas</span>
-              </Link>
-              <Link to="/admin/reservas" onClick={closeMenu} className="flex items-center gap-3 px-4 py-3 text-gray-300 hover:bg-gray-800 hover:text-white rounded-xl font-semibold transition-colors">
-                <Calendar size={18} /><span>Alquileres</span>
-              </Link>
-              <Link to="/gestion-eventos" onClick={closeMenu} className="flex items-center gap-3 px-4 py-3 text-gray-300 hover:bg-gray-800 hover:text-white rounded-xl font-semibold transition-colors">
-                <CalendarDays size={18} /><span>Eventos</span>
-              </Link>
-              <Link to="/gestion-planteles" onClick={closeMenu} className="flex items-center gap-3 px-4 py-3 text-gray-300 hover:bg-gray-800 hover:text-white rounded-xl font-semibold transition-colors">
-                <ClipboardList size={18} /><span>Planteles</span>
-              </Link>
-              <Link to="/admin/productos" onClick={closeMenu} className="flex items-center gap-3 px-4 py-3 text-gray-300 hover:bg-gray-800 hover:text-white rounded-xl font-semibold transition-colors">
-                <Package size={18} /><span>Catálogo</span>
-              </Link>
-              <Link to="/admin/comercios" onClick={closeMenu} className="flex items-center gap-3 px-4 py-3 text-gray-300 hover:bg-gray-800 hover:text-white rounded-xl font-semibold transition-colors">
-                <Store size={18} /><span>Comercios</span>
-              </Link>
-              <Link to="/admin/auditoria" onClick={closeMenu} className="flex items-center gap-3 px-4 py-3 text-gray-300 hover:bg-gray-800 hover:text-white rounded-xl font-semibold transition-colors">
-                <History size={18} /><span>Historial</span>
-              </Link>
+              <hr className="border-white/10 my-2" />
+              <p className={ROTULO}>Gestión</p>
+              {NAV_ADMIN_GENERAL.map((link, i) => (
+                <Link key={link.path} to={link.path} onClick={closeMenu} {...propsItem(link.path, i + 1)}>
+                  <link.icon size={18} /><span>{link.name}</span>
+                </Link>
+              ))}
             </div>
           )}
 
           {/* ══ VER COMO... — 6 roles plegables, solo para admin ══════════ */}
           {esAdminGeneral && (
             <div>
-              <hr className="border-gray-700/70 my-4" />
-              <p className="px-2 mb-2 text-xs text-gray-400 uppercase tracking-wider font-semibold">Ver como...</p>
+              <hr className="border-white/10 my-4" />
+              <p className={ROTULO}>Ver como...</p>
 
               {[
                 { key: 'socio',     label: 'Socio',          icon: Home,          nav: NAV_SOCIO },
@@ -345,18 +436,20 @@ export default function MainLayout({ userRole }) {
                 { key: 'padmin',    label: 'Administrativo',  icon: Wallet,        nav: NAV_PERSONAL_ADMINISTRATIVO },
                 { key: 'atemp',     label: 'Escáneres',       icon: ScanLine,      nav: NAV_ADMIN_TEMPORAL },
                 { key: 'invitado',  label: 'Invitado',        icon: UserCheck,     nav: NAV_INVITADO },
-              ].map(({ key, label, icon: Icon, nav }) => (
-                <div key={key}>
-                  <button onClick={() => toggleSeccion(key)}
-                    className="flex items-center justify-between w-full px-4 py-3 text-gray-400 hover:bg-gray-800 hover:text-white rounded-xl font-semibold transition-colors">
+              ].map(({ key, label, icon: Icon, nav }, idx) => (
+                <div
+                  key={key}
+                  className={isMenuOpen ? 'anim-menu-item' : ''}
+                  style={retrasoBloque(idx, NAV_ADMIN_GENERAL.length + 1)}
+                >
+                  <button onClick={() => toggleSeccion(key)} className={TRIGGER}>
                     <span className="flex items-center gap-3"><Icon size={18} /> {label}</span>
                     <ChevronDown size={16} className={`transition-transform ${seccionesAbiertas[key] ? 'rotate-180' : ''}`} />
                   </button>
                   {seccionesAbiertas[key] && (
-                    <div className="ml-4 border-l border-gray-700 pl-2 mb-1">
-                      {nav.map((link) => (
-                        <Link key={link.path} to={link.path} onClick={closeMenu}
-                          className="flex items-center gap-3 px-4 py-2.5 text-gray-400 hover:bg-gray-800 hover:text-white rounded-xl text-sm font-medium transition-colors">
+                    <div className="ml-4 border-l border-white/10 pl-2 mb-1">
+                      {nav.map((link, i) => (
+                        <Link key={link.path} to={link.path} onClick={closeMenu} {...propsSubitem(link.path, i)}>
                           <link.icon size={16} /><span>{link.name}</span>
                         </Link>
                       ))}
@@ -377,9 +470,8 @@ export default function MainLayout({ userRole }) {
             <>
               {esSocio && (
                 <div>
-                  {NAV_SOCIO.map((link) => (
-                    <Link key={link.path} to={link.path} onClick={closeMenu}
-                      className="flex items-center gap-3 px-4 py-3 text-gray-300 hover:bg-gray-800 hover:text-white rounded-xl font-semibold transition-colors">
+                  {NAV_SOCIO.map((link, i) => (
+                    <Link key={link.path} to={link.path} onClick={closeMenu} {...propsItem(link.path, i)}>
                       <link.icon size={18} /><span>{link.name}</span>
                     </Link>
                   ))}
@@ -392,18 +484,20 @@ export default function MainLayout({ userRole }) {
                 esPersonalTecnico && { key: 'own_tecnico', label: 'Técnico', icon: ClipboardList, nav: NAV_PERSONAL_TECNICO },
                 esJugador && { key: 'own_jugador', label: 'Deportivo', icon: Users, nav: NAV_JUGADOR },
               ].filter(Boolean).map(({ key, label, icon: Icon, nav }, idx) => (
-                <div key={key}>
-                  {idx === 0 && <hr className="border-gray-700/70 my-4" />}
-                  <button onClick={() => toggleSeccion(key)}
-                    className="flex items-center justify-between w-full px-4 py-3 text-gray-300 hover:bg-gray-800 hover:text-white rounded-xl font-semibold transition-colors">
+                <div
+                  key={key}
+                  className={isMenuOpen ? 'anim-menu-item' : ''}
+                  style={retrasoBloque(idx, esSocio ? NAV_SOCIO.length : 0)}
+                >
+                  {idx === 0 && <hr className="border-white/10 my-4" />}
+                  <button onClick={() => toggleSeccion(key)} className={TRIGGER}>
                     <span className="flex items-center gap-3"><Icon size={18} /> {label}</span>
                     <ChevronDown size={16} className={`transition-transform ${seccionesAbiertas[key] ? 'rotate-180' : ''}`} />
                   </button>
                   {seccionesAbiertas[key] && (
-                    <div className="ml-4 border-l border-gray-700 pl-2 mb-1">
-                      {nav.map((link) => (
-                        <Link key={link.path} to={link.path} onClick={closeMenu}
-                          className="flex items-center gap-3 px-4 py-2.5 text-gray-300 hover:bg-gray-800 hover:text-white rounded-xl text-sm font-medium transition-colors">
+                    <div className="ml-4 border-l border-white/10 pl-2 mb-1">
+                      {nav.map((link, i) => (
+                        <Link key={link.path} to={link.path} onClick={closeMenu} {...propsSubitem(link.path, i)}>
                           <link.icon size={16} /><span>{link.name}</span>
                         </Link>
                       ))}
@@ -416,17 +510,24 @@ export default function MainLayout({ userRole }) {
 
         </nav>
 
-        <div className="p-6 border-t border-gray-800 bg-gray-950">
-          <Link to="/ayuda" onClick={closeMenu} className="w-full flex items-center justify-center gap-2 px-4 py-3 mb-3 border border-gray-700 text-gray-300 rounded-xl hover:text-white hover:bg-gray-800 transition-colors font-semibold">
+        <div className="relative border-t border-white/10 p-6">
+          <Link
+            to="/ayuda"
+            onClick={closeMenu}
+            className="mb-3 flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 px-4 py-3 font-medium text-white/80 transition-colors hover:bg-white/5 hover:text-white"
+          >
             <HelpCircle size={18} />
             <span>Ayuda</span>
           </Link>
-          <button onClick={handleLogout} className="w-full flex items-center justify-center gap-2 px-4 py-3 border border-red-500/30 text-red-400 rounded-xl hover:text-white hover:bg-red-600 transition-colors font-bold">
+          <button
+            onClick={handleLogout}
+            className="flex w-full items-center justify-center gap-2 rounded-xl border border-red-500/40 px-4 py-3 font-bold text-red-300 transition-colors hover:bg-red-600 hover:text-white"
+          >
             <LogOut size={18} />
             Cerrar Sesión
           </button>
         </div>
-      </div>
+      </aside>
 
       <main className="flex-grow w-full max-w-7xl mx-auto">
         <Outlet />

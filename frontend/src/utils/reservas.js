@@ -163,3 +163,44 @@ export function esBloqueoManual(reserva) {
   if (typeof reserva.es_bloqueo_manual === 'boolean') return reserva.es_bloqueo_manual
   return reserva.id_usuario == null && reserva.id_orden == null && reserva.estado === 'confirmada'
 }
+
+/**
+ * Nombre del `ProductoServicio` de alquiler que corresponde a una celda de la
+ * grilla — el mismo criterio que el socio usa para ver el precio.
+ *
+ * Existe para el flujo "Asignar a socio" de `/admin/reservas` (Mejora-02): el
+ * admin está parado sobre un turno, no sobre un producto, y necesita saber
+ * cuánto cobrar sin elegirlo de una lista. El backend repite esta regla en
+ * `utils/reservas.py` (`nombre_producto_de_turno`) para poder resolverlo solo
+ * cuando el request no manda `id_producto`.
+ *
+ * `inicio` es un Date en hora LOCAL (los rangos los arman rangoTurnoQuincho /
+ * rangoTurnoCancha, que ya trabajan en local).
+ */
+export function nombreProductoDeTurno(instalacion, inicio) {
+  const cancha = CANCHAS.find(c => c.key === instalacion)
+  if (cancha) return cancha.nombreProducto
+  if (instalacion !== 'quincho') return null
+  return inicio.getHours() >= TURNOS_QUINCHO.noche.horaInicio
+    ? TURNOS_QUINCHO.noche.nombreProducto
+    : TURNOS_QUINCHO.dia.nombreProducto
+}
+
+/** El producto de alquiler activo de ese turno dentro de `productos`, o null. */
+export function productoDeTurno(productos, instalacion, inicio) {
+  const nombre = nombreProductoDeTurno(instalacion, inicio)
+  if (!nombre) return null
+  return (productos ?? []).find(
+    p => p.nombre === nombre && p.categoria === 'alquiler' && p.es_activo
+  ) ?? null
+}
+
+/** Etiqueta legible del método de pago de un Pago. */
+export function labelMetodoPago(metodo) {
+  return {
+    efectivo:      'Efectivo',
+    transferencia: 'Transferencia',
+    mercado_pago:  'Mercado Pago',
+    saldo_a_favor: 'Saldo a favor',
+  }[metodo] ?? metodo
+}

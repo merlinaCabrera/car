@@ -125,12 +125,34 @@ const ESTADO_CONFIG = {
   },
 };
 
-function EstadoBadge({ estado }) {
-  const config = ESTADO_CONFIG[estado] ?? {
-    label: estado,
-    icon: AlertTriangle,
-    classes: "bg-gray-100 text-gray-700 border-gray-300",
-  };
+// Prefijo con el que el backend marca el motivo cuando el que da de baja la
+// orden es el CLUB y no un problema del pago (admin_reservas.suspender_reserva,
+// BUG-20). Es la misma cadena de los dos lados: si cambia allá, cambia acá.
+const PREFIJO_SUSPENSION_CLUB = "Turno suspendido por el club";
+
+/**
+ * `motivo` solo se usa para distinguir un rechazo de pago de una cancelación
+ * decidida por el club. Las dos dejan la orden en 'rechazada' —el CHECK de
+ * `ordenes` no tiene un estado propio para esto—, pero para el socio no son lo
+ * mismo: una dice "revisá tu comprobante" y la otra "te cancelamos el turno y
+ * te devolvemos la plata". Mostrarlas las dos en rojo como "Rechazada" es
+ * exactamente lo que hacía parecer que el socio había hecho algo mal.
+ */
+function EstadoBadge({ estado, motivo }) {
+  const canceladaPorElClub =
+    estado === "rechazada" && (motivo ?? "").startsWith(PREFIJO_SUSPENSION_CLUB);
+
+  const config = canceladaPorElClub
+    ? {
+        label: "Cancelada por el club",
+        icon: AlertTriangle,
+        classes: "bg-amber-100 text-amber-800 border-amber-300",
+      }
+    : ESTADO_CONFIG[estado] ?? {
+        label: estado,
+        icon: AlertTriangle,
+        classes: "bg-gray-100 text-gray-700 border-gray-300",
+      };
   const Icon = config.icon;
 
   return (
@@ -335,7 +357,7 @@ function TarjetaOrden({ orden, token, onComprobanteCargado }) {
             </div>
           )}
         </div>
-        <EstadoBadge estado={orden.estado} />
+        <EstadoBadge estado={orden.estado} motivo={orden.motivo_rechazo} />
       </div>
 
       {soloCuota ? (
@@ -375,7 +397,13 @@ function TarjetaOrden({ orden, token, onComprobanteCargado }) {
       )}
 
       {orden.estado === "rechazada" && orden.motivo_rechazo && (
-        <p className="mt-2 text-xs text-red-600">
+        <p
+          className={`mt-2 text-xs ${
+            orden.motivo_rechazo.startsWith(PREFIJO_SUSPENSION_CLUB)
+              ? "text-amber-700"
+              : "text-red-600"
+          }`}
+        >
           Motivo: {orden.motivo_rechazo}
         </p>
       )}

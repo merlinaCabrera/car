@@ -39,6 +39,9 @@ import {
   horaLabel,
   indiceDiaSemana,
   isoDeFechaLocal,
+  labelMetodoPago,
+  nombreProductoDeTurno,
+  productoDeTurno,
   rangoTurnoCancha,
   rangoTurnoQuincho,
   reservaQueOcupa,
@@ -47,11 +50,13 @@ import {
 import {
   AlertCircle,
   Ban,
+  Banknote,
   CalendarClock,
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
   Clock,
+  Info,
   Loader2,
   Lock,
   Moon,
@@ -61,6 +66,7 @@ import {
   Sun,
   Tent,
   User,
+  UserPlus,
   Users,
   Volleyball,
   Wallet,
@@ -156,6 +162,61 @@ function etiquetaCorta(estado) {
   if (estado.tipo === 'libre') return 'Libre'
   if (estado.tipo === 'bloqueo') return estado.reserva.notas || 'Inhabilitado'
   return estado.reserva.nombre_responsable || estado.reserva.notas || 'Reservado'
+}
+
+// ─── Modal: qué hacer con un turno libre ──────────────────────────────────────
+//
+// Antes un turno libre tenía una sola acción posible (inhabilitarlo) y por eso
+// se disparaba con el click directo. Desde Mejora-02 el admin también puede
+// asignárselo a un socio en ventanilla, así que el click abre esta bifurcación.
+
+function ModalAccionesTurno({ turno, onClose, onAsignar, onInhabilitar }) {
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+      onClick={e => { if (e.target === e.currentTarget) onClose() }}
+    >
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h2 className="text-lg font-bold text-gray-900">Turno libre</h2>
+            <p className="text-xs text-gray-500 mt-0.5">
+              {labelInstalacion(turno.instalacion)} · {turno.etiqueta}
+            </p>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 flex-shrink-0">
+            <X size={18} />
+          </button>
+        </div>
+
+        <button
+          onClick={onAsignar}
+          className="w-full flex items-start gap-3 p-3.5 rounded-xl border-2 border-slate-900 bg-slate-900 text-white text-left hover:bg-slate-800 transition-colors"
+        >
+          <UserPlus size={18} className="flex-shrink-0 mt-0.5" />
+          <span>
+            <span className="block text-sm font-bold">Asignar a un socio</span>
+            <span className="block text-xs opacity-80 mt-0.5">
+              Lo cobrás en ventanilla y le queda registrado como si lo hubiera reservado él.
+            </span>
+          </span>
+        </button>
+
+        <button
+          onClick={onInhabilitar}
+          className="w-full flex items-start gap-3 p-3.5 rounded-xl border border-gray-200 text-left hover:bg-red-50 hover:border-red-200 transition-colors"
+        >
+          <Ban size={18} className="flex-shrink-0 mt-0.5 text-red-500" />
+          <span>
+            <span className="block text-sm font-bold text-gray-800">Inhabilitar turno</span>
+            <span className="block text-xs text-gray-500 mt-0.5">
+              Mantenimiento, evento del club: nadie puede reservarlo.
+            </span>
+          </span>
+        </button>
+      </div>
+    </div>
+  )
 }
 
 // ─── Modal: bloquear / inhabilitar un turno ───────────────────────────────────
@@ -356,6 +417,20 @@ function ModalDetalleReserva({ reserva, onClose, onRechazar, onSuspender, onQuit
           </span>
         </div>
 
+        {/* Cómo pagó: es el dato que decide si una suspensión deja plata que
+            el club tiene que devolver a mano (BUG-20). */}
+        {!bloqueo && reserva.metodo_pago && (
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+              Método
+            </span>
+            <span className="inline-flex items-center gap-1.5 text-xs font-bold text-gray-700">
+              <Wallet size={13} className="text-gray-400" />
+              {labelMetodoPago(reserva.metodo_pago)}
+            </span>
+          </div>
+        )}
+
         {/* ── Bloqueo del club: se quita y listo, no hay a quién avisar ── */}
         {bloqueo && (
           <button
@@ -398,8 +473,32 @@ function ModalDetalleReserva({ reserva, onClose, onRechazar, onSuspender, onQuit
                 className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:border-blue-500 focus:ring-blue-500"
               />
               <p className="text-xs text-gray-500">
-                Se libera el turno y se le acredita el importe al socio como saldo a favor.
+                Se libera el turno, se le acredita el importe al socio como saldo a
+                favor y la orden pasa a cancelada en <strong>Mis Compras</strong>.
+                Le llega notificación en la app y mail.
               </p>
+              {/* BUG-20: el saldo a favor alcanza para el que vuelve a usar el
+                  club, no para el que transfirió y quiere su plata de vuelta.
+                  El admin tiene que saberlo ANTES de confirmar. */}
+              {reserva.metodo_pago === 'transferencia' && (
+                <div className="flex items-start gap-2 p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs">
+                  <AlertCircle size={14} className="flex-shrink-0 mt-0.5" />
+                  <span>
+                    Este turno se pagó por <strong>transferencia</strong>. Si el socio
+                    no quiere el saldo a favor, la devolución del dinero la tenés que
+                    gestionar vos — el sistema no la hace solo.
+                  </span>
+                </div>
+              )}
+              {reserva.metodo_pago === 'efectivo' && (
+                <div className="flex items-start gap-2 p-3 rounded-xl bg-blue-50 border border-blue-200 text-blue-800 text-xs">
+                  <Info size={14} className="flex-shrink-0 mt-0.5" />
+                  <span>
+                    Este turno se pagó en <strong>efectivo</strong>. Si el socio prefiere
+                    que se lo devuelvan, se le entrega en el club.
+                  </span>
+                </div>
+              )}
               <div className="flex gap-2">
                 <button
                   onClick={async () => {
@@ -456,51 +555,65 @@ function ModalDetalleReserva({ reserva, onClose, onRechazar, onSuspender, onQuit
   )
 }
 
-// ─── Modal: Nueva Reserva Manual (con cobro opcional) ────────────────────────
+// ─── Modal: asignar un turno a un socio (cobro en ventanilla) ────────────────
+//
+// Reemplaza al viejo "Nueva reserva manual" del header (Mejora-02). Ese modal
+// pedía fecha y hora a mano, en un sistema donde los turnos son fijos: el admin
+// podía cargar un alquiler de 10:20 a 11:05 que no existe en ninguna grilla, y
+// además tenía que elegir el producto de una lista para que saliera el precio.
+//
+// Acá el turno viene dado (el admin hizo click en la celda), así que:
+//   - instalación y horario son datos, no campos;
+//   - el producto —y con él el precio— se deduce del turno, con la misma regla
+//     que usa el socio (`productoDeTurno`), y el backend la repite por su
+//     cuenta en utils/reservas.py;
+//   - la reserva nace 'confirmada' y pagada, porque el admin la está cobrando
+//     en ventanilla, y al socio le llega la notificación in-app.
+//
+// El caso "alquiler a alguien que no es socio" sigue cubierto: el botón
+// "Usar cuenta Invitado / No-Socio" imputa el cobro a la cuenta compartida.
 
-function ModalNuevaReserva({ onClose, onGuardado, inicial }) {
+function ModalAsignarTurno({ turno, onClose, onGuardado }) {
   const { token } = useAuth()
-  const [form, setForm] = useState({
-    instalacion:        inicial?.instalacion ?? 'cancha_1',
-    fecha_inicio:       inicial?.fecha_inicio ?? '',
-    fecha_fin:          inicial?.fecha_fin ?? '',
-    nombre_responsable: '',
-    notas_extra:        '',
-  })
-  const [guardando, setGuardando] = useState(false)
-  const [error,     setError]     = useState(null)
 
-  // ── Cobro opcional ─────────────────────────────────────────────────────────
-  const [cobroActivo, setCobroActivo] = useState(false)
   const [usuarios, setUsuarios] = useState([])
-  const [cargandoUsuarios, setCargandoUsuarios] = useState(false)
-  const [busquedaSocio, setBusquedaSocio] = useState('')
-  const [persona, setPersona] = useState(null)  // usuario seleccionado (socio o invitado)
-  const [cargandoInvitado, setCargandoInvitado] = useState(false)
+  const [cargandoUsuarios, setCargandoUsuarios] = useState(true)
   const [productos, setProductos] = useState([])
-  const [cargandoProductos, setCargandoProductos] = useState(false)
-  const [idProducto, setIdProducto] = useState('')
-  const [cantidad, setCantidad] = useState(1)
+  const [cargandoProductos, setCargandoProductos] = useState(true)
 
-  // Trae la lista de usuarios (para buscar socio) y el catálogo de alquileres
-  // recién cuando el admin activa "Registrar cobro" — no antes, para no pagar
-  // ese costo si nunca lo va a usar.
+  const [busquedaSocio, setBusquedaSocio] = useState('')
+  const [persona, setPersona] = useState(null)
+  const [cargandoInvitado, setCargandoInvitado] = useState(false)
+  const [metodoPago, setMetodoPago] = useState('efectivo')
+  const [notasExtra, setNotasExtra] = useState('')
+  const [guardando, setGuardando] = useState(false)
+  const [error, setError] = useState(null)
+  const enviandoRef = useRef(false)
+
   useEffect(() => {
-    if (!cobroActivo || usuarios.length > 0) return
-    setCargandoUsuarios(true)
+    let cancelado = false
     fetch(`${API}/admin/usuarios/`, { headers: { Authorization: `Bearer ${token}` } })
       .then(res => res.json())
-      .then(data => setUsuarios(Array.isArray(data) ? data : []))
+      .then(data => { if (!cancelado) setUsuarios(Array.isArray(data) ? data : []) })
       .catch(() => {})
-      .finally(() => setCargandoUsuarios(false))
+      .finally(() => { if (!cancelado) setCargandoUsuarios(false) })
 
-    setCargandoProductos(true)
     fetch(`${API}/admin/productos`, { headers: { Authorization: `Bearer ${token}` } })
       .then(res => res.json())
-      .then(data => setProductos(Array.isArray(data) ? data.filter(p => p.categoria === 'alquiler' && p.es_activo) : []))
+      .then(data => { if (!cancelado) setProductos(Array.isArray(data) ? data : []) })
       .catch(() => {})
-      .finally(() => setCargandoProductos(false))
-  }, [cobroActivo, token, usuarios.length])
+      .finally(() => { if (!cancelado) setCargandoProductos(false) })
+    return () => { cancelado = true }
+  }, [token])
+
+  // El producto del turno, con su precio. Si el club no lo cargó al catálogo
+  // no hay forma de saber cuánto cobrar, y el backend rechaza el request: más
+  // vale decirlo acá, con el nombre exacto que hay que dar de alta.
+  const producto = useMemo(
+    () => productoDeTurno(productos, turno.instalacion, turno.inicio),
+    [productos, turno.instalacion, turno.inicio]
+  )
+  const nombreEsperado = nombreProductoDeTurno(turno.instalacion, turno.inicio)
 
   const usuariosFiltrados = useMemo(() => {
     const q = busquedaSocio.trim().toLowerCase()
@@ -531,32 +644,21 @@ function ModalNuevaReserva({ onClose, onGuardado, inicial }) {
     }
   }
 
-  const productoSeleccionado = productos.find(p => String(p.id_producto) === String(idProducto))
-  const montoEstimado = productoSeleccionado ? Number(productoSeleccionado.precio_actual) * cantidad : 0
-
-  const handleChange = (e) => {
-    const { name, value } = e.target
-    setForm(prev => ({ ...prev, [name]: value }))
-  }
-
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!form.fecha_inicio || !form.fecha_fin) {
-      setError('Las fechas de inicio y fin son obligatorias.')
+    if (!persona) {
+      setError('Elegí a quién se le asigna el turno, o usá la cuenta Invitado.')
       return
     }
-    if (new Date(form.fecha_fin) <= new Date(form.fecha_inicio)) {
-      setError('La fecha de fin debe ser posterior a la de inicio.')
+    if (!producto) {
+      setError(`Falta cargar el producto «${nombreEsperado}» en /admin/productos: sin precio no se puede cobrar el turno.`)
       return
     }
-    if (!form.nombre_responsable.trim()) {
-      setError('El nombre del responsable es obligatorio.')
-      return
-    }
-    if (cobroActivo && (!persona || !idProducto)) {
-      setError('Para registrar el cobro elegí a quién se le imputa y qué producto se está cobrando.')
-      return
-    }
+    // Guarda de doble submit con useRef: `guardando` es state de React y llega
+    // al DOM un tick más tarde, así que un doble clic rápido entra dos veces y
+    // crea dos reservas (misma historia que BUG-03).
+    if (enviandoRef.current) return
+    enviandoRef.current = true
     setGuardando(true)
     setError(null)
     try {
@@ -564,25 +666,24 @@ function ModalNuevaReserva({ onClose, onGuardado, inicial }) {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          instalacion:        form.instalacion,
-          fecha_inicio:       new Date(form.fecha_inicio).toISOString(),
-          fecha_fin:          new Date(form.fecha_fin).toISOString(),
-          nombre_responsable: form.nombre_responsable.trim(),
-          notas_extra:        form.notas_extra.trim() || null,
-          ...(cobroActivo ? {
-            id_usuario_pago: persona.id_usuario,
-            id_producto:     Number(idProducto),
-            cantidad,
-          } : {}),
+          instalacion:     turno.instalacion,
+          fecha_inicio:    turno.inicio.toISOString(),
+          fecha_fin:       turno.fin.toISOString(),
+          id_usuario_pago: persona.id_usuario,
+          id_producto:     producto.id_producto,
+          metodo_pago:     metodoPago,
+          cantidad:        1,
+          notas_extra:     notasExtra.trim() || null,
         }),
       })
       const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(textoError(data?.detail, 'No se pudo crear la reserva.'))
-      onGuardado(data)
+      if (!res.ok) throw new Error(textoError(data?.detail, 'No se pudo asignar el turno.'))
+      onGuardado(data, persona)
     } catch (err) {
       setError(err.message)
     } finally {
       setGuardando(false)
+      enviandoRef.current = false
     }
   }
 
@@ -597,208 +698,168 @@ function ModalNuevaReserva({ onClose, onGuardado, inicial }) {
         onSubmit={handleSubmit}
         className="bg-white rounded-2xl shadow-xl w-full max-w-md flex flex-col max-h-[90dvh]"
       >
-        <div className="p-6 border-b flex items-center justify-between flex-shrink-0">
-          <div>
-            <h2 className="text-lg font-bold text-gray-900">Nueva Reserva Manual</h2>
+        <div className="p-6 border-b flex items-start justify-between gap-3 flex-shrink-0">
+          <div className="min-w-0">
+            <h2 className="text-lg font-bold text-gray-900">Asignar turno a un socio</h2>
             <p className="text-xs text-gray-500 mt-0.5">
-              Para socios sin app o no-socios. El cobro es opcional.
+              {labelInstalacion(turno.instalacion)} · {turno.etiqueta}
             </p>
           </div>
-          <button type="button" onClick={onClose} className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100">
+          <button type="button" onClick={onClose} className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 flex-shrink-0">
             <X size={18} />
           </button>
         </div>
 
         <div className="p-6 space-y-4 overflow-y-auto flex-1">
           {error && (
-            <div className="flex items-center gap-2 p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm">
-              <AlertCircle size={15} className="flex-shrink-0" />
-              {error}
+            <div className="flex items-start gap-2 p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm">
+              <AlertCircle size={15} className="flex-shrink-0 mt-0.5" />
+              <span>{error}</span>
             </div>
           )}
 
-          <div>
-            <label className={L}>Instalación</label>
-            <select name="instalacion" value={form.instalacion} onChange={handleChange} className="form-input w-full">
-              {CANCHAS.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
-              <option value="quincho">Quincho</option>
-            </select>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className={L}>Inicio</label>
-              <input
-                type="datetime-local" name="fecha_inicio"
-                value={form.fecha_inicio} onChange={handleChange}
-                required className="form-input w-full"
-              />
-            </div>
-            <div>
-              <label className={L}>Fin</label>
-              <input
-                type="datetime-local" name="fecha_fin"
-                value={form.fecha_fin} onChange={handleChange}
-                required className="form-input w-full"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className={L}>Responsable</label>
-            <input
-              type="text" name="nombre_responsable"
-              value={form.nombre_responsable} onChange={handleChange}
-              placeholder="Nombre y apellido del responsable"
-              required className="form-input w-full"
-            />
-            <p className="text-[11px] text-gray-400 mt-1">
-              Queda anotado acá aunque el cobro (si lo registrás abajo) quede a
-              nombre de la cuenta Invitado — así sabés después quién fue.
-            </p>
-          </div>
-
-          <div>
-            <label className={L}>Notas <span className="font-normal normal-case text-gray-400">(opcional)</span></label>
-            <input
-              type="text" name="notas_extra"
-              value={form.notas_extra} onChange={handleChange}
-              placeholder="Grupo, evento, referencia..."
-              className="form-input w-full"
-            />
-          </div>
-
-          {/* ── Cobro opcional ────────────────────────────────────────────── */}
-          <div className="border-t pt-4">
-            <label className="flex items-center gap-2 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={cobroActivo}
-                onChange={(e) => setCobroActivo(e.target.checked)}
-                className="w-4 h-4 rounded border-gray-300 text-slate-900 focus:ring-slate-900"
-              />
-              <span className="text-sm font-semibold text-gray-800 flex items-center gap-1.5">
-                <Wallet size={15} className="text-gray-500" />
-                Registrar cobro (efectivo)
+          {/* Precio del turno — sale del catálogo, no se tipea */}
+          <div className="flex items-center justify-between gap-3 p-3.5 rounded-xl bg-gray-50 border border-gray-200">
+            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+              Importe del turno
+            </span>
+            {cargandoProductos ? (
+              <Loader2 size={16} className="animate-spin text-gray-400" />
+            ) : producto ? (
+              <span className="text-lg font-bold text-gray-900">
+                ${Number(producto.precio_actual).toLocaleString('es-AR')}
               </span>
-            </label>
-            <p className="text-[11px] text-gray-400 mt-1 ml-6">
-              Si lo dejás sin marcar, la reserva queda solo como bloqueo de
-              agenda, sin que se registre ningún ingreso.
-            </p>
-
-            {cobroActivo && (
-              <div className="mt-3 space-y-3 bg-gray-50 rounded-xl p-3 border border-gray-100">
-                {/* A quién se le imputa */}
-                <div>
-                  <label className={L}>¿A quién se le cobra?</label>
-                  {persona ? (
-                    <div className="flex items-center justify-between gap-2 bg-white rounded-lg border border-gray-200 px-3 py-2">
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold text-gray-800 truncate">
-                          {persona.nombre} {persona.apellido}
-                        </p>
-                        <p className="text-xs text-gray-400">DNI {persona.dni}</p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setPersona(null)}
-                        className="text-xs font-semibold text-gray-400 hover:text-gray-600 flex-shrink-0"
-                      >
-                        Cambiar
-                      </button>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="relative">
-                        <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                        <input
-                          type="text"
-                          value={busquedaSocio}
-                          onChange={(e) => setBusquedaSocio(e.target.value)}
-                          placeholder={cargandoUsuarios ? 'Cargando socios…' : 'Buscar socio por nombre o DNI...'}
-                          disabled={cargandoUsuarios}
-                          className="form-input w-full pl-7 text-sm"
-                        />
-                      </div>
-                      {usuariosFiltrados.length > 0 && (
-                        <div className="mt-1 border border-gray-200 rounded-lg overflow-hidden bg-white max-h-36 overflow-y-auto">
-                          {usuariosFiltrados.map(u => (
-                            <button
-                              key={u.id_usuario}
-                              type="button"
-                              onClick={() => { setPersona(u); setBusquedaSocio('') }}
-                              className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 border-b last:border-b-0 border-gray-100"
-                            >
-                              <span className="font-medium text-gray-800">{u.nombre} {u.apellido}</span>
-                              <span className="text-gray-400 ml-2">DNI {u.dni}</span>
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                      <button
-                        type="button"
-                        onClick={usarCuentaInvitado}
-                        disabled={cargandoInvitado}
-                        className="mt-2 w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg border border-dashed border-gray-300 text-xs font-semibold text-gray-500 hover:bg-white hover:border-gray-400 transition-colors disabled:opacity-50"
-                      >
-                        {cargandoInvitado ? <Loader2 size={13} className="animate-spin" /> : <Users size={13} />}
-                        No es socio — usar cuenta Invitado
-                      </button>
-                    </>
-                  )}
-                </div>
-
-                {/* Qué se cobra */}
-                <div>
-                  <label className={L}>Producto</label>
-                  <select
-                    value={idProducto}
-                    onChange={(e) => setIdProducto(e.target.value)}
-                    disabled={cargandoProductos}
-                    className="form-input w-full text-sm"
-                  >
-                    <option value="">{cargandoProductos ? 'Cargando…' : 'Elegí un producto de alquiler'}</option>
-                    {productos.map(p => (
-                      <option key={p.id_producto} value={p.id_producto}>
-                        {p.nombre} — ${Number(p.precio_actual).toLocaleString('es-AR')}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className={L}>Cantidad</label>
-                    <input
-                      type="number" min={1} value={cantidad}
-                      onChange={(e) => setCantidad(Math.max(1, Number(e.target.value) || 1))}
-                      className="form-input w-full text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className={L}>Total</label>
-                    <div className="form-input w-full text-sm bg-gray-100 text-gray-600 flex items-center font-semibold">
-                      ${montoEstimado.toLocaleString('es-AR')}
-                    </div>
-                  </div>
-                </div>
-              </div>
+            ) : (
+              <span className="text-xs font-semibold text-red-600 text-right">
+                Falta «{nombreEsperado}» en el catálogo
+              </span>
             )}
           </div>
+
+          {/* A quién */}
+          <div>
+            <label className={L}>¿A quién se le asigna?</label>
+            {persona ? (
+              <div className="flex items-center justify-between gap-2 p-3 rounded-xl bg-blue-50 border border-blue-200">
+                <span className="min-w-0">
+                  <span className="block text-sm font-bold text-blue-900 truncate">
+                    {persona.nombre} {persona.apellido}
+                  </span>
+                  <span className="block text-xs text-blue-700">DNI {persona.dni}</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setPersona(null)}
+                  className="flex-shrink-0 text-xs font-semibold text-blue-700 hover:underline"
+                >
+                  Cambiar
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="relative">
+                  <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <input
+                    autoFocus
+                    value={busquedaSocio}
+                    onChange={e => setBusquedaSocio(e.target.value)}
+                    placeholder={cargandoUsuarios ? 'Cargando socios…' : 'Buscar por nombre o DNI'}
+                    disabled={cargandoUsuarios}
+                    className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-gray-300 text-sm focus:border-blue-500 focus:ring-blue-500 disabled:bg-gray-50"
+                  />
+                </div>
+                {usuariosFiltrados.length > 0 && (
+                  <ul className="mt-2 border border-gray-200 rounded-xl divide-y divide-gray-100 overflow-hidden">
+                    {usuariosFiltrados.map(u => (
+                      <li key={u.id_usuario}>
+                        <button
+                          type="button"
+                          onClick={() => { setPersona(u); setBusquedaSocio('') }}
+                          className="w-full text-left px-3 py-2.5 hover:bg-gray-50 transition-colors"
+                        >
+                          <span className="block text-sm font-semibold text-gray-800">
+                            {u.nombre} {u.apellido}
+                          </span>
+                          <span className="block text-xs text-gray-400">DNI {u.dni}</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <button
+                  type="button"
+                  onClick={usarCuentaInvitado}
+                  disabled={cargandoInvitado}
+                  className="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-gray-500 hover:text-gray-700 disabled:opacity-50"
+                >
+                  {cargandoInvitado
+                    ? <Loader2 size={13} className="animate-spin" />
+                    : <Users size={13} />}
+                  No es socio — usar la cuenta Invitado
+                </button>
+              </>
+            )}
+          </div>
+
+          {/* Cómo pagó */}
+          <div>
+            <label className={L}>¿Cómo pagó?</label>
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { key: 'efectivo',      label: 'Efectivo',      icon: Banknote },
+                { key: 'transferencia', label: 'Transferencia', icon: Wallet },
+              ].map(({ key, label, icon: Icon }) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setMetodoPago(key)}
+                  className={`flex items-center justify-center gap-2 py-2.5 rounded-xl border text-sm font-semibold transition-colors ${
+                    metodoPago === key
+                      ? 'bg-slate-900 text-white border-slate-900'
+                      : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                  }`}
+                >
+                  <Icon size={15} />
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className={L}>Aclaración (opcional)</label>
+            <input
+              value={notasExtra}
+              onChange={e => setNotasExtra(e.target.value)}
+              maxLength={400}
+              placeholder="Cumpleaños, referencia de la transferencia…"
+              className="w-full px-3 py-2.5 rounded-xl border border-gray-300 text-sm focus:border-blue-500 focus:ring-blue-500"
+            />
+          </div>
+
+          <p className="flex items-start gap-2 text-xs text-gray-500">
+            <Info size={13} className="flex-shrink-0 mt-0.5 text-gray-400" />
+            El turno queda confirmado y pagado (no pasa por verificación de
+            comprobante) y al socio le llega la notificación en la app.
+          </p>
         </div>
 
-        <div className="p-4 bg-gray-50 rounded-b-2xl border-t flex justify-end gap-3 flex-shrink-0">
-          <button type="button" onClick={onClose}
-            className="px-4 py-2 rounded-lg text-gray-600 bg-gray-200 hover:bg-gray-300 font-semibold transition-colors"
-          >
-            Cancelar
-          </button>
-          <button type="submit" disabled={guardando}
-            className="px-4 py-2 rounded-lg text-white bg-slate-900 hover:bg-slate-800 font-semibold disabled:opacity-50 transition-colors flex items-center gap-2"
+        <div className="p-6 border-t flex gap-2 flex-shrink-0">
+          <button
+            type="submit"
+            disabled={guardando || !persona || !producto}
+            className="flex-1 py-2.5 rounded-xl bg-slate-900 text-white text-sm font-bold hover:bg-slate-800 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
           >
             {guardando && <Loader2 size={14} className="animate-spin" />}
-            Crear Reserva
+            {guardando ? 'Asignando…' : 'Asignar y registrar el cobro'}
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={guardando}
+            className="px-4 py-2.5 rounded-xl border border-gray-300 text-sm font-semibold text-gray-600 hover:bg-gray-50"
+          >
+            Cancelar
           </button>
         </div>
       </form>
@@ -885,7 +946,7 @@ function Leyenda() {
 
 // ─── Agenda del quincho ───────────────────────────────────────────────────────
 
-function AgendaQuincho({ reservas, anio, mes, onCambiarMes, onAbrirTurno, onBloquearTurno }) {
+function AgendaQuincho({ reservas, anio, mes, onCambiarMes, onAbrirTurno, onTurnoLibre }) {
   const hoy = new Date()
   hoy.setHours(0, 0, 0, 0)
 
@@ -982,7 +1043,7 @@ function AgendaQuincho({ reservas, anio, mes, onCambiarMes, onAbrirTurno, onBloq
                       type="button"
                       disabled={inerte}
                       onClick={() => libre
-                        ? onBloquearTurno({
+                        ? onTurnoLibre({
                             instalacion: 'quincho', inicio, fin,
                             etiqueta: `${dia}/${mes} · Turno ${TURNOS_QUINCHO[key].label}`,
                           })
@@ -990,7 +1051,7 @@ function AgendaQuincho({ reservas, anio, mes, onCambiarMes, onAbrirTurno, onBloq
                       title={libre
                         ? esPasado
                           ? `${TURNOS_QUINCHO[key].label} — pasó libre`
-                          : `${TURNOS_QUINCHO[key].label} — libre. Click para inhabilitarlo.`
+                          : `${TURNOS_QUINCHO[key].label} — libre. Click para asignarlo o inhabilitarlo.`
                         : `${TURNOS_QUINCHO[key].label} — ${etiquetaCorta(estado)}`}
                       className={`w-full rounded-lg border px-1.5 py-1 text-left transition-colors ${clases}`}
                     >
@@ -1018,7 +1079,8 @@ function AgendaQuincho({ reservas, anio, mes, onCambiarMes, onAbrirTurno, onBloq
       <div className="px-4 sm:px-5 pb-4">
         <Leyenda />
         <p className="text-[11px] text-gray-400 mt-2">
-          Tocá un turno libre para inhabilitarlo, o uno ocupado para ver el detalle.
+          Tocá un turno libre para asignarlo a un socio o inhabilitarlo, o uno
+          ocupado para ver el detalle.
         </p>
       </div>
     </div>
@@ -1031,7 +1093,7 @@ function AgendaCanchas({
   reservas, anio, mes, onCambiarMes,
   canchaKey, onCambiarCancha,
   diaSeleccionado, onSeleccionarDia,
-  onAbrirTurno, onBloquearTurno,
+  onAbrirTurno, onTurnoLibre,
 }) {
   const hoy = new Date()
   hoy.setHours(0, 0, 0, 0)
@@ -1188,14 +1250,14 @@ function AgendaCanchas({
                       </span>
                       {!esPasado && (
                         <button
-                          onClick={() => onBloquearTurno({
+                          onClick={() => onTurnoLibre({
                             instalacion: canchaKey, inicio, fin,
                             etiqueta: `${fechaDia.toLocaleDateString('es-AR')} · ${horaLabel(hora)}`,
                           })}
-                          className="flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-semibold text-gray-600 hover:bg-red-50 hover:border-red-200 hover:text-red-700 transition-colors"
+                          className="flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-semibold text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-colors"
                         >
-                          <Ban size={13} />
-                          Inhabilitar
+                          <PlusCircle size={13} />
+                          Usar turno
                         </button>
                       )}
                     </>
@@ -1247,9 +1309,12 @@ export default function AdminReservas() {
   const [mes,  setMes]  = useState(hoy.getMonth() + 1)
   const [diaSeleccionado, setDiaSeleccionado] = useState(hoy.getDate())
 
-  const [reservaDetalle,    setReservaDetalle]    = useState(null)
-  const [turnoABloquear,    setTurnoABloquear]    = useState(null)
-  const [modalNuevaAbierto, setModalNuevaAbierto] = useState(false)
+  // Un turno libre abre primero la bifurcación (asignar / inhabilitar) y desde
+  // ahí cae en uno de los dos modales concretos.
+  const [turnoElegido,   setTurnoElegido]   = useState(null)
+  const [turnoABloquear, setTurnoABloquear] = useState(null)
+  const [turnoAAsignar,  setTurnoAAsignar]  = useState(null)
+  const [reservaDetalle, setReservaDetalle] = useState(null)
 
   // ── Fetch del mes visible ─────────────────────────────────────────────────
   // Se trae el mes entero de TODAS las instalaciones y se filtra en memoria:
@@ -1354,12 +1419,18 @@ export default function AdminReservas() {
       const body = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(textoError(body?.detail, 'No se pudo suspender la reserva.'))
       setReservas(prev => prev.map(r =>
-        r.id_reserva === reserva.id_reserva ? { ...r, estado: 'liberada' } : r
+        r.id_reserva === reserva.id_reserva
+          ? { ...r, estado: 'liberada', estado_orden: body.estado_orden ?? r.estado_orden }
+          : r
       ))
       setError(null)
       setAviso(
-        `Turno suspendido. Se le acreditaron $${body.monto_acreditado} de saldo a favor al socio ` +
-        `(nuevo saldo: $${body.nuevo_saldo}).`
+        `Turno suspendido. Se le avisó al socio, la orden quedó cancelada y se le ` +
+        `acreditaron $${body.monto_acreditado} de saldo a favor ` +
+        `(nuevo saldo: $${body.nuevo_saldo}).` +
+        (body.metodo_pago === 'transferencia'
+          ? ' Había pagado por TRANSFERENCIA: si pide la plata en vez del saldo, la devolución la gestiona el club.'
+          : '')
       )
     } catch (err) {
       setError(err.message)
@@ -1396,9 +1467,14 @@ export default function AdminReservas() {
     setTurnoABloquear(null)
   }
 
-  const handleNuevaReservaGuardada = (nueva) => {
+  const handleTurnoAsignado = (nueva, persona) => {
     setReservas(prev => [nueva, ...prev])
-    setModalNuevaAbierto(false)
+    setTurnoAAsignar(null)
+    setError(null)
+    setAviso(
+      `Turno asignado a ${persona.nombre} ${persona.apellido} (DNI ${persona.dni}). ` +
+      `Quedó confirmado y pagado, y ya le llegó la notificación.`
+    )
   }
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -1414,9 +1490,13 @@ export default function AdminReservas() {
           </h1>
           <p className="text-xs sm:text-sm text-gray-500 mt-1">
             La misma grilla que ve el socio, pero con el nombre de quien tiene cada turno.
+            Tocá un turno libre para asignarlo o inhabilitarlo.
           </p>
         </div>
 
+        {/* Sin botón "Nueva reserva" (Mejora-02): pedía fecha y hora libres, y
+            acá los turnos son fijos. Se carga desde la celda del turno, que es
+            donde el admin ya está mirando. */}
         <div className="flex items-center gap-2 flex-shrink-0">
           <button
             onClick={fetchReservas}
@@ -1425,14 +1505,6 @@ export default function AdminReservas() {
             title="Refrescar"
           >
             <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
-          </button>
-          <button
-            onClick={() => setModalNuevaAbierto(true)}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-900 text-white text-sm font-bold hover:bg-slate-800 transition-colors"
-          >
-            <PlusCircle size={16} />
-            <span className="hidden sm:inline">Nueva reserva manual</span>
-            <span className="sm:hidden">Nueva</span>
           </button>
         </div>
       </div>
@@ -1486,7 +1558,7 @@ export default function AdminReservas() {
           mes={mes}
           onCambiarMes={cambiarMes}
           onAbrirTurno={setReservaDetalle}
-          onBloquearTurno={setTurnoABloquear}
+          onTurnoLibre={setTurnoElegido}
         />
       ) : (
         <AgendaCanchas
@@ -1499,7 +1571,7 @@ export default function AdminReservas() {
           diaSeleccionado={diaSeleccionado}
           onSeleccionarDia={setDiaSeleccionado}
           onAbrirTurno={setReservaDetalle}
-          onBloquearTurno={setTurnoABloquear}
+          onTurnoLibre={setTurnoElegido}
         />
       )}
 
@@ -1513,6 +1585,15 @@ export default function AdminReservas() {
         />
       )}
 
+      {turnoElegido && (
+        <ModalAccionesTurno
+          turno={turnoElegido}
+          onClose={() => setTurnoElegido(null)}
+          onAsignar={() => { setTurnoAAsignar(turnoElegido); setTurnoElegido(null) }}
+          onInhabilitar={() => { setTurnoABloquear(turnoElegido); setTurnoElegido(null) }}
+        />
+      )}
+
       {turnoABloquear && (
         <ModalBloquearTurno
           turno={turnoABloquear}
@@ -1521,11 +1602,11 @@ export default function AdminReservas() {
         />
       )}
 
-      {modalNuevaAbierto && (
-        <ModalNuevaReserva
-          onClose={() => setModalNuevaAbierto(false)}
-          onGuardado={handleNuevaReservaGuardada}
-          inicial={{ instalacion: instalacionActiva }}
+      {turnoAAsignar && (
+        <ModalAsignarTurno
+          turno={turnoAAsignar}
+          onClose={() => setTurnoAAsignar(null)}
+          onGuardado={handleTurnoAsignado}
         />
       )}
     </div>

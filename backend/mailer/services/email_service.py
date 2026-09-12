@@ -323,17 +323,29 @@ async def enviar_aviso_admin_jugador_categoria(
     )
 
 
+# Nombre lindo de cada instalación para el asunto y el cuerpo del mail: la
+# clave interna ("cancha_1") no es algo que el socio deba leer.
+_LABEL_INSTALACION = {
+    "cancha_1": "Cancha 1",
+    "cancha_2": "Cancha 2",
+    "quincho":  "Quincho",
+}
+
+
 async def enviar_reserva_suspendida(
     email_destino: str, nombre_socio: str, instalacion: str,
     fecha_reserva: str, monto_acreditado: str, motivo: str,
+    metodo_pago: "str | None" = None,
 ) -> None:
+    label = _LABEL_INSTALACION.get(instalacion, instalacion)
     await _enviar(
         destinatarios=[email_destino],
-        asunto=f"❌ Tu reserva de {instalacion} fue suspendida",
+        asunto=f"❌ Tu reserva de {label} fue suspendida",
         template_name="reserva_suspendida.html",
-        body={"nombre_socio": nombre_socio, "instalacion": instalacion,
+        body={"nombre_socio": nombre_socio, "instalacion": label,
               "fecha_reserva": fecha_reserva, "monto_acreditado": monto_acreditado,
-              "motivo": motivo, "frontend_url": FRONTEND_URL},
+              "motivo": motivo, "metodo_pago": metodo_pago,
+              "frontend_url": FRONTEND_URL},
     )
 
 

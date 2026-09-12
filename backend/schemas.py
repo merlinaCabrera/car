@@ -657,6 +657,15 @@ class ReservaAdminListResponse(BaseModel):
                      "None si la reserva no tiene ningún pago asociado (bloqueo "
                      "de agenda puro, sin cobro).",
     )
+    metodo_pago: Optional[str] = Field(
+        default=None,
+        description="Método del Pago que respalda la reserva: 'efectivo' | "
+                     "'transferencia' | 'mercado_pago' | 'saldo_a_favor'. La agenda "
+                     "lo muestra antes de suspender un turno pagado: si fue "
+                     "transferencia, el club tiene que gestionar la devolución a "
+                     "mano si el socio no se queda con el saldo a favor. None si la "
+                     "franja no tiene pago detrás (bloqueo de agenda).",
+    )
     id_usuario: Optional[int] = None
     nombre_responsable: Optional[str] = None
     dni_responsable: Optional[str] = None
@@ -723,24 +732,33 @@ class CrearReservaManualPayload(BaseModel):
     Útil para socios mayores que no usan la app o para no-socios (ej: quincho).
     La reserva se crea directamente en estado 'confirmada'.
 
-    Registrar el cobro es OPCIONAL: si se omiten id_usuario_pago/id_producto,
-    la reserva queda como bloqueo de agenda puro (comportamiento histórico,
-    sin plata involucrada — para bloqueos de mantenimiento, por ejemplo).
-    Si se completan, además del bloqueo se crea un Pago+Orden 'aprobada' en
-    efectivo, vinculado a la reserva, para que quede registrado en
+    Registrar el cobro es OPCIONAL: si se omite id_usuario_pago, la reserva
+    queda como bloqueo de agenda puro (comportamiento histórico, sin plata
+    involucrada — para bloqueos de mantenimiento, por ejemplo).
+    Si se completa, además del bloqueo se crea un Pago+Orden 'aprobada'
+    vinculado a la reserva, para que quede registrado en
     Verificaciones/Estadísticas igual que cualquier otro ingreso.
+
+    Es el payload del flujo "Asignar a socio" de la agenda (Mejora-02): el
+    admin está parado sobre una celda de la grilla, así que `id_producto` y
+    `nombre_responsable` pasaron a ser opcionales — el backend deriva el
+    producto del turno (utils/reservas.py, la misma regla de nombres que usa
+    el socio) y el nombre del socio elegido.
     """
     instalacion: str = Field(
         description="Clave de la instalación: 'cancha_1', 'cancha_2' o 'quincho'.",
     )
     fecha_inicio: datetime = Field(description="Fecha y hora de inicio del turno.")
     fecha_fin:    datetime = Field(description="Fecha y hora de fin del turno.")
-    nombre_responsable: str = Field(
+    nombre_responsable: Optional[str] = Field(
+        default=None,
         max_length=150,
         description="Nombre completo del responsable (socio, invitado o no-socio). "
                      "Se guarda en notas Y en la orden (si se registra cobro), para "
                      "poder identificar 'a nombre de quién' está el comprobante incluso "
-                     "cuando el pago quedó a nombre de la cuenta Invitado compartida.",
+                     "cuando el pago quedó a nombre de la cuenta Invitado compartida. "
+                     "Opcional si se manda id_usuario_pago: se completa con el nombre "
+                     "del socio. Obligatorio si no hay cobro (bloqueo con responsable).",
     )
     notas_extra: Optional[str] = Field(
         default=None,
@@ -750,17 +768,33 @@ class CrearReservaManualPayload(BaseModel):
     id_usuario_pago: Optional[int] = Field(
         default=None,
         description="Socio (o la cuenta Invitado/No-Socio) a quien se le imputa el "
-                     "cobro. Requerido junto con id_producto si se quiere registrar pago.",
+                     "cobro. Es lo único obligatorio para registrar el pago: el "
+                     "producto se deriva del turno si no se manda.",
     )
     id_producto: Optional[int] = Field(
         default=None,
-        description="Producto de categoría 'alquiler' que se está cobrando. "
-                     "Requerido junto con id_usuario_pago si se quiere registrar pago.",
+        description="Producto de categoría 'alquiler' que se está cobrando. Si se "
+                     "omite y hay id_usuario_pago, se resuelve a partir de la "
+                     "instalación y el horario del turno.",
+    )
+    metodo_pago: str = Field(
+        default="efectivo",
+        description="Cómo pagó: 'efectivo' (ventanilla, default) o 'transferencia'. "
+                     "Queda en el Pago — de ahí sale el aviso de devolución si "
+                     "después hay que suspender el turno.",
     )
     cantidad: int = Field(
         default=1, ge=1,
         description="Cantidad de turnos/unidades del producto (normalmente 1).",
     )
+
+    @field_validator("metodo_pago")
+    @classmethod
+    def metodo_pago_valido(cls, v):
+        opciones = {"efectivo", "transferencia"}
+        if v not in opciones:
+            raise ValueError(f"Método de pago inválido. Opciones: {sorted(opciones)}")
+        return v
 
     @field_validator("fecha_fin")
     @classmethod
@@ -792,6 +826,22 @@ class SuspenderReservaResponse(BaseModel):
     monto_acreditado: Decimal
     id_usuario_acreditado: int
     nuevo_saldo: Decimal
+    id_orden: Optional[int] = Field(
+        default=None,
+        description="Orden que quedó cancelada junto con el turno.",
+    )
+    estado_orden: Optional[str] = Field(
+        default=None,
+        description="Estado en el que quedó esa orden ('rechazada'), para que "
+                     "/mis-compras del socio deje de mostrarla como 'Aprobada'.",
+    )
+    metodo_pago: Optional[str] = Field(
+        default=None,
+        description="Cómo había pagado el socio: 'efectivo' | 'transferencia' | "
+                     "'mercado_pago' | 'saldo_a_favor'. La agenda lo usa para "
+                     "recordarle al admin que una transferencia hay que devolverla "
+                     "a mano si el socio no quiere el saldo a favor.",
+    )
 
 class EscanearQRPayload(BaseModel):
     qr_token: Optional[str] = Field(

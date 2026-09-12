@@ -30,6 +30,30 @@
     </p>
   </td></tr>
 </table>
+{% if metodo_pago == 'transferencia' %}
+<table width="100%" cellpadding="0" cellspacing="0"
+       style="background-color:#eef4ff; border-left:4px solid #2563eb;
+              border-radius:4px; margin-bottom:20px;">
+  <tr><td style="padding:14px 16px;">
+    <p style="margin:0; color:#1e3a8a; font-size:14px; line-height:1.6;">
+      Este turno lo habías pagado por <strong>transferencia</strong>. Si preferís
+      que te devolvamos el dinero en lugar de usar el saldo a favor, acercate por
+      la administración del club y lo gestionamos.
+    </p>
+  </td></tr>
+</table>
+{% elif metodo_pago == 'efectivo' %}
+<table width="100%" cellpadding="0" cellspacing="0"
+       style="background-color:#eef4ff; border-left:4px solid #2563eb;
+              border-radius:4px; margin-bottom:20px;">
+  <tr><td style="padding:14px 16px;">
+    <p style="margin:0; color:#1e3a8a; font-size:14px; line-height:1.6;">
+      Este turno lo habías pagado en <strong>efectivo</strong>. Si preferís que te
+      devolvamos el dinero en lugar de usar el saldo a favor, pedilo en el club.
+    </p>
+  </td></tr>
+</table>
+{% endif %}
 <p style="margin:0; color:#666; font-size:13px; line-height:1.6;">
   Si tenés alguna consulta, comunicate con la administración del club.
 </p>

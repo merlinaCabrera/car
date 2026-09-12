@@ -26,6 +26,12 @@ import schemas
 from database import get_db
 from dependencies import require_roles
 from utils.audit import registrar_audit, extraer_ip
+from utils.fechas import TZ_CLUB
+from utils.reservas import (
+    buscar_producto_de_turno,
+    nombre_producto_de_turno,
+    producto_para_bloqueo,
+)
 from mailer.services import email_tasks
 
 router = APIRouter()
@@ -44,6 +50,40 @@ _ROLES_ESCANEO = ("admin_general", "personal_administrativo", "admin_temporal", 
 
 # Estados en los que una franja efectivamente ocupa la agenda.
 _ESTADOS_OCUPA_AGENDA = ("bloqueada", "confirmada")
+
+# Con qué empieza el `motivo_rechazo` cuando la orden se da de baja porque el
+# CLUB canceló el turno, y no porque haya un problema con el pago. Las dos
+# cosas dejan la orden en 'rechazada' (el CHECK de `ordenes` no tiene un estado
+# propio para esto), así que este prefijo es lo único que permite a
+# /mis-compras mostrarlas distinto. Está repetido en SocioCompras.jsx como
+# PREFIJO_SUSPENSION_CLUB: si cambia acá, cambia allá.
+_PREFIJO_SUSPENSION_CLUB = "Turno suspendido por el club"
+
+# Cómo se nombra cada instalación en los textos que lee el socio. El frontend
+# tiene el mismo mapa en utils/reservas.js (`labelInstalacion`); acá hace falta
+# porque las notificaciones in-app se arman del lado del backend.
+_LABEL_INSTALACION = {
+    "cancha_1": "la Cancha 1",
+    "cancha_2": "la Cancha 2",
+    "quincho":  "el Quincho",
+}
+
+
+def _texto_turno(reserva: models.ReservaInstalacion) -> str:
+    """
+    "el Quincho el 28/09 de 19:00 a 00:00" — para notificaciones y mails.
+
+    En hora del club, no del servidor: Render corre en UTC y un turno Noche
+    del 28 se leería como del 29 a las 22:00.
+    """
+    inicio = reserva.fecha_inicio
+    fin = reserva.fecha_fin
+    if inicio.tzinfo is not None:
+        inicio = inicio.astimezone(TZ_CLUB)
+    if fin.tzinfo is not None:
+        fin = fin.astimezone(TZ_CLUB)
+    lugar = _LABEL_INSTALACION.get(reserva.instalacion, reserva.instalacion)
+    return f"{lugar} el {inicio.strftime('%d/%m/%Y')} de {inicio.strftime('%H:%M')} a {fin.strftime('%H:%M')}"
 
 
 def _es_bloqueo_manual(reserva: models.ReservaInstalacion) -> bool:
@@ -87,7 +127,10 @@ def listar_reservas(
     query = db.query(models.ReservaInstalacion).options(
         joinedload(models.ReservaInstalacion.usuario_responsable),
         joinedload(models.ReservaInstalacion.reintegros),
-        joinedload(models.ReservaInstalacion.orden),
+        # El Pago se trae en el mismo joinedload: la agenda necesita el
+        # `metodo_pago` para avisar, ANTES de suspender un turno, que una
+        # transferencia hay que devolverla a mano (BUG-20).
+        joinedload(models.ReservaInstalacion.orden).joinedload(models.Orden.pago),
     )
 
     if instalacion:
@@ -118,6 +161,9 @@ def listar_reservas(
                 estado=r.estado,
                 id_orden=r.id_orden,
                 estado_orden=r.orden.estado if r.orden else None,
+                metodo_pago=(
+                    r.orden.pago.metodo_pago if r.orden and r.orden.pago else None
+                ),
                 id_usuario=r.id_usuario,
                 nombre_responsable=nombre_responsable,
                 dni_responsable=dni_responsable,
@@ -187,21 +233,55 @@ def crear_reserva_manual(
             ),
         )
 
-    # id_usuario_pago y id_producto van de la mano: los dos o ninguno.
-    quiere_cobrar = payload.id_usuario_pago is not None or payload.id_producto is not None
-    if quiere_cobrar and (payload.id_usuario_pago is None or payload.id_producto is None):
+    # Alcanza con id_usuario_pago para registrar el cobro: si no vino
+    # id_producto, se deriva del turno con la misma regla de nombres que usa
+    # el socio para ver el precio (utils/reservas.py). Es lo que permite que
+    # "Asignar a socio" sea un click sobre la celda y no un formulario.
+    quiere_cobrar = payload.id_usuario_pago is not None
+    if payload.id_producto is not None and not quiere_cobrar:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Para registrar el cobro hacen falta id_usuario_pago e id_producto juntos.",
+            detail="Mandaste un producto a cobrar pero no a quién imputárselo (id_usuario_pago).",
         )
 
     orden = None
+    usuario_pago = None
+    producto = None
+    nombre_responsable = payload.nombre_responsable
+    if not quiere_cobrar and not (nombre_responsable or "").strip():
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=(
+                "Sin socio a quien imputarle el turno hace falta el nombre del "
+                "responsable. Si lo que querés es cerrar el turno sin que sea de "
+                "nadie, usá 'Inhabilitar turno'."
+            ),
+        )
     if quiere_cobrar:
         usuario_pago = db.get(models.Usuario, payload.id_usuario_pago)
         if usuario_pago is None:
             raise HTTPException(status_code=404, detail="El usuario/invitado seleccionado no existe.")
+        # Con socio elegido el nombre sale solo: el admin ya lo buscó por DNI,
+        # no tiene por qué volver a tipearlo.
+        nombre_responsable = (
+            payload.nombre_responsable
+            or f"{usuario_pago.nombre} {usuario_pago.apellido}"
+        )
 
-        producto = db.get(models.ProductoServicio, payload.id_producto)
+        if payload.id_producto is not None:
+            producto = db.get(models.ProductoServicio, payload.id_producto)
+        else:
+            producto = buscar_producto_de_turno(db, payload.instalacion, payload.fecha_inicio)
+            if producto is None:
+                esperado = nombre_producto_de_turno(payload.instalacion, payload.fecha_inicio)
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail=(
+                        f"No hay un producto de alquiler activo llamado «{esperado}» en el "
+                        "catálogo, así que no se sabe cuánto cobrar por este turno. "
+                        "Cargalo en /admin/productos (es el mismo que ve el socio)."
+                    ),
+                )
         if producto is None or producto.categoria != "alquiler":
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -213,7 +293,7 @@ def crear_reserva_manual(
         pago = models.Pago(
             id_usuario=usuario_pago.id_usuario,
             monto_total=monto,
-            metodo_pago="efectivo",
+            metodo_pago=payload.metodo_pago,
             estado="verificado",
         )
         db.add(pago)
@@ -226,7 +306,7 @@ def crear_reserva_manual(
             monto_total=monto,
             aprobada_por=admin.id_usuario,
             aprobada_at=datetime.now(timezone.utc),
-            notas_admin=f"Alquiler manual — {payload.nombre_responsable}",
+            notas_admin=f"Alquiler manual — {nombre_responsable}",
         )
         db.add(orden)
         db.flush()
@@ -240,11 +320,26 @@ def crear_reserva_manual(
         db.add(detalle)
 
     # Combinar nombre del responsable y notas en el campo notas del modelo
-    notas_combinadas = payload.nombre_responsable
+    notas_combinadas = nombre_responsable
     if payload.notas_extra:
         notas_combinadas += f" — {payload.notas_extra}"
 
+    # Sin cobro no hay producto elegido, pero la columna es NOT NULL: misma
+    # historia que en bloquear_turno() (BUG-19).
+    if producto is None:
+        producto = producto_para_bloqueo(db, payload.instalacion, payload.fecha_inicio)
+        if producto is None:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=(
+                    "No hay ningún producto de alquiler activo en el catálogo, y la "
+                    "agenda necesita al menos uno para registrar el turno. Cargalo "
+                    "en /admin/productos y volvé a intentar."
+                ),
+            )
+
     reserva = models.ReservaInstalacion(
+        id_producto=producto.id_producto,
         instalacion=payload.instalacion,
         fecha_inicio=payload.fecha_inicio,
         fecha_fin=payload.fecha_fin,
@@ -256,6 +351,11 @@ def crear_reserva_manual(
     db.add(reserva)
     db.flush()  # obtener id_reserva antes del commit
 
+    if orden is not None:
+        # Vincular el ítem con la franja: sin esto suspender_reserva() no
+        # encuentra el DetalleOrden y no sabe cuánto reintegrar.
+        detalle.id_reserva = reserva.id_reserva
+
     registrar_audit(
         db=db,
         actor_id=admin.id_usuario,
@@ -266,13 +366,34 @@ def crear_reserva_manual(
             "instalacion":        payload.instalacion,
             "fecha_inicio":       payload.fecha_inicio.isoformat(),
             "fecha_fin":          payload.fecha_fin.isoformat(),
-            "nombre_responsable": payload.nombre_responsable,
+            "nombre_responsable": nombre_responsable,
             "notas_extra":        payload.notas_extra,
             "cobro_registrado":   quiere_cobrar,
+            "metodo_pago":        payload.metodo_pago if quiere_cobrar else None,
+            "id_producto":        producto.id_producto,
             "id_orden":           orden.id_orden if orden else None,
         },
         ip=extraer_ip(request),
     )
+
+    # ── Avisarle al socio que le quedó un turno a su nombre (Mejora-02) ───────
+    # La reserva nace 'confirmada' sin que el socio haya tocado nada: si no se
+    # entera por acá, se entera cuando abre /socio/reservas y lo ve ocupado.
+    if usuario_pago is not None:
+        db.add(
+            models.Notificacion(
+                id_usuario=usuario_pago.id_usuario,
+                tipo="reserva_confirmada",
+                titulo="Te asignamos un turno",
+                cuerpo=(
+                    f"El club te registró {_texto_turno(reserva)}. "
+                    f"Quedó confirmado y pagado (${orden.monto_total} en "
+                    f"{payload.metodo_pago})."
+                ),
+                referencia_id=orden.id_orden if orden else None,
+                referencia_tabla="ordenes" if orden else None,
+            )
+        )
 
     db.commit()
     db.refresh(reserva)
@@ -285,8 +406,10 @@ def crear_reserva_manual(
         estado=reserva.estado,
         id_orden=reserva.id_orden,
         estado_orden=orden.estado if orden else None,
+        metodo_pago=payload.metodo_pago if orden else None,
         id_usuario=reserva.id_usuario,
-        nombre_responsable=payload.nombre_responsable,
+        nombre_responsable=nombre_responsable,
+        dni_responsable=usuario_pago.dni if usuario_pago else None,
         notas=reserva.notas,
         es_bloqueo_manual=_es_bloqueo_manual(reserva),
         num_socios_esperados=None,
@@ -351,7 +474,24 @@ def bloquear_turno(
             ),
         )
 
+    # BUG-19: `reservas_instalaciones.id_producto` es NOT NULL. Sin esto la
+    # inserción reventaba con IntegrityError, la excepción subía sin manejar y
+    # el 500 salía POR FUERA del CORSMiddleware — el navegador reportaba
+    # "No 'Access-Control-Allow-Origin' header" y el error real quedaba oculto.
+    # En un bloqueo el producto es relleno de la FK: no hay plata de por medio.
+    producto = producto_para_bloqueo(db, payload.instalacion, payload.fecha_inicio)
+    if producto is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=(
+                "No hay ningún producto de alquiler activo en el catálogo, y la "
+                "agenda necesita al menos uno para registrar el turno. Cargá el "
+                "alquiler de la instalación en /admin/productos y volvé a intentar."
+            ),
+        )
+
     reserva = models.ReservaInstalacion(
+        id_producto=producto.id_producto,
         instalacion=payload.instalacion,
         fecha_inicio=payload.fecha_inicio,
         fecha_fin=payload.fecha_fin,
@@ -990,6 +1130,34 @@ def suspender_reserva(
     reserva.notas = f"{reserva.notas + ' — ' if reserva.notas else ''}SUSPENDIDA: {payload.motivo}"
     responsable.saldo_a_favor = responsable.saldo_a_favor + monto
 
+    # ── BUG-20: la orden tiene que dejar de decir "Aprobada" ──────────────────
+    #
+    # El turno desaparecía del calendario del socio y /mis-compras seguía
+    # mostrando la orden como aprobada: ni un aviso de que el club le canceló
+    # una reserva que ya había pagado.
+    #
+    # El estado que usa el sistema para "esta orden no va más" es 'rechazada'
+    # (el CHECK de `ordenes` admite pendiente_verificacion | aprobada |
+    # rechazada | cancelada_socio | expirada — no hay un 'cancelada_club', y
+    # agregarlo obliga a migrar el constraint). Se reusa ese, con el motivo
+    # escrito de forma que el socio entienda que no hizo nada mal y que la
+    # plata volvió como saldo a favor.
+    #
+    # El PAGO queda como está, a propósito: la plata entró de verdad y el
+    # comprobante sigue siendo válido. La devolución es el saldo a favor, no
+    # deshacer el cobro. Y si el Pago agrupaba varias órdenes (split-order),
+    # rechazarlo tiraría abajo las hermanas que sí siguen en pie.
+    orden = reserva.orden
+    metodo_pago = orden.pago.metodo_pago if orden is not None and orden.pago else None
+    estado_orden_previo = orden.estado if orden is not None else None
+    if orden is not None and orden.estado == "aprobada":
+        orden.estado = "rechazada"
+        orden.motivo_rechazo = (
+            f"{_PREFIJO_SUSPENSION_CLUB}: {payload.motivo}. "
+            f"Se te acreditaron ${monto} de saldo a favor, que podés usar en tu "
+            f"próxima compra o pedir en el club."
+        )
+
     registrar_audit(
         db=db,
         actor_id=admin.id_usuario,
@@ -1000,8 +1168,36 @@ def suspender_reserva(
             "motivo": payload.motivo,
             "monto_acreditado": str(monto),
             "id_usuario_acreditado": responsable.id_usuario,
+            "id_orden": orden.id_orden if orden is not None else None,
+            "estado_orden_previo": estado_orden_previo,
+            "estado_orden_nuevo": orden.estado if orden is not None else None,
+            "metodo_pago": metodo_pago,
         },
         ip=extraer_ip(request),
+    )
+
+    # ── Notificación in-app (BUG-20) ─────────────────────────────────────────
+    # El mail ya existía, pero depende de que el socio tenga email cargado y de
+    # que Resend entregue. La campana es lo único que el socio ve seguro.
+    aviso_devolucion = (
+        " Como habías pagado por transferencia, si preferís que te devolvamos "
+        "el dinero acercate por el club."
+        if metodo_pago == "transferencia"
+        else " Podés usarlo en tu próxima compra o pedirlo en el club."
+    )
+    db.add(
+        models.Notificacion(
+            id_usuario=responsable.id_usuario,
+            tipo="reserva_cancelada",
+            titulo="Tu reserva fue cancelada",
+            cuerpo=(
+                f"El club canceló tu reserva de {_texto_turno(reserva)}. "
+                f"Motivo: {payload.motivo}. Te acreditamos ${monto} de saldo a "
+                f"favor.{aviso_devolucion}"
+            ),
+            referencia_id=orden.id_orden if orden is not None else None,
+            referencia_tabla="ordenes" if orden is not None else None,
+        )
     )
 
     db.commit()
@@ -1009,7 +1205,7 @@ def suspender_reserva(
 
     # ── Mail al socio avisando la suspensión y el saldo acreditado ────────────
     if responsable.email:
-        fecha_str = reserva.fecha_inicio.strftime("%d/%m/%Y %H:%M")
+        fecha_str = reserva.fecha_inicio.astimezone(TZ_CLUB).strftime("%d/%m/%Y %H:%M")
         background_tasks.add_task(
             email_tasks.task_reserva_suspendida,
             email_destino=responsable.email,
@@ -1018,6 +1214,7 @@ def suspender_reserva(
             fecha_reserva=fecha_str,
             monto_acreditado=str(monto),
             motivo=payload.motivo,
+            metodo_pago=metodo_pago,
         )
 
     return schemas.SuspenderReservaResponse(
@@ -1026,4 +1223,7 @@ def suspender_reserva(
         monto_acreditado=monto,
         id_usuario_acreditado=responsable.id_usuario,
         nuevo_saldo=responsable.saldo_a_favor,
+        id_orden=orden.id_orden if orden is not None else None,
+        estado_orden=orden.estado if orden is not None else None,
+        metodo_pago=metodo_pago,
     )

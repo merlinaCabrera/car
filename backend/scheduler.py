@@ -416,6 +416,30 @@ def expirar_reservas_sin_pago():
     try:
         ahora = datetime.now(timezone.utc)
 
+        # ── Mejora-01: pre-reservas de carrito abandonadas ────────────────────
+        #
+        # El TTL de 20 minutos ya existía, pero solo se ejecutaba desde
+        # expirar_ordenes_vencidas(), que corre CADA 4 HORAS: un socio que
+        # cerraba sesión (o la pestaña, o se quedó sin batería) con un turno en
+        # el carrito lo dejaba bloqueado para todos los demás hasta cuatro horas
+        # después. Enganchado también acá, que corre cada 15 minutos, el turno
+        # vuelve a estar disponible a los ~20-35 minutos, sin depender de que el
+        # socio se acuerde de vaciar el carrito antes de salir.
+        #
+        # Va antes del resto y con su propio try: si falla, el trabajo original
+        # del job (expirar turnos ya empezados sin pago) tiene que correr igual.
+        try:
+            liberadas = liberar_pre_reservas_expiradas(db)
+            if liberadas:
+                logger.info(
+                    f"[scheduler] {liberadas} pre-reserva(s) de carrito abandonada(s) liberada(s)"
+                )
+        except Exception as pre_exc:
+            db.rollback()
+            logger.error(
+                f"[scheduler] liberar_pre_reservas_expiradas falló: {pre_exc}", exc_info=True
+            )
+
         # Reservas bloqueadas cuyo turno ya empezó y la orden sigue pendiente
         reservas_vencidas = (
             db.query(models.ReservaInstalacion)

@@ -271,10 +271,17 @@ async def task_reserva_suspendida(
     fecha_reserva: str,
     monto_acreditado: str,
     motivo: str,
+    metodo_pago: "str | None" = None,
 ) -> None:
+    """
+    `metodo_pago` decide el cierre del mail: si el socio había pagado por
+    transferencia, el saldo a favor puede no alcanzarle y hay que decirle cómo
+    pedir la devolución (BUG-20). Es opcional para no romper llamadores viejos.
+    """
     try:
         await email_service.enviar_reserva_suspendida(
-            email_destino, nombre_socio, instalacion, fecha_reserva, monto_acreditado, motivo
+            email_destino, nombre_socio, instalacion, fecha_reserva, monto_acreditado,
+            motivo, metodo_pago,
         )
         logger.info(f"Mail 'reserva_suspendida' enviado a {email_destino} ({instalacion})")
     except Exception:

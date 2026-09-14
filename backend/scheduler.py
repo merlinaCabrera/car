@@ -419,9 +419,9 @@ def expirar_reservas_sin_pago():
         # ── Mejora-01: pre-reservas de carrito abandonadas ────────────────────
         #
         # El TTL de 20 minutos ya existía, pero solo se ejecutaba desde
-        # expirar_ordenes_vencidas(), que corre CADA 4 HORAS: un socio que
+        # expirar_ordenes_vencidas(), que corre CADA 1 HORA: un socio que
         # cerraba sesión (o la pestaña, o se quedó sin batería) con un turno en
-        # el carrito lo dejaba bloqueado para todos los demás hasta cuatro horas
+        # el carrito lo dejaba bloqueado para todos los demás hasta una hora
         # después. Enganchado también acá, que corre cada 15 minutos, el turno
         # vuelve a estar disponible a los ~20-35 minutos, sin depender de que el
         # socio se acuerde de vaciar el carrito antes de salir.

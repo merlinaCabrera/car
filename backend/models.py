@@ -1426,6 +1426,11 @@ class Asistencia(Base):
 # MÓDULO 5 · NOTIFICACIONES
 # ─────────────────────────────────────────────────────────────────────────────
 
+# Debe coincidir exactamente con el CHECK chk_notificacion_tipo que dejó la
+# migración a7b8c9d0e1f2 en la base (12 valores). Si se agrega un tipo acá,
+# hace falta una migración que amplíe el constraint — y al revés, sacar uno de
+# acá sin migración hace que el próximo --autogenerate angoste el constraint de
+# producción. Ver BUG-19 y BUG-26 en docs/qa-manual-2026-09-08.md.
 TIPOS_NOTIFICACION = (
     "orden_aprobada",
     "orden_rechazada",
@@ -1435,6 +1440,9 @@ TIPOS_NOTIFICACION = (
     "rol_asignado",
     "rol_removido",
     "convocatoria_partido",
+    "convocatoria",
+    "beca_actualizada",
+    "pago_verificado",
     "sistema",
 )
 

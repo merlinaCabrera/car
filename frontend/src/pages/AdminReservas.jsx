@@ -299,7 +299,8 @@ function ModalBloquearTurno({ turno, onClose, onBloqueado }) {
           />
           <p className="text-[11px] text-gray-400 mt-1.5">
             El turno deja de ofrecerse a los socios. No hay cobro ni socio asociado:
-            para cargar un alquiler cobrado en ventanilla usá «Nueva reserva manual».
+            para cargar un alquiler cobrado en ventanilla cerrá esto y elegí
+            «Asignar a un socio» en el mismo turno.
           </p>
         </div>
 

@@ -22,7 +22,7 @@ Requiere en la base: roles, configuracion_global, y productos con estos nombres
 exactos: 'Cuota Social Base', 'Remera Test' (stock 10), 'Buzo Test' (stock 3),
 'Cancha 1 Test'.
 """
-import os, sys, asyncio
+import os, re, sys, asyncio
 from datetime import date, datetime, timezone, timedelta
 from decimal import Decimal
 
@@ -114,6 +114,27 @@ async def login(cl, dni):
     return r.json()["access_token"], r
 
 def H(t): return {"Authorization": f"Bearer {t}"}
+
+def tipos_del_check_notificaciones():
+    """Valores que acepta hoy el CHECK de notificaciones.tipo en la base
+    contra la que corre la suite (se lee del catálogo, no del modelo)."""
+    db = SessionLocal()
+    try:
+        filas = db.execute(text("""
+            SELECT pg_get_constraintdef(c.oid)
+            FROM pg_constraint c
+            JOIN pg_class t ON t.oid = c.conrelid
+            WHERE t.relname = 'notificaciones' AND c.contype = 'c'
+        """)).all()
+    finally:
+        db.close()
+    # Postgres puede devolver el CHECK como `tipo IN (...)` o reescrito a
+    # `(tipo)::text = ANY (ARRAY['x'::character varying, ...])`. Los literales
+    # entrecomillados son los mismos en las dos formas; los casts no llevan
+    # comillas, así que no ensucian el resultado.
+    defs = [d for (d,) in filas if 'tipo' in d]
+    return {v for d in defs for v in re.findall(r"'([a-z_]+)'", d)}
+
 
 # ─────────────────────────── escenarios ───────────────────────────
 async def run():
@@ -660,6 +681,40 @@ async def run():
            bool(detalles_cuota) and all(
                (d.get("producto") or {}).get("categoria") for d in detalles_cuota),
            f"({len(detalles_cuota)} detalles)")
+
+        print("\n── ronda 12 · BUG-26 · TIPOS_NOTIFICACION vs el CHECK de la base ──")
+        # BUG-19 y BUG-26 fueron el mismo accidente dos veces: se agrega un tipo
+        # de notificación de un lado y no del otro. Las dos direcciones duelen:
+        # si al modelo le falta un valor que la base sí acepta, el próximo
+        # `alembic --autogenerate` propone ANGOSTAR el constraint de producción;
+        # si le sobra, toda base creada por bootstrap_db (create_all) rechaza
+        # ese tipo con un 500 y el entorno de test deja de parecerse a prod.
+        tipos_check = tipos_del_check_notificaciones()
+        tipos_modelo = set(models.TIPOS_NOTIFICACION)
+        faltan_en_check = sorted(tipos_modelo - tipos_check)
+        sobran_en_check = sorted(tipos_check - tipos_modelo)
+        ok("se encontró el CHECK de notificaciones.tipo en la base",
+           bool(tipos_check), f"({len(tipos_check)} valores)")
+        ok("todo TIPOS_NOTIFICACION del modelo está en el CHECK de la base",
+           bool(tipos_check) and not faltan_en_check,
+           f"(faltan en el CHECK: {faltan_en_check or 'ninguno'})")
+        ok("el CHECK no acepta tipos que el modelo desconoce",
+           bool(tipos_check) and not sobran_en_check,
+           f"(faltan en models.TIPOS_NOTIFICACION: {sobran_en_check or 'ninguno'})")
+
+        # El caso que lo destapó: editar_socio() inserta tipo="beca_actualizada".
+        rbeca = await cl.patch(f"{BASE}/admin/usuarios/{U['socio2']}", headers=H(t_admin),
+                               json={"es_becado": True, "becado_hasta": "2099-01-01"})
+        db = SessionLocal()
+        try:
+            notif_beca = db.query(models.Notificacion).filter_by(
+                id_usuario=U["socio2"], tipo="beca_actualizada").count()
+        finally:
+            db.close()
+        ok("asignar beca → 200 (no 500 por chk_notificacion_tipo)",
+           rbeca.status_code == 200, f"({rbeca.status_code})")
+        ok("asignar beca deja la notificación in-app beca_actualizada",
+           notif_beca == 1, f"({notif_beca} notificaciones)")
 
         print("\n── sanity permisos ──")
         rs = await cl.get(f"{BASE}/admin/pagos/morosos", headers=H(t_socio))

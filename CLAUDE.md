@@ -294,9 +294,9 @@ Cinco jobs en `backend/scheduler.py`. Todos usan `BackgroundScheduler` (no async
 
 | Job | Frecuencia | Qué hace |
 |-----|-----------|---------|
-| `cerrar_eventos_vencidos` | cada 12 hs | Cierra eventos deportivos pasados |
-| `expirar_ordenes_vencidas` | cada 4 hs | Expira órdenes por `expira_at` |
-| `recordatorio_comprobante_pendiente` | cada 4 hs | Mail recordatorio a socios con orden pendiente |
+| `cerrar_eventos_vencidos` | cada 5 min | Cierra eventos deportivos pasados |
+| `expirar_ordenes_vencidas` | cada 1 h | Expira órdenes por `expira_at` |
+| `recordatorio_comprobante_pendiente` | cada 1 h | Mail recordatorio a socios con orden pendiente |
 | `notificar_cuotas_vencidas` | cron 9:00 UTC | Mail a socios morosos |
 | `expirar_reservas_sin_pago` | cada 15 min | Libera reservas cuyo turno ya comenzó sin pago aprobado |
 

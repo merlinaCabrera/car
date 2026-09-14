@@ -4,26 +4,18 @@
  *
  * Hermana de Reservas.jsx (que es solo para el Quincho, franjas Día/Noche).
  * Acá la cancha se reserva por turno horario (bloques de 1.5 hs, configurable
- * más abajo en `DURACION_TURNO_CANCHA_HORAS`, en utils/reservas.js), y se agrega
- * "reintegro QR": el grupo paga el turno completo por transferencia (dividido
- * entre TODOS los que juegan, sean socios o no), y solo los que SON socios y
- * se presentan con su QR en la puerta de la cancha reciben un 20% de
- * reintegro sobre SU parte individual.
+ * más abajo en `DURACION_TURNO_CANCHA_HORAS`, en utils/reservas.js).
  *
- * IMPORTANTE: `totalParticipantes` / `numSocios` son solo una calculadora
- * visual para que el que reserva vea cuánto le tocaría a cada uno y cuánto
- * reintegro total se va a repartir. Hoy el backend (`ReservaInstalacionCreate`)
- * no recibe estos números al crear la pre-reserva: el admin es quien carga
- * `num_socios_esperados` después, desde el panel de Agenda de Reservas, y el
- * reintegro real se dispara individualmente cuando cada socio escanea su QR
- * físico en la cancha — no hay nada acá que se guarde automáticamente.
+ * El reintegro por QR sigue existiendo del lado del club (el admin carga
+ * `num_socios_esperados` desde la Agenda de Reservas y el reintegro se dispara
+ * cuando cada socio escanea su QR físico en la cancha), pero acá ya no se
+ * muestra ninguna calculadora: esta página es solo elegir cancha, día y turno.
  */
 
 import { textoError } from '../utils/errores';
 import {
   CANCHAS,
   DIAS_VISIBLES_SOCIO,
-  PORCENTAJE_REINTEGRO,
   horaLabel,
   isoDeFechaLocal,
   rangoTurnoCancha,
@@ -33,7 +25,6 @@ import {
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useCart } from '../context/CartContext'
-import { Revelar } from '../components/landing/animaciones';
 import {
   CalendarClock,
   Loader2,
@@ -41,9 +32,6 @@ import {
   CheckCircle2,
   ShoppingCart,
   AlertTriangle,
-  Percent,
-  Users,
-  QrCode,
 } from 'lucide-react'
 
 const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
@@ -146,92 +134,6 @@ function GrillaTurnos({ reservas, fecha, seleccion, onSeleccionar }) {
   )
 }
 
-// ─── Tarjeta: calculadora de reparto + reintegro QR ───────────────────────
-// El costo se reparte entre TODOS los que juegan (socios y no socios). El
-// reintegro del 20% solo aplica a la porción de esos que efectivamente son
-// socios y escanean su QR — por eso son dos números independientes.
-
-function CalculadoraReintegro({ precioTotal, totalParticipantes, numSocios, onCambiarTotal, onCambiarSocios }) {
-  const parte = precioTotal / totalParticipantes
-  const reintegroPorSocio = parte * PORCENTAJE_REINTEGRO
-  const reintegroTotal = reintegroPorSocio * numSocios
-
-  // numSocios no puede superar totalParticipantes
-  const handleCambiarSocios = (v) => {
-    onCambiarSocios(Math.min(v, totalParticipantes))
-  }
-
-  return (
-    <div className="bg-green-900/40 border border-green-500/50 rounded-2xl p-5 relative overflow-hidden">
-      <div className="absolute top-0 right-0 bg-green-600 text-xs font-bold px-3 py-1 rounded-bl-xl text-white tracking-wider flex items-center gap-1">
-        <QrCode size={12} /> BENEFICIO QR
-      </div>
-
-      <h3 className="font-display font-semibold text-green-300 text-lg mb-1 flex items-center gap-2">
-        <Percent size={18} /> Reintegro por escaneo QR
-      </h3>
-      <p className="text-sm text-gray-300 leading-relaxed mb-4">
-        La reserva se paga completa por transferencia y se reparte entre TODOS los que juegan
-        (sean socios o no). Pero el <strong className="text-white">20% de reintegro</strong> solo
-        aplica a los que son socios y se presentan con su QR en la cancha.
-      </p>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
-        <div className="flex items-center gap-3">
-          <Users size={16} className="text-gray-300 flex-shrink-0" />
-          <label className="text-sm text-gray-300 flex-1">Juegan en total</label>
-          <input
-            type="number"
-            min={1}
-            max={40}
-            value={totalParticipantes}
-            onChange={(e) => onCambiarTotal(Math.max(1, Number(e.target.value) || 1))}
-            className="w-16 p-2 text-center bg-gray-900 border border-gray-700 rounded-lg text-white font-bold"
-          />
-        </div>
-        <div className="flex items-center gap-3">
-          <QrCode size={16} className="text-green-300 flex-shrink-0" />
-          <label className="text-sm text-gray-300 flex-1">De esos, son socios</label>
-          <input
-            type="number"
-            min={0}
-            max={totalParticipantes}
-            value={numSocios}
-            onChange={(e) => handleCambiarSocios(Math.max(0, Number(e.target.value) || 0))}
-            className="w-16 p-2 text-center bg-gray-900 border border-gray-700 rounded-lg text-white font-bold"
-          />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-2 text-center mb-2">
-        <div className="bg-gray-900/60 rounded-xl p-3">
-          <p className="text-[10px] text-gray-400 uppercase mb-1">Total cancha</p>
-          <p className="font-bold text-white text-sm">{formatoMoneda.format(precioTotal || 0)}</p>
-        </div>
-        <div className="bg-gray-900/60 rounded-xl p-3">
-          <p className="text-[10px] text-gray-400 uppercase mb-1">Parte c/u ({totalParticipantes})</p>
-          <p className="font-bold text-white text-sm">{formatoMoneda.format(parte || 0)}</p>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-2 text-center">
-        <div className="bg-green-950/60 border border-green-500/30 rounded-xl p-3">
-          <p className="text-[10px] text-green-300 uppercase mb-1">Reintegro por socio</p>
-          <p className="font-bold text-green-300 text-sm">{formatoMoneda.format(reintegroPorSocio || 0)}</p>
-        </div>
-        <div className="bg-green-950/60 border border-green-500/30 rounded-xl p-3">
-          <p className="text-[10px] text-green-300 uppercase mb-1">Reintegro total ({numSocios} socios)</p>
-          <p className="font-bold text-green-300 text-sm">{formatoMoneda.format(reintegroTotal || 0)}</p>
-        </div>
-      </div>
-
-      <p className="text-[11px] text-gray-400 mt-3">
-        El reintegro se acredita al momento de escanear el QR en la puerta: en efectivo, transferencia instantánea o cupón para la tienda del club.
-      </p>
-    </div>
-  )
-}
-
 // ─── Página principal ──────────────────────────────────────────────────────
 
 export default function SocioCancha() {
@@ -251,9 +153,6 @@ export default function SocioCancha() {
 
   const [producto, setProducto] = useState(null)
   const [productoError, setProductoError] = useState(null)
-
-  const [totalParticipantes, setTotalParticipantes] = useState(10)
-  const [numSocios, setNumSocios] = useState(10) // subconjunto de totalParticipantes que son socios
 
   const [seleccion, setSeleccion] = useState(null) // { fecha, horaInicio, inicio, fin }
   const [confirmando, setConfirmando] = useState(false)
@@ -328,7 +227,6 @@ export default function SocioCancha() {
           instalacion: canchaKey,
           fecha_inicio: seleccion.inicio.toISOString(),
           fecha_fin: seleccion.fin.toISOString(),
-          notas: `Grupo de ${totalParticipantes} (aprox. ${numSocios} socios)`,
         }),
       })
       if (!res.ok) {
@@ -447,19 +345,6 @@ export default function SocioCancha() {
           </span>
         </div>
       </div>
-
-      {/* Calculadora de reparto + reintegro */}
-      {producto && (
-        <Revelar>
-          <CalculadoraReintegro
-            precioTotal={Number(producto.precio_actual)}
-            totalParticipantes={totalParticipantes}
-            numSocios={numSocios}
-            onCambiarTotal={setTotalParticipantes}
-            onCambiarSocios={setNumSocios}
-          />
-        </Revelar>
-      )}
 
       {agregado && !seleccion && (
         <div className="flex items-center gap-2 p-4 bg-green-900/30 border border-green-500/40 text-green-300 rounded-2xl text-sm font-medium">

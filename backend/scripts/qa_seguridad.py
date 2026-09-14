@@ -421,6 +421,68 @@ async def run():
            rdel_socio.status_code == 422 and "socio" in detalle_socio,
            f"({rdel_socio.status_code}, {detalle_socio[:60]})")
 
+        print("\n── ronda 9 · BUG#24 · la baja de un socio le suelta el carrito ──")
+        # El bug: al dar de baja a un socio, las franjas que tenía
+        # pre-reservadas (en el carrito, sin checkout) seguían ocupando la
+        # agenda para el resto del club. Si además lo reactivaban dentro del
+        # TTL de 20 min del scheduler, volvía a entrar con el carrito sucio.
+        #
+        # Lo que importa no es solo que libere: es que libere SOLO eso. Por
+        # eso el escenario monta tres reservas —la del carrito del socio que
+        # se da de baja, una confirmada y pagada del MISMO socio, y la del
+        # carrito de OTRO socio— y las tres se miran después de la baja.
+        id_baja = mkuser("90000009", "SocioBaja", "socio",
+                         mes_cubierto=date.today() + timedelta(days=60))
+        db = SessionLocal()
+        try:
+            prod_alq = db.query(models.ProductoServicio).filter_by(nombre="Cancha 1 Test").first()
+            base_ini = datetime.now(timezone.utc) + timedelta(days=10)
+
+            def _reserva(id_usuario, estado, dias, id_orden=None):
+                r = models.ReservaInstalacion(
+                    id_producto=prod_alq.id_producto, instalacion="cancha_1",
+                    fecha_inicio=base_ini + timedelta(days=dias),
+                    fecha_fin=base_ini + timedelta(days=dias, hours=2),
+                    estado=estado, id_usuario=id_usuario, id_orden=id_orden)
+                db.add(r); db.flush()
+                return r.id_reserva
+
+            # Turno ya pagado del mismo socio: la baja no tiene por qué borrarlo.
+            pg_b = models.Pago(id_usuario=id_baja, monto_total=Decimal("8000"), estado="verificado")
+            db.add(pg_b); db.flush()
+            od_b = models.Orden(id_usuario=id_baja, id_pago=pg_b.id_pago,
+                                estado="aprobada", monto_total=Decimal("8000"))
+            db.add(od_b); db.flush()
+
+            rid_carrito = _reserva(id_baja, "bloqueada", 0)
+            rid_pagada  = _reserva(id_baja, "confirmada", 1, id_orden=od_b.id_orden)
+            rid_ajeno   = _reserva(U["socio2"], "bloqueada", 2)
+            db.commit()
+        finally: db.close()
+
+        rbaja = await cl.delete(f"{BASE}/admin/usuarios/{id_baja}", headers=H(t_admin))
+        db = SessionLocal()
+        try:
+            est = {rid: db.query(models.ReservaInstalacion).filter_by(id_reserva=rid).first().estado
+                   for rid in (rid_carrito, rid_pagada, rid_ajeno)}
+        finally: db.close()
+
+        ok("baja de socio → 204", rbaja.status_code == 204, f"({rbaja.status_code})")
+        ok("la pre-reserva del carrito queda liberada",
+           est[rid_carrito] == "liberada", f"(estado={est[rid_carrito]})")
+        ok("la reserva pagada del mismo socio NO se toca",
+           est[rid_pagada] == "confirmada", f"(estado={est[rid_pagada]})")
+        ok("la pre-reserva de OTRO socio NO se toca",
+           est[rid_ajeno] == "bloqueada", f"(estado={est[rid_ajeno]})")
+
+        # El turno liberado tiene que volver a ofertarse: ese es el síntoma que
+        # vio la QA (el turno seguía figurando ocupado para el resto del club).
+        rdisp3 = await cl.get(f"{BASE}/socio/reservas/?instalacion=cancha_1", headers=H(t_socio))
+        franjas3 = rdisp3.json() if rdisp3.status_code == 200 else []
+        ok("el turno del carrito vuelve a estar libre para el resto del club",
+           not any(f.get("id_reserva") == rid_carrito for f in franjas3),
+           f"({rdisp3.status_code}, {len(franjas3)} franjas)")
+
         print("\n── BUG#1 · pagar N meses acredita N (no N-1) ──")
         # socio con 3 meses de deuda exactos: cobertura vencida hace 3 períodos
         from utils.cuotas_periodos import calcular_estado_financiero, fecha_cubierta_para_meses_adeudados

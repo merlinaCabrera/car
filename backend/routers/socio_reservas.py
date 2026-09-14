@@ -256,3 +256,41 @@ def liberar_pre_reservas_expiradas(db: Session) -> int:
         reserva.estado = "liberada"
     db.commit()
     return len(huerfanas)
+
+# ─── Limpieza puntual: pre-reservas de UN socio ────────────────────────────
+
+def liberar_pre_reservas_de_usuario(db: Session, id_usuario: int) -> int:
+    """
+    Libera las pre-reservas VIVAS de un socio puntual: las que están en
+    'bloqueada' sin `id_orden`, o sea las que todavía viven en su carrito y
+    no llegaron al checkout. Devuelve cuántas filas se liberaron.
+
+    Se usa al dar de baja a un socio (BUG-24 de la QA manual): la baja le
+    cierra la sesión, pero la franja que tenía en el carrito seguía marcada
+    como ocupada para el resto del club hasta que el TTL de 20 min del
+    scheduler la barriera — y si además lo reactivaban rápido, el socio
+    volvía a entrar con el carrito sucio y el turno igual de bloqueado.
+
+    Deliberadamente NO toca:
+      - 'confirmada' → son las reservas que el admin asigna a mano desde
+        /admin/reservas y los turnos ya pagados; liberarlas sería borrar
+        una reserva legítima, no limpiar un carrito.
+      - 'bloqueada' CON `id_orden` → ya pasó por el checkout y la dueña del
+        estado es la Orden (se libera al rechazarla/expirarla).
+
+    NO hace `commit()` a propósito: el caller la usa dentro de su propia
+    transacción (la baja del socio) para que o pasan las dos cosas o
+    ninguna.
+    """
+    en_carrito = (
+        db.query(models.ReservaInstalacion)
+        .filter(
+            models.ReservaInstalacion.estado == "bloqueada",
+            models.ReservaInstalacion.id_orden.is_(None),
+            models.ReservaInstalacion.id_usuario == id_usuario,
+        )
+        .all()
+    )
+    for reserva in en_carrito:
+        reserva.estado = "liberada"
+    return len(en_carrito)

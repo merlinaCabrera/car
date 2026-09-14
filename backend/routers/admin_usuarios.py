@@ -30,6 +30,7 @@ from dependencies import get_current_user, require_roles
 from security import get_password_hash
 from fastapi import BackgroundTasks 
 from mailer.services.email_tasks import task_cuenta_aprobada, task_socio_dado_de_baja, task_socio_reactivado, task_solicitud_rechazada, task_bienvenida_alta_manual
+from routers.socio_reservas import liberar_pre_reservas_de_usuario
 from utils.cuotas_periodos import (
     calcular_estado_financiero,
     cobertura_inicial_para_ingreso,
@@ -890,6 +891,14 @@ def dar_baja_socio(
                        "quedaría sin nadie que pueda administrar el sistema.",
             )
 
+    # Antes de cerrarle la cuenta hay que soltarle el carrito: las franjas que
+    # el socio tenía pre-reservadas (estado 'bloqueada' sin orden) seguían
+    # ocupando la agenda del club aunque él ya no pudiera entrar a pagarlas —
+    # y si lo reactivaban dentro del TTL de 20 min, volvía con el carrito
+    # sucio y el turno igual de bloqueado (BUG-24 de la QA manual). Va en la
+    # misma transacción que la baja a propósito.
+    turnos_liberados = liberar_pre_reservas_de_usuario(db, usuario.id_usuario)
+
     usuario.fecha_baja = hoy_club()
     db.add(models.AuditLog(
         usuario_actor=current_admin.id_usuario,
@@ -900,6 +909,7 @@ def dar_baja_socio(
             "socio_baja_dni": usuario.dni,
             "fecha_baja": usuario.fecha_baja.isoformat(),
             "dado_de_baja_por_dni": current_admin.dni,
+            "pre_reservas_liberadas": turnos_liberados,
         },
     ))
     db.commit()

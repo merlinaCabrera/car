@@ -119,14 +119,27 @@ function calcularPrecioFinal(precioCuota, fechaNacimientoISO) {
 
 // "Socio" es el rol base obligatorio de todos los usuarios aprobados,
 // filtrarlo devolvería siempre la lista completa — se omite del selector.
+//
+// "Admin general" sí está (BUG-25 de la QA manual): es el único rol que no
+// se podía listar desde acá, así que un admin no tenía forma de ver quiénes
+// más administran el club. El label dice "Admin general" y no
+// "Administradores" para que no se confunda con "Administrativos"
+// (personal_administrativo), que es un rol distinto y con muchos menos
+// permisos. El backend ya filtra por cualquier nombre de rol vía ?rol=.
 const TABS_ROLES = [
   { label: 'Todos',             value: ''                    },
   { label: 'Jugadores',         value: 'jugador'             },
   { label: 'Personal Técnico',  value: 'personal_tecnico'    },
   { label: 'Administrativos',   value: 'personal_administrativo' },
+  { label: 'Admin general',     value: 'admin_general'       },
   { label: 'Escáneres',         value: 'admin_temporal'      },
   { label: 'Invitados',         value: 'invitado'            },
 ]
+
+/** Nombre legible de un rol para los mensajes de la UI (el value es el nombre en DB). */
+function labelRol(valor) {
+  return TABS_ROLES.find(t => t.value === valor)?.label ?? valor
+}
 
 const TABS_ESTADO = [
   { label: 'Todos',    value: ''        },
@@ -1891,6 +1904,22 @@ export default function AdminSocios() {
   const [confirmAccion, setConfirmAccion] = useState(null)
   // { tipo: 'baja' | 'reactivar' | 'aprobar', socio?, idUsuario? }
 
+  // Avisos de error de esas acciones. Antes era window.alert(): el popup del
+  // sistema operativo, fuera de la app, que en el celular tapa la pantalla
+  // entera (Mejora-03 de la QA manual — mismo criterio que BUG-13). El caso
+  // que lo hizo evidente es el admin intentando darse de baja a sí mismo: el
+  // backend lo frena bien, pero el aviso no parecía parte del sistema.
+  // Se guarda como objeto (no como string) para que dos errores iguales
+  // seguidos sigan siendo dos avisos distintos y el temporizador se reinicie.
+  const [avisoAccion, setAvisoAccion] = useState(null)  // { texto }
+  const avisar = (texto) => setAvisoAccion({ texto })
+
+  useEffect(() => {
+    if (!avisoAccion) return
+    const id = setTimeout(() => setAvisoAccion(null), 8000)
+    return () => clearTimeout(id)
+  }, [avisoAccion])
+
   const handleDeleteSocio = (socio) => {
     setConfirmAccion({ tipo: 'baja', socio })
   }
@@ -1911,7 +1940,7 @@ export default function AdminSocios() {
       }
       setPendientesReactivacion(prev => prev.filter(p => p.id_usuario !== id_usuario))
     } catch (err) {
-      window.alert(`Error: ${err.message}`)
+      avisar(err.message)
     }
   }
 
@@ -1966,7 +1995,10 @@ export default function AdminSocios() {
 
       setConfirmAccion(null)
     } catch (err) {
-      window.alert(`Error: ${err.message}`)
+      // El diálogo se cierra igual: si se dejara abierto, el aviso quedaría
+      // detrás del overlay y parecería que el botón no hizo nada.
+      setConfirmAccion(null)
+      avisar(err.message)
     } finally {
       setEjecutandoConfirm(false)
       setApprovingId(null)
@@ -1991,7 +2023,7 @@ export default function AdminSocios() {
       setMotivoRechazoAbierto(null)
       await fetchData()
     } catch (err) {
-      window.alert(`Error: ${err.message}`)
+      avisar(err.message)
     } finally {
       setRejectingId(null)
     }
@@ -2045,6 +2077,28 @@ export default function AdminSocios() {
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="p-4 sm:p-6 max-w-6xl mx-auto space-y-5 sm:space-y-6">
+
+      {/* Aviso in-app de error de una acción (baja / reactivación / aprobación /
+          descarte). Reemplaza al window.alert() del navegador — Mejora-03. */}
+      {avisoAccion && (
+        <div
+          role="alert"
+          aria-live="assertive"
+          className="fixed top-4 left-1/2 -translate-x-1/2 z-[60] w-[calc(100%-2rem)] max-w-md"
+        >
+          <div className="flex items-start gap-2 p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm shadow-lg">
+            <AlertCircle size={16} className="flex-shrink-0 mt-0.5" />
+            <span className="flex-1">{avisoAccion.texto}</span>
+            <button
+              onClick={() => setAvisoAccion(null)}
+              className="flex-shrink-0 hover:text-red-900"
+              aria-label="Cerrar aviso"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Modal de edición / creación */}
       {isModalOpen && (
@@ -2274,7 +2328,7 @@ export default function AdminSocios() {
               {searchTerm
                 ? 'No se encontraron socios que coincidan con la búsqueda.'
                 : rolFiltro
-                  ? `No hay usuarios con el rol "${rolFiltro}".`
+                  ? `No hay usuarios con el rol "${labelRol(rolFiltro)}".`
                   : 'No hay socios para mostrar.'}
             </div>
           )}
@@ -2402,7 +2456,7 @@ export default function AdminSocios() {
                   {searchTerm
                     ? 'No se encontraron socios que coincidan con la búsqueda.'
                     : rolFiltro
-                      ? `No hay usuarios con el rol "${rolFiltro}".`
+                      ? `No hay usuarios con el rol "${labelRol(rolFiltro)}".`
                       : 'No hay socios para mostrar.'}
                 </td>
               </tr>

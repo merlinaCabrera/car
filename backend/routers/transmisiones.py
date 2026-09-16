@@ -66,20 +66,40 @@ def _verificar_acceso_usuario(
     evento: models.Evento,
     usuario: Optional[models.Usuario],
     db: Session,
-) -> tuple[bool, str, bool, bool]:
+    ticket: Optional[str] = None,
+) -> tuple[bool, str, bool, bool, Optional[str], Optional[str]]:
     """
-    Evalúa si un usuario tiene autorización para ver la transmisión.
-    Retorna: (tiene_acceso, motivo, es_socio, socio_al_dia)
+    Evalúa si un usuario o poseedor de ticket tiene autorización para ver la transmisión.
+    Retorna: (tiene_acceso, motivo, es_socio, socio_al_dia, ticket_token, email_invitado)
     """
     if not evento.tiene_transmision:
-        return False, "sin_transmision", False, False
+        return False, "sin_transmision", False, False, None, None
 
     # 1. Si la transmisión es pública y abierta
     if evento.transmision_es_publica:
-        return True, "transmision_publica", False, False
+        return True, "transmision_publica", False, False, ticket, None
+
+    # 2. Si se proporciona un ticket de invitado
+    if ticket:
+        entrada_ticket = (
+            db.query(models.EntradaVirtual)
+            .options(joinedload(models.EntradaVirtual.pago))
+            .filter(
+                models.EntradaVirtual.id_evento == evento.id_evento,
+                models.EntradaVirtual.ticket_token == ticket,
+            )
+            .first()
+        )
+        if entrada_ticket:
+            if entrada_ticket.id_pago is None:
+                return True, "entrada_comprada", False, False, entrada_ticket.ticket_token, entrada_ticket.email_invitado
+            if entrada_ticket.pago and entrada_ticket.pago.estado == "verificado":
+                return True, "entrada_comprada", False, False, entrada_ticket.ticket_token, entrada_ticket.email_invitado
+            if entrada_ticket.pago and entrada_ticket.pago.estado == "pendiente":
+                return False, "pago_pendiente", False, False, entrada_ticket.ticket_token, entrada_ticket.email_invitado
 
     if usuario is None:
-        return False, "no_autenticado", False, False
+        return False, "no_autenticado", False, False, None, None
 
     roles_usuario = {ur.rol.nombre for ur in usuario.roles_asignados}
     es_staff = bool(roles_usuario & set(_ROLES_STAFF))
@@ -91,15 +111,15 @@ def _verificar_acceso_usuario(
         or (usuario.mes_cubierto_hasta is not None and hoy <= usuario.mes_cubierto_hasta)
     )
 
-    # 2. Staff / Admin / Técnico siempre tiene acceso
+    # 3. Staff / Admin / Técnico siempre tiene acceso
     if es_staff:
-        return True, "admin", es_socio, socio_al_dia
+        return True, "admin", es_socio, socio_al_dia, None, None
 
-    # 3. Socios al día si la transmisión es gratis para socios
+    # 4. Socios al día si la transmisión es gratis para socios
     if evento.transmision_socio_gratis and es_socio and socio_al_dia:
-        return True, "socio_al_dia", es_socio, socio_al_dia
+        return True, "socio_al_dia", es_socio, socio_al_dia, None, None
 
-    # 4. Verificar si compró entrada virtual
+    # 5. Verificar si compró entrada virtual por cuenta de usuario
     entrada = (
         db.query(models.EntradaVirtual)
         .options(joinedload(models.EntradaVirtual.pago))
@@ -113,14 +133,14 @@ def _verificar_acceso_usuario(
     if entrada:
         # Entrada de cortesía / manual
         if entrada.id_pago is None:
-            return True, "entrada_comprada", es_socio, socio_al_dia
+            return True, "entrada_comprada", es_socio, socio_al_dia, entrada.ticket_token, None
         # Entrada asociada a un pago
         if entrada.pago and entrada.pago.estado == "verificado":
-            return True, "entrada_comprada", es_socio, socio_al_dia
+            return True, "entrada_comprada", es_socio, socio_al_dia, entrada.ticket_token, None
         if entrada.pago and entrada.pago.estado == "pendiente":
-            return False, "pago_pendiente", es_socio, socio_al_dia
+            return False, "pago_pendiente", es_socio, socio_al_dia, entrada.ticket_token, None
 
-    return False, "sin_acceso", es_socio, socio_al_dia
+    return False, "sin_acceso", es_socio, socio_al_dia, None, None
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -185,26 +205,31 @@ def obtener_info_transmision(
 @router.get(
     "/{id_evento}/acceso",
     response_model=schemas.TransmisionAccesoResponse,
-    summary="Verificar derecho de acceso del usuario al stream",
+    summary="Verificar derecho de acceso del usuario o invitado al stream",
 )
 def verificar_acceso_stream(
     id_evento: int,
+    ticket: Optional[str] = Query(default=None, description="Token de ticket de invitado (no socio)"),
     db: Session = Depends(get_db),
     usuario: Optional[models.Usuario] = Depends(get_current_user_optional),
 ) -> schemas.TransmisionAccesoResponse:
     evento = _obtener_evento_transmision_o_404(db, id_evento)
-    tiene_acceso, motivo, es_socio, socio_al_dia = _verificar_acceso_usuario(evento, usuario, db)
+    tiene_acceso, motivo, es_socio, socio_al_dia, ticket_token, email_invitado = _verificar_acceso_usuario(
+        evento, usuario, db, ticket=ticket
+    )
 
     return schemas.TransmisionAccesoResponse(
         id_evento=evento.id_evento,
         tiene_acceso=tiene_acceso,
         motivo=motivo,
-        precio=evento.transmision_precio,
+        precio=evento.transmision_precio or Decimal("0.00"),
         socio_al_dia=socio_al_dia,
         es_socio=es_socio,
         estado_transmision=evento.transmision_estado,
         transmision_socio_gratis=evento.transmision_socio_gratis,
         transmision_es_publica=evento.transmision_es_publica,
+        ticket_token=ticket_token,
+        email_invitado=email_invitado,
     )
 
 
@@ -215,17 +240,20 @@ def verificar_acceso_stream(
 )
 def obtener_stream(
     id_evento: int,
+    ticket: Optional[str] = Query(default=None, description="Token de ticket de invitado (no socio)"),
     db: Session = Depends(get_db),
-    usuario: models.Usuario = Depends(get_current_user),
+    usuario: Optional[models.Usuario] = Depends(get_current_user_optional),
 ) -> schemas.TransmisionStreamResponse:
     """
-    Valida el acceso. Si está habilitado:
+    Valida el acceso (por cuenta o por ticket). Si está habilitado:
     1. Genera un nuevo `token_sesion` criptográfico único.
     2. Lo almacena en `entradas_virtuales` pisando sesiones anteriores (concurrencia=1).
     3. Retorna la plataforma y el `video_id` / embed junto al token de sesión.
     """
     evento = _obtener_evento_transmision_o_404(db, id_evento)
-    tiene_acceso, motivo, _, _ = _verificar_acceso_usuario(evento, usuario, db)
+    tiene_acceso, motivo, _, _, ticket_token, _ = _verificar_acceso_usuario(
+        evento, usuario, db, ticket=ticket
+    )
 
     if not tiene_acceso:
         raise HTTPException(
@@ -237,17 +265,31 @@ def obtener_stream(
     nuevo_token = secrets.token_urlsafe(32)
     ahora = datetime.now(timezone.utc)
 
-    # Buscar o crear la fila de EntradaVirtual para registrar la sesión
-    entrada = (
-        db.query(models.EntradaVirtual)
-        .filter(
-            models.EntradaVirtual.id_evento == evento.id_evento,
-            models.EntradaVirtual.id_usuario == usuario.id_usuario,
+    entrada = None
+    if ticket:
+        entrada = (
+            db.query(models.EntradaVirtual)
+            .filter(
+                models.EntradaVirtual.id_evento == evento.id_evento,
+                models.EntradaVirtual.ticket_token == ticket,
+            )
+            .first()
         )
-        .first()
-    )
+    elif usuario:
+        entrada = (
+            db.query(models.EntradaVirtual)
+            .filter(
+                models.EntradaVirtual.id_evento == evento.id_evento,
+                models.EntradaVirtual.id_usuario == usuario.id_usuario,
+            )
+            .first()
+        )
 
-    if not entrada:
+    if entrada:
+        entrada.token_sesion = nuevo_token
+        entrada.ultimo_heartbeat_at = ahora
+    elif usuario:
+        # Socio o Staff sin registro previo de entrada virtual
         entrada = models.EntradaVirtual(
             id_evento=evento.id_evento,
             id_usuario=usuario.id_usuario,
@@ -256,9 +298,6 @@ def obtener_stream(
             ultimo_heartbeat_at=ahora,
         )
         db.add(entrada)
-    else:
-        entrada.token_sesion = nuevo_token
-        entrada.ultimo_heartbeat_at = ahora
 
     db.commit()
 
@@ -268,6 +307,7 @@ def obtener_stream(
         video_id=evento.transmision_video_id or "",
         token_sesion=nuevo_token,
         estado=evento.transmision_estado,
+        ticket_token=ticket_token or (entrada.ticket_token if entrada else None),
     )
 
 
@@ -280,7 +320,7 @@ def heartbeat_stream(
     id_evento: int,
     payload: schemas.HeartbeatRequest,
     db: Session = Depends(get_db),
-    usuario: models.Usuario = Depends(get_current_user),
+    usuario: Optional[models.Usuario] = Depends(get_current_user_optional),
 ) -> schemas.HeartbeatResponse:
     """
     El reproductor llama a este endpoint cada 30 segundos.
@@ -288,16 +328,33 @@ def heartbeat_stream(
     que el usuario abrió la transmisión en otro navegador/dispositivo.
     Retorna 409 Conflict para que el cliente pause la reproducción.
     """
-    entrada = (
-        db.query(models.EntradaVirtual)
-        .filter(
-            models.EntradaVirtual.id_evento == id_evento,
-            models.EntradaVirtual.id_usuario == usuario.id_usuario,
+    entrada = None
+    if usuario:
+        entrada = (
+            db.query(models.EntradaVirtual)
+            .filter(
+                models.EntradaVirtual.id_evento == id_evento,
+                models.EntradaVirtual.id_usuario == usuario.id_usuario,
+            )
+            .first()
         )
-        .first()
-    )
+    elif payload.ticket_token:
+        entrada = (
+            db.query(models.EntradaVirtual)
+            .filter(
+                models.EntradaVirtual.id_evento == id_evento,
+                models.EntradaVirtual.ticket_token == payload.ticket_token,
+            )
+            .first()
+        )
 
-    if not entrada or entrada.token_sesion != payload.token_sesion:
+    if not entrada:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No se encontró registro de sesión activa para esta transmisión.",
+        )
+
+    if entrada.token_sesion != payload.token_sesion:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Tu sesión fue iniciada en otro dispositivo o pestaña.",
@@ -316,12 +373,13 @@ def heartbeat_stream(
 @router.post(
     "/{id_evento}/comprar-mp",
     response_model=schemas.ComprarEntradaMPResponse,
-    summary="Iniciar compra de entrada virtual con Mercado Pago",
+    summary="Iniciar compra de entrada virtual con Mercado Pago (Socios o Invitados)",
 )
 def comprar_entrada_mp(
     id_evento: int,
+    payload: Optional[schemas.ComprarEntradaInvitadoPayload] = None,
     db: Session = Depends(get_db),
-    usuario: models.Usuario = Depends(get_current_user),
+    usuario: Optional[models.Usuario] = Depends(get_current_user_optional),
 ) -> schemas.ComprarEntradaMPResponse:
     evento = _obtener_evento_transmision_o_404(db, id_evento)
 
@@ -331,16 +389,37 @@ def comprar_entrada_mp(
             detail="Este evento no tiene transmisión en vivo habilitada.",
         )
 
-    # Verificar si ya tiene entrada verificada
-    entrada_existente = (
-        db.query(models.EntradaVirtual)
-        .options(joinedload(models.EntradaVirtual.pago))
-        .filter(
-            models.EntradaVirtual.id_evento == evento.id_evento,
-            models.EntradaVirtual.id_usuario == usuario.id_usuario,
+    email_comprador: Optional[str] = None
+    entrada_existente: Optional[models.EntradaVirtual] = None
+
+    if usuario:
+        email_comprador = usuario.email
+        entrada_existente = (
+            db.query(models.EntradaVirtual)
+            .options(joinedload(models.EntradaVirtual.pago))
+            .filter(
+                models.EntradaVirtual.id_evento == evento.id_evento,
+                models.EntradaVirtual.id_usuario == usuario.id_usuario,
+            )
+            .first()
         )
-        .first()
-    )
+    else:
+        # Invitado sin cuenta (No-socio)
+        if not payload or not payload.email or not str(payload.email).strip():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Debés ingresar tu correo electrónico para comprar la entrada virtual.",
+            )
+        email_comprador = str(payload.email).strip().lower()
+        entrada_existente = (
+            db.query(models.EntradaVirtual)
+            .options(joinedload(models.EntradaVirtual.pago))
+            .filter(
+                models.EntradaVirtual.id_evento == evento.id_evento,
+                models.EntradaVirtual.email_invitado == email_comprador,
+            )
+            .first()
+        )
 
     if entrada_existente and (
         entrada_existente.id_pago is None
@@ -352,13 +431,20 @@ def comprar_entrada_mp(
         )
 
     precio = evento.transmision_precio or Decimal("0.00")
+    ticket_token = (
+        entrada_existente.ticket_token
+        if (entrada_existente and entrada_existente.ticket_token)
+        else secrets.token_urlsafe(24)
+    )
 
     # Si es gratuita
     if precio <= Decimal("0.00"):
         if not entrada_existente:
             entrada_gratis = models.EntradaVirtual(
                 id_evento=evento.id_evento,
-                id_usuario=usuario.id_usuario,
+                id_usuario=usuario.id_usuario if usuario else None,
+                email_invitado=email_comprador if not usuario else None,
+                ticket_token=ticket_token,
                 id_pago=None,
             )
             db.add(entrada_gratis)
@@ -367,12 +453,14 @@ def comprar_entrada_mp(
             id_evento=evento.id_evento,
             id_pago=0,
             preference_id="free",
-            init_point=f"{settings.frontend_url}/en-vivo/{evento.id_evento}",
+            init_point=f"{settings.frontend_url}/en-vivo/{evento.id_evento}?ticket={ticket_token}",
+            ticket_token=ticket_token,
         )
 
     # Crear Pago en estado 'pendiente'
+    id_usuario_pago = usuario.id_usuario if usuario else settings.sistema_user_id
     nuevo_pago = models.Pago(
-        id_usuario=usuario.id_usuario,
+        id_usuario=id_usuario_pago,
         monto_total=precio,
         metodo_pago="mercado_pago",
         estado="pendiente",
@@ -383,10 +471,13 @@ def comprar_entrada_mp(
     # Vincular EntradaVirtual al nuevo Pago
     if entrada_existente:
         entrada_existente.id_pago = nuevo_pago.id_pago
+        entrada_existente.ticket_token = ticket_token
     else:
         nueva_entrada = models.EntradaVirtual(
             id_evento=evento.id_evento,
-            id_usuario=usuario.id_usuario,
+            id_usuario=usuario.id_usuario if usuario else None,
+            email_invitado=email_comprador if not usuario else None,
+            ticket_token=ticket_token,
             id_pago=nuevo_pago.id_pago,
         )
         db.add(nueva_entrada)
@@ -394,6 +485,9 @@ def comprar_entrada_mp(
     # Crear Preference en Mercado Pago
     sdk = mercadopago.SDK(settings.mp_access_token)
     titulo_item = f"Entrada Virtual: CAR vs {evento.rival or 'Partido'} (En Vivo)"[:250]
+
+    back_url_base = f"{settings.frontend_url}/en-vivo/{evento.id_evento}"
+    ticket_query = f"ticket={ticket_token}&" if ticket_token else ""
 
     preference_data = {
         "items": [
@@ -407,17 +501,17 @@ def comprar_entrada_mp(
         "external_reference": str(nuevo_pago.id_pago),
         "notification_url": f"{settings.backend_url}/webhooks/mercadopago",
         "back_urls": {
-            "success": f"{settings.frontend_url}/en-vivo/{evento.id_evento}?pago=exitoso",
-            "failure": f"{settings.frontend_url}/en-vivo/{evento.id_evento}?pago=fallido",
-            "pending": f"{settings.frontend_url}/en-vivo/{evento.id_evento}?pago=pendiente",
+            "success": f"{back_url_base}?{ticket_query}pago=exitoso",
+            "failure": f"{back_url_base}?{ticket_query}pago=fallido",
+            "pending": f"{back_url_base}?{ticket_query}pago=pendiente",
         },
     }
 
     if not settings.frontend_url.startswith("http://localhost"):
         preference_data["auto_return"] = "approved"
 
-    if usuario.email:
-        preference_data["payer"] = {"email": usuario.email}
+    if email_comprador:
+        preference_data["payer"] = {"email": email_comprador}
 
     try:
         resultado = sdk.preference().create(preference_data)
@@ -446,6 +540,7 @@ def comprar_entrada_mp(
         id_pago=nuevo_pago.id_pago,
         preference_id=preference["id"],
         init_point=preference["init_point"],
+        ticket_token=ticket_token,
     )
 
 
@@ -456,8 +551,9 @@ def comprar_entrada_mp(
 )
 def comprar_entrada_transferencia(
     id_evento: int,
+    payload: Optional[schemas.ComprarEntradaInvitadoPayload] = None,
     db: Session = Depends(get_db),
-    usuario: models.Usuario = Depends(get_current_user),
+    usuario: Optional[models.Usuario] = Depends(get_current_user_optional),
 ) -> schemas.ComprarEntradaTransferenciaResponse:
     evento = _obtener_evento_transmision_o_404(db, id_evento)
 
@@ -468,18 +564,44 @@ def comprar_entrada_transferencia(
         )
 
     precio = evento.transmision_precio or Decimal("0.00")
+    email_comprador: Optional[str] = None
+    entrada_existente: Optional[models.EntradaVirtual] = None
 
-    entrada_existente = (
-        db.query(models.EntradaVirtual)
-        .filter(
-            models.EntradaVirtual.id_evento == evento.id_evento,
-            models.EntradaVirtual.id_usuario == usuario.id_usuario,
+    if usuario:
+        email_comprador = usuario.email
+        entrada_existente = (
+            db.query(models.EntradaVirtual)
+            .filter(
+                models.EntradaVirtual.id_evento == evento.id_evento,
+                models.EntradaVirtual.id_usuario == usuario.id_usuario,
+            )
+            .first()
         )
-        .first()
+    else:
+        if not payload or not payload.email or not str(payload.email).strip():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Debés ingresar tu correo electrónico para generar el pedido de entrada.",
+            )
+        email_comprador = str(payload.email).strip().lower()
+        entrada_existente = (
+            db.query(models.EntradaVirtual)
+            .filter(
+                models.EntradaVirtual.id_evento == evento.id_evento,
+                models.EntradaVirtual.email_invitado == email_comprador,
+            )
+            .first()
+        )
+
+    ticket_token = (
+        entrada_existente.ticket_token
+        if (entrada_existente and entrada_existente.ticket_token)
+        else secrets.token_urlsafe(24)
     )
+    id_usuario_pago = usuario.id_usuario if usuario else settings.sistema_user_id
 
     nuevo_pago = models.Pago(
-        id_usuario=usuario.id_usuario,
+        id_usuario=id_usuario_pago,
         monto_total=precio,
         metodo_pago="transferencia",
         estado="pendiente",
@@ -489,10 +611,13 @@ def comprar_entrada_transferencia(
 
     if entrada_existente:
         entrada_existente.id_pago = nuevo_pago.id_pago
+        entrada_existente.ticket_token = ticket_token
     else:
         nueva_entrada = models.EntradaVirtual(
             id_evento=evento.id_evento,
-            id_usuario=usuario.id_usuario,
+            id_usuario=usuario.id_usuario if usuario else None,
+            email_invitado=email_comprador if not usuario else None,
+            ticket_token=ticket_token,
             id_pago=nuevo_pago.id_pago,
         )
         db.add(nueva_entrada)
@@ -507,6 +632,7 @@ def comprar_entrada_transferencia(
             f"Pedido #{nuevo_pago.id_pago} registrado. Realizá la transferencia "
             "por el monto indicado con tu alias/CBU oficial y envianos el comprobante."
         ),
+        ticket_token=ticket_token,
     )
 
 
@@ -560,12 +686,13 @@ def obtener_metricas_espectadores(
         "recaudacion_verificada": float(recaudacion_estimada),
         "espectadores": [
             {
-                "id_usuario": e.usuario.id_usuario,
-                "nombre": f"{e.usuario.nombre} {e.usuario.apellido}",
-                "email": e.usuario.email,
+                "id_usuario": e.usuario.id_usuario if e.usuario else None,
+                "nombre": f"{e.usuario.nombre} {e.usuario.apellido}" if e.usuario else (e.email_invitado or "Invitado"),
+                "email": e.usuario.email if e.usuario else e.email_invitado,
+                "ticket_token": e.ticket_token,
                 "ultimo_heartbeat": e.ultimo_heartbeat_at.isoformat() if e.ultimo_heartbeat_at else None,
                 "en_linea": bool(e.ultimo_heartbeat_at and e.ultimo_heartbeat_at >= hace_un_minuto),
-                "tipo_acceso": "pago" if e.id_pago else "socio_o_cortesia",
+                "tipo_acceso": "invitado_pago" if not e.usuario else ("pago" if e.id_pago else "socio_o_cortesia"),
             }
             for e in entradas
         ],

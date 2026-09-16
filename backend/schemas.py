@@ -2175,7 +2175,9 @@ class EntradaVirtualResponse(BaseModel):
 
     id_entrada: int
     id_evento: int
-    id_usuario: int
+    id_usuario: Optional[int] = None
+    email_invitado: Optional[str] = None
+    ticket_token: Optional[str] = None
     id_pago: Optional[int] = None
     creado_at: datetime
 
@@ -2183,13 +2185,15 @@ class EntradaVirtualResponse(BaseModel):
 class TransmisionAccesoResponse(BaseModel):
     id_evento: int
     tiene_acceso: bool
-    motivo: str  # 'admin' | 'socio_al_dia' | 'entrada_comprada' | 'transmision_publica' | 'sin_acceso' | 'no_autenticado'
+    motivo: str  # 'admin' | 'socio_al_dia' | 'entrada_comprada' | 'transmision_publica' | 'sin_acceso' | 'no_autenticado' | 'pago_pendiente'
     precio: Decimal
     socio_al_dia: bool
     es_socio: bool
     estado_transmision: str
     transmision_socio_gratis: bool
     transmision_es_publica: bool
+    ticket_token: Optional[str] = None
+    email_invitado: Optional[str] = None
 
 
 class TransmisionStreamResponse(BaseModel):
@@ -2198,10 +2202,12 @@ class TransmisionStreamResponse(BaseModel):
     video_id: str
     token_sesion: str
     estado: str
+    ticket_token: Optional[str] = None
 
 
 class HeartbeatRequest(BaseModel):
     token_sesion: str
+    ticket_token: Optional[str] = None
 
 
 class HeartbeatResponse(BaseModel):
@@ -2209,15 +2215,21 @@ class HeartbeatResponse(BaseModel):
     mensaje: str
 
 
+class ComprarEntradaInvitadoPayload(BaseModel):
+    email: Optional[EmailStr] = None
+
+
 class ComprarEntradaMPResponse(BaseModel):
     id_evento: int
     id_pago: int
     preference_id: str
     init_point: str
+    ticket_token: Optional[str] = None
 
 
 class ComprarEntradaTransferenciaResponse(BaseModel):
     id_evento: int
     id_pago: int
     monto: Decimal
-    mensaje: str
+    mensaje: str
+    ticket_token: Optional[str] = None

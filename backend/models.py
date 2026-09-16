@@ -1502,6 +1502,7 @@ class Asistencia(Base):
 class EntradaVirtual(Base):
     """
     Entrada virtual (Pay-Per-View) para acceder a la transmisión en vivo de un evento/partido.
+    Soporta socios (con id_usuario) e invitados/no-socios (con email_invitado y ticket_token).
     Contiene además el token de sesión activa para control de concurrencia (heartbeat anti-avivadas).
     """
     __tablename__ = "entradas_virtuales"
@@ -1510,8 +1511,16 @@ class EntradaVirtual(Base):
     id_evento: Mapped[int] = mapped_column(
         ForeignKey("eventos.id_evento", ondelete="CASCADE"), nullable=False,
     )
-    id_usuario: Mapped[int] = mapped_column(
-        ForeignKey("usuarios.id_usuario", ondelete="CASCADE"), nullable=False,
+    id_usuario: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("usuarios.id_usuario", ondelete="CASCADE"), nullable=True,
+    )
+    email_invitado: Mapped[Optional[str]] = mapped_column(
+        String(150), nullable=True,
+        comment="Email de compra para no-socios sin cuenta.",
+    )
+    ticket_token: Mapped[Optional[str]] = mapped_column(
+        String(64), unique=True, nullable=True,
+        comment="Token de acceso para localStorage y link mágico.",
     )
     id_pago: Mapped[Optional[int]] = mapped_column(
         ForeignKey("pagos.id_pago", ondelete="SET NULL"), nullable=True,
@@ -1529,16 +1538,27 @@ class EntradaVirtual(Base):
 
     # Relaciones
     evento: Mapped["Evento"] = relationship("Evento", back_populates="entradas_virtuales")
-    usuario: Mapped["Usuario"] = relationship("Usuario", back_populates="entradas_virtuales")
+    usuario: Mapped[Optional["Usuario"]] = relationship("Usuario", back_populates="entradas_virtuales")
     pago: Mapped[Optional["Pago"]] = relationship("Pago")
 
     __table_args__ = (
-        UniqueConstraint("id_evento", "id_usuario", name="uq_entrada_virtual_evento_usuario"),
-        Index("idx_entradas_evento_usuario", "id_evento", "id_usuario"),
+        Index(
+            "uq_entrada_virtual_evento_usuario",
+            "id_evento", "id_usuario",
+            unique=True,
+            postgresql_where=text("id_usuario IS NOT NULL"),
+        ),
+        Index(
+            "uq_entrada_virtual_evento_email",
+            "id_evento", "email_invitado",
+            unique=True,
+            postgresql_where=text("email_invitado IS NOT NULL"),
+        ),
+        Index("idx_entradas_ticket_token", "ticket_token", unique=True),
     )
 
     def __repr__(self) -> str:
-        return f"<EntradaVirtual evento={self.id_evento} usuario={self.id_usuario}>"
+        return f"<EntradaVirtual evento={self.id_evento} usuario={self.id_usuario} email={self.email_invitado}>"
 
 
 # ─────────────────────────────────────────────────────────────────────────────

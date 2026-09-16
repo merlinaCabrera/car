@@ -19,6 +19,10 @@ import {
   Share2,
   ChevronLeft,
   ArrowRight,
+  Maximize2,
+  Copy,
+  Key,
+  Mail,
 } from 'lucide-react';
 import escudoCar from '../assets/escudo-car-blanco.png';
 
@@ -39,15 +43,21 @@ export default function TransmisionEnVivo() {
   const [sesionDuplicada, setSesionDuplicada] = useState(false);
 
   // Estados de checkout de entrada virtual
+  const [emailInvitado, setEmailInvitado] = useState('');
   const [comprandoMP, setComprandoMP] = useState(false);
   const [modalTransferencia, setModalTransferencia] = useState(false);
   const [pedidoTransferencia, setPedidoTransferencia] = useState(null);
   const [comprandoTransf, setComprandoTransf] = useState(false);
   const [errorCompra, setErrorCompra] = useState(null);
   const [copiado, setCopiado] = useState(false);
+  const [copiadoLink, setCopiadoLink] = useState(false);
+  const [mostrarRestaurarTicket, setMostrarRestaurarTicket] = useState(false);
+  const [ticketManual, setTicketManual] = useState('');
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
-  // Intervalo de Heartbeat
+  // Refs
   const heartbeatRef = useRef(null);
+  const playerContainerRef = useRef(null);
 
   // 1. Cargar el partido (el indicado por URL o el actual/próximo)
   const cargarPartido = useCallback(async () => {
@@ -68,19 +78,36 @@ export default function TransmisionEnVivo() {
       setEvento(ev);
 
       if (ev) {
+        // Ticket de invitado: chequear URL param primero, luego localStorage
+        const searchParams = new URLSearchParams(location.search);
+        const ticketUrl = searchParams.get('ticket');
+        if (ticketUrl) {
+          localStorage.setItem(`car_ticket_${ev.id_evento}`, ticketUrl);
+        }
+        const effectiveTicket = ticketUrl || localStorage.getItem(`car_ticket_${ev.id_evento}`) || '';
+
         // Verificar acceso
         const headers = token ? { Authorization: `Bearer ${token}` } : {};
-        const resAcceso = await fetch(`${API}/transmisiones/${ev.id_evento}/acceso`, { headers });
+        const queryTicket = effectiveTicket ? `?ticket=${encodeURIComponent(effectiveTicket)}` : '';
+        const resAcceso = await fetch(`${API}/transmisiones/${ev.id_evento}/acceso${queryTicket}`, { headers });
+
         if (resAcceso.ok) {
           const acc = await resAcceso.json();
           setAccesoInfo(acc);
 
-          // Si tiene acceso y hay token, obtener datos del stream
-          if (acc.tiene_acceso && token) {
-            const resStream = await fetch(`${API}/transmisiones/${ev.id_evento}/stream`, { headers });
+          if (acc.ticket_token) {
+            localStorage.setItem(`car_ticket_${ev.id_evento}`, acc.ticket_token);
+          }
+
+          // Si tiene acceso, obtener datos del stream
+          if (acc.tiene_acceso) {
+            const resStream = await fetch(`${API}/transmisiones/${ev.id_evento}/stream${queryTicket}`, { headers });
             if (resStream.ok) {
               const stream = await resStream.json();
               setStreamData(stream);
+              if (stream.ticket_token) {
+                localStorage.setItem(`car_ticket_${ev.id_evento}`, stream.ticket_token);
+              }
             }
           }
         }
@@ -90,7 +117,7 @@ export default function TransmisionEnVivo() {
     } finally {
       setLoading(false);
     }
-  }, [idEventoParam, token]);
+  }, [idEventoParam, token, location.search]);
 
   useEffect(() => {
     cargarPartido();
@@ -98,20 +125,27 @@ export default function TransmisionEnVivo() {
 
   // 2. Control de Heartbeat anti-concurrencia (cada 30 segundos)
   useEffect(() => {
-    if (!streamData?.token_sesion || !evento?.id_evento || !token) {
+    if (!streamData?.token_sesion || !evento?.id_evento) {
       if (heartbeatRef.current) clearInterval(heartbeatRef.current);
       return;
     }
 
+    const effectiveTicket = localStorage.getItem(`car_ticket_${evento.id_evento}`) || '';
+
     const enviarHeartbeat = async () => {
       try {
+        const headers = {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        };
+        const body = {
+          token_sesion: streamData.token_sesion,
+          ...(effectiveTicket ? { ticket_token: effectiveTicket } : {}),
+        };
         const res = await fetch(`${API}/transmisiones/${evento.id_evento}/heartbeat`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ token_sesion: streamData.token_sesion }),
+          headers,
+          body: JSON.stringify(body),
         });
 
         if (res.status === 409) {
@@ -132,27 +166,51 @@ export default function TransmisionEnVivo() {
     };
   }, [streamData, evento, token]);
 
-  // 3. Comprar Entrada Virtual con Mercado Pago
+  // Listener para estado Fullscreen
+  useEffect(() => {
+    const handleFsChange = () => {
+      setIsFullscreen(Boolean(document.fullscreenElement));
+    };
+    document.addEventListener('fullscreenchange', handleFsChange);
+    return () => document.removeEventListener('fullscreenchange', handleFsChange);
+  }, []);
+
+  const toggleFullscreen = () => {
+    if (!playerContainerRef.current) return;
+    if (!document.fullscreenElement) {
+      playerContainerRef.current.requestFullscreen?.().catch(() => {});
+    } else {
+      document.exitFullscreen?.().catch(() => {});
+    }
+  };
+
+  // 3. Comprar Entrada Virtual con Mercado Pago (Socios o Invitados sin cuenta)
   const handleComprarMP = async () => {
-    if (!token) {
-      navigate(`/login?next=${encodeURIComponent(location.pathname)}`);
+    setErrorCompra(null);
+    if (!user && (!emailInvitado || !emailInvitado.includes('@'))) {
+      setErrorCompra('Ingresá un correo electrónico válido para recibir tu entrada.');
       return;
     }
     setComprandoMP(true);
-    setErrorCompra(null);
     try {
+      const headers = {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      };
+      const body = !user ? JSON.stringify({ email: emailInvitado.trim() }) : JSON.stringify({});
       const res = await fetch(`${API}/transmisiones/${evento.id_evento}/comprar-mp`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+        headers,
+        body,
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         throw new Error(err.detail || 'Error al conectar con Mercado Pago.');
       }
       const data = await res.json();
+      if (data.ticket_token) {
+        localStorage.setItem(`car_ticket_${evento.id_evento}`, data.ticket_token);
+      }
       if (data.init_point) {
         window.location.href = data.init_point;
       }
@@ -162,27 +220,33 @@ export default function TransmisionEnVivo() {
     }
   };
 
-  // 4. Comprar Entrada Virtual por Transferencia
+  // 4. Comprar Entrada Virtual por Transferencia (Socios o Invitados)
   const handleComprarTransferencia = async () => {
-    if (!token) {
-      navigate(`/login?next=${encodeURIComponent(location.pathname)}`);
+    setErrorCompra(null);
+    if (!user && (!emailInvitado || !emailInvitado.includes('@'))) {
+      setErrorCompra('Ingresá un correo electrónico válido para registrar el pedido de entrada.');
       return;
     }
     setComprandoTransf(true);
-    setErrorCompra(null);
     try {
+      const headers = {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      };
+      const body = !user ? JSON.stringify({ email: emailInvitado.trim() }) : JSON.stringify({});
       const res = await fetch(`${API}/transmisiones/${evento.id_evento}/comprar-transferencia`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+        headers,
+        body,
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         throw new Error(err.detail || 'Error al generar orden de transferencia.');
       }
       const data = await res.json();
+      if (data.ticket_token) {
+        localStorage.setItem(`car_ticket_${evento.id_evento}`, data.ticket_token);
+      }
       setPedidoTransferencia(data);
       setModalTransferencia(true);
     } catch (err) {
@@ -190,6 +254,23 @@ export default function TransmisionEnVivo() {
     } finally {
       setComprandoTransf(false);
     }
+  };
+
+  const handleRestaurarTicket = (e) => {
+    e.preventDefault();
+    if (!ticketManual.trim() || !evento) return;
+    let t = ticketManual.trim();
+    if (t.includes('ticket=')) {
+      try {
+        const urlObj = new URL(t.startsWith('http') ? t : `https://example.com/${t}`);
+        t = urlObj.searchParams.get('ticket') || t;
+      } catch {
+        // Dejar tal cual
+      }
+    }
+    localStorage.setItem(`car_ticket_${evento.id_evento}`, t);
+    setMostrarRestaurarTicket(false);
+    cargarPartido();
   };
 
   const copiarAlias = (texto) => {
@@ -226,9 +307,49 @@ export default function TransmisionEnVivo() {
 
     if (plataforma === 'youtube') {
       return (
-        <div className="relative w-full aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl border border-white/10">
+        <div
+          ref={playerContainerRef}
+          onContextMenu={(e) => e.preventDefault()}
+          className="relative w-full aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl border border-white/10 group select-none"
+        >
+          {/* 🛡️ Player Blindado: Máscara Superior Invisible (Bloquea Título, Avatar de canal, Compartir, Ver más tarde) */}
+          <div
+            className="absolute top-0 left-0 right-0 h-16 sm:h-20 z-20 pointer-events-auto cursor-default bg-transparent"
+            title=""
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+          />
+
+          {/* 🛡️ Player Blindado: Máscara Inferior Derecha Invisible (Bloquea Watermark/Logo de YouTube para que no salten a youtube.com) */}
+          <div
+            className="absolute bottom-0 right-12 w-28 h-12 z-20 pointer-events-auto cursor-default bg-transparent"
+            title=""
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+          />
+
+          {/* Control Oficial CAR: Barra Flotante con Badge e Icono Fullscreen */}
+          <div className="absolute top-3 right-3 z-30 flex items-center gap-2 pointer-events-auto">
+            <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black bg-black/60 backdrop-blur-md text-emerald-400 border border-emerald-500/30 shadow-lg">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              Oficial CAR
+            </span>
+            <button
+              type="button"
+              onClick={toggleFullscreen}
+              className="p-2 rounded-xl bg-black/70 hover:bg-black/90 backdrop-blur-md text-white transition-all hover:scale-105 border border-white/20 shadow-lg"
+              title={isFullscreen ? 'Salir de pantalla completa' : 'Pantalla Completa'}
+            >
+              <Maximize2 size={16} />
+            </button>
+          </div>
+
           <iframe
-            src={`https://www.youtube-nocookie.com/embed/${parsedYoutubeId}?autoplay=1&rel=0&modestbranding=1&playsinline=1`}
+            src={`https://www.youtube-nocookie.com/embed/${parsedYoutubeId}?autoplay=1&rel=0&modestbranding=1&playsinline=1&controls=1&iv_load_policy=3`}
             title="Transmisión en Vivo CAR"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
             allowFullScreen
@@ -243,7 +364,10 @@ export default function TransmisionEnVivo() {
       const vMatch = video_id.match(/vimeo\.com\/(?:video\/)?([0-9]+)/);
       if (vMatch && vMatch[1]) parsedVimeoId = vMatch[1];
       return (
-        <div className="relative w-full aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl border border-white/10">
+        <div
+          ref={playerContainerRef}
+          className="relative w-full aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl border border-white/10"
+        >
           <iframe
             src={`https://player.vimeo.com/video/${parsedVimeoId}?autoplay=1&title=0&byline=0&portrait=0`}
             title="Transmisión en Vivo CAR"
@@ -259,6 +383,7 @@ export default function TransmisionEnVivo() {
     if (video_id.startsWith('<iframe')) {
       return (
         <div
+          ref={playerContainerRef}
           className="relative w-full aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl border border-white/10 [&>iframe]:w-full [&>iframe]:h-full"
           dangerouslySetInnerHTML={{ __html: video_id }}
         />
@@ -266,7 +391,10 @@ export default function TransmisionEnVivo() {
     }
 
     return (
-      <div className="relative w-full aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl border border-white/10">
+      <div
+        ref={playerContainerRef}
+        className="relative w-full aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl border border-white/10"
+      >
         <iframe
           src={video_id}
           title="Transmisión en Vivo"
@@ -474,12 +602,59 @@ export default function TransmisionEnVivo() {
                 <div className="flex items-center justify-between text-xs text-gray-400 px-2 flex-wrap gap-2">
                   <div className="flex items-center gap-1.5">
                     <ShieldCheck size={14} className="text-emerald-400" />
-                    <span>Acceso verificado ({accesoInfo.motivo === 'socio_al_dia' ? 'Socio al Día · Gratis' : accesoInfo.motivo === 'admin' ? 'Staff Oficial' : 'Entrada Virtual'})</span>
+                    <span>
+                      Acceso verificado (
+                      {accesoInfo.motivo === 'socio_al_dia'
+                        ? 'Socio al Día · Gratis'
+                        : accesoInfo.motivo === 'admin'
+                        ? 'Staff Oficial'
+                        : 'Entrada Virtual'}
+                      )
+                    </span>
                   </div>
                   <div className="flex items-center gap-1.5 text-gray-500">
                     <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                     <span>Sesión única activa protegida</span>
                   </div>
+                </div>
+
+                {/* Widget Magic Link de Acceso para el Hincha */}
+                <div className="bg-gray-900/80 border border-white/10 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 rounded-xl bg-blue-600/20 text-blue-400 border border-blue-500/30 flex-shrink-0">
+                      <Key size={18} />
+                    </div>
+                    <div>
+                      <div className="font-bold text-white flex items-center gap-2">
+                        <span>Acceso guardado en este navegador</span>
+                        <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-bold">
+                          Activo
+                        </span>
+                      </div>
+                      <p className="text-gray-400 text-[11px] mt-0.5">
+                        Si actualizás la página no vas a perder el acceso. Para verlo en tu Smart TV u otro dispositivo, copiá tu link directo:
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const ticketToken =
+                        localStorage.getItem(`car_ticket_${evento.id_evento}`) ||
+                        accesoInfo?.ticket_token ||
+                        '';
+                      const url = `${window.location.origin}/en-vivo/${evento.id_evento}${
+                        ticketToken ? `?ticket=${ticketToken}` : ''
+                      }`;
+                      navigator.clipboard.writeText(url);
+                      setCopiadoLink(true);
+                      setTimeout(() => setCopiadoLink(false), 2500);
+                    }}
+                    className="flex-shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-semibold transition-colors"
+                  >
+                    <Copy size={14} />
+                    {copiadoLink ? '¡Link Copiado!' : 'Copiar Link Mágico'}
+                  </button>
                 </div>
               </div>
             ) : (
@@ -495,46 +670,14 @@ export default function TransmisionEnVivo() {
                     Transmisión Exclusiva en Vivo
                   </h3>
                   <p className="text-xs sm:text-sm text-gray-400 max-w-sm mt-1.5">
-                    El streaming de los partidos es privado. Adquirí tu entrada virtual o ingresá con tu cuenta de socio con cuota al día.
+                    El streaming de los partidos es privado. Adquirí tu entrada virtual al instante o ingresá como socio con cuota al día.
                   </p>
                 </div>
 
                 {/* Lado Derecho: Acciones de Entrada Virtual o Login */}
                 <div className="lg:col-span-5 flex flex-col justify-center bg-gray-900/60 rounded-3xl p-6 sm:p-8 border border-white/10 space-y-5">
-                  {!user ? (
-                    /* Caso 1: Usuario No Logueado */
-                    <div className="space-y-4">
-                      <div className="space-y-1">
-                        <span className="text-xs font-bold uppercase tracking-wider text-blue-400">Paso 1</span>
-                        <h3 className="text-xl font-bold text-white">Identificate para ver el partido</h3>
-                        <p className="text-xs text-gray-400">
-                          Iniciá sesión para acceder gratis como socio al día o comprar tu entrada virtual.
-                        </p>
-                      </div>
-
-                      <div className="space-y-2.5 pt-2">
-                        <Link
-                          to={`/login?next=${encodeURIComponent(location.pathname)}`}
-                          className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm transition-colors shadow-lg shadow-blue-600/20"
-                        >
-                          Iniciar Sesión
-                        </Link>
-                        <Link
-                          to={`/registro?next=${encodeURIComponent(location.pathname)}`}
-                          className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-white/10 hover:bg-white/20 text-white font-semibold text-sm transition-colors"
-                        >
-                          Crear Cuenta Nueva
-                        </Link>
-                      </div>
-
-                      <div className="pt-3 border-t border-white/10 text-center">
-                        <span className="text-xs text-emerald-400 font-semibold flex items-center justify-center gap-1.5">
-                          <CheckCircle size={14} /> Socios con cuota al día miran gratis
-                        </span>
-                      </div>
-                    </div>
-                  ) : accesoInfo?.es_socio && !accesoInfo?.socio_al_dia ? (
-                    /* Caso 2: Socio con cuota atrasada */
+                  {user && accesoInfo?.es_socio && !accesoInfo?.socio_al_dia ? (
+                    /* Caso 1: Socio con cuota atrasada */
                     <div className="space-y-4">
                       <div className="p-3.5 rounded-2xl bg-amber-950/40 border border-amber-500/30 text-amber-200 space-y-1">
                         <h4 className="font-bold text-xs flex items-center gap-1.5 text-amber-300">
@@ -558,30 +701,58 @@ export default function TransmisionEnVivo() {
                         <div className="flex-grow border-t border-white/10"></div>
                       </div>
 
-                      {/* Botón Comprar Entrada Individual */}
+                      {/* Botón Comprar Entrada Individual para socio */}
                       <button
                         onClick={handleComprarMP}
                         disabled={comprandoMP}
-                        className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm transition-colors disabled:opacity-50"
+                        className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm transition-colors disabled:opacity-50 shadow-lg shadow-blue-600/20"
                       >
                         {comprandoMP ? <RefreshCw size={16} className="animate-spin" /> : <Play size={16} />}
                         Comprar Entrada Virtual (${evento.transmision_precio || '0'})
                       </button>
                     </div>
                   ) : (
-                    /* Caso 3: Hincha / No-Socio sin entrada comprada */
+                    /* Caso 2: Hincha / No-Socio (o usuario sin membresía bonificada) */
                     <div className="space-y-5">
                       <div>
-                        <span className="text-xs font-bold uppercase tracking-wider text-blue-400">Pay-Per-View</span>
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                            Pay-Per-View Oficial
+                          </span>
+                          <span className="text-[10px] font-semibold text-emerald-400">
+                            Sin registro previo
+                          </span>
+                        </div>
                         <h3 className="text-xl font-bold text-white">Comprar Entrada Virtual</h3>
-                        <p className="text-xs text-gray-400 mt-0.5">
-                          Acceso en vivo de alta definición con soporte para Smart TV y dispositivos móviles.
+                        <p className="text-xs text-gray-400 mt-1">
+                          Mirá el partido en vivo en Full HD. Ingresá tu correo para recibir tu acceso directo.
                         </p>
                       </div>
 
                       {errorCompra && (
-                        <div className="p-3 rounded-xl bg-red-950/50 border border-red-500/40 text-red-200 text-xs">
-                          {errorCompra}
+                        <div className="p-3 rounded-xl bg-red-950/50 border border-red-500/40 text-red-200 text-xs flex items-center gap-2">
+                          <AlertCircle size={15} className="flex-shrink-0 text-red-400" />
+                          <span>{errorCompra}</span>
+                        </div>
+                      )}
+
+                      {/* Campo Email si no está logueado */}
+                      {!user && (
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-semibold text-gray-300 flex items-center justify-between">
+                            <span>Tu correo electrónico</span>
+                            <span className="text-[10px] text-gray-500 font-normal">Para comprobante y link</span>
+                          </label>
+                          <div className="relative">
+                            <input
+                              type="email"
+                              value={emailInvitado}
+                              onChange={(e) => setEmailInvitado(e.target.value)}
+                              placeholder="ej: tuemail@gmail.com"
+                              className="w-full bg-black/50 border border-white/10 rounded-xl px-3.5 py-2.5 pl-9 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors"
+                            />
+                            <Mail size={15} className="absolute left-3 top-3 text-gray-500" />
+                          </div>
                         </div>
                       )}
 
@@ -589,7 +760,8 @@ export default function TransmisionEnVivo() {
                         <div>
                           <span className="text-xs text-gray-400 block">Precio Entrada</span>
                           <span className="text-2xl font-black text-white">
-                            ${Number(evento.transmision_precio || 0).toLocaleString('es-AR')} <span className="text-xs font-medium text-gray-400">ARS</span>
+                            ${Number(evento.transmision_precio || 0).toLocaleString('es-AR')}{' '}
+                            <span className="text-xs font-medium text-gray-400">ARS</span>
                           </span>
                         </div>
                         <div className="text-right">
@@ -626,13 +798,51 @@ export default function TransmisionEnVivo() {
                         </button>
                       </div>
 
-                      <div className="pt-2 text-center">
-                        <Link
-                          to="/registro"
-                          className="text-xs text-gray-400 hover:text-white transition-colors underline underline-offset-2"
-                        >
-                          ¿Sos socio? Asociate al Club y mirá los partidos gratis
-                        </Link>
+                      <div className="pt-2 border-t border-white/10 space-y-2 text-center text-xs">
+                        {!user && (
+                          <div>
+                            <Link
+                              to={`/login?next=${encodeURIComponent(location.pathname)}`}
+                              className="text-gray-400 hover:text-white transition-colors underline underline-offset-2"
+                            >
+                              ¿Sos socio del club? Iniciar Sesión para ver gratis
+                            </Link>
+                          </div>
+                        )}
+
+                        {/* Acordeón para ingresar ticket existente */}
+                        <div className="pt-1">
+                          {!mostrarRestaurarTicket ? (
+                            <button
+                              type="button"
+                              onClick={() => setMostrarRestaurarTicket(true)}
+                              className="text-[11px] text-gray-500 hover:text-gray-300 transition-colors flex items-center justify-center gap-1 mx-auto"
+                            >
+                              <Key size={11} /> ¿Ya compraste tu entrada o estás en otro dispositivo?
+                            </button>
+                          ) : (
+                            <form onSubmit={handleRestaurarTicket} className="space-y-2 bg-black/30 p-3 rounded-xl border border-white/10 text-left">
+                              <span className="text-[11px] text-gray-400 block font-medium">
+                                Pegá tu código o link de ticket:
+                              </span>
+                              <div className="flex gap-2">
+                                <input
+                                  type="text"
+                                  value={ticketManual}
+                                  onChange={(e) => setTicketManual(e.target.value)}
+                                  placeholder="Ej: ABC123xyz o link completo"
+                                  className="flex-1 bg-black/60 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-blue-500"
+                                />
+                                <button
+                                  type="submit"
+                                  className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs"
+                                >
+                                  Restaurar
+                                </button>
+                              </div>
+                            </form>
+                          )}
+                        </div>
                       </div>
                     </div>
                   )}
@@ -693,8 +903,15 @@ export default function TransmisionEnVivo() {
               </div>
 
               <div className="p-3 rounded-xl bg-blue-950/40 border border-blue-500/20 text-blue-200">
-                Una vez transferido, envianos el comprobante por WhatsApp al <strong>2355-123456</strong> con tu nombre o número de socio para que el staff te habilite el acceso de inmediato.
+                Una vez transferido, envianos el comprobante por WhatsApp al <strong>2355-123456</strong> indicando tu correo (<strong>{emailInvitado || user?.email || 'registrado'}</strong>) para que el staff active tu entrada de inmediato.
               </div>
+
+              {pedidoTransferencia?.ticket_token && (
+                <div className="text-[11px] text-gray-400 bg-black/40 p-2.5 rounded-xl border border-white/10 space-y-1">
+                  <span className="text-gray-300 block font-semibold">Código de tu Ticket (guardalo):</span>
+                  <span className="font-mono text-blue-300 break-all select-all">{pedidoTransferencia.ticket_token}</span>
+                </div>
+              )}
             </div>
 
             <button

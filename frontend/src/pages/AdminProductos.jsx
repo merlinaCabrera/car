@@ -103,11 +103,17 @@ function ProductoFormModal({ producto, onClose, onSave, cuotaSocialExists }) {
     return CATEGORIAS
   }, [isEditMode, cuotaSocialExists])
 
+  // El default sale de `categoriasDisponibles`, NO de `CATEGORIAS[0]` — que es
+  // 'cuota_social', justo la que se filtra al crear si ya existe una. Un <select>
+  // cuyo value no está entre sus <option> muestra el primero igual, así que el
+  // admin veía "Alquiler" mientras el form seguía mandando 'cuota_social': daba
+  // de alta una segunda cuota social, que es lo que `cuotaSocialExists` quería
+  // evitar. La variable ya estaba escrita acá, solo faltaba usarla.
   const categoriaInicial = producto?.categoria ?? categoriasDisponibles[0] ?? ''
 
   const [formData, setFormData] = useState({
     nombre:        producto?.nombre        ?? '',
-    categoria:     producto?.categoria     ?? CATEGORIAS[0],
+    categoria:     categoriaInicial,
     descripcion:   producto?.descripcion   ?? '',
     precio_actual: producto?.precio_actual != null ? String(producto.precio_actual) : '',
     stock:         producto?.stock         != null ? String(producto.stock) : '',
@@ -695,7 +701,7 @@ export default function AdminProductos() {
           <div className="col-span-3 flex items-center gap-3 p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-sm">
             <AlertCircle size={18} className="flex-shrink-0" />
             <span className="flex-1 font-medium">
-              No hay una cuota social configurada. Créala desde el botón '+ Nuevo Producto'.
+              No hay una cuota social configurada. Créala desde el botón «+ Nuevo Producto».
             </span>
           </div>
         )}

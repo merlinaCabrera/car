@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { rolesDeUsuario } from '../components/RequireRole';
@@ -29,6 +29,7 @@ import {
   CalendarClock,
   ChevronDown,
   TrendingUp,
+  User as UserIcon,
 } from 'lucide-react'
 
 // Importación del asset real
@@ -72,7 +73,7 @@ const NAV_PERSONAL_ADMINISTRATIVO = [
   { name: 'Socios', path: '/admin/socios', icon: Users },
   { name: 'Solicitudes Pendientes', path: '/admin/solicitudes', icon: UserCheck },
   { name: 'Verificaciones', path: '/admin/verificaciones', icon: Wallet },
-  { name: 'Comercios Adheridos', path: '/admin/comercios', icon: Store },
+  { name: 'Catálogo', path: '/admin/productos', icon: Package },
   { name: 'Agenda de Reservas', path: '/admin/reservas', icon: Calendar },
   { name: 'Historial', path: '/admin/auditoria', icon: History },
 ];
@@ -83,7 +84,7 @@ const NAV_PERSONAL_ADMINISTRATIVO = [
 // hoy están reservadas a admin_general.
 const NAV_PERSONAL_ADMINISTRATIVO_PROPIO = [
   { name: 'Socios', path: '/admin/socios', icon: Users },
-  { name: 'Comercios Adheridos', path: '/admin/comercios', icon: Store },
+  { name: 'Catálogo', path: '/admin/productos', icon: Package },
   { name: 'Agenda de Reservas', path: '/admin/reservas', icon: Calendar },
   { name: 'Historial', path: '/admin/auditoria', icon: History },
 ];
@@ -100,20 +101,15 @@ const NAV_INVITADO = [
   { name: 'Escáner General', path: '/admin/escaner', icon: ScanLine },
 ];
 
-// Menú curado del admin_general, el que va después del link a "Inicio".
-// Antes eran diez <Link> escritos a mano repitiendo la misma tira de clases;
-// como array se escribe una sola vez y además se puede escalonar la animación
-// de entrada por índice. Mismos paths, mismos íconos y mismo orden que antes.
+// Menú curado del admin_general (7 ítems junto con Inicio):
+// Inicio, Socios, Verificaciones, Alquileres, Eventos, Planteles, Catálogo.
 const NAV_ADMIN_GENERAL = [
   { name: 'Socios', path: '/admin/socios', icon: Users },
   { name: 'Verificaciones', path: '/admin/verificaciones', icon: Wallet },
-  { name: 'Estadísticas', path: '/admin/estadisticas', icon: TrendingUp },
   { name: 'Alquileres', path: '/admin/reservas', icon: Calendar },
   { name: 'Eventos', path: '/gestion-eventos', icon: CalendarDays },
   { name: 'Planteles', path: '/gestion-planteles', icon: ClipboardList },
   { name: 'Catálogo', path: '/admin/productos', icon: Package },
-  { name: 'Comercios', path: '/admin/comercios', icon: Store },
-  { name: 'Historial', path: '/admin/auditoria', icon: History },
 ];
 
 export default function MainLayout() {
@@ -121,6 +117,8 @@ export default function MainLayout() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [seccionesAbiertas, setSeccionesAbiertas] = useState({});
   const [fotoFallo, setFotoFallo] = useState(false);
+  const [adminDropdownOpen, setAdminDropdownOpen] = useState(false);
+  const adminDropdownRef = useRef(null);
   const { user, token, logout } = useAuth();
   const navigate = useNavigate();
   const { cart } = useCart();
@@ -233,6 +231,25 @@ export default function MainLayout() {
     // se marcan como leídas) el numerito baja enseguida.
   }, [user, token, location.pathname]);
 
+  // Cerrar dropdown de administración al hacer clic afuera o cambiar de ruta
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (adminDropdownRef.current && !adminDropdownRef.current.contains(e.target)) {
+        setAdminDropdownOpen(false);
+      }
+    };
+    if (adminDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [adminDropdownOpen]);
+
+  useEffect(() => {
+    setAdminDropdownOpen(false);
+  }, [location.pathname]);
+
   const handleLogout = () => {
     logout();
     setIsMenuOpen(false);
@@ -300,10 +317,10 @@ export default function MainLayout() {
   return (
     <div className="min-h-screen bg-gray-50 font-sans flex flex-col">
 
-      {/* Header Principal */}
-      <header className="bg-blue-600 text-white sticky top-0 z-40 shadow-md border-b border-blue-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="relative flex items-center justify-between py-3">
+      {/* Header Principal Flotante */}
+      <header className="sticky top-0 z-40 pt-2 sm:pt-3 px-3 sm:px-6 pointer-events-none">
+        <div className="pointer-events-auto mx-auto max-w-7xl">
+          <nav className="relative flex items-center justify-between rounded-2xl border border-blue-500/30 bg-blue-600/90 backdrop-blur-md px-3.5 py-2 sm:px-5 sm:py-2.5 shadow-lg shadow-blue-950/15 text-white">
 
             {/* Menú Hamburguesa */}
             <div>
@@ -314,7 +331,7 @@ export default function MainLayout() {
                 className="p-2 rounded-xl bg-white/10 text-white/90 hover:text-white hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-white/40 transition-colors"
               >
                 <Menu
-                  className={`h-6 w-6 transition-transform duration-[250ms] ease-in-out ${
+                  className={`h-5 w-5 sm:h-6 sm:w-6 transition-transform duration-[250ms] ease-in-out ${
                     isMenuOpen ? 'rotate-90' : 'rotate-0'
                   }`}
                 />
@@ -338,7 +355,7 @@ export default function MainLayout() {
                   <img
                     src={fotoPerfil}
                     alt="Mi foto de perfil"
-                    className="h-9 w-9 sm:h-10 sm:w-10 rounded-full object-cover ring-2 ring-white/20 [filter:drop-shadow(0_1px_6px_rgba(255,255,255,0.25))]"
+                    className="h-8 w-8 sm:h-10 sm:w-10 rounded-full object-cover ring-2 ring-white/20 [filter:drop-shadow(0_1px_6px_rgba(255,255,255,0.25))]"
                     onError={() => setFotoFallo(true)}
                   />
                 ) : (
@@ -348,44 +365,133 @@ export default function MainLayout() {
                   <img
                     src={escudoCar}
                     alt="Escudo Club Atlético Roberts"
-                    className="h-9 sm:h-10 w-auto object-contain [filter:drop-shadow(0_1px_6px_rgba(255,255,255,0.25))]"
+                    className="h-8 sm:h-10 w-auto object-contain [filter:drop-shadow(0_1px_6px_rgba(255,255,255,0.25))]"
                   />
                 )}
               </Link>
             </div>
 
-            {/* Iconos de la derecha: Notificaciones y Carrito */}
-            {mostrarIconosCompra && (
-              <div className="flex items-center gap-4">
-                {/* Notificaciones */}
-                <Link
-                  to="/notificaciones"
-                  className="flex p-2 rounded-xl bg-white/10 text-white/90 hover:text-white hover:bg-white/20 transition-colors relative"
+            {/* Derecha: Tag Administrador (popover) o Iconos de Socio */}
+            {esAdminGeneral ? (
+              <div className="relative" ref={adminDropdownRef}>
+                <button
+                  type="button"
+                  onClick={() => setAdminDropdownOpen(o => !o)}
+                  className="inline-flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1.5 rounded-xl bg-white/15 hover:bg-white/25 text-white font-semibold text-xs sm:text-sm transition-colors border border-white/20 shadow-sm"
+                  aria-expanded={adminDropdownOpen}
+                  aria-label="Menú de administración"
                 >
-                  <Bell className="h-6 w-6" />
-                  {unreadCount > 0 && (
-                    <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white ring-2 ring-blue-600">
-                      {unreadCount}
-                    </span>
+                  <span>Administrador</span>
+                  <ChevronDown
+                    size={14}
+                    className={`transition-transform duration-200 ${adminDropdownOpen ? 'rotate-180' : ''}`}
+                  />
+                  {(unreadCount > 0 || itemCount > 0) && (
+                    <span className="w-2 h-2 rounded-full bg-red-400 -ml-0.5 animate-pulse" />
                   )}
-                </Link>
+                </button>
 
-                {/* Carrito */}
-                <Link
-                  to="/carrito"
-                  className="flex p-2 rounded-xl bg-white/10 text-white/90 hover:text-white hover:bg-white/20 transition-colors relative"
-                >
-                  <ShoppingCart className="h-6 w-6" />
-                  {itemCount > 0 && (
-                    <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white ring-2 ring-blue-600">
-                      {itemCount}
-                    </span>
-                  )}
-                </Link>
+                {adminDropdownOpen && (
+                  <div className="absolute right-0 mt-2 w-56 rounded-2xl bg-white text-gray-800 shadow-xl border border-gray-100 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+                    <div className="px-3.5 py-1 text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                      Administración
+                    </div>
+                    <Link
+                      to="/perfil"
+                      onClick={() => setAdminDropdownOpen(false)}
+                      className="flex items-center gap-2.5 px-3.5 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors"
+                    >
+                      <UserIcon size={16} className="text-gray-400" />
+                      <span>Mi perfil</span>
+                    </Link>
+                    <Link
+                      to="/admin/estadisticas"
+                      onClick={() => setAdminDropdownOpen(false)}
+                      className="flex items-center gap-2.5 px-3.5 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors"
+                    >
+                      <TrendingUp size={16} className="text-gray-400" />
+                      <span>Dashboard</span>
+                    </Link>
+                    <Link
+                      to="/admin/auditoria"
+                      onClick={() => setAdminDropdownOpen(false)}
+                      className="flex items-center gap-2.5 px-3.5 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors"
+                    >
+                      <History size={16} className="text-gray-400" />
+                      <span>Historial</span>
+                    </Link>
+
+                    <div className="my-1.5 border-t border-gray-100" />
+
+                    <div className="px-3.5 py-1 text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                      Vista de socio
+                    </div>
+                    <Link
+                      to="/carrito"
+                      onClick={() => setAdminDropdownOpen(false)}
+                      className="flex items-center justify-between px-3.5 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <ShoppingCart size={16} className="text-gray-400" />
+                        <span>Carrito</span>
+                      </div>
+                      {itemCount > 0 && (
+                        <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-blue-600 text-white">
+                          {itemCount}
+                        </span>
+                      )}
+                    </Link>
+                    <Link
+                      to="/notificaciones"
+                      onClick={() => setAdminDropdownOpen(false)}
+                      className="flex items-center justify-between px-3.5 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <Bell size={16} className="text-gray-400" />
+                        <span>Notificaciones</span>
+                      </div>
+                      {unreadCount > 0 && (
+                        <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-red-500 text-white">
+                          {unreadCount}
+                        </span>
+                      )}
+                    </Link>
+                  </div>
+                )}
               </div>
+            ) : (
+              mostrarIconosCompra ? (
+                <div className="flex items-center gap-2 sm:gap-4">
+                  {/* Notificaciones */}
+                  <Link
+                    to="/notificaciones"
+                    className="flex p-2 rounded-xl bg-white/10 text-white/90 hover:text-white hover:bg-white/20 transition-colors relative"
+                  >
+                    <Bell className="h-5 w-5 sm:h-6 sm:w-6" />
+                    {unreadCount > 0 && (
+                      <span className="absolute -top-1 -right-1 flex h-4 w-4 sm:h-5 sm:w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white ring-2 ring-blue-600">
+                        {unreadCount}
+                      </span>
+                    )}
+                  </Link>
+
+                  {/* Carrito */}
+                  <Link
+                    to="/carrito"
+                    className="flex p-2 rounded-xl bg-white/10 text-white/90 hover:text-white hover:bg-white/20 transition-colors relative"
+                  >
+                    <ShoppingCart className="h-5 w-5 sm:h-6 sm:w-6" />
+                    {itemCount > 0 && (
+                      <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white ring-2 ring-blue-600">
+                        {itemCount}
+                      </span>
+                    )}
+                  </Link>
+                </div>
+              ) : <div className="w-9" />
             )}
 
-          </div>
+          </nav>
         </div>
       </header>
 

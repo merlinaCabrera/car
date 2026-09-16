@@ -345,7 +345,7 @@ export default function AdminInicio() {
             loading={resumen.loading}
             error={resumen.error}
             ctaLabel="Ver comercios"
-            ctaPath="/admin/comercios"
+            ctaPath="/admin/productos"
           />
         </div>
       </div>

@@ -20,7 +20,6 @@ import AdminSolicitudes from './pages/AdminSolicitudes';
 import AdminVerificaciones from './pages/AdminVerificaciones';
 import AdminSocios from './pages/AdminSocios';
 import AdminAuditoria from './pages/AdminAuditoria';
-import AdminComercios from './pages/AdminComercios';
 import JugadorCalendario from './pages/JugadorCalendario';
 import AdminReservas from './pages/AdminReservas';
 import AdminScanner from './pages/AdminScanner';
@@ -95,7 +94,7 @@ function App() {
                 <Route path="/admin/solicitudes" element={<AdminSolicitudes />} />
                 <Route path="/admin/socios" element={<AdminSocios />} />
                 <Route path="/admin/auditoria" element={<AdminAuditoria />} />
-                <Route path="/admin/comercios" element={<AdminComercios />} />
+                <Route path="/admin/comercios" element={<Navigate to="/admin/productos" replace />} />
                 <Route path="/admin/pagos" element={<Navigate to="/admin/verificaciones?tipo=cuota" replace />} />
                 <Route path="/admin/verificaciones" element={<AdminVerificaciones />} />
                 <Route path="/admin/reservas" element={<AdminReservas />} />

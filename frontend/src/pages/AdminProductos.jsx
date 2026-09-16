@@ -41,7 +41,14 @@ import {
   RotateCcw,
   ChevronDown,
   ChevronUp,
+  Store,
+  Image,
+  HelpCircle,
 } from 'lucide-react'
+
+import ComerciosBlock from '../components/admin/ComerciosBlock'
+import SponsorsBlock from '../components/admin/SponsorsBlock'
+import FaqBlock from '../components/admin/FaqBlock'
 
 const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 
@@ -364,6 +371,12 @@ export default function AdminProductos() {
   const [successRec,        setSuccessRec]        = useState(null)
   const [panelRecAbierto,   setPanelRecAbierto]   = useState(false)
 
+  // ── Estados de los 4 desplegables inferiores ──────────────────────────────
+  const [productosAbierto,  setProductosAbierto]  = useState(true)
+  const [comerciosAbierto,  setComerciosAbierto]  = useState(false)
+  const [sponsorsAbierto,   setSponsorsAbierto]   = useState(false)
+  const [faqAbierto,        setFaqAbierto]        = useState(false)
+
   const fetchProductos = useCallback(async () => {
     if (!token) return
     setLoading(true)
@@ -632,74 +645,15 @@ export default function AdminProductos() {
       )}
 
       {/* Header */}
-      <div className="space-y-4">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2 sm:gap-3">
-            <Package size={22} className="text-gray-500 flex-shrink-0" />
-            Catálogo de Productos y Servicios
-          </h1>
-          <p className="text-xs sm:text-sm text-gray-500 mt-1">
-            Cuotas, alquileres, indumentaria y demás ítems disponibles para la venta.
-          </p>
-        </div>
-
-        {/* ── Filtros: tipo, mismo patrón que Socios / Reservas / Eventos / Verificaciones ── */}
-        <div className="flex flex-nowrap items-center gap-1.5 sm:gap-3 overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 sm:overflow-visible">
-          <div className="relative flex-shrink-0">
-            <Filter size={13} className="absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none z-10" />
-            <select
-              value={filtroCategoria}
-              onChange={e => setFiltroCategoria(e.target.value)}
-              className="form-input pl-7 pr-5 sm:pl-8 sm:pr-7 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-gray-600 w-auto"
-              title="Filtrar por tipo"
-            >
-              {FILTROS_CATEGORIA.map(f => (
-                <option key={f.value} value={f.value}>{f.value === '' ? 'Tipo' : f.label}</option>
-              ))}
-            </select>
-          </div>
-
-          <button
-            onClick={openModalForCreate}
-            className="flex-shrink-0 inline-flex items-center gap-2 px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-green-600 text-white font-semibold hover:bg-green-700 transition-colors shadow-sm text-sm"
-            title="Nuevo Producto"
-          >
-            <PlusCircle size={16} />
-            <span className="hidden sm:inline">Nuevo Producto</span>
-          </button>
-
-          <button
-            onClick={fetchProductos} disabled={loading}
-            className="flex-shrink-0 p-1.5 sm:p-2 rounded-lg text-gray-500 hover:bg-gray-100 disabled:opacity-40 transition-colors"
-            title="Actualizar lista"
-          >
-            <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
-          </button>
-        </div>
+      <div>
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2 sm:gap-3">
+          <Package size={22} className="text-gray-500 flex-shrink-0" />
+          Catálogo y Configuración
+        </h1>
+        <p className="text-xs sm:text-sm text-gray-500 mt-1">
+          Valores base del club, otros productos y servicios, comercios adheridos, sponsors y preguntas frecuentes.
+        </p>
       </div>
-
-      {/* Buscador */}
-      <div className="relative">
-        <Search size={13} className="absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-        <input
-          type="text"
-          value={busqueda}
-          onChange={e => setBusqueda(e.target.value)}
-          placeholder="Buscar por nombre o categoría…"
-          className="form-input pl-7 sm:pl-8 pr-4 py-1.5 sm:py-2 text-xs sm:text-sm w-full"
-        />
-      </div>
-
-      {/* Error de carga */}
-      {error && (
-        <div className="flex items-center gap-3 p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm">
-          <AlertCircle size={18} className="flex-shrink-0" />
-          <span className="flex-1">{error}</span>
-          <button onClick={fetchProductos} className="underline underline-offset-2 font-medium hover:text-red-900">
-            Reintentar
-          </button>
-        </div>
-      )}
 
       {/* Pedestales de Configuración Global — compactos, siempre 3 columnas
           (incluso en mobile). El botón de editar pasa a ser un ícono chico
@@ -998,167 +952,330 @@ export default function AdminProductos() {
         )}
       </div>
 
-      <h2 className="text-base sm:text-lg font-bold text-gray-800 pt-2 border-t border-gray-200">
-        Otros Productos y Servicios
-      </h2>
+      {/* ═══ Desplegable 1: Otros Productos y Servicios ═══ */}
+      <div className="pt-2 border-t border-gray-200">
+        <button
+          type="button"
+          onClick={() => setProductosAbierto(o => !o)}
+          className="w-full flex items-start justify-between gap-3 text-left pt-4"
+        >
+          <div>
+            <h2 className="font-display text-xl sm:text-2xl font-semibold text-gray-900 flex items-center gap-2 sm:gap-3">
+              <Package size={22} className="text-gray-500 flex-shrink-0" />
+              Otros Productos y Servicios
+            </h2>
+            <p className="text-xs sm:text-sm text-gray-500 mt-1">
+              Alquileres, indumentaria y demás ítems disponibles para la venta.
+            </p>
+          </div>
+          {productosAbierto
+            ? <ChevronUp size={20} className="text-gray-400 flex-shrink-0 mt-1" />
+            : <ChevronDown size={20} className="text-gray-400 flex-shrink-0 mt-1" />}
+        </button>
 
-      {/* Tarjetas — mobile (skeleton de carga) */}
-      {loading && (
-        <div className="md:hidden bg-white rounded-2xl shadow-sm border border-gray-200 divide-y divide-gray-50">
-          {[...Array(5)].map((_, i) => (
-            <div key={i} className="p-4 animate-pulse space-y-2">
-              <div className="h-4 bg-gray-200 rounded-md w-2/3" />
-              <div className="h-3 bg-gray-100 rounded-md w-1/2" />
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Tarjetas — mobile */}
-      {!loading && (
-        <div className="md:hidden bg-white rounded-2xl shadow-sm border border-gray-200 divide-y divide-gray-50">
-          {otrosProductos.map(p => (
-            <div key={p.id_producto} className="p-4 space-y-3">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="font-medium text-gray-900 truncate">{p.nombre}</div>
-                  {p.descripcion && (
-                    <div className="text-xs text-gray-400 mt-0.5 truncate" title={p.descripcion}>
-                      {p.descripcion}
-                    </div>
-                  )}
-                </div>
-                {p.es_activo ? (
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 flex-shrink-0">
-                    Activo
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600 flex-shrink-0">
-                    Inactivo
-                  </span>
-                )}
-              </div>
-
-              <div className="flex items-center flex-wrap gap-2">
-                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${CATEGORIA_BADGE_CLASSES[p.categoria] ?? 'bg-gray-100 text-gray-700'}`}>
-                  {CATEGORIA_LABELS[p.categoria] ?? p.categoria}
-                </span>
-                <span className="text-sm font-semibold text-gray-900">
-                  {formatoMoneda.format(p.precio_actual)}
-                </span>
-                {p.stock == null ? (
-                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-camoti-100 text-camoti-800">
-                    <InfinityIcon size={12} /> Ilimitado
-                  </span>
-                ) : (
-                  <span className="text-sm text-gray-700">Stock: {p.stock}</span>
-                )}
-              </div>
-
-              <div className="pt-2 border-t border-gray-200">
-                <button
-                  onClick={() => openModalForEdit(p)}
-                  className="w-full inline-flex items-center justify-center gap-1.5 p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-100 rounded-lg transition-colors text-xs font-medium"
-                  title="Editar Producto"
+        {productosAbierto && (
+          <div className="mt-4 space-y-4">
+            {/* Filtros y acciones */}
+            <div className="flex flex-nowrap items-center gap-1.5 sm:gap-3 overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 sm:overflow-visible">
+              <div className="relative flex-shrink-0">
+                <Filter size={13} className="absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none z-10" />
+                <select
+                  value={filtroCategoria}
+                  onChange={e => setFiltroCategoria(e.target.value)}
+                  className="form-input pl-7 pr-5 sm:pl-8 sm:pr-7 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-gray-600 w-auto"
+                  title="Filtrar por tipo"
                 >
-                  <Edit size={16} /> Editar
+                  {FILTROS_CATEGORIA.map(f => (
+                    <option key={f.value} value={f.value}>{f.value === '' ? 'Tipo' : f.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              <button
+                onClick={openModalForCreate}
+                className="flex-shrink-0 inline-flex items-center gap-2 px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-green-600 text-white font-semibold hover:bg-green-700 transition-colors shadow-sm text-sm"
+                title="Nuevo Producto"
+              >
+                <PlusCircle size={16} />
+                <span className="hidden sm:inline">Nuevo Producto</span>
+              </button>
+
+              <button
+                onClick={fetchProductos} disabled={loading}
+                className="flex-shrink-0 p-1.5 sm:p-2 rounded-lg text-gray-500 hover:bg-gray-100 disabled:opacity-40 transition-colors"
+                title="Actualizar lista"
+              >
+                <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+              </button>
+            </div>
+
+            {/* Buscador */}
+            <div className="relative">
+              <Search size={13} className="absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+              <input
+                type="text"
+                value={busqueda}
+                onChange={e => setBusqueda(e.target.value)}
+                placeholder="Buscar por nombre o categoría…"
+                className="form-input pl-7 sm:pl-8 pr-4 py-1.5 sm:py-2 text-xs sm:text-sm w-full"
+              />
+            </div>
+
+            {/* Error de carga */}
+            {error && (
+              <div className="flex items-center gap-3 p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm">
+                <AlertCircle size={18} className="flex-shrink-0" />
+                <span className="flex-1">{error}</span>
+                <button onClick={fetchProductos} className="underline underline-offset-2 font-medium hover:text-red-900">
+                  Reintentar
                 </button>
               </div>
-            </div>
-          ))}
-
-          {otrosProductos.length === 0 && (
-            <div className="text-center py-12 text-gray-500 text-sm px-4">
-              {(busqueda || filtroCategoria)
-                ? 'No se encontraron otros productos con ese criterio.'
-                : 'No hay otros productos o servicios cargados todavía.'}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Tabla — desktop */}
-      <div className="hidden md:block bg-white rounded-2xl shadow-sm border border-gray-200 overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-100">
-          <thead className="bg-gray-50">
-            <tr>
-              {['Nombre', 'Categoría', 'Precio', 'Stock', 'Estado', 'Acciones'].map(h => (
-                <th key={h} className="px-6 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-50">
-            {loading && [...Array(5)].map((_, i) => (
-              <tr key={i} className="animate-pulse">
-                <td colSpan="6" className="px-6 py-4">
-                  <div className="h-4 bg-gray-200 rounded-md" />
-                </td>
-              </tr>
-            ))}
-
-            {!loading && otrosProductos.map(p => (
-              <tr key={p.id_producto} className="hover:bg-gray-50/70 transition-colors">
-                <td className="px-6 py-4">
-                  <div className="font-medium text-gray-900">{p.nombre}</div>
-                  {p.descripcion && (
-                    <div className="text-xs text-gray-400 mt-0.5 max-w-xs truncate" title={p.descripcion}>
-                      {p.descripcion}
-                    </div>
-                  )}
-                </td>
-                <td className="px-6 py-4">
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${CATEGORIA_BADGE_CLASSES[p.categoria] ?? 'bg-gray-100 text-gray-700'}`}>
-                    {CATEGORIA_LABELS[p.categoria] ?? p.categoria}
-                  </span>
-                </td>
-                <td className="px-6 py-4 text-sm font-semibold text-gray-900">
-                  {formatoMoneda.format(p.precio_actual)}
-                </td>
-                <td className="px-6 py-4 text-sm">
-                  {p.stock == null ? (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-camoti-100 text-camoti-800">
-                      <InfinityIcon size={12} /> Ilimitado
-                    </span>
-                  ) : (
-                    <span className="text-gray-700">{p.stock}</span>
-                  )}
-                </td>
-                <td className="px-6 py-4">
-                  {p.es_activo ? (
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                      Activo
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
-                      Inactivo
-                    </span>
-                  )}
-                </td>
-                <td className="px-6 py-4 text-right whitespace-nowrap">
-                  <button
-                    onClick={() => openModalForEdit(p)}
-                    className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
-                    title="Editar Producto"
-                  >
-                    <Edit size={16} />
-                  </button>
-                </td>
-              </tr>
-            ))}
-
-            {!loading && otrosProductos.length === 0 && (
-              <tr>
-                <td colSpan="6" className="text-center py-12 text-gray-500">
-                  {(busqueda || filtroCategoria)
-                    ? 'No se encontraron otros productos con ese criterio.'
-                    : 'No hay otros productos o servicios cargados todavía.'}
-                </td>
-              </tr>
             )}
-          </tbody>
-        </table>
+
+            {/* Tarjetas — mobile (skeleton de carga) */}
+            {loading && (
+              <div className="md:hidden bg-white rounded-2xl shadow-sm border border-gray-200 divide-y divide-gray-50">
+                {[...Array(5)].map((_, i) => (
+                  <div key={i} className="p-4 animate-pulse space-y-2">
+                    <div className="h-4 bg-gray-200 rounded-md w-2/3" />
+                    <div className="h-3 bg-gray-100 rounded-md w-1/2" />
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Tarjetas — mobile */}
+            {!loading && (
+              <div className="md:hidden bg-white rounded-2xl shadow-sm border border-gray-200 divide-y divide-gray-50">
+                {otrosProductos.map(p => (
+                  <div key={p.id_producto} className="p-4 space-y-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="font-medium text-gray-900 truncate">{p.nombre}</div>
+                        {p.descripcion && (
+                          <div className="text-xs text-gray-400 mt-0.5 truncate" title={p.descripcion}>
+                            {p.descripcion}
+                          </div>
+                        )}
+                      </div>
+                      {p.es_activo ? (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 flex-shrink-0">
+                          Activo
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600 flex-shrink-0">
+                          Inactivo
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center flex-wrap gap-2">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${CATEGORIA_BADGE_CLASSES[p.categoria] ?? 'bg-gray-100 text-gray-700'}`}>
+                        {CATEGORIA_LABELS[p.categoria] ?? p.categoria}
+                      </span>
+                      <span className="text-sm font-semibold text-gray-900">
+                        {formatoMoneda.format(p.precio_actual)}
+                      </span>
+                      {p.stock == null ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-camoti-100 text-camoti-800">
+                          <InfinityIcon size={12} /> Ilimitado
+                        </span>
+                      ) : (
+                        <span className="text-sm text-gray-700">Stock: {p.stock}</span>
+                      )}
+                    </div>
+
+                    <div className="pt-2 border-t border-gray-200">
+                      <button
+                        onClick={() => openModalForEdit(p)}
+                        className="w-full inline-flex items-center justify-center gap-1.5 p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-100 rounded-lg transition-colors text-xs font-medium"
+                        title="Editar Producto"
+                      >
+                        <Edit size={16} /> Editar
+                      </button>
+                    </div>
+                  </div>
+                ))}
+
+                {otrosProductos.length === 0 && (
+                  <div className="text-center py-12 text-gray-500 text-sm px-4">
+                    {(busqueda || filtroCategoria)
+                      ? 'No se encontraron otros productos con ese criterio.'
+                      : 'No hay otros productos o servicios cargados todavía.'}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Tabla — desktop */}
+            <div className="hidden md:block bg-white rounded-2xl shadow-sm border border-gray-200 overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-100">
+                <thead className="bg-gray-50">
+                  <tr>
+                    {['Nombre', 'Categoría', 'Precio', 'Stock', 'Estado', 'Acciones'].map(h => (
+                      <th key={h} className="px-6 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {loading && [...Array(5)].map((_, i) => (
+                    <tr key={i} className="animate-pulse">
+                      <td colSpan="6" className="px-6 py-4">
+                        <div className="h-4 bg-gray-200 rounded-md" />
+                      </td>
+                    </tr>
+                  ))}
+
+                  {!loading && otrosProductos.map(p => (
+                    <tr key={p.id_producto} className="hover:bg-gray-50/70 transition-colors">
+                      <td className="px-6 py-4">
+                        <div className="font-medium text-gray-900">{p.nombre}</div>
+                        {p.descripcion && (
+                          <div className="text-xs text-gray-400 mt-0.5 max-w-xs truncate" title={p.descripcion}>
+                            {p.descripcion}
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${CATEGORIA_BADGE_CLASSES[p.categoria] ?? 'bg-gray-100 text-gray-700'}`}>
+                          {CATEGORIA_LABELS[p.categoria] ?? p.categoria}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm font-semibold text-gray-900">
+                        {formatoMoneda.format(p.precio_actual)}
+                      </td>
+                      <td className="px-6 py-4 text-sm">
+                        {p.stock == null ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-camoti-100 text-camoti-800">
+                            <InfinityIcon size={12} /> Ilimitado
+                          </span>
+                        ) : (
+                          <span className="text-gray-700">{p.stock}</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4">
+                        {p.es_activo ? (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            Activo
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                            Inactivo
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 text-right whitespace-nowrap">
+                        <button
+                          onClick={() => openModalForEdit(p)}
+                          className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
+                          title="Editar Producto"
+                        >
+                          <Edit size={16} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+
+                  {!loading && otrosProductos.length === 0 && (
+                    <tr>
+                      <td colSpan="6" className="text-center py-12 text-gray-500">
+                        {(busqueda || filtroCategoria)
+                          ? 'No se encontraron otros productos con ese criterio.'
+                          : 'No hay otros productos o servicios cargados todavía.'}
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ═══ Desplegable 2: Comercios Adheridos ═══ */}
+      <div className="pt-2 border-t border-gray-200">
+        <button
+          type="button"
+          onClick={() => setComerciosAbierto(o => !o)}
+          className="w-full flex items-start justify-between gap-3 text-left pt-4"
+        >
+          <div>
+            <h2 className="font-display text-xl sm:text-2xl font-semibold text-gray-900 flex items-center gap-2 sm:gap-3">
+              <Store size={22} className="text-gray-500 flex-shrink-0" />
+              Comercios Adheridos
+            </h2>
+            <p className="text-xs sm:text-sm text-gray-500 mt-1">
+              Alta, edición y baja de los comercios que ofrecen beneficios a los socios.
+            </p>
+          </div>
+          {comerciosAbierto
+            ? <ChevronUp size={20} className="text-gray-400 flex-shrink-0 mt-1" />
+            : <ChevronDown size={20} className="text-gray-400 flex-shrink-0 mt-1" />}
+        </button>
+
+        {comerciosAbierto && (
+          <div className="mt-4">
+            <ComerciosBlock token={token} />
+          </div>
+        )}
+      </div>
+
+      {/* ═══ Desplegable 3: Sponsors ═══ */}
+      <div className="pt-2 border-t border-gray-200">
+        <button
+          type="button"
+          onClick={() => setSponsorsAbierto(o => !o)}
+          className="w-full flex items-start justify-between gap-3 text-left pt-4"
+        >
+          <div>
+            <h2 className="font-display text-xl sm:text-2xl font-semibold text-gray-900 flex items-center gap-2 sm:gap-3">
+              <Image size={22} className="text-gray-500 flex-shrink-0" />
+              Sponsors
+            </h2>
+            <p className="text-xs sm:text-sm text-gray-500 mt-1">
+              Logos e imágenes del carrusel de sponsors en la landing pública.
+            </p>
+          </div>
+          {sponsorsAbierto
+            ? <ChevronUp size={20} className="text-gray-400 flex-shrink-0 mt-1" />
+            : <ChevronDown size={20} className="text-gray-400 flex-shrink-0 mt-1" />}
+        </button>
+
+        {sponsorsAbierto && (
+          <div className="mt-4">
+            <SponsorsBlock />
+          </div>
+        )}
+      </div>
+
+      {/* ═══ Desplegable 4: Preguntas Frecuentes ═══ */}
+      <div className="pt-2 border-t border-gray-200">
+        <button
+          type="button"
+          onClick={() => setFaqAbierto(o => !o)}
+          className="w-full flex items-start justify-between gap-3 text-left pt-4"
+        >
+          <div>
+            <h2 className="font-display text-xl sm:text-2xl font-semibold text-gray-900 flex items-center gap-2 sm:gap-3">
+              <HelpCircle size={22} className="text-gray-500 flex-shrink-0" />
+              Preguntas Frecuentes
+            </h2>
+            <p className="text-xs sm:text-sm text-gray-500 mt-1">
+              Contenido de la página de Ayuda — separado en preguntas públicas (sin login) y privadas (solo socios).
+            </p>
+          </div>
+          {faqAbierto
+            ? <ChevronUp size={20} className="text-gray-400 flex-shrink-0 mt-1" />
+            : <ChevronDown size={20} className="text-gray-400 flex-shrink-0 mt-1" />}
+        </button>
+
+        {faqAbierto && (
+          <div className="mt-4">
+            <FaqBlock />
+          </div>
+        )}
       </div>
     </div>
   )

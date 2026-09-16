@@ -4,19 +4,68 @@ const AuthContext = createContext();
 // AuthContext.jsx
 const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 
+// ── Perfil persistido ───────────────────────────────────────────────────────
+//
+// Por qué existe: el escáner de la puerta funciona sin conexión (ver
+// hooks/useEscanerCache.js), pero eso solo servía mientras la pestaña no se
+// recargara. En un celular el navegador descarta la pestaña al bloquear la
+// pantalla; al volver, la app arrancaba de cero, /usuarios/me fallaba sin
+// señal y el portero terminaba en /login con la caché del padrón ahí al lado
+// sin poder usarla.
+//
+// Ahora el perfil se guarda junto al token y se usa como punto de partida.
+// `authToken` sigue siendo la credencial: sin token el perfil guardado se
+// ignora y se borra.
+//
+// Todo va envuelto en try/catch: en modo incógnito, con el almacenamiento
+// bloqueado o con la cuota llena, localStorage TIRA EXCEPCIÓN, y acá eso se
+// llevaría puesta la app entera antes del primer render.
+const CLAVE_PERFIL = 'car_user_profile'
+
+function leerStorage(clave) {
+  try { return localStorage.getItem(clave) } catch { return null }
+}
+
+function leerPerfilPersistido() {
+  const crudo = leerStorage(CLAVE_PERFIL)
+  if (!crudo) return null
+  try { return JSON.parse(crudo) } catch { return null }
+}
+
+function guardarPerfilPersistido(perfil) {
+  try { localStorage.setItem(CLAVE_PERFIL, JSON.stringify(perfil)) } catch { /* storage no disponible */ }
+}
+
+function borrarPerfilPersistido() {
+  try { localStorage.removeItem(CLAVE_PERFIL) } catch { /* storage no disponible */ }
+}
+
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
-  const [token, setToken] = useState(() => localStorage.getItem('authToken'));
+  // El perfil guardado solo vale si además hay token: es el token el que
+  // autoriza, el perfil es nada más la copia de lo que devolvió /usuarios/me.
+  const [token, setToken] = useState(() => leerStorage('authToken'));
+  const [user, setUser] = useState(() => (leerStorage('authToken') ? leerPerfilPersistido() : null));
   const [loading, setLoading] = useState(true); // Para verificar el token en la carga inicial
 
   const isAuthenticated = !!token && !!user;
+
+  // Última copia conocida del perfil, para seguir funcionando cuando
+  // /usuarios/me no contesta. Devuelve null si nunca se guardó ninguna, y en
+  // ese caso RutaPrivada manda a /login — sin perfil no hay nada que mostrar,
+  // pero el token queda intacto para el próximo intento.
+  const usarPerfilPersistido = () => {
+    const persistido = leerPerfilPersistido();
+    if (persistido) setUser(persistido);
+    return persistido;
+  };
 
   // Función para obtener el perfil del usuario usando el token
   const fetchUserProfile = useCallback(async (authToken) => {
     if (!authToken) {
       setUser(null);
+      borrarPerfilPersistido();
       setLoading(false);
-      return;
+      return null;
     }
     try {
       const res = await fetch(`${API}/usuarios/me`, {
@@ -25,18 +74,35 @@ export function AuthProvider({ children }) {
       if (res.ok) {
         const userData = await res.json();
         setUser(userData);
+        guardarPerfilPersistido(userData);
         return userData;
-      } else {
-        // El token puede ser inválido o expirado
-        logout();
       }
+
+      // Solo un rechazo EXPLÍCITO del backend cierra la sesión:
+      //   401 → token inválido o vencido.
+      //   403 → en /usuarios/me solo puede significar socio dado de baja
+      //         (el otro 403 posible, requiere_cambio_password, está
+      //         exceptuado para esta ruta en dependencies.py).
+      if (res.status === 401 || res.status === 403) {
+        logout();
+        return null;
+      }
+
+      // Cualquier otro status (502/503 del cold start de Render, un 500
+      // transitorio) NO es motivo para desloguear a nadie: el token sigue
+      // siendo válido. Se sigue con la última copia conocida del perfil.
+      return usarPerfilPersistido();
     } catch (error) {
-      console.error("Error al obtener el perfil del usuario:", error);
-      logout(); // Limpiar en caso de error de red
+      // Acá llega SOLO el fallo de red: `fetch` rechaza con TypeError
+      // ("Failed to fetch") cuando no hay conexión, no hay DNS o está el modo
+      // avión. Antes esto llamaba a logout() y era justo el caso que rompía
+      // el modo offline del escáner: recargar la pantalla sin señal borraba
+      // la sesión del portero.
+      console.warn("No se pudo refrescar el perfil (¿sin conexión?):", error);
+      return usarPerfilPersistido();
     } finally {
       setLoading(false);
     }
-    return null;
   }, []);
 
   // Al cargar, verifica si hay un token y busca los datos del usuario
@@ -79,6 +145,7 @@ export function AuthProvider({ children }) {
         }
         const userData = await perfilRes.json();
         setUser(userData);
+        guardarPerfilPersistido(userData);
 
         // Devolvemos el perfil completo (con roles_asignados) para que el
         // componente que llama pueda redirigir según el rol sin esperar un
@@ -93,7 +160,8 @@ export function AuthProvider({ children }) {
   const logout = () => {
     setUser(null);
     setToken(null);
-    localStorage.removeItem('authToken');
+    try { localStorage.removeItem('authToken') } catch { /* storage no disponible */ }
+    borrarPerfilPersistido();
   };
 
   // Reemplaza el token de la sesión sin pasar por login().
@@ -143,7 +211,10 @@ export function AuthProvider({ children }) {
     const perfilDesbloqueado = user
       ? { ...user, requiere_cambio_password: false }
       : null;
-    if (perfilDesbloqueado) setUser(perfilDesbloqueado);
+    if (perfilDesbloqueado) {
+      setUser(perfilDesbloqueado);
+      guardarPerfilPersistido(perfilDesbloqueado);
+    }
 
     // Refresco en segundo plano, para traer cualquier otro cambio del perfil.
     // Deliberadamente NO se espera: si falla, la persona ya está adentro con
@@ -158,7 +229,10 @@ export function AuthProvider({ children }) {
   // Actualiza el usuario en memoria con lo que devolvió un PATCH/POST, sin
   // volver a pegarle a /usuarios/me.
   const actualizarUsuario = (datos) => {
-    if (datos) setUser(datos);
+    if (datos) {
+      setUser(datos);
+      guardarPerfilPersistido(datos);
+    }
   };
 
   return (

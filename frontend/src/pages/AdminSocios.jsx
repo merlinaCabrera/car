@@ -14,7 +14,7 @@
 import { textoError } from '../utils/errores';
 import ComprobantePago from '../components/admin/ComprobantePago'
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import { useAuth } from '../context/AuthContext'
+import { useAuth } from '../context/useAuth'
 import ConfirmDialog from '../components/ConfirmDialog'
 import {
   parsearISO,

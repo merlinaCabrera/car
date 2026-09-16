@@ -2,7 +2,7 @@
 import { textoError } from '../utils/errores';
 import { useState, useEffect, useCallback } from 'react'
 import ConfirmDialog from '../components/ConfirmDialog'
-import { useAuth } from '../context/AuthContext'
+import { useAuth } from '../context/useAuth'
 import {
   CheckCircle,
   Clock,

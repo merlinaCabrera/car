@@ -5,8 +5,8 @@ import Historia from '../components/landing/Historia';
 import Beneficios from '../components/landing/Beneficios';
 import Sponsors from '../components/landing/Sponsors';
 import Footer from '../components/landing/Footer';
-import { useAuth } from '../context/AuthContext';
-import { rolesDeUsuario } from '../components/RequireRole';
+import { useAuth } from '../context/useAuth';
+import { rolesDeUsuario } from '../components/roleHelpers';
 
 export default function Landing() {
   const { user } = useAuth();

@@ -164,6 +164,34 @@ def crear_producto(
     db: Session = Depends(get_db),
     admin: models.Usuario = Depends(require_roles(*_ROLES_ADMIN_PRODUCTOS)),
 ) -> models.ProductoServicio:
+    """
+    Alta de producto o servicio.
+
+    Guarda de unicidad para `cuota_social`: el sistema asume UNA sola cuota
+    social activa (es la que se cobra en socio_cuotas y la que el frontend
+    muestra en su propia tarjeta). El frontend ya oculta la categoria cuando
+    detecta una, pero eso depende de que el listado haya llegado: con el fetch
+    en vuelo o en error, `productos` esta vacio y el modal la ofrece igual.
+    Este chequeo es el que efectivamente lo impide.
+
+    Las inactivas NO cuentan: dar de baja la cuota vieja y crear la nueva es el
+    camino normal para reemplazarla.
+    """
+    if payload.categoria == "cuota_social" and payload.es_activo:
+        ya_existe = (
+            db.query(models.ProductoServicio.id_producto)
+            .filter(
+                models.ProductoServicio.categoria == "cuota_social",
+                models.ProductoServicio.es_activo.is_(True),
+            )
+            .first()
+        )
+        if ya_existe:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Ya existe una cuota social activa",
+            )
+
     nuevo = models.ProductoServicio(
         nombre=payload.nombre,
         categoria=payload.categoria,

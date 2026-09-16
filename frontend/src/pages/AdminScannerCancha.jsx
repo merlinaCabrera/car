@@ -41,7 +41,7 @@ import { textoError } from '../utils/errores';
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Scanner } from '@yudiel/react-qr-scanner'
-import { useAuth } from '../context/AuthContext'
+import { useAuth } from '../context/useAuth'
 import {
   ScanLine,
   ArrowLeft,

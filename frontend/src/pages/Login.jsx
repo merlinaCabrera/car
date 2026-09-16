@@ -1,8 +1,8 @@
 import { textoError } from '../utils/errores';
 import { useState } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import { homePorRol, rolesDeUsuario } from '../components/RequireRole';
+import { useAuth } from '../context/useAuth';
+import { homePorRol, rolesDeUsuario } from '../components/roleHelpers';
 import { Eye, EyeOff, ArrowLeft } from 'lucide-react';
 
 const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8000';

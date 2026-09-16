@@ -25,7 +25,7 @@
 
 import { textoError } from '../utils/errores';
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import { useAuth } from '../context/AuthContext'
+import { useAuth } from '../context/useAuth'
 import ConfirmDialog from '../components/ConfirmDialog'
 import {
   CANCHAS,

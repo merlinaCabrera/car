@@ -29,7 +29,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { useAuth } from '../context/AuthContext'
+import { useAuth } from '../context/useAuth'
 
 const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 

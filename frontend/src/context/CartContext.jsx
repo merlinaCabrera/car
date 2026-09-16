@@ -1,10 +1,11 @@
-/* eslint-disable react-refresh/only-export-components --
-   Mismo caso que AuthContext: `useCart` lo importan 8 archivos desde aca.
-   Separarlo es un refactor de imports y solo mejora el HMR en dev. */
-import { createContext, useState, useEffect, useContext } from 'react';
-import { useAuth } from './AuthContext';
-
-const CartContext = createContext();
+// CartContext.jsx
+//
+// Este archivo exporta SOLO <CartProvider>. El contexto y el hook `useCart`
+// viven en ./useCart.js, por el mismo motivo que AuthContext: que Vite pueda
+// hacer HMR en vez de recargar la app entera.
+import { useState, useEffect } from 'react';
+import { useAuth } from './useAuth';
+import { CartContext } from './useCart';
 
 // El carrito vive en localStorage, así que sobrevive al logout y al cierre del
 // navegador. Por eso se guarda también de QUIÉN es: sin ese dato, el carrito
@@ -110,8 +111,4 @@ export function CartProvider({ children }) {
       {children}
     </CartContext.Provider>
   );
-}
-
-export function useCart() {
-  return useContext(CartContext);
 }

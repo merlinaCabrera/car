@@ -25,7 +25,7 @@
 
 import { textoError } from '../utils/errores';
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { useAuth } from '../context/AuthContext'
+import { useAuth } from '../context/useAuth'
 import {
   User, Camera, Phone, MapPin, Mail, IdCard, Cake,
   Save, Loader2, AlertCircle, CheckCircle2, KeyRound,

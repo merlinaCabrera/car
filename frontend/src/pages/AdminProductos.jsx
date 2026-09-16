@@ -21,7 +21,7 @@
 
 import { textoError } from '../utils/errores';
 import { useState, useEffect, Fragment, useCallback, useMemo } from 'react'
-import { useAuth } from '../context/AuthContext'
+import { useAuth } from '../context/useAuth'
 import {
   Package,
   PlusCircle,
@@ -636,8 +636,12 @@ export default function AdminProductos() {
   }, [productos, busqueda, filtroCategoria])
   
   // TAREA 1: Separar la cuota social del resto de productos
+  // `es_activo` no es cosmetico: es exactamente la condicion que el backend
+  // usa para rechazar una segunda cuota social con 409. Sin ese filtro, una
+  // cuota social dada de baja seguia contando como existente y el modal no
+  // dejaba crear la nueva que la reemplaza.
   const cuotaSocial = useMemo(() =>
-    productos.find(p => p.categoria === 'cuota_social'),
+    productos.find(p => p.categoria === 'cuota_social' && p.es_activo),
   [productos])
 
   const otrosProductos = useMemo(() =>
@@ -1028,9 +1032,15 @@ export default function AdminProductos() {
                 </select>
               </div>
 
+              {/* Deshabilitado mientras el listado esta en vuelo o fallo: el modal
+                  decide con `cuotaSocialExists` si ofrece la categoria 'cuota_social',
+                  y ese dato sale de `productos`. Abriendolo antes de que llegue la
+                  respuesta (o con el fetch en error) `productos` esta vacio, el modal
+                  cree que no hay cuota social y habilita crear una segunda. */}
               <button
                 onClick={openModalForCreate}
-                className="flex-shrink-0 inline-flex items-center gap-2 px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-green-600 text-white font-semibold hover:bg-green-700 transition-colors shadow-sm text-sm"
+                disabled={loading || !!error}
+                className="flex-shrink-0 inline-flex items-center gap-2 px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-green-600 text-white font-semibold hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-green-600 transition-colors shadow-sm text-sm"
                 title="Nuevo Producto"
               >
                 <PlusCircle size={16} />

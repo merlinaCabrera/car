@@ -34,8 +34,8 @@
 
 import { textoError } from '../utils/errores';
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { useAuth } from '../context/AuthContext'
-import { rolesDeUsuario } from '../components/RequireRole'
+import { useAuth } from '../context/useAuth'
+import { rolesDeUsuario } from '../components/roleHelpers'
 import {
   Shield,
   PlusCircle,

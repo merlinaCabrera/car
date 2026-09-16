@@ -2,7 +2,7 @@
 import { textoError } from '../utils/errores';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/useAuth';
 import { QRCodeSVG } from 'qrcode.react';
 import {
   CheckCircle,

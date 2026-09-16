@@ -64,7 +64,7 @@
 
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { useAuth } from '../context/AuthContext'
+import { useAuth } from '../context/useAuth'
 import { useAdminResource } from '../hooks/useAdminResource'
 import MetricCard from '../components/admin/MetricCard'
 import ConfirmDialog from '../components/ConfirmDialog'

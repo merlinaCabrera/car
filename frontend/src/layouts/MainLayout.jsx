@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import { rolesDeUsuario } from '../components/RequireRole';
-import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/useAuth';
+import { rolesDeUsuario } from '../components/roleHelpers';
+import { useCart } from '../context/useCart';
 import {
   Menu,
   Home,

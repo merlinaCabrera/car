@@ -35,7 +35,7 @@
 import { textoError } from '../utils/errores';
 import { useState, useMemo, useEffect, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { useAuth } from '../context/AuthContext'
+import { useAuth } from '../context/useAuth'
 import { useAdminResource } from '../hooks/useAdminResource'
 import CategoriaOrdenBadge from '../components/admin/CategoriaOrdenBadge'
 import ComprobantePago from '../components/admin/ComprobantePago'

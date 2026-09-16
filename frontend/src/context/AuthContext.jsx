@@ -1,11 +1,11 @@
-/* eslint-disable react-refresh/only-export-components --
-   `useAuth` lo importan 39 archivos desde este mismo modulo. Moverlo a un archivo
-   aparte para contentar a fast refresh implica tocar los 39 imports; el unico
-   efecto de dejarlo asi es que Vite hace full reload en vez de HMR en dev. */
-import { createContext, useState, useContext, useEffect, useCallback } from 'react';
-
-const AuthContext = createContext();
 // AuthContext.jsx
+//
+// Este archivo exporta SOLO <AuthProvider>. El contexto y el hook `useAuth`
+// viven en ./useAuth.js: mezclarlos acá hacía que Vite descartara el fast
+// refresh y recargara la app entera en cada cambio del provider.
+import { useState, useEffect, useCallback } from 'react';
+import { AuthContext } from './useAuth';
+
 const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 
 // ── Perfil persistido ───────────────────────────────────────────────────────
@@ -248,9 +248,4 @@ export function AuthProvider({ children }) {
       {!loading && children}
     </AuthContext.Provider>
   );
-}
-
-// Hook personalizado para facilitar la importación
-export function useAuth() {
-  return useContext(AuthContext);
 }

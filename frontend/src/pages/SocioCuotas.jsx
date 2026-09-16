@@ -1,9 +1,9 @@
 // frontend/src/pages/SocioCuotas.jsx
 import { textoError } from '../utils/errores';
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { useAuth } from '../context/AuthContext'
+import { useAuth } from '../context/useAuth'
 import { resolverUrlArchivo } from '../utils/archivos'
-import { useCart } from '../context/CartContext'
+import { useCart } from '../context/useCart'
 import ConfirmDialog from '../components/ConfirmDialog'
 import { Revelar } from '../components/landing/animaciones';
 import { parsearISO, calcularEstadoFinanciero, estadoDeMes } from '../utils/cuotas'

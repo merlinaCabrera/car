@@ -19,7 +19,7 @@
 
 import { textoError } from '../utils/errores';
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { useAuth } from '../context/AuthContext'
+import { useAuth } from '../context/useAuth'
 import {
   ClipboardCheck,
   CheckCircle2,

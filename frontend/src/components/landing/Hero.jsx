@@ -8,7 +8,7 @@ import heroBg from '../../assets/hero-bg.PNG';
 // Va importado y no por ruta suelta en /public para que Vite le ponga hash y
 // no se sirva una copia vieja cacheada.
 import escudoCar from '../../assets/escudo-car-blanco.png';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../context/useAuth';
 // Las clases hero-* las define src/index.css, junto con el resto del sistema
 // de animaciones de la app. La coreografía y los delays están documentados ahí.
 

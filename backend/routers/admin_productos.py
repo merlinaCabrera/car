@@ -355,8 +355,9 @@ def actualizar_descuento_menor(
 #: confundirlo con un mensaje que ya se mandó.
 _EJEMPLO_VISTA_PREVIA = {
     "nombre": "Juan",
-    "mes": "julio 2026",
-    "monto": "12.500,00",
+    "meses": "3",
+    "mes": "julio",
+    "monto": "37.500",
     "link_pago": "https://www.clubatleticoroberts.com/socio/cuotas",
 }
 
@@ -371,6 +372,7 @@ def _armar_respuesta_recordatorio(
         plantilla=plantilla,
         es_default=not (config and config.plantilla_recordatorio),
         alias_transferencia=alias,
+        whatsapp_club=config.whatsapp_club if config else None,
         variables_disponibles=list(VARIABLES_PLANTILLA),
         vista_previa=renderizar_plantilla(
             plantilla, {**_EJEMPLO_VISTA_PREVIA, "alias": alias or "club.atletico.roberts"},
@@ -412,10 +414,15 @@ def actualizar_config_recordatorio(
     admin: models.Usuario = Depends(require_roles(*_ROLES_ADMIN_GENERAL)),
 ) -> schemas.ConfiguracionRecordatorioResponse:
     """
-    Guarda plantilla y/o alias. Requiere rol 'admin_general', igual que el
-    resto de la configuración global.
+    Guarda plantilla, alias y/o número de WhatsApp de la secretaría. Requiere
+    rol 'admin_general', igual que el resto de la configuración global.
 
-    Semántica de los campos (los dos son opcionales):
+    `whatsapp_club` es informativo y se guarda tal cual se escribió: no se
+    normaliza como el teléfono del socio (`normalizar_telefono_ar`) porque no
+    va a formar parte de ninguna URL — lo lee una persona para saber desde qué
+    celular de la secretaría mandar los mensajes.
+
+    Semántica de los campos (los tres son opcionales):
       · ausente        → no se toca.
       · cadena vacía   → se borra (NULL). Para la plantilla eso significa
                          volver a la de fábrica, no quedarse sin mensaje.
@@ -453,9 +460,14 @@ def actualizar_config_recordatorio(
     if payload.alias_transferencia is not None:
         alias_nuevo = payload.alias_transferencia.strip() or None
 
+    whatsapp_nuevo: Optional[str] = None
+    if payload.whatsapp_club is not None:
+        whatsapp_nuevo = payload.whatsapp_club.strip() or None
+
     antes = {
         "plantilla_recordatorio": config.plantilla_recordatorio if config else None,
         "alias_transferencia": config.alias_transferencia if config else None,
+        "whatsapp_club": config.whatsapp_club if config else None,
     }
 
     if config is None:
@@ -478,6 +490,8 @@ def actualizar_config_recordatorio(
         config.plantilla_recordatorio = plantilla_nueva
     if payload.alias_transferencia is not None:
         config.alias_transferencia = alias_nuevo
+    if payload.whatsapp_club is not None:
+        config.whatsapp_club = whatsapp_nuevo
     config.actualizado_por = admin.id_usuario
     config.actualizado_at = func.now()
 
@@ -489,6 +503,7 @@ def actualizar_config_recordatorio(
             "despues": {
                 "plantilla_recordatorio": config.plantilla_recordatorio,
                 "alias_transferencia": config.alias_transferencia,
+                "whatsapp_club": config.whatsapp_club,
             },
         },
         ip=_extraer_ip(request),

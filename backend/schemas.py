@@ -133,6 +133,14 @@ class ConfiguracionRecordatorioResponse(BaseModel):
     alias_transferencia: Optional[str] = Field(
         default=None, description="Alias/CBU del club. None = sin configurar."
     )
+    whatsapp_club: Optional[str] = Field(
+        default=None,
+        description=(
+            "Número de WhatsApp de la secretaría, tal cual se escribió. Es un "
+            "recordatorio interno para el operador: no se interpola en la "
+            "plantilla ni interviene en el deep link. None = sin configurar."
+        ),
+    )
     variables_disponibles: List[str] = Field(
         default_factory=list,
         description="Nombres de las variables que la plantilla puede usar, sin las llaves.",
@@ -147,12 +155,20 @@ class ConfiguracionRecordatorioResponse(BaseModel):
 
 class ConfiguracionRecordatorioUpdatePayload(BaseModel):
     """
-    Los dos campos se mandan juntos y los dos son opcionales: omitir uno lo
-    deja como estaba. Mandar cadena vacía en `alias_transferencia` lo borra
-    (vuelve a NULL); en `plantilla` vuelve a la de fábrica.
+    Los tres campos se mandan juntos y los tres son opcionales: omitir uno lo
+    deja como estaba. Mandar cadena vacía en `alias_transferencia` o en
+    `whatsapp_club` los borra (vuelven a NULL); en `plantilla` vuelve a la de
+    fábrica.
     """
     plantilla: Optional[str] = Field(default=None, max_length=1000)
     alias_transferencia: Optional[str] = Field(default=None, max_length=100)
+    whatsapp_club: Optional[str] = Field(
+        default=None, max_length=30,
+        description=(
+            "Se guarda tal cual lo escribe el admin, sin normalizar: es para "
+            "que una persona lo lea, no para armar una URL."
+        ),
+    )
 
 
 class WhatsAppRecordatorioResponse(BaseModel):

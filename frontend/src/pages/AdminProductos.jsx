@@ -365,6 +365,7 @@ export default function AdminProductos() {
   const [recordatorio,      setRecordatorio]      = useState(null)
   const [plantillaDraft,    setPlantillaDraft]    = useState('')
   const [aliasDraft,        setAliasDraft]        = useState('')
+  const [whatsappDraft,     setWhatsappDraft]     = useState('')
   const [isLoadingRec,      setIsLoadingRec]      = useState(true)
   const [isSavingRec,       setIsSavingRec]       = useState(false)
   const [errorRec,          setErrorRec]          = useState(null)
@@ -454,6 +455,7 @@ export default function AdminProductos() {
       setRecordatorio(data)
       setPlantillaDraft(data.plantilla ?? '')
       setAliasDraft(data.alias_transferencia ?? '')
+      setWhatsappDraft(data.whatsapp_club ?? '')
     } catch (err) {
       setErrorRec(err.message)
     } finally {
@@ -463,11 +465,11 @@ export default function AdminProductos() {
 
   useEffect(() => { fetchRecordatorio() }, [fetchRecordatorio])
 
-  // ── Guardar plantilla + alias (PATCH) ─────────────────────────────────────
-  // Los dos campos viajan siempre juntos: el backend interpreta la cadena
+  // ── Guardar plantilla + alias + WhatsApp (PATCH) ──────────────────────────
+  // Los tres campos viajan siempre juntos: el backend interpreta la cadena
   // vacía como "borrar", que para la plantilla significa volver a la de
   // fábrica — eso es justo lo que hace el botón "Restaurar".
-  const guardarRecordatorio = async (plantilla, alias) => {
+  const guardarRecordatorio = async (plantilla, alias, whatsapp) => {
     setIsSavingRec(true)
     setErrorRec(null)
     setSuccessRec(null)
@@ -478,7 +480,11 @@ export default function AdminProductos() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ plantilla, alias_transferencia: alias }),
+        body: JSON.stringify({
+          plantilla,
+          alias_transferencia: alias,
+          whatsapp_club: whatsapp,
+        }),
       })
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
@@ -488,6 +494,7 @@ export default function AdminProductos() {
       setRecordatorio(data)
       setPlantillaDraft(data.plantilla ?? '')
       setAliasDraft(data.alias_transferencia ?? '')
+      setWhatsappDraft(data.whatsapp_club ?? '')
       setSuccessRec(
         data.es_default
           ? 'Se restauró la plantilla por defecto.'
@@ -872,6 +879,28 @@ export default function AdminProductos() {
                   </p>
                 </div>
 
+                {/* Número de WhatsApp del club — informativo.
+                    No entra en la plantilla ni en el deep link: `wa.me` abre
+                    la sesión de WhatsApp del dispositivo desde el que se hace
+                    click. Está acá porque en la secretaría hay varios
+                    celulares y hay que saber cuál es el que se usa. */}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">
+                    Número de WhatsApp del club
+                  </label>
+                  <input
+                    type="text"
+                    value={whatsappDraft}
+                    onChange={e => setWhatsappDraft(e.target.value)}
+                    placeholder="2355 12-3456"
+                    className="form-input text-sm px-3 py-2 w-full"
+                  />
+                  <p className="text-[11px] text-gray-500 mt-1">
+                    El mensaje se envía desde el WhatsApp que tengas abierto en tu
+                    dispositivo. Este número es solo un recordatorio interno.
+                  </p>
+                </div>
+
                 {/* Plantilla */}
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 mb-1">
@@ -898,8 +927,10 @@ export default function AdminProductos() {
                     </span>
                   </div>
                   <p className="text-[11px] text-gray-500 mt-1">
-                    <code className="font-mono">{'{mes}'}</code> es el período adeudado más viejo y{' '}
-                    <code className="font-mono">{'{monto}'}</code> la deuda total: los dos son obligatorios.
+                    <code className="font-mono">{'{mes}'}</code> es el período adeudado más viejo (sin el año) y{' '}
+                    <code className="font-mono">{'{monto}'}</code> la deuda total: los dos son obligatorios.{' '}
+                    <code className="font-mono">{'{meses}'}</code> es la cantidad de cuotas que debe — ojo con la{' '}
+                    <span className="font-semibold">s</span>, son dos variables distintas.
                   </p>
                 </div>
 
@@ -929,7 +960,7 @@ export default function AdminProductos() {
 
                 <div className="flex items-center gap-2">
                   <button
-                    onClick={() => guardarRecordatorio(plantillaDraft, aliasDraft)}
+                    onClick={() => guardarRecordatorio(plantillaDraft, aliasDraft, whatsappDraft)}
                     disabled={isSavingRec}
                     className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 transition-colors"
                   >
@@ -937,7 +968,7 @@ export default function AdminProductos() {
                     Guardar
                   </button>
                   <button
-                    onClick={() => guardarRecordatorio('', aliasDraft)}
+                    onClick={() => guardarRecordatorio('', aliasDraft, whatsappDraft)}
                     disabled={isSavingRec || recordatorio?.es_default}
                     title="Vuelve al texto original del sistema"
                     className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 disabled:opacity-40 transition-colors"

@@ -301,13 +301,25 @@ el mensaje, es el único archivo que se toca.
 
 - **Plantilla:** `configuracion_global.plantilla_recordatorio` (NULL = usar
   `PLANTILLA_DEFAULT` del código, así el texto de fábrica se puede corregir en
-  un deploy y no queda congelado en una fila). Variables: `{nombre}` `{mes}`
-  `{monto}` `{alias}` `{link_pago}`. `{mes}` es el período adeudado **más
-  viejo**, no el mes en curso. `{link_pago}` es `FRONTEND_URL/socio/cuotas`.
-  Se exige que la plantilla incluya `{mes}` y `{monto}`.
+  un deploy y no queda congelado en una fila). Variables: `{nombre}` `{meses}`
+  `{mes}` `{monto}` `{alias}` `{link_pago}`. `{mes}` es el período adeudado
+  **más viejo**, no el mes en curso, y va **sin el año** ("septiembre"); la
+  ambigüedad de una deuda de más de 12 meses la cubre `{meses}`, que es la
+  cantidad de cuotas adeudadas. `{monto}` omite los centavos cuando son cero
+  (`$5.000`), y los muestra si son reales. `{link_pago}` es
+  `FRONTEND_URL/socio/cuotas`. Se exige que la plantilla incluya `{mes}` y
+  `{monto}` — ojo que `{mes}` y `{meses}` son variables distintas y la
+  validación no detecta que se haya puesto una por la otra.
 - **Alias del club:** `configuracion_global.alias_transferencia`. Se edita en
   la misma pantalla (`/admin/productos`, panel "Recordatorio de cuota") junto
   con la plantilla y una vista previa con datos de ejemplo.
+- **Número de WhatsApp del club:** `configuracion_global.whatsapp_club`, en el
+  mismo panel. Es **informativo y nada más**: no se interpola en la plantilla,
+  no interviene en el deep link y ninguna lógica del servidor lo lee. `wa.me`
+  abre la sesión de WhatsApp del dispositivo desde el que se hace click — no
+  hay forma de elegir el remitente. Existe porque en la secretaría hay varios
+  celulares y hace falta saber cuál se usa. Se guarda tal cual se escribe, sin
+  pasar por `normalizar_telefono_ar()`.
 - **Endpoints:**
   - `GET|PATCH /admin/productos/configuracion/recordatorio` (PATCH solo
     `admin_general`, como el resto de la config global).
@@ -420,13 +432,15 @@ Templates existentes:
 
 Estado verificado el 2026-09-06 (ver `docs/auditoria-2026-09-06.md`).
 
-⚠️ Esta tabla cubre solo la auditoría del 06-09. El historial vivo de QA manual
-—y más actualizado— es **`docs/qa-manual-2026-09-08.md`**: un único documento que
-se va actualizando ronda a ronda (índice de hallazgos BUG-01…BUG-15, una ficha por
-bug con su causa raíz, y una sección "Estado de la ronda N" por cada tanda de
-correcciones). Antes de diagnosticar cualquier bug de cuotas, pagos, mails o roles,
-leer la ficha correspondiente ahí: varias tienen causas raíz que costaron
-2-3 rondas encontrar.
+⚠️ Esta tabla cubre solo la auditoría del 06-09. El QA manual vive en dos documentos:
+
+- **`docs/qa-manual-2026-09-16.md`** — el **vivo**. Se actualiza ronda a ronda; acá van
+  los casos pendientes y los hallazgos nuevos.
+- **`docs/qa-manual-2026-09-08.md`** — **cerrado el 16-09**, no se toca más. Es el
+  registro de las rondas 1 a 13 y el lugar donde vive el **diagnóstico**: una ficha por
+  bug (BUG-01…BUG-27) con su causa raíz. Antes de diagnosticar cualquier bug de cuotas,
+  pagos, mails o roles, leer la ficha correspondiente ahí — varias tienen causas raíz
+  que costaron 2-3 rondas encontrar.
 
 | # | Bug | Estado |
 |---|-----|--------|

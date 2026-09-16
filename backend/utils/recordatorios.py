@@ -38,14 +38,14 @@ from utils.precios import calcular_precio_cuota, obtener_descuento_menor_pct
 
 PLANTILLA_DEFAULT = (
     "Hola {nombre}! Te escribimos desde el club. Te recordamos que tenés "
-    "pendiente tu cuota de {mes} por ${monto}. Podés transferir al alias "
-    "{alias} o pagar online: {link_pago}. ¡Gracias!"
+    "{meses} cuota(s) pendiente(s) desde {mes} por ${monto}. Podés "
+    "transferir al alias {alias} o pagar online: {link_pago}. ¡Gracias!"
 )
 
 #: Variables que el admin puede usar en la plantilla. La UI las lista a partir
 #: de esta tupla — si se agrega una, aparece sola en pantalla.
 VARIABLES_PLANTILLA: tuple[str, ...] = (
-    "nombre", "mes", "monto", "alias", "link_pago",
+    "nombre", "meses", "mes", "monto", "alias", "link_pago",
 )
 
 #: Tope de caracteres de la plantilla. WhatsApp acepta muchísimo más, pero un
@@ -102,22 +102,38 @@ def obtener_plantilla(config: Optional[models.ConfiguracionGlobal]) -> str:
 
 
 def formatear_mes(vencimiento: Optional[date]) -> str:
-    """'septiembre 2026' a partir de la fecha de vencimiento del período."""
+    """
+    'septiembre' a partir de la fecha de vencimiento del período.
+
+    Sin el año a propósito: el mensaje es una conversación de WhatsApp, no un
+    recibo, y "septiembre 2026" se lee como formulario. La ambigüedad de una
+    deuda de más de doce meses la cubre `{meses}`, que va al lado en la
+    plantilla de fábrica ("tenés 14 cuota(s) pendiente(s) desde julio").
+    """
     if vencimiento is None:
         return "—"
-    return f"{MESES_ES[vencimiento.month - 1]} {vencimiento.year}"
+    return MESES_ES[vencimiento.month - 1]
 
 
 def formatear_monto(monto: Decimal) -> str:
     """
     Monto en el formato que se lee en Argentina: 12.345,67 — y sin el signo
     $, porque la plantilla ya lo trae escrito (`${monto}`).
+
+    Los centavos se omiten cuando son cero: la cuota es un número redondo y
+    "$5.000" es como lo dice la secretaria, mientras que "$5.000,00" suena a
+    sistema. Si el total tiene centavos reales (puede pasar con un descuento
+    de menor que no divide exacto) se muestran, porque ahí el redondeo sería
+    una diferencia real contra lo que el socio ve en /socio/cuotas.
     """
     entero, _, decimales = f"{monto:.2f}".partition(".")
     negativo = entero.startswith("-")
     entero = entero.lstrip("-")
     miles = f"{int(entero):,}".replace(",", ".")
-    return f"{'-' if negativo else ''}{miles},{decimales}"
+    signo = "-" if negativo else ""
+    if decimales == "00":
+        return f"{signo}{miles}"
+    return f"{signo}{miles},{decimales}"
 
 
 # ── Teléfono ─────────────────────────────────────────────────────────────────
@@ -262,6 +278,7 @@ def construir_recordatorio(
 
     mensaje = renderizar_plantilla(plantilla, {
         "nombre":    socio.nombre or "",
+        "meses":     str(len(estado_meses)),
         "mes":       formatear_mes(mes_mas_viejo),
         "monto":     formatear_monto(monto_total),
         "alias":     alias or "—",

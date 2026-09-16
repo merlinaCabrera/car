@@ -173,8 +173,19 @@ class ConfiguracionGlobal(Base):
         Text, nullable=True,
         comment=(
             "Texto editable del recordatorio de cuota, con las variables "
-            "{nombre} {mes} {monto} {alias} {link_pago}. NULL = usar "
+            "{nombre} {meses} {mes} {monto} {alias} {link_pago}. NULL = usar "
             "utils/recordatorios.PLANTILLA_DEFAULT."
+        ),
+    )
+    whatsapp_club: Mapped[Optional[str]] = mapped_column(
+        String(30), nullable=True,
+        comment=(
+            "Número de WhatsApp desde el que la secretaría manda los "
+            "recordatorios. Es un recordatorio interno y NADA MÁS: no entra "
+            "en la plantilla, no es el remitente del deep link (wa.me abre "
+            "la sesión que el operador tenga en su propio dispositivo) y "
+            "ninguna lógica del servidor lo lee. Existe porque en la "
+            "secretaría hay varios celulares y hay que saber cuál se usa."
         ),
     )
 

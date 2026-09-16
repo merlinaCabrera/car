@@ -686,17 +686,182 @@ def obtener_metricas_espectadores(
         "recaudacion_verificada": float(recaudacion_estimada),
         "espectadores": [
             {
+                "id_entrada": e.id_entrada,
                 "id_usuario": e.usuario.id_usuario if e.usuario else None,
                 "nombre": f"{e.usuario.nombre} {e.usuario.apellido}" if e.usuario else (e.email_invitado or "Invitado"),
                 "email": e.usuario.email if e.usuario else e.email_invitado,
                 "ticket_token": e.ticket_token,
+                "link_acceso": (
+                    f"{settings.frontend_url}/en-vivo/{evento.id_evento}?ticket={e.ticket_token}"
+                    if e.ticket_token
+                    else f"{settings.frontend_url}/en-vivo/{evento.id_evento}"
+                ),
                 "ultimo_heartbeat": e.ultimo_heartbeat_at.isoformat() if e.ultimo_heartbeat_at else None,
                 "en_linea": bool(e.ultimo_heartbeat_at and e.ultimo_heartbeat_at >= hace_un_minuto),
+                "id_pago": e.id_pago,
+                "estado_pago": e.pago.estado if e.pago else "cortesia",
+                "metodo_pago": e.pago.metodo_pago if e.pago else "manual",
+                "monto": float(e.pago.monto_total) if (e.pago and e.pago.monto_total) else 0.0,
+                "creado_at": e.creado_at.isoformat() if e.creado_at else None,
                 "tipo_acceso": "invitado_pago" if not e.usuario else ("pago" if e.id_pago else "socio_o_cortesia"),
             }
             for e in entradas
         ],
     }
+
+
+@router.post(
+    "/{id_evento}/dar-acceso-manual",
+    summary="Emitir o habilitar entrada virtual manualmente (Staff)",
+)
+def dar_acceso_manual(
+    id_evento: int,
+    payload: schemas.DarAccesoManualPayload,
+    db: Session = Depends(get_db),
+    _staff: models.Usuario = Depends(require_roles(*_ROLES_STAFF)),
+):
+    evento = _obtener_evento_transmision_o_404(db, id_evento)
+
+    if not payload.id_usuario and not (payload.email and str(payload.email).strip()):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Debés indicar un socio (id_usuario) o un correo electrónico de invitado.",
+        )
+
+    entrada = None
+    email_dest = None
+    nombre_dest = payload.nombre or "Hincha"
+
+    if payload.id_usuario:
+        usuario = db.query(models.Usuario).filter(models.Usuario.id_usuario == payload.id_usuario).first()
+        if not usuario:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuario no encontrado.")
+        email_dest = usuario.email
+        nombre_dest = f"{usuario.nombre} {usuario.apellido}"
+        entrada = (
+            db.query(models.EntradaVirtual)
+            .filter(
+                models.EntradaVirtual.id_evento == id_evento,
+                models.EntradaVirtual.id_usuario == usuario.id_usuario,
+            )
+            .first()
+        )
+    else:
+        email_dest = str(payload.email).strip().lower()
+        entrada = (
+            db.query(models.EntradaVirtual)
+            .filter(
+                models.EntradaVirtual.id_evento == id_evento,
+                models.EntradaVirtual.email_invitado == email_dest,
+            )
+            .first()
+        )
+
+    ticket_token = secrets.token_urlsafe(24)
+
+    if entrada:
+        # Si tenía pago pendiente y lo aprueban manualmente o le dan cortesía
+        if entrada.pago and entrada.pago.estado != "verificado":
+            entrada.pago.estado = "verificado"
+            entrada.pago.fecha_pago = datetime.now(timezone.utc)
+        if not entrada.ticket_token:
+            entrada.ticket_token = ticket_token
+        else:
+            ticket_token = entrada.ticket_token
+    else:
+        entrada = models.EntradaVirtual(
+            id_evento=id_evento,
+            id_usuario=payload.id_usuario,
+            email_invitado=email_dest if not payload.id_usuario else None,
+            ticket_token=ticket_token,
+            id_pago=None,  # Cortesía / Habilitación directa por Staff
+        )
+        db.add(entrada)
+
+    db.commit()
+    db.refresh(entrada)
+
+    link = f"{settings.frontend_url}/en-vivo/{id_evento}?ticket={entrada.ticket_token}"
+    rival_str = f" vs {evento.rival}" if evento.rival else ""
+    mensaje_wa = (
+        f"¡Hola {nombre_dest}! ⚽ Acá tenés tu entrada para ver Club Atlético Roberts{rival_str} en vivo.\n\n"
+        f"Ingresá directamente desde este link en tu celular o Smart TV:\n{link}\n\n"
+        f"¡Vamos CAR!"
+    )
+
+    return {
+        "ok": True,
+        "id_entrada": entrada.id_entrada,
+        "id_evento": entrada.id_evento,
+        "id_usuario": entrada.id_usuario,
+        "email": email_dest,
+        "nombre": nombre_dest,
+        "ticket_token": entrada.ticket_token,
+        "link_acceso": link,
+        "mensaje_whatsapp": mensaje_wa,
+    }
+
+
+@router.patch(
+    "/entradas/{id_entrada}/aprobar",
+    summary="Aprobar pago de entrada virtual pendiente (Staff)",
+)
+def aprobar_pago_entrada(
+    id_entrada: int,
+    db: Session = Depends(get_db),
+    _staff: models.Usuario = Depends(require_roles(*_ROLES_STAFF)),
+):
+    entrada = (
+        db.query(models.EntradaVirtual)
+        .options(joinedload(models.EntradaVirtual.pago))
+        .filter(models.EntradaVirtual.id_entrada == id_entrada)
+        .first()
+    )
+    if not entrada:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Entrada no encontrada.")
+
+    if entrada.pago:
+        entrada.pago.estado = "verificado"
+        entrada.pago.fecha_pago = datetime.now(timezone.utc)
+
+    db.commit()
+    db.refresh(entrada)
+
+    link = (
+        f"{settings.frontend_url}/en-vivo/{entrada.id_evento}?ticket={entrada.ticket_token}"
+        if entrada.ticket_token
+        else f"{settings.frontend_url}/en-vivo/{entrada.id_evento}"
+    )
+
+    return {
+        "ok": True,
+        "id_entrada": entrada.id_entrada,
+        "estado": "verificado",
+        "ticket_token": entrada.ticket_token,
+        "link_acceso": link,
+    }
+
+
+@router.delete(
+    "/entradas/{id_entrada}",
+    summary="Revocar / eliminar entrada virtual (Staff)",
+)
+def revocar_entrada(
+    id_entrada: int,
+    db: Session = Depends(get_db),
+    _staff: models.Usuario = Depends(require_roles(*_ROLES_STAFF)),
+):
+    entrada = (
+        db.query(models.EntradaVirtual)
+        .filter(models.EntradaVirtual.id_entrada == id_entrada)
+        .first()
+    )
+    if not entrada:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Entrada no encontrada.")
+
+    db.delete(entrada)
+    db.commit()
+    return {"ok": True, "mensaje": "Entrada revocada exitosamente."}
 
 
 @router.patch(
@@ -729,3 +894,57 @@ def actualizar_estado_transmision(
         "transmision_estado": evento.transmision_estado,
         "mensaje": f"Estado de transmisión actualizado a '{estado}'.",
     }
+
+
+@router.get(
+    "/buscar-usuarios",
+    summary="Buscar usuarios/socios para asignación manual de entradas (Staff)",
+)
+def buscar_usuarios_transmision(
+    q: str = Query(default="", min_length=0, description="Buscar por nombre, apellido, DNI o email"),
+    db: Session = Depends(get_db),
+    _staff: models.Usuario = Depends(require_roles(*_ROLES_STAFF)),
+):
+    query = (
+        db.query(models.Usuario)
+        .options(joinedload(models.Usuario.roles_asignados).joinedload(models.UsuarioRol.rol))
+        .filter(models.Usuario.fecha_baja.is_(None))
+    )
+
+    q_clean = q.strip()
+    if q_clean:
+        filtro = f"%{q_clean}%"
+        query = query.filter(
+            (models.Usuario.nombre.ilike(filtro))
+            | (models.Usuario.apellido.ilike(filtro))
+            | (models.Usuario.dni.ilike(filtro))
+            | (models.Usuario.email.ilike(filtro))
+        )
+
+    usuarios = query.order_by(models.Usuario.apellido, models.Usuario.nombre).limit(20).all()
+
+    hoy = date.today()
+    resultados = []
+    for u in usuarios:
+        roles_u = {ur.rol.nombre for ur in u.roles_asignados if ur.rol}
+        es_socio = "socio" in roles_u or getattr(u, "tipo_socio", None) is not None
+        socio_al_dia = bool(
+            u.es_becado
+            or (u.mes_cubierto_hasta is not None and hoy <= u.mes_cubierto_hasta)
+        )
+        resultados.append({
+            "id_usuario": u.id_usuario,
+            "nombre": u.nombre,
+            "apellido": u.apellido,
+            "nombre_completo": f"{u.apellido}, {u.nombre}",
+            "dni": u.dni,
+            "email": u.email,
+            "telefono": u.telefono,
+            "es_socio": es_socio,
+            "socio_al_dia": socio_al_dia,
+            "mes_cubierto_hasta": u.mes_cubierto_hasta.isoformat() if u.mes_cubierto_hasta else None,
+            "es_becado": u.es_becado,
+        })
+
+    return resultados
+

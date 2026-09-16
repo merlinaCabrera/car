@@ -49,7 +49,9 @@ import {
   Pencil,
   Tv,
   ExternalLink,
+  Ticket,
 } from 'lucide-react'
+import ModalAccesosTransmision from '../components/ModalAccesosTransmision'
 import { useExportarConvocatoria } from '../hooks/useExportarConvocatoria'
 import { useExportarAsistencias } from '../hooks/useExportarAsistencias'
 
@@ -857,6 +859,7 @@ export default function TecnicoEventos() {
   const [selectedEvent, setSelectedEvent] = useState(null)
   const [modalNuevoEventoAbierto, setModalNuevoEventoAbierto] = useState(false)
   const [eventoEditando, setEventoEditando] = useState(null)
+  const [eventoAccesos, setEventoAccesos] = useState(null)
   const [expandedEventId, setExpandedEventId] = useState(null)
   const [vista, setVista] = useState('lista')
   const [mesCalendario, setMesCalendario] = useState(new Date())
@@ -1053,6 +1056,21 @@ export default function TecnicoEventos() {
           evento={eventoEditando}
           onClose={() => setEventoEditando(null)}
           onSaveSuccess={handleEditarEventoSuccess}
+        />
+      )}
+      {eventoAccesos && (
+        <ModalAccesosTransmision
+          evento={eventoAccesos}
+          onClose={() => setEventoAccesos(null)}
+          onActualizarEvento={(evActualizado) => {
+            setEventos((prev) =>
+              prev.map((e) =>
+                e.id_evento === evActualizado.id_evento
+                  ? { ...e, ...evActualizado }
+                  : e
+              )
+            )
+          }}
         />
       )}
 
@@ -1357,6 +1375,17 @@ export default function TecnicoEventos() {
                             <span className="hidden sm:inline">Ver Stream</span>
                             <ExternalLink size={12} />
                           </a>
+                        )}
+
+                        {evento.tiene_transmision && (
+                          <button
+                            onClick={() => setEventoAccesos(evento)}
+                            title="Gestionar accesos, emitir entradas a no-socios o morosos y métricas"
+                            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-semibold transition-colors shadow-sm text-sm"
+                          >
+                            <Ticket size={14} />
+                            <span>Accesos</span>
+                          </button>
                         )}
 
                         {puedeGestionarEvento(evento) ? (

@@ -2232,4 +2232,12 @@ class ComprarEntradaTransferenciaResponse(BaseModel):
     id_pago: int
     monto: Decimal
     mensaje: str
-    ticket_token: Optional[str] = None
+    ticket_token: Optional[str] = None
+
+
+class DarAccesoManualPayload(BaseModel):
+    id_usuario: Optional[int] = None
+    email: Optional[EmailStr] = None
+    nombre: Optional[str] = None
+    telefono: Optional[str] = None
+    motivo: Optional[str] = "cortesia"

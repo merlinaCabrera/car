@@ -40,7 +40,6 @@ import {
   CalendarDays,
   MapPin,
   AlertCircle,
-  RefreshCw,
   CheckCircle2,
   AlertTriangle,
   XCircle,
@@ -226,8 +225,8 @@ function SelectorEvento({ onSeleccionar }) {
                   </p>
                   <p className="mt-2 text-xs text-blue-700">
                     Este escáner solo muestra eventos cuya fecha cae en el día calendario de hoy
-                    (hora Argentina) y con estado "programado" o "en curso". Si esperabas verlo acá,
-                    revisá la fecha/hora con la que se cargó o su estado en "Gestión de Eventos".
+                    (hora Argentina) y con estado &ldquo;programado&rdquo; o &ldquo;en curso&rdquo;. Si esperabas verlo acá,
+                    revisá la fecha/hora con la que se cargó o su estado en &ldquo;Gestión de Eventos&rdquo;.
                   </p>
                 </div>
               </div>
@@ -446,7 +445,7 @@ export default function AdminScannerEvento() {
         <div className="anim-entrada anim-d1 rounded-2xl overflow-hidden border border-gray-200 shadow-sm aspect-square bg-black">
           <Scanner
             onScan={handleScan}
-            onError={(err) => setResultado({ tipo: 'error', mensaje: 'No se pudo acceder a la cámara.' })}
+            onError={() => setResultado({ tipo: 'error', mensaje: 'No se pudo acceder a la cámara.' })}
             constraints={{ facingMode: 'environment' }}
           />
         </div>

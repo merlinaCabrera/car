@@ -48,9 +48,7 @@ import {
   X,
   Check,
   CheckCheck,
-  Receipt,
   Package,
-  User,
   ChevronDown,
   ChevronUp,
   CheckCircle2,
@@ -449,7 +447,6 @@ function TarjetaPago({
   const socio = ordenes[0]?.usuario
 
   const pendientes = ordenes.filter(o => estadoVisualDeOrden(o, resueltosEnSesion) === null)
-  const hayPendientes = pendientes.length > 0
   const estadoPago = estadoDePago(ordenes, resueltosEnSesion)
   const EstadoIcon = estadoPago.icon
 

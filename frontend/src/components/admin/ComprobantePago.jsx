@@ -38,7 +38,7 @@ const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
  * completa siempre da false y un PDF termina renderizado como <img> roto — hay
  * que cortar en el '?' antes de mirar la extensión.
  */
-export function comprobanteEsPdf(url) {
+function comprobanteEsPdf(url) {
   return (url ?? '').split('?')[0].toLowerCase().endsWith('.pdf')
 }
 

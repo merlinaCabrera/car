@@ -1,3 +1,7 @@
+/* eslint-disable react-refresh/only-export-components --
+   `useAuth` lo importan 39 archivos desde este mismo modulo. Moverlo a un archivo
+   aparte para contentar a fast refresh implica tocar los 39 imports; el unico
+   efecto de dejarlo asi es que Vite hace full reload en vez de HMR en dev. */
 import { createContext, useState, useContext, useEffect, useCallback } from 'react';
 
 const AuthContext = createContext();

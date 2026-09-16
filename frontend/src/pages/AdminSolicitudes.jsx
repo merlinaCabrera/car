@@ -256,6 +256,10 @@ const fetchPendientes = useCallback(async () => {
       // Si no hay token (usuario no logueado), nos aseguramos que no haya estado de carga.
       setLoading(false)
     }
+    // `loading` se lee como guardia de "todavia no cargue", no como dependencia:
+    // fetchPendientes lo pone en true y despues en false, asi que incluirlo
+    // reentraria al efecto con loading=true y volveria a fetchear en loop.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, fetchPendientes])
 
   // ── Aprobar usuario ────────────────────────────────────────────────────────

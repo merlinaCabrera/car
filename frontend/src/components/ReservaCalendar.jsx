@@ -16,7 +16,7 @@
  * un pedido que sabemos de antemano que va a fallar.
  */
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { Calendar, dateFnsLocalizer } from 'react-big-calendar'
 import format from 'date-fns/format'
@@ -52,7 +52,7 @@ function rangosSeSuperponen(aInicio, aFin, bInicio, bFin) {
   return aInicio < bFin && bInicio < aFin
 }
 
-export default function ReservaCalendar({ instalacion, onSeleccionar }) {
+export default function ReservaCalendar({ instalacion }) {
   const { token } = useAuth()
   const { addToCart } = useCart()
 

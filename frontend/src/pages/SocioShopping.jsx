@@ -389,9 +389,12 @@ export default function SocioShopping() {
 
   useEffect(() => {
     fetchProductos()
+    // timersRef.current nunca se reasigna (solo se mutan sus claves), asi que
+    // esta copia apunta al mismo objeto que vera el cleanup.
+    const timers = timersRef.current
     return () => {
       // Limpiar timers al desmontar para evitar setState en componente desmontado
-      Object.values(timersRef.current).forEach(clearTimeout)
+      Object.values(timers).forEach(clearTimeout)
     }
   }, [fetchProductos])
 

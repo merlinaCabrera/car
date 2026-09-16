@@ -24,7 +24,6 @@ import {
   UserCheck,
   LayoutDashboard,
   Wallet,
-  Store,
   Trophy,
   CalendarClock,
   ChevronDown,

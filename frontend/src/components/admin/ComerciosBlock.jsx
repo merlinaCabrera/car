@@ -21,7 +21,6 @@ import {
   Trash2,
   RefreshCw,
   AlertCircle,
-  Store,
   UserCheck,
   UserX,
   Undo2,

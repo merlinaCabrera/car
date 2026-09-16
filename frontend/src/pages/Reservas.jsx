@@ -149,8 +149,13 @@ function CeldaDia({ anio, mes1based, dia, nombreDiaSemana, reservas, esHoy, esPa
 // ─── Componente: Calendario Mensual de Disponibilidad ─────────────────────
 
 function CalendarioMensual({ instalacion, token, seleccion, onSeleccionar }) {
-  const hoy = new Date()
-  hoy.setHours(0, 0, 0, 0)
+  // Estable por render: si se construye suelto, cambia de identidad en cada
+  // render y recalcula todos los useMemo que dependen de él.
+  const hoy = useMemo(() => {
+    const d = new Date()
+    d.setHours(0, 0, 0, 0)
+    return d
+  }, [])
 
   const [anioVisto, setAnioVisto] = useState(hoy.getFullYear())
   const [mesVisto, setMesVisto] = useState(hoy.getMonth() + 1) // 1-based

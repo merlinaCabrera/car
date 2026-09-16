@@ -948,8 +948,13 @@ function Leyenda() {
 // ─── Agenda del quincho ───────────────────────────────────────────────────────
 
 function AgendaQuincho({ reservas, anio, mes, onCambiarMes, onAbrirTurno, onTurnoLibre }) {
-  const hoy = new Date()
-  hoy.setHours(0, 0, 0, 0)
+  // Estable por render: si se construye suelto, cambia de identidad en cada
+  // render y recalcula todos los useMemo que dependen de él.
+  const hoy = useMemo(() => {
+    const d = new Date()
+    d.setHours(0, 0, 0, 0)
+    return d
+  }, [])
 
   const dias = useMemo(() => {
     const total = diasEnMes(anio, mes)

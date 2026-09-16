@@ -1,3 +1,6 @@
+/* eslint-disable react-refresh/only-export-components --
+   Mismo caso que AuthContext: `useCart` lo importan 8 archivos desde aca.
+   Separarlo es un refactor de imports y solo mejora el HMR en dev. */
 import { createContext, useState, useEffect, useContext } from 'react';
 import { useAuth } from './AuthContext';
 

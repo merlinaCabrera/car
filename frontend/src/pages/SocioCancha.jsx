@@ -54,8 +54,13 @@ const TURNOS_DEL_DIA = turnosDeCancha()
 // ─── Componente: selector de fecha (DIAS_VISIBLES_SOCIO días desde hoy) ────
 
 function SelectorFecha({ fecha, onCambiarFecha }) {
-  const hoy = new Date()
-  hoy.setHours(0, 0, 0, 0)
+  // Estable por render: si se construye suelto, cambia de identidad en cada
+  // render y recalcula todos los useMemo que dependen de él.
+  const hoy = useMemo(() => {
+    const d = new Date()
+    d.setHours(0, 0, 0, 0)
+    return d
+  }, [])
 
   const dias = useMemo(() => {
     return Array.from({ length: DIAS_VISIBLES_SOCIO }, (_, i) => {
@@ -181,7 +186,7 @@ export default function SocioCancha() {
       }
     })()
     return () => { cancelado = true }
-  }, [token, canchaKey])
+  }, [token, canchaKey, cancha.nombreProducto])
 
   // Trae la disponibilidad (reservas existentes) de esa cancha
   const fetchDisponibilidad = useCallback(async () => {

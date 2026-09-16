@@ -1,3 +1,8 @@
+/* eslint-disable react-refresh/only-export-components --
+   `rolesDeUsuario`, `homePorRol` y las constantes ROLES_* las consumen 8 archivos
+   (entre ellos Login.jsx, que depende de homePorRol para el redirect post-login).
+   Separarlas en su propio modulo es un refactor de imports, no un fix de lint, y
+   el costo es solo de DX: Vite hace full reload de este archivo en dev. */
 // frontend/src/components/RequireRole.jsx
 /**
  * Guard de ROL para grupos de rutas privadas. Va anidado dentro de <RutaPrivada>

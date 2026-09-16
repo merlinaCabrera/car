@@ -28,7 +28,7 @@ const MESES = [
  * new Date("2026-07-20") crea medianoche UTC → en AR queda en el día anterior.
  * Usar getFullYear/Month/Date garantiza la fecha local.
  */
-export function claveLocal(fecha) {
+function claveLocal(fecha) {
   const d = fecha instanceof Date ? fecha : new Date(fecha)
   const y = d.getUTCFullYear()
   const m = String(d.getUTCMonth() + 1).padStart(2, '0')

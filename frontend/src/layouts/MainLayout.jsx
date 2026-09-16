@@ -29,6 +29,7 @@ import {
   ChevronDown,
   TrendingUp,
   User as UserIcon,
+  Tv,
 } from 'lucide-react'
 
 // Importación del asset real
@@ -49,6 +50,7 @@ import { resolverUrlArchivo } from '../utils/archivos';
 
 const NAV_SOCIO = [
   { name: 'Inicio', path: '/socio', icon: Home },
+  { name: 'Transmisión en Vivo', path: '/en-vivo', icon: Tv },
   { name: 'Gestión de Cuotas', path: '/socio/cuotas', icon: CreditCard },
   { name: 'Reserva Salón', path: '/socio/reservas', icon: Calendar },
   { name: 'Reserva Canchas', path: '/socio/cancha', icon: Trophy }, 
@@ -65,6 +67,7 @@ const NAV_JUGADOR = [
 const NAV_PERSONAL_TECNICO = [
   { name: 'Gestión de Planteles', path: '/gestion-planteles', icon: ClipboardList },
   { name: 'Eventos y Convocatorias', path: '/gestion-eventos', icon: CalendarDays },
+  { name: 'Transmisiones en Vivo', path: '/en-vivo', icon: Tv },
   { name: 'Asistencias', path: '/asistencias', icon: UserCheck },
 ];
 
@@ -114,6 +117,7 @@ const NAV_ADMIN_GENERAL = [
 export default function MainLayout() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [partidoEnVivo, setPartidoEnVivo] = useState(null);
   const [seccionesAbiertas, setSeccionesAbiertas] = useState({});
   const [fotoFallo, setFotoFallo] = useState(false);
   const [adminDropdownOpen, setAdminDropdownOpen] = useState(false);
@@ -249,6 +253,30 @@ export default function MainLayout() {
     setAdminDropdownOpen(false);
   }, [location.pathname]);
 
+  useEffect(() => {
+    const checkPartidoEnVivo = async () => {
+      try {
+        const apiUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:8000';
+        const res = await fetch(`${apiUrl}/transmisiones/partido-actual`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.tiene_transmision && data.transmision_estado === 'en_vivo') {
+            setPartidoEnVivo(data);
+          } else {
+            setPartidoEnVivo(null);
+          }
+        }
+      } catch {
+        // Silencioso
+      }
+    };
+    checkPartidoEnVivo();
+    const intv = setInterval(() => {
+      if (document.visibilityState === 'visible') checkPartidoEnVivo();
+    }, 120_000);
+    return () => clearInterval(intv);
+  }, []);
+
   const handleLogout = () => {
     logout();
     setIsMenuOpen(false);
@@ -321,8 +349,8 @@ export default function MainLayout() {
         <div className="pointer-events-auto mx-auto max-w-7xl">
           <nav className="relative flex items-center justify-between rounded-2xl border border-blue-500/30 bg-blue-600/90 backdrop-blur-md px-3.5 py-2 sm:px-5 sm:py-2.5 shadow-lg shadow-blue-950/15 text-white">
 
-            {/* Menú Hamburguesa */}
-            <div>
+            {/* Menú Hamburguesa + En Vivo Badge */}
+            <div className="flex items-center gap-2">
               <button
                 onClick={() => setIsMenuOpen(true)}
                 aria-label="Abrir menú"
@@ -335,6 +363,17 @@ export default function MainLayout() {
                   }`}
                 />
               </button>
+
+              {partidoEnVivo && (
+                <Link
+                  to={`/en-vivo/${partidoEnVivo.id_evento}`}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-red-600 hover:bg-red-700 text-white font-black text-xs transition-colors shadow-md animate-pulse border border-red-400/40"
+                  title={`Ver en Vivo: CAR vs ${partidoEnVivo.rival || 'Rival'}`}
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
+                  <span className="tracking-wider">VIVO</span>
+                </Link>
+              )}
             </div>
 
             {/* Logo */}

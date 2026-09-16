@@ -36,6 +36,7 @@ import AdminScannerEvento from './pages/AdminScannerEvento';
 import AdminScannerCancha from './pages/AdminScannerCancha';
 import TecnicoEventos from './pages/TecnicoEventos';
 import SocioCancha from './pages/SocioCancha';
+import TransmisionEnVivo from './pages/TransmisionEnVivo';
 
 function App() {
   return (
@@ -49,6 +50,8 @@ function App() {
             <Route path="/registro" element={<Registro />} />
             <Route path="/recuperar-password" element={<RecuperarPassword />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/en-vivo" element={<TransmisionEnVivo />} />
+            <Route path="/en-vivo/:idEvento" element={<TransmisionEnVivo />} />
 
             {/* Rutas privadas envueltas en el Layout del Portal.
                 RutaPrivada primero: si no hay sesión, redirige a /login?next=...

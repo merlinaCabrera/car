@@ -83,6 +83,7 @@ from __future__ import annotations
 from datetime import date, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 from typing import List, Optional, Set
+from decimal import Decimal
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request, Response, status
 from sqlalchemy import func
@@ -1298,7 +1299,7 @@ def listar_eventos_de_hoy(
 
 @router.post(
     "/eventos",
-    response_model=schemas.EventoResponse,
+    response_model=schemas.EventoAdminResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Programar un nuevo evento (partido, entrenamiento, etc.)",
 )
@@ -1326,6 +1327,17 @@ def crear_evento(
         fecha_fin=payload.fecha_fin,
         ubicacion=payload.ubicacion,
         creado_por=admin.id_usuario,
+        rival=payload.rival,
+        condicion=payload.condicion or "local",
+        goles_local=payload.goles_local,
+        goles_rival=payload.goles_rival,
+        tiene_transmision=payload.tiene_transmision,
+        transmision_estado=payload.transmision_estado or "programada",
+        transmision_plataforma=payload.transmision_plataforma or "youtube",
+        transmision_video_id=payload.transmision_video_id,
+        transmision_precio=payload.transmision_precio if payload.transmision_precio is not None else Decimal("0.00"),
+        transmision_socio_gratis=payload.transmision_socio_gratis,
+        transmision_es_publica=payload.transmision_es_publica,
     )
     db.add(nuevo_evento)
     db.flush()
@@ -1345,9 +1357,63 @@ def crear_evento(
     return nuevo_evento
 
 
-@router.patch(
+@router.get(
     "/eventos/{id_evento}",
     response_model=schemas.EventoResponse,
+    summary="Obtener detalle público/socio de un evento",
+)
+def obtener_evento(
+    id_evento: int,
+    db: Session = Depends(get_db),
+    _usuario: models.Usuario = Depends(get_current_user),
+) -> models.Evento:
+    evento = (
+        db.query(models.Evento)
+        .options(
+            joinedload(models.Evento.categoria),
+            joinedload(models.Evento.convocatorias).joinedload(models.Convocatoria.usuario),
+        )
+        .filter(models.Evento.id_evento == id_evento)
+        .first()
+    )
+    if not evento:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Evento #{id_evento} no encontrado.",
+        )
+    return evento
+
+
+@router.get(
+    "/eventos/{id_evento}/admin",
+    response_model=schemas.EventoAdminResponse,
+    summary="Obtener detalle de un evento con datos confidenciales (Admin/Técnico)",
+)
+def obtener_evento_admin(
+    id_evento: int,
+    db: Session = Depends(get_db),
+    _admin: models.Usuario = Depends(require_roles(*_ROLES_ADMIN_GENERAL)),
+) -> models.Evento:
+    evento = (
+        db.query(models.Evento)
+        .options(
+            joinedload(models.Evento.categoria),
+            joinedload(models.Evento.convocatorias).joinedload(models.Convocatoria.usuario),
+        )
+        .filter(models.Evento.id_evento == id_evento)
+        .first()
+    )
+    if not evento:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Evento #{id_evento} no encontrado.",
+        )
+    return evento
+
+
+@router.patch(
+    "/eventos/{id_evento}",
+    response_model=schemas.EventoAdminResponse,
     summary="Editar un evento (incluye cambiar su estado)",
 )
 def editar_evento(

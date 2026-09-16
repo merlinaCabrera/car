@@ -47,6 +47,8 @@ import {
   Filter,
   History,
   Pencil,
+  Tv,
+  ExternalLink,
 } from 'lucide-react'
 import { useExportarConvocatoria } from '../hooks/useExportarConvocatoria'
 import { useExportarAsistencias } from '../hooks/useExportarAsistencias'
@@ -407,9 +409,48 @@ function EventoFormModal({ evento, onClose, onSaveSuccess }) {
     fecha_fin: isoToDatetimeLocal(evento?.fecha_fin),
     ubicacion: evento?.ubicacion ?? '',
     estado: evento?.estado ?? 'programado',
+    rival: evento?.rival ?? '',
+    condicion: evento?.condicion ?? 'local',
+    goles_local: evento?.goles_local !== null && evento?.goles_local !== undefined ? String(evento.goles_local) : '',
+    goles_rival: evento?.goles_rival !== null && evento?.goles_rival !== undefined ? String(evento.goles_rival) : '',
+    tiene_transmision: evento?.tiene_transmision ?? false,
+    transmision_estado: evento?.transmision_estado ?? 'programada',
+    transmision_plataforma: evento?.transmision_plataforma ?? 'youtube',
+    transmision_video_id: evento?.transmision_video_id ?? '',
+    transmision_precio: evento?.transmision_precio !== undefined ? String(evento.transmision_precio) : '0',
+    transmision_socio_gratis: evento?.transmision_socio_gratis ?? true,
+    transmision_es_publica: evento?.transmision_es_publica ?? false,
   }))
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [apiError, setApiError] = useState(null)
+
+  useEffect(() => {
+    if (esEdicion && evento?.id_evento && token) {
+      fetch(`${API}/deportivo/eventos/${evento.id_evento}/admin`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+        .then(r => (r.ok ? r.json() : null))
+        .then(data => {
+          if (data) {
+            setFormData(prev => ({
+              ...prev,
+              transmision_video_id: data.transmision_video_id ?? '',
+              rival: data.rival ?? prev.rival,
+              condicion: data.condicion ?? prev.condicion,
+              goles_local: data.goles_local !== null && data.goles_local !== undefined ? String(data.goles_local) : prev.goles_local,
+              goles_rival: data.goles_rival !== null && data.goles_rival !== undefined ? String(data.goles_rival) : prev.goles_rival,
+              tiene_transmision: data.tiene_transmision ?? prev.tiene_transmision,
+              transmision_estado: data.transmision_estado ?? prev.transmision_estado,
+              transmision_plataforma: data.transmision_plataforma ?? prev.transmision_plataforma,
+              transmision_precio: data.transmision_precio !== undefined ? String(data.transmision_precio) : prev.transmision_precio,
+              transmision_socio_gratis: data.transmision_socio_gratis ?? prev.transmision_socio_gratis,
+              transmision_es_publica: data.transmision_es_publica ?? prev.transmision_es_publica,
+            }))
+          }
+        })
+        .catch(() => {})
+    }
+  }, [esEdicion, evento?.id_evento, token])
 
   useEffect(() => {
     const fetchCategorias = async () => {
@@ -448,6 +489,17 @@ function EventoFormModal({ evento, onClose, onSaveSuccess }) {
       fecha_fin: datetimeLocalToISO(formData.fecha_fin),
       descripcion: formData.descripcion || null,
       ubicacion: formData.ubicacion || null,
+      rival: formData.rival?.trim() || null,
+      condicion: formData.condicion || 'local',
+      goles_local: formData.goles_local !== '' ? Number(formData.goles_local) : null,
+      goles_rival: formData.goles_rival !== '' ? Number(formData.goles_rival) : null,
+      tiene_transmision: Boolean(formData.tiene_transmision),
+      transmision_estado: formData.transmision_estado || 'programada',
+      transmision_plataforma: formData.transmision_plataforma || 'youtube',
+      transmision_video_id: formData.transmision_video_id?.trim() || null,
+      transmision_precio: formData.transmision_precio !== '' ? Number(formData.transmision_precio) : 0,
+      transmision_socio_gratis: Boolean(formData.transmision_socio_gratis),
+      transmision_es_publica: Boolean(formData.transmision_es_publica),
     }
     const payload = esEdicion ? { ...base, estado: formData.estado } : base
 
@@ -567,6 +619,185 @@ function EventoFormModal({ evento, onClose, onSaveSuccess }) {
               </select>
             </div>
           )}
+
+          {/* ── SECCIÓN FIXTURE / PARTIDO ── */}
+          {formData.tipo === 'partido' && (
+            <div className="p-4 rounded-xl bg-blue-50/70 border border-blue-200 space-y-3">
+              <span className="text-xs font-bold uppercase tracking-wider text-blue-900 flex items-center gap-1.5">
+                <Trophy size={14} className="text-blue-600" /> Programa de Partidos (Fixture)
+              </span>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className={L}>Equipo Rival</label>
+                  <input
+                    type="text"
+                    name="rival"
+                    placeholder="Ej: CA El Linqueño"
+                    value={formData.rival}
+                    onChange={handleChange}
+                    className="form-input bg-white"
+                  />
+                </div>
+                <div>
+                  <label className={L}>Condición</label>
+                  <select
+                    name="condicion"
+                    value={formData.condicion}
+                    onChange={handleChange}
+                    className="form-input bg-white"
+                  >
+                    <option value="local">Local (Estadio CAR)</option>
+                    <option value="visitante">Visitante</option>
+                    <option value="neutral">Cancha Neutral</option>
+                  </select>
+                </div>
+              </div>
+
+              {esEdicion && (
+                <div>
+                  <label className={L}>Marcador Final (Opcional)</label>
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1">
+                      <span className="text-[10px] text-gray-500 font-semibold block mb-0.5">Goles CAR</span>
+                      <input
+                        type="number"
+                        min="0"
+                        name="goles_local"
+                        value={formData.goles_local}
+                        onChange={handleChange}
+                        placeholder="0"
+                        className="form-input bg-white"
+                      />
+                    </div>
+                    <span className="text-gray-400 font-bold mt-3">-</span>
+                    <div className="flex-1">
+                      <span className="text-[10px] text-gray-500 font-semibold block mb-0.5">Goles Rival</span>
+                      <input
+                        type="number"
+                        min="0"
+                        name="goles_rival"
+                        value={formData.goles_rival}
+                        onChange={handleChange}
+                        placeholder="0"
+                        className="form-input bg-white"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── SECCIÓN STREAMING PAY-PER-VIEW ── */}
+          <div className="p-4 rounded-xl bg-purple-50/70 border border-purple-200 space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold uppercase tracking-wider text-purple-950 flex items-center gap-1.5">
+                <Tv size={14} className="text-purple-600" /> Transmisión en Vivo (Streaming PPV)
+              </span>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  name="tiene_transmision"
+                  checked={formData.tiene_transmision}
+                  onChange={e => setFormData(prev => ({ ...prev, tiene_transmision: e.target.checked }))}
+                  className="sr-only peer"
+                />
+                <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-600"></div>
+              </label>
+            </div>
+
+            {formData.tiene_transmision && (
+              <div className="space-y-3 pt-1">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className={L}>Estado del Stream</label>
+                    <select
+                      name="transmision_estado"
+                      value={formData.transmision_estado}
+                      onChange={handleChange}
+                      className="form-input bg-white"
+                    >
+                      <option value="programada">Programada</option>
+                      <option value="en_vivo">🔴 En Vivo</option>
+                      <option value="pausada">Pausada</option>
+                      <option value="finalizada">Finalizada</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className={L}>Plataforma</label>
+                    <select
+                      name="transmision_plataforma"
+                      value={formData.transmision_plataforma}
+                      onChange={handleChange}
+                      className="form-input bg-white"
+                    >
+                      <option value="youtube">YouTube (Directo / Oculto)</option>
+                      <option value="vimeo">Vimeo</option>
+                      <option value="custom_iframe">Embed Personalizado</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className={L}>ID o URL del Video / Transmisión</label>
+                  <input
+                    type="text"
+                    name="transmision_video_id"
+                    placeholder={
+                      formData.transmision_plataforma === 'youtube'
+                        ? 'Ej: https://youtube.com/live/xxx o ID del video'
+                        : 'ID o URL del reproductor'
+                    }
+                    value={formData.transmision_video_id}
+                    onChange={handleChange}
+                    className="form-input bg-white font-mono text-xs"
+                  />
+                  <p className="text-[11px] text-gray-500 mt-1">
+                    Solo los socios habilitados o usuarios con entrada virtual tendrán acceso a este video.
+                  </p>
+                </div>
+
+                <div>
+                  <label className={L}>Precio Entrada No-Socio ($ ARS)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="100"
+                    name="transmision_precio"
+                    value={formData.transmision_precio}
+                    onChange={handleChange}
+                    placeholder="0"
+                    className="form-input bg-white"
+                  />
+                </div>
+
+                <div className="space-y-2 pt-1">
+                  <label className="flex items-center gap-2 text-xs font-semibold text-gray-700 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      name="transmision_socio_gratis"
+                      checked={formData.transmision_socio_gratis}
+                      onChange={e => setFormData(prev => ({ ...prev, transmision_socio_gratis: e.target.checked }))}
+                      className="rounded text-purple-600 focus:ring-purple-500 h-4 w-4"
+                    />
+                    Socios con cuota al día miran GRATIS
+                  </label>
+
+                  <label className="flex items-center gap-2 text-xs font-semibold text-gray-700 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      name="transmision_es_publica"
+                      checked={formData.transmision_es_publica}
+                      onChange={e => setFormData(prev => ({ ...prev, transmision_es_publica: e.target.checked }))}
+                      className="rounded text-purple-600 focus:ring-purple-500 h-4 w-4"
+                    />
+                    Transmisión abierta / gratuita para todo el mundo
+                  </label>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="p-4 bg-gray-50 rounded-b-2xl border-t flex justify-end gap-3 flex-shrink-0">
@@ -1020,6 +1251,28 @@ export default function TecnicoEventos() {
                     <div className="flex items-start justify-between gap-3 flex-wrap">
                       <div className="inline-flex items-center gap-2 flex-wrap">
                         <TipoBadge tipo={evento.tipo} />
+                        {evento.rival && (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-900 border border-amber-200">
+                            <Trophy size={11} /> vs {evento.rival} ({evento.condicion === 'local' ? 'Local' : evento.condicion === 'visitante' ? 'Visitante' : 'Neutral'})
+                          </span>
+                        )}
+                        {evento.goles_local !== null && evento.goles_rival !== null && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-black bg-gray-800 text-white">
+                            CAR {evento.goles_local} - {evento.goles_rival} {evento.rival || 'Rival'}
+                          </span>
+                        )}
+                        {evento.tiene_transmision && (
+                          evento.transmision_estado === 'en_vivo' ? (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-black bg-red-600 text-white animate-pulse">
+                              <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
+                              EN VIVO
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-100 text-purple-800 border border-purple-200">
+                              <Tv size={12} /> PPV {evento.transmision_estado}
+                            </span>
+                          )
+                        )}
                         {evento.estado === 'finalizado' && (
                           <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-200 text-gray-700">
                             <History size={12} /> Finalizado
@@ -1084,12 +1337,26 @@ export default function TecnicoEventos() {
                         {esAdmin && (
                           <button
                             onClick={() => setEventoEditando(evento)}
-                            title="Editar título, fechas, ubicación, categoría o estado"
+                            title="Editar título, fechas, ubicación, fixture, streaming o estado"
                             className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-200 bg-white text-gray-600 font-semibold hover:bg-gray-50 hover:border-gray-300 transition-colors text-sm"
                           >
                             <Pencil size={14} />
                             Editar
                           </button>
+                        )}
+
+                        {evento.tiene_transmision && (
+                          <a
+                            href={`/en-vivo/${evento.id_evento}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            title="Abrir transmisión en vivo en nueva pestaña"
+                            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-purple-600 text-white font-semibold hover:bg-purple-700 transition-colors shadow-sm text-sm"
+                          >
+                            <Tv size={14} />
+                            <span className="hidden sm:inline">Ver Stream</span>
+                            <ExternalLink size={12} />
+                          </a>
                         )}
 
                         {puedeGestionarEvento(evento) ? (

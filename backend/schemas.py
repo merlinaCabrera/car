@@ -1536,6 +1536,9 @@ class GenerarOrdenCuotaResponse(BaseModel):
 
 TIPOS_EVENTO = ("partido", "torneo", "entrenamiento", "institucional", "otro")
 ESTADOS_EVENTO = ("programado", "en_curso", "finalizado", "cancelado")
+CONDICIONES_EVENTO = ("local", "visitante", "neutral")
+ESTADOS_TRANSMISION = ("programada", "en_vivo", "finalizada", "pausada")
+PLATAFORMAS_TRANSMISION = ("youtube", "vimeo", "custom_iframe")
 
 
 class CategoriaDeportivaBase(BaseModel):
@@ -1767,6 +1770,20 @@ class EventoBase(BaseModel):
     fecha_fin: Optional[datetime] = None
     ubicacion: Optional[str] = Field(default=None, max_length=200)
 
+    # Fixture & Partido
+    rival: Optional[str] = Field(default=None, max_length=150)
+    condicion: str = Field(default="local")
+    goles_local: Optional[int] = None
+    goles_rival: Optional[int] = None
+
+    # Transmisión en Vivo (metadatos públicos, sin ID de video confidencial)
+    tiene_transmision: bool = False
+    transmision_estado: str = "programada"
+    transmision_plataforma: str = "youtube"
+    transmision_precio: Decimal = Decimal("0.00")
+    transmision_socio_gratis: bool = True
+    transmision_es_publica: bool = False
+
     @field_validator("tipo")
     @classmethod
     def tipo_valido(cls, v: str) -> str:
@@ -1774,9 +1791,30 @@ class EventoBase(BaseModel):
             raise ValueError(f"Tipo inválido. Opciones: {TIPOS_EVENTO}")
         return v
 
+    @field_validator("condicion")
+    @classmethod
+    def condicion_valida(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and v not in CONDICIONES_EVENTO:
+            raise ValueError(f"Condición inválida. Opciones: {CONDICIONES_EVENTO}")
+        return v
+
+    @field_validator("transmision_estado")
+    @classmethod
+    def estado_transmision_valido(cls, v: str) -> str:
+        if v not in ESTADOS_TRANSMISION:
+            raise ValueError(f"Estado de transmisión inválido. Opciones: {ESTADOS_TRANSMISION}")
+        return v
+
+    @field_validator("transmision_plataforma")
+    @classmethod
+    def plataforma_transmision_valida(cls, v: str) -> str:
+        if v not in PLATAFORMAS_TRANSMISION:
+            raise ValueError(f"Plataforma inválida. Opciones: {PLATAFORMAS_TRANSMISION}")
+        return v
+
 
 class EventoCreate(EventoBase):
-    pass
+    transmision_video_id: Optional[str] = None
 
 
 class EventoUpdate(BaseModel):
@@ -1788,6 +1826,21 @@ class EventoUpdate(BaseModel):
     fecha_fin: Optional[datetime] = None
     ubicacion: Optional[str] = Field(default=None, max_length=200)
     estado: Optional[str] = None
+
+    # Fixture & Partido
+    rival: Optional[str] = None
+    condicion: Optional[str] = None
+    goles_local: Optional[int] = None
+    goles_rival: Optional[int] = None
+
+    # Transmisión en Vivo
+    tiene_transmision: Optional[bool] = None
+    transmision_estado: Optional[str] = None
+    transmision_plataforma: Optional[str] = None
+    transmision_video_id: Optional[str] = None
+    transmision_precio: Optional[Decimal] = None
+    transmision_socio_gratis: Optional[bool] = None
+    transmision_es_publica: Optional[bool] = None
 
     @field_validator("tipo")
     @classmethod
@@ -1803,6 +1856,27 @@ class EventoUpdate(BaseModel):
             raise ValueError(f"Estado inválido. Opciones: {ESTADOS_EVENTO}")
         return v
 
+    @field_validator("condicion")
+    @classmethod
+    def condicion_valida(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and v not in CONDICIONES_EVENTO:
+            raise ValueError(f"Condición inválida. Opciones: {CONDICIONES_EVENTO}")
+        return v
+
+    @field_validator("transmision_estado")
+    @classmethod
+    def estado_transmision_valido(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and v not in ESTADOS_TRANSMISION:
+            raise ValueError(f"Estado de transmisión inválido. Opciones: {ESTADOS_TRANSMISION}")
+        return v
+
+    @field_validator("transmision_plataforma")
+    @classmethod
+    def plataforma_transmision_valida(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and v not in PLATAFORMAS_TRANSMISION:
+            raise ValueError(f"Plataforma inválida. Opciones: {PLATAFORMAS_TRANSMISION}")
+        return v
+
 
 class EventoResponse(EventoBase):
     model_config = ConfigDict(from_attributes=True)
@@ -1813,6 +1887,11 @@ class EventoResponse(EventoBase):
     creado_at: datetime
     categoria: Optional[CategoriaDeportivaResponse] = None
     convocatorias: List["ConvocatoriaResponse"] = Field(default_factory=list)
+
+
+class EventoAdminResponse(EventoResponse):
+    """Respuesta extendida para administradores y técnicos — incluye el ID de video / embed confidencial."""
+    transmision_video_id: Optional[str] = None
 
 
 class MiEquipoResponse(BaseModel):
@@ -2085,4 +2164,60 @@ class ValidationResponse(BaseModel):
     dni: str
     estado_financiero: str  # 'Al día' | 'Moroso'
     es_socio_activo: bool
-    
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# TRANSMISIONES EN VIVO (PAY-PER-VIEW)
+# ─────────────────────────────────────────────────────────────────────────────
+
+class EntradaVirtualResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id_entrada: int
+    id_evento: int
+    id_usuario: int
+    id_pago: Optional[int] = None
+    creado_at: datetime
+
+
+class TransmisionAccesoResponse(BaseModel):
+    id_evento: int
+    tiene_acceso: bool
+    motivo: str  # 'admin' | 'socio_al_dia' | 'entrada_comprada' | 'transmision_publica' | 'sin_acceso' | 'no_autenticado'
+    precio: Decimal
+    socio_al_dia: bool
+    es_socio: bool
+    estado_transmision: str
+    transmision_socio_gratis: bool
+    transmision_es_publica: bool
+
+
+class TransmisionStreamResponse(BaseModel):
+    id_evento: int
+    plataforma: str
+    video_id: str
+    token_sesion: str
+    estado: str
+
+
+class HeartbeatRequest(BaseModel):
+    token_sesion: str
+
+
+class HeartbeatResponse(BaseModel):
+    valido: bool
+    mensaje: str
+
+
+class ComprarEntradaMPResponse(BaseModel):
+    id_evento: int
+    id_pago: int
+    preference_id: str
+    init_point: str
+
+
+class ComprarEntradaTransferenciaResponse(BaseModel):
+    id_evento: int
+    id_pago: int
+    monto: Decimal
+    mensaje: str

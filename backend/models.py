@@ -477,6 +477,11 @@ class Usuario(Base):
         "Evento", foreign_keys="Evento.creado_por", back_populates="creador",
     )
 
+    # Entradas virtuales a transmisiones en vivo
+    entradas_virtuales: Mapped[List["EntradaVirtual"]] = relationship(
+        "EntradaVirtual", back_populates="usuario", cascade="all, delete-orphan",
+    )
+
     # Convocatorias recibidas (como jugador citado)
     convocatorias: Mapped[List["Convocatoria"]] = relationship(
         "Convocatoria",
@@ -1284,6 +1289,45 @@ class Evento(Base):
         DateTime(timezone=True), nullable=False, server_default=func.now(),
     )
 
+    # ── Programa de Partidos (Fixture) ──────────────────────────────────────
+    rival: Mapped[Optional[str]] = mapped_column(String(150), comment="Nombre del equipo rival.")
+    condicion: Mapped[str] = mapped_column(
+        String(20), nullable=False, server_default=text("'local'"),
+        comment="local | visitante | neutral",
+    )
+    goles_local: Mapped[Optional[int]] = mapped_column(Integer, comment="Goles del CAR.")
+    goles_rival: Mapped[Optional[int]] = mapped_column(Integer, comment="Goles del rival.")
+
+    # ── Transmisión en Vivo (Streaming & PPV) ───────────────────────────────
+    tiene_transmision: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false"),
+        comment="Indica si el partido cuenta con streaming en vivo.",
+    )
+    transmision_estado: Mapped[str] = mapped_column(
+        String(20), nullable=False, server_default=text("'programada'"),
+        comment="programada | en_vivo | finalizada | pausada",
+    )
+    transmision_plataforma: Mapped[str] = mapped_column(
+        String(30), nullable=False, server_default=text("'youtube'"),
+        comment="youtube | vimeo | custom_iframe",
+    )
+    transmision_video_id: Mapped[Optional[str]] = mapped_column(
+        Text, nullable=True,
+        comment="ID de video de YouTube/Vimeo o código embed. Solo visible si tiene acceso verificado.",
+    )
+    transmision_precio: Mapped[Decimal] = mapped_column(
+        Numeric(10, 2), nullable=False, server_default=text("0.00"),
+        comment="Precio de la entrada virtual para no-socios.",
+    )
+    transmision_socio_gratis: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("true"),
+        comment="Si es true, los socios con cuota al día miran gratis.",
+    )
+    transmision_es_publica: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false"),
+        comment="Si es true, la transmisión es abierta a todo público.",
+    )
+
     # Relaciones
     categoria: Mapped[Optional["CategoriaDeportiva"]] = relationship(
         "CategoriaDeportiva", back_populates="eventos",
@@ -1296,6 +1340,9 @@ class Evento(Base):
     )
     convocatorias: Mapped[List["Convocatoria"]] = relationship(
         "Convocatoria", back_populates="evento", cascade="all, delete-orphan",
+    )
+    entradas_virtuales: Mapped[List["EntradaVirtual"]] = relationship(
+        "EntradaVirtual", back_populates="evento", cascade="all, delete-orphan",
     )
 
     __table_args__ = (
@@ -1450,6 +1497,48 @@ class Asistencia(Base):
 
     def __repr__(self) -> str:
         return f"<Asistencia evento={self.id_evento} user={self.id_usuario} via={self.metodo}>"
+
+
+class EntradaVirtual(Base):
+    """
+    Entrada virtual (Pay-Per-View) para acceder a la transmisión en vivo de un evento/partido.
+    Contiene además el token de sesión activa para control de concurrencia (heartbeat anti-avivadas).
+    """
+    __tablename__ = "entradas_virtuales"
+
+    id_entrada: Mapped[int] = mapped_column(Integer, primary_key=True)
+    id_evento: Mapped[int] = mapped_column(
+        ForeignKey("eventos.id_evento", ondelete="CASCADE"), nullable=False,
+    )
+    id_usuario: Mapped[int] = mapped_column(
+        ForeignKey("usuarios.id_usuario", ondelete="CASCADE"), nullable=False,
+    )
+    id_pago: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("pagos.id_pago", ondelete="SET NULL"), nullable=True,
+    )
+    token_sesion: Mapped[Optional[str]] = mapped_column(
+        String(100), nullable=True,
+        comment="Token de la sesión activa en el reproductor.",
+    )
+    ultimo_heartbeat_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True,
+    )
+    creado_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now(),
+    )
+
+    # Relaciones
+    evento: Mapped["Evento"] = relationship("Evento", back_populates="entradas_virtuales")
+    usuario: Mapped["Usuario"] = relationship("Usuario", back_populates="entradas_virtuales")
+    pago: Mapped[Optional["Pago"]] = relationship("Pago")
+
+    __table_args__ = (
+        UniqueConstraint("id_evento", "id_usuario", name="uq_entrada_virtual_evento_usuario"),
+        Index("idx_entradas_evento_usuario", "id_evento", "id_usuario"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<EntradaVirtual evento={self.id_evento} usuario={self.id_usuario}>"
 
 
 # ─────────────────────────────────────────────────────────────────────────────

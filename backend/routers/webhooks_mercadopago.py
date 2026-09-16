@@ -255,6 +255,29 @@ async def recibir_webhook_mercadopago(
             ip=None,
         )
 
+    # Si es un pago directo de Entrada Virtual (sin órdenes contables de carrito)
+    entradas_virtuales = (
+        db.query(models.EntradaVirtual)
+        .filter(models.EntradaVirtual.id_pago == pago.id_pago)
+        .all()
+    )
+    if entradas_virtuales and not ordenes_a_aprobar:
+        pago.estado = "verificado"
+        for ev in entradas_virtuales:
+            db.add(
+                models.Notificacion(
+                    id_usuario=pago.id_usuario,
+                    tipo="entrada_virtual_confirmada",
+                    titulo="¡Entrada Virtual confirmada!",
+                    cuerpo=(
+                        "Tu entrada virtual para el partido ha sido verificada exitosamente. "
+                        "¡Ya podés disfrutar de la transmisión en vivo!"
+                    ),
+                    referencia_id=ev.id_evento,
+                    referencia_tabla="eventos",
+                )
+            )
+
     finalizar_pago_si_corresponde(db=db, pago=pago, background_tasks=background_tasks)
 
     db.commit()
@@ -263,4 +286,5 @@ async def recibir_webhook_mercadopago(
         "status": "aprobado",
         "id_pago": pago.id_pago,
         "ordenes_aprobadas": [o.id_orden for o in ordenes_a_aprobar],
+        "entradas_aprobadas": [ev.id_entrada for ev in entradas_virtuales],
     }

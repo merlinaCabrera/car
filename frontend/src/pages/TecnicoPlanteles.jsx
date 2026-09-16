@@ -170,7 +170,7 @@ function NuevaCategoriaModal({ onClose, onSave }) {
                 Opcional. Si completás ambas fechas, el Admin General va a poder inscribir
                 masivamente a todos los jugadores nacidos en ese rango.
               </p>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs text-gray-500 mb-1 block">Nacidos desde</label>
                   <input
@@ -305,7 +305,7 @@ function EditarCategoriaModal({ categoria, onClose, onSave }) {
                 Si falta cualquiera de las dos fechas, el botón Autocompletar queda deshabilitado
                 para esta categoría.
               </p>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs text-gray-500 mb-1 block">Nacidos desde</label>
                   <input
@@ -1381,7 +1381,7 @@ export default function TecnicoPlanteles() {
             <button
               key={cat.id_categoria}
               onClick={() => setCategoriaSeleccionada(cat)}
-              className="text-left bg-white rounded-2xl border border-gray-200 shadow-sm p-5 hover:shadow-md hover:border-blue-200 transition-all"
+              className="text-left bg-white rounded-2xl border border-gray-200 shadow-sm p-3.5 sm:p-5 hover:shadow-md hover:border-blue-200 transition-all"
             >
               <div className="flex items-start justify-between gap-2">
                 <p className="font-bold text-gray-900">{cat.nombre}</p>

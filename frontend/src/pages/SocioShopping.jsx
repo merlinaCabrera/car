@@ -210,13 +210,13 @@ function TarjetaProducto({ producto, onAgregar, recienAgregado }) {
       </div>
 
       {/* Contenido */}
-      <div className="p-4 flex flex-col gap-2">
+      <div className="p-3 sm:p-4 flex flex-col gap-1.5 sm:gap-2">
 
         {/* Stock badge */}
         <StockBadge stock={producto.stock} />
 
         {/* Nombre */}
-        <h3 className="font-bold text-gray-900 text-base leading-snug line-clamp-2
+        <h3 className="font-bold text-gray-900 text-sm sm:text-base leading-snug line-clamp-2
                         group-hover:text-camoti-700 transition-colors">
           {producto.nombre}
         </h3>
@@ -229,7 +229,7 @@ function TarjetaProducto({ producto, onAgregar, recienAgregado }) {
         )}
 
         {/* Precio */}
-        <p className="text-xl font-extrabold text-gray-900 tracking-tight mt-1">
+        <p className="text-lg sm:text-xl font-extrabold text-gray-900 tracking-tight mt-0.5 sm:mt-1">
           {formatoMoneda.format(producto.precio_actual)}
           <span className="text-xs font-normal text-gray-400 ml-1">
             {esAlquiler ? 'por turno' : 'c/u'}
@@ -241,8 +241,8 @@ function TarjetaProducto({ producto, onAgregar, recienAgregado }) {
           onClick={handleClick}
           disabled={sinStock || recienAgregado}
           className={`
-            mt-1 w-full flex items-center justify-center gap-2
-            py-2.5 px-4 rounded-xl font-semibold text-sm
+            mt-1 w-full flex items-center justify-center gap-1.5 sm:gap-2
+            py-2 sm:py-2.5 px-2 sm:px-4 rounded-xl font-semibold text-xs sm:text-sm
             transition-all duration-200 active:scale-95
             ${sinStock
               ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
@@ -261,7 +261,7 @@ function TarjetaProducto({ producto, onAgregar, recienAgregado }) {
           ) : esAlquiler ? (
             <><CalendarClock size={15} strokeWidth={2.5} /> Elegir turno</>
           ) : (
-            <><Plus size={15} strokeWidth={2.5} /> Agregar al carrito</>
+            <><Plus size={15} strokeWidth={2.5} /> Agregar<span className="hidden min-[400px]:inline"> al carrito</span></>
           )}
         </button>
       </div>

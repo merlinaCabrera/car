@@ -86,7 +86,7 @@ function CeldaTurno({ turnoKey, ocupado, esPasado, seleccionado, onClick }) {
       type="button"
       disabled={disabled}
       onClick={onClick}
-      className={`flex-1 flex items-center justify-center gap-1 rounded-lg border py-1.5 text-[11px] font-semibold transition-colors ${clases}`}
+      className={`flex-1 flex items-center justify-center gap-1 rounded-lg border py-2 sm:py-1.5 px-0.5 text-[11px] font-semibold transition-colors ${clases}`}
       title={ocupado ? `${label} — ocupado` : esPasado ? `${label} — no disponible` : `${label} — disponible`}
     >
       <Icon size={11} />
@@ -304,7 +304,7 @@ function CalendarioMensual({ instalacion, token, seleccion, onSeleccionar }) {
         )}
 
         {!loading && !error && (
-          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2">
+          <div className="grid grid-cols-2 min-[440px]:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2">
             {dias.map(({ dia, nombreDiaSemana, esHoy, esPasado }) => (
               <CeldaDia
                 key={dia}

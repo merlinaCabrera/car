@@ -131,27 +131,29 @@ export default function Registro() {
 
     if (pedidoReactivacion) {
         return (
-            <div className="max-w-md mx-auto my-10 p-8 bg-white rounded-2xl border border-gray-200 shadow-lg text-center">
-                <h2 className="font-display text-2xl font-semibold text-amber-700 mb-4">Esta cuenta fue dada de baja</h2>
-                <p className="text-gray-600 leading-relaxed mb-6">
-                    Ya existe una cuenta registrada con ese DNI, pero está dada de baja del club.
-                    Si querés volver, podés pedirle al club que la reactive.
-                </p>
-                <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                    <button
-                        onClick={handleSolicitarReactivacion}
-                        disabled={enviandoReactivacion}
-                        className="bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-bold py-2.5 px-5 rounded-xl transition-colors"
-                    >
-                        {enviandoReactivacion ? 'Enviando…' : 'Solicitar reactivación'}
-                    </button>
-                    <button
-                        onClick={() => setPedidoReactivacion(null)}
-                        disabled={enviandoReactivacion}
-                        className="text-gray-500 hover:text-gray-800 font-semibold py-2.5 px-5"
-                    >
-                        Cancelar
-                    </button>
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+                <div className="max-w-md w-full p-6 sm:p-8 bg-white rounded-2xl border border-gray-200 shadow-lg text-center">
+                    <h2 className="font-display text-2xl font-semibold text-amber-700 mb-4">Esta cuenta fue dada de baja</h2>
+                    <p className="text-gray-600 leading-relaxed mb-6">
+                        Ya existe una cuenta registrada con ese DNI, pero está dada de baja del club.
+                        Si querés volver, podés pedirle al club que la reactive.
+                    </p>
+                    <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                        <button
+                            onClick={handleSolicitarReactivacion}
+                            disabled={enviandoReactivacion}
+                            className="bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-bold py-2.5 px-5 rounded-xl transition-colors"
+                        >
+                            {enviandoReactivacion ? 'Enviando…' : 'Solicitar reactivación'}
+                        </button>
+                        <button
+                            onClick={() => setPedidoReactivacion(null)}
+                            disabled={enviandoReactivacion}
+                            className="text-gray-500 hover:text-gray-800 font-semibold py-2.5 px-5"
+                        >
+                            Cancelar
+                        </button>
+                    </div>
                 </div>
             </div>
         );
@@ -159,13 +161,15 @@ export default function Registro() {
 
     if (success) {
         return (
-            <div className="max-w-md mx-auto my-10 p-8 bg-white rounded-2xl border border-gray-200 shadow-lg text-center">
-                <h2 className="font-display text-2xl font-semibold text-green-700 mb-4">¡Solicitud Enviada!</h2>
-                <p className="text-gray-600 leading-relaxed">Tu solicitud de alta ha sido enviada correctamente. Un administrador la revisará a la brevedad.</p>
-                <p className="text-gray-600 leading-relaxed mt-2">Recibirás una notificación cuando tu cuenta sea aprobada.</p>
-                <Link to="/login" className="mt-6 inline-block bg-blue-600 text-white font-bold py-2.5 px-5 rounded-xl hover:bg-blue-700 transition-colors">
-                    Volver al Login
-                </Link>
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+                <div className="max-w-md w-full p-6 sm:p-8 bg-white rounded-2xl border border-gray-200 shadow-lg text-center">
+                    <h2 className="font-display text-2xl font-semibold text-green-700 mb-4">¡Solicitud Enviada!</h2>
+                    <p className="text-gray-600 leading-relaxed">Tu solicitud de alta ha sido enviada correctamente. Un administrador la revisará a la brevedad.</p>
+                    <p className="text-gray-600 leading-relaxed mt-2">Recibirás una notificación cuando tu cuenta sea aprobada.</p>
+                    <Link to="/login" className="mt-6 inline-block bg-blue-600 text-white font-bold py-2.5 px-5 rounded-xl hover:bg-blue-700 transition-colors">
+                        Volver al Login
+                    </Link>
+                </div>
             </div>
         );
     }

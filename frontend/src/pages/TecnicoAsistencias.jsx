@@ -329,8 +329,55 @@ function PlanillaEvento({ evento, token, onVolver }) {
         </div>
       )}
 
-      {/* Planilla de convocados */}
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-x-auto">
+      {/* Planilla de convocados — cards en mobile, tabla en desktop */}
+      <div className="md:hidden bg-white rounded-2xl border border-gray-200 shadow-sm divide-y divide-gray-100">
+        {loadingAsist && [...Array(4)].map((_, i) => (
+          <div key={i} className="p-4"><div className="h-4 bg-gray-200 rounded-md animate-pulse" /></div>
+        ))}
+
+        {!loadingAsist && convocados.map(conv => {
+          const asistenciaReal = asistencias.find(a => a.id_usuario === conv.id_usuario)
+          return (
+            <div key={conv.id_usuario} className={`p-4 space-y-2.5 ${conv.entraReal ? 'bg-green-50/40' : ''}`}>
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="font-medium text-gray-900 text-sm">
+                    {conv.usuario?.apellido}, {conv.usuario?.nombre}
+                  </p>
+                  <p className="text-xs text-gray-500 font-mono mt-0.5">
+                    DNI {conv.usuario?.dni ?? '—'}
+                  </p>
+                </div>
+                <EstadoBadge estado={conv.estado} />
+              </div>
+
+              <div className="flex items-center justify-between text-xs text-gray-500 pt-2 border-t border-gray-100">
+                <span className="flex items-center gap-1.5">
+                  Pasó por puerta:
+                  {conv.entraReal
+                    ? <span className="inline-flex items-center gap-1 font-semibold text-green-700"><CheckCircle2 size={13} /> Sí</span>
+                    : <span className="inline-flex items-center gap-1 font-semibold text-gray-400"><XCircle size={13} /> No</span>
+                  }
+                </span>
+                <span className="text-gray-400">
+                  {asistenciaReal
+                    ? `Ingreso: ${new Date(asistenciaReal.fecha_hora_ingreso).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}`
+                    : 'Sin ingreso'
+                  }
+                </span>
+              </div>
+            </div>
+          )
+        })}
+
+        {!loadingAsist && convocados.length === 0 && (
+          <div className="text-center py-10 text-gray-400 text-sm px-4">
+            Este evento no tiene convocados todavía.
+          </div>
+        )}
+      </div>
+
+      <div className="hidden md:block bg-white rounded-2xl border border-gray-200 shadow-sm overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-100">
           <thead className="bg-gray-50">
             <tr>

@@ -3,9 +3,11 @@
 Router de autenticación por QR y DNI — Control de accesos en puerta.
 
 Endpoints:
-  GET  /qr/token           → Genera un QR token de corta duración (uso del socio).
-  POST /qr/validar-token   → Llama a fn_validar_qr(UUID) en PostgreSQL.
-  POST /qr/validar-dni     → Fallback manual: lógica equivalente vía ORM.
+  GET  /qr/token             → Genera un QR token de corta duración (uso del socio).
+  POST /qr/validar-token     → Llama a fn_validar_qr(UUID) en PostgreSQL.
+  POST /qr/validar-dni       → Fallback manual: lógica equivalente vía ORM.
+  GET  /admin/escaner/cache  → Padrón liviano para el modo offline del escáner
+                               (router_admin_escaner, al final del archivo).
 
 Ambos endpoints de validación:
   - Requieren rol 'admin_general', 'personal_administrativo' o 'admin_temporal'.
@@ -624,3 +626,93 @@ def validar_dni(
     db.commit()
 
     return respuesta
+
+# ─────────────────────────────────────────────────────────────────────────────
+# ROUTER SECUNDARIO: caché offline del escáner
+#
+# Vive en este archivo (y no en uno nuevo) porque es lógica del escáner y
+# reutiliza el mismo motor de estado financiero que /qr/validar-*. Se expone
+# bajo /admin/escaner porque es un endpoint de operación, no algo que consuma
+# el socio con su QR.
+# ─────────────────────────────────────────────────────────────────────────────
+
+router_admin_escaner = APIRouter(
+    prefix="/admin/escaner",
+    tags=["Control de Accesos — QR / DNI"],
+)
+
+
+@router_admin_escaner.get(
+    "/cache",
+    response_model=schemas.EscanerCacheResponse,
+    summary="Padrón liviano para el modo offline del escáner",
+)
+def obtener_cache_padron(
+    request: Request,
+    db: Session = Depends(get_db),
+    operador: models.Usuario = Depends(require_roles(*_ROLES_SCANNER_DNI)),
+) -> schemas.EscanerCacheResponse:
+    """
+    Devuelve el padrón activo con el estado de puerta YA RESUELTO por socio,
+    para que el escáner lo guarde en localStorage y pueda seguir trabajando
+    cuando la puerta se queda sin señal.
+
+    ── Por qué se usa _ROLES_SCANNER_DNI y no _ROLES_SCANNER ────────────────
+    Esto es un volcado del padrón entero: nombre, foto, roles y morosidad de
+    los ~300 socios de una sola vez. Vale exactamente la misma objeción que
+    llevó a sacarle /qr/validar-dni al rol 'invitado' (comercios adheridos):
+    ahí el riesgo era enumerar el padrón tipeando DNIs, acá se lo estaríamos
+    entregando en un solo GET. El comercio valida escaneando el QR que el
+    socio le muestra, y para eso no necesita caché.
+
+    ── Qué incluye ──────────────────────────────────────────────────────────
+    Solo socios activos (`fecha_baja IS NULL`). Un socio dado de baja no está
+    en la caché, así que offline cae en "no encontrado — verificar
+    manualmente", que es el resultado conservador correcto: nunca se habilita
+    a alguien por ausencia de datos.
+
+    ── Qué NO incluye ───────────────────────────────────────────────────────
+    Ni `qr_token`, ni email, ni teléfono, ni dirección, ni saldo, ni montos en
+    pesos. El `qr_token` queda afuera por dos razones y cualquiera de las dos
+    alcanza: (a) rota cada vez que el socio abre su pantalla de QR, así que la
+    copia cacheada estaría vencida casi siempre; (b) sería guardar 300
+    credenciales en el teléfono del portero. Consecuencia asumida: **sin
+    conexión el QR no se puede validar**, y el escáner manda a usar el DNI
+    manual.
+
+    ── Sobre el audit_log ───────────────────────────────────────────────────
+    A diferencia de /qr/validar-*, este endpoint NO escribe en audit_log: el
+    escáner lo llama cada 15 minutos mientras esté abierto, y una puerta con
+    dos dispositivos en un partido generaría cientos de filas por día que
+    taparían las acciones que /admin/auditoria existe para mostrar. No se
+    pierde trazabilidad del ingreso en sí: cada validación real sigue
+    registrándose una por una.
+    """
+    dia_vencimiento = _obtener_dia_vencimiento(db)
+
+    usuarios = (
+        db.query(models.Usuario)
+        .options(
+            joinedload(models.Usuario.roles_asignados)
+            .joinedload(models.UsuarioRol.rol)
+        )
+        .filter(models.Usuario.fecha_baja.is_(None))
+        .order_by(models.Usuario.dni)
+        .all()
+    )
+
+    socios: list[schemas.EscanerCacheSocio] = []
+    for usuario in usuarios:
+        base = _construir_respuesta_desde_orm(usuario, dia_vencimiento)
+        socios.append(
+            schemas.EscanerCacheSocio(
+                dni=usuario.dni,
+                **base.model_dump(),
+            )
+        )
+
+    return schemas.EscanerCacheResponse(
+        generado_at=datetime.now(timezone.utc),
+        total=len(socios),
+        socios=socios,
+    )

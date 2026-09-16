@@ -481,6 +481,43 @@ class UsuarioQRValidacionResponse(BaseModel):
     )
 
 
+# ── Caché offline del escáner ─────────────────────────────────────────────────
+
+class EscanerCacheSocio(UsuarioQRValidacionResponse):
+    """
+    Una fila del padrón liviano que el escáner guarda en localStorage para
+    poder seguir validando cuando la puerta se queda sin señal.
+
+    Hereda de UsuarioQRValidacionResponse A PROPÓSITO: la tarjeta de resultado
+    del escáner tiene que verse EXACTAMENTE igual online que offline, y el
+    estado financiero (`es_valido`, `estado_financiero`, `mensaje_display`,
+    `en_mes_ingreso`) se calcula acá con el mismo motor de siempre
+    (`_construir_respuesta_desde_orm`). Si en vez de eso mandáramos los campos
+    crudos (`mes_cubierto_hasta`, `fecha_ingreso`) y resolviéramos el estado en
+    JavaScript, tendríamos una SEXTA implementación paralela de la regla de
+    morosidad — el problema que `utils/cuotas_periodos` vino a terminar.
+
+    El único campo que agrega es `dni`, que es la clave de búsqueda offline
+    (el QR no sirve sin conexión: `qr_token` rota en cada apertura de la
+    pantalla del socio, así que cachearlo sería inútil además de inseguro).
+    """
+    dni: str = Field(description="Clave de búsqueda offline. El QR no se puede resolver sin red.")
+
+
+class EscanerCacheResponse(BaseModel):
+    """Padrón liviano completo + el momento en que se calculó."""
+    generado_at: datetime = Field(
+        description=(
+            "Momento (UTC) en que el backend calculó estos estados. El escáner "
+            "lo usa solo como referencia: la antigüedad que muestra el banner "
+            "se mide contra el reloj del dispositivo, que es el único que "
+            "sigue andando sin conexión."
+        ),
+    )
+    total: int = Field(description="Cantidad de socios incluidos.")
+    socios: List[EscanerCacheSocio] = []
+
+
 # ── Asignación de roles ───────────────────────────────────────────────────────
 
 class AsignarRolPayload(BaseModel):

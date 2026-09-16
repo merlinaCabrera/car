@@ -2,7 +2,7 @@
 
 Guía de contexto para Claude Code. Leer antes de tocar cualquier archivo.
 
-_Última actualización: 2026-09-11._
+_Última actualización: 2026-09-15._
 
 ---
 
@@ -85,7 +85,7 @@ car/
 │   │   ├── socio_reservas.py    # Pre-reserva de canchas/quincho (socio)
 │   │   ├── socio_billetera.py   # Saldo a favor del socio
 │   │   ├── deportivo.py         # Categorías, planteles, eventos, convocatorias
-│   │   ├── qr_auth.py           # Verificación de QR en escáneres
+│   │   ├── qr_auth.py           # Verificación de QR en escáneres + GET /admin/escaner/cache (padrón offline)
 │   │   ├── notificaciones.py    # Notificaciones in-app
 │   │   ├── beneficios.py        # Beneficios en comercios adheridos (validación por QR)
 │   │   ├── faq.py               # FAQ público + CRUD admin de entradas
@@ -117,6 +117,7 @@ car/
 │       │   └── admin/                   # MetricCard, CategoriaOrdenBadge, FaqBlock, SponsorsBlock
 │       ├── hooks/
 │       │   ├── useAdminResource.js      # Fetch genérico con loading/error/data
+│       │   ├── useEscanerCache.js       # Caché local del padrón para el escáner offline
 │       │   ├── useExportarConvocatoria.js  # PDF de lista de convocados (jsPDF dinámico)
 │       │   └── useExportarAsistencias.js   # Export asistencias
 │       └── pages/               # Una página por ruta
@@ -256,6 +257,33 @@ staff = Depends(require_roles("admin_general", "personal_administrativo"))
 | `/admin/estadisticas` | Estadísticas y reportes |
 
 ---
+
+## Escáner de la puerta — modo offline
+
+La puerta del club tiene mala señal, así que `/admin/escaner` funciona sin red.
+
+- **Caché local:** `localStorage['escaner_cache']` = `{ timestamp, generado_at, socios[] }`.
+  Se refresca **cada 15 minutos** mientras haya conexión, y también al dispararse el
+  evento `online` del navegador. La lógica vive en `frontend/src/hooks/useEscanerCache.js`
+  (`setInterval`, **no** Service Worker — decisión explícita: más fácil de debuggear).
+- **Endpoint:** `GET /admin/escaner/cache` (router `router_admin_escaner` en
+  `backend/routers/qr_auth.py`, registrado aparte en `main.py`). Devuelve el padrón
+  activo (`fecha_baja IS NULL`) con el estado de puerta **ya resuelto por socio** —
+  la misma forma que `UsuarioQRValidacionResponse` más el `dni`. Se hace así para no
+  reimplementar la regla de morosidad en JavaScript.
+- **Roles:** `admin_general`, `personal_administrativo`, `admin_temporal`. **No** `invitado`
+  (es un volcado del padrón entero; misma razón por la que el comercio adherido no puede
+  usar `/qr/validar-dni`).
+- **No escribe en `audit_log`** — se llamaría cientos de veces por día y taparía
+  `/admin/auditoria`. Cada validación real se sigue registrando.
+- ⚠️ **Sin conexión el QR no se valida.** `qr_token` no se cachea: rota cada vez que el
+  socio abre su pantalla de QR (una copia estaría vencida casi siempre) y sería guardar
+  300 credenciales en el teléfono del portero. Offline el camino es **DNI manual**, y la
+  pantalla lo dice.
+- **Timeouts:** 3 s para la validación en vivo antes de caer a la caché; 60 s para el
+  refresco del padrón (tolera el cold start de Render).
+- El banner de conexión arriba del escáner tiene cuatro estados: verde (en línea),
+  ámbar (caché < 2 h), rojo (caché > 2 h) y gris (sin caché).
 
 ## Flujo económico (carrito y órdenes)
 

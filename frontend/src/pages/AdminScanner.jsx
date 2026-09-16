@@ -18,6 +18,24 @@
  * onScan(codes: IDetectedBarcode[])  → codes[0].rawValue es el UUID
  * paused={bool}                      → pausa/activa sin desmontar el componente
  * components={{ audio: false }}      → evita el beep del scanner
+ *
+ * ── Modo offline ─────────────────────────────────────────────────────────────
+ * La puerta del club tiene mala señal. `useEscanerCache` mantiene una copia del
+ * padrón activo en localStorage (refresco cada 15 min) y este componente la usa
+ * como plan B:
+ *
+ *   validación por DNI → intenta /qr/validar-dni con 3 s de timeout
+ *                      → si no hay red, resuelve contra la caché
+ *   validación por QR  → NO tiene plan B. El `qr_token` rota en cada apertura
+ *                        de la pantalla del socio, así que una copia cacheada
+ *                        estaría vencida casi siempre; además sería guardar
+ *                        credenciales de 300 socios en el teléfono del portero.
+ *                        Sin conexión, el escáner manda a usar el DNI manual.
+ *
+ * El banner de conexión está siempre arriba, y un resultado servido desde la
+ * caché lleva el chip "OFFLINE · datos de hace X". El color del resultado
+ * (verde/ámbar/rojo) NUNCA cambia por la fuente del dato: lo decide el estado
+ * del socio y nada más.
  */
 
 import { textoError } from '../utils/errores';
@@ -35,13 +53,34 @@ import {
   Clock,
   Sparkles,
   Baby,
+  Wifi,
+  WifiOff,
+  CloudOff,
+  RefreshCw,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import {
+  useEscanerCache,
+  fetchConTimeout,
+  formatearAntiguedad,
+} from '../hooks/useEscanerCache'
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
 const API            = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 const AUTO_RESET_SEC = 8   // segundos antes de volver al escáner automáticamente
+
+/**
+ * Timeout de la validación en vivo antes de caer a la caché.
+ *
+ * 3 s es el techo de lo que el portero puede esperar con alguien parado
+ * enfrente. Contrapartida asumida: si Render está dormido (free tier, cold
+ * start de 40-60 s) el primer escaneo del día cae a la caché aunque haya
+ * señal. Sale igual una respuesta correcta, marcada como OFFLINE, y el
+ * refresco de caché — que tiene 60 s de timeout — despierta el server para
+ * los escaneos siguientes. UptimeRobot sobre /health elimina el caso.
+ */
+const TIMEOUT_VALIDACION_MS = 3000
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -84,10 +123,11 @@ const VARIANTES = {
 
 // ─── Sub-componente: Tarjeta de resultado ─────────────────────────────────────
 
-function TarjetaResultado({ resultado, onSiguiente }) {
+function TarjetaResultado({ resultado, onSiguiente, fuente = 'online', edadDato = null }) {
   const [cuenta,  setCuenta]  = useState(AUTO_RESET_SEC)
   const variante              = resolverVariante(resultado)
   const { bg, badge, Icon, iconCls } = VARIANTES[variante]
+  const esDeCache             = fuente === 'cache'
 
   // Auto-reset countdown
   useEffect(() => {
@@ -110,6 +150,18 @@ function TarjetaResultado({ resultado, onSiguiente }) {
         <Clock size={12} />
         {cuenta}s
       </div>
+
+      {/* Chip de origen del dato. Deliberadamente discreto y en blanco/negro:
+          marca que el dato viene de la copia local, SIN tocar el color de la
+          tarjeta — el verde/ámbar/rojo lo decide el estado del socio. */}
+      {esDeCache && (
+        <div className="absolute top-4 left-4 flex items-center gap-1.5
+                        bg-black/30 rounded-full px-3 py-1.5 text-[11px] font-bold
+                        uppercase tracking-wide ring-1 ring-white/30">
+          <CloudOff size={12} />
+          Offline · datos de hace {formatearAntiguedad(edadDato)}
+        </div>
+      )}
 
       {/* Bloque superior: ícono + mensaje_display */}
       <div className="flex-1 flex flex-col items-center justify-center gap-5 text-center pt-6">
@@ -253,37 +305,178 @@ function MiraEscaner() {
   )
 }
 
+// ─── Sub-componente: banner de estado de conexión ─────────────────────────────
+
+/**
+ * Semáforo permanente arriba del escáner. El portero lo mira de reojo, así que
+ * la información tiene que entrar de un vistazo: color, ícono y una línea.
+ *
+ * Los cuatro estados (según el enunciado de la funcionalidad):
+ *   🟢 verde   → en línea, datos en tiempo real
+ *   🟡 ámbar   → sin conexión, caché de menos de 2 h
+ *   🔴 rojo    → sin conexión, caché de más de 2 h
+ *   ⚫ gris    → sin conexión y sin caché: el escáner no puede decidir nada
+ */
+function BannerConexion({
+  conexion,
+  reconectando,
+  cacheDisponible,
+  cacheVieja,
+  edadCache,
+  totalCacheado,
+  actualizando,
+  onActualizar,
+}) {
+  const online = conexion === 'online'
+
+  let estilo, Icono, titulo, detalle
+
+  if (reconectando) {
+    estilo  = 'bg-green-600 text-white'
+    Icono   = RefreshCw
+    titulo  = 'Conexión restaurada — actualizando…'
+    detalle = null
+  } else if (online) {
+    estilo  = 'bg-green-600 text-white'
+    Icono   = Wifi
+    titulo  = 'En línea'
+    detalle = 'Datos en tiempo real'
+  } else if (!cacheDisponible) {
+    estilo  = 'bg-gray-700 text-gray-100'
+    Icono   = CloudOff
+    titulo  = 'Sin conexión — sin caché disponible'
+    detalle = 'No se puede validar. Verificá manualmente.'
+  } else if (cacheVieja) {
+    estilo  = 'bg-red-600 text-white'
+    Icono   = WifiOff
+    titulo  = `Sin conexión — datos desactualizados (hace ${formatearAntiguedad(edadCache)})`
+    detalle = `${totalCacheado} socios en la copia local`
+  } else {
+    estilo  = 'bg-amber-500 text-white'
+    Icono   = WifiOff
+    titulo  = `Sin conexión — usando datos de hace ${formatearAntiguedad(edadCache)}`
+    detalle = `${totalCacheado} socios en la copia local`
+  }
+
+  return (
+    <div className={`flex items-center gap-3 px-4 py-2.5 ${estilo}`}>
+      <Icono
+        size={20}
+        className={`flex-shrink-0 ${(reconectando || actualizando) ? 'animate-spin' : ''}`}
+      />
+      <div className="min-w-0 flex-1 leading-tight">
+        <p className="text-sm font-bold truncate">{titulo}</p>
+        {detalle && <p className="text-[11px] opacity-80 truncate">{detalle}</p>}
+      </div>
+
+      {/* Reintento manual: el portero puede caminar dos metros y recuperar
+          señal, y no tiene por qué esperar los 15 minutos del refresco. */}
+      {!online && !reconectando && (
+        <button
+          onClick={onActualizar}
+          disabled={actualizando}
+          className="flex-shrink-0 flex items-center gap-1.5 rounded-lg bg-black/25
+                     px-3 py-1.5 text-xs font-bold disabled:opacity-50"
+        >
+          <RefreshCw size={13} className={actualizando ? 'animate-spin' : ''} />
+          Reintentar
+        </button>
+      )}
+    </div>
+  )
+}
+
 // ─── Componente principal ─────────────────────────────────────────────────────
 
 export default function AdminScanner() {
   const { token } = useAuth()
 
-  const [resultado,  setResultado]  = useState(null)   // UsuarioQRValidacionResponse
+  // `resultado` envuelve la respuesta junto con su procedencia:
+  //   { data: UsuarioQRValidacionResponse, fuente: 'online'|'cache', edadDato }
+  const [resultado,  setResultado]  = useState(null)
   const [loading,    setLoading]    = useState(false)
   const [error,      setError]      = useState(null)
   const [manualDni,  setManualDni]  = useState('')
   const [modoDNI,    setModoDNI]    = useState(false)  // toggle entre cámara e input
 
+  const {
+    conexion, reconectando, cacheDisponible, cacheVieja, edadCache,
+    cacheTimestamp, totalCacheado, actualizando, actualizarCache,
+    buscarEnCache, reportarExito, reportarFallo,
+  } = useEscanerCache()
+
   // Ref para evitar doble-disparo del scanner mientras ya hay resultado/loading
   const procesandoRef = useRef(false)
 
+  // ── Plan B cuando la red no contesta ─────────────────────────────────────
+  // Solo aplica al camino por DNI: el QR no se puede resolver sin conexión
+  // (ver el encabezado del archivo).
+  const resolverDesdeCache = useCallback((dni) => {
+    reportarFallo()
+
+    if (!dni) {
+      setError('Sin conexión — el QR no se puede validar offline. Pasá a "DNI Manual".')
+      return
+    }
+
+    const socio = buscarEnCache(dni)
+    if (socio) {
+      setResultado({
+        data:     socio,
+        fuente:   'cache',
+        edadDato: cacheTimestamp ? Date.now() - cacheTimestamp : null,
+      })
+      return
+    }
+
+    setError(
+      cacheDisponible
+        ? 'Sin conexión — socio no encontrado en caché. Verificar manualmente.'
+        : 'Sin conexión y sin copia local del padrón. Verificar manualmente.',
+    )
+  }, [buscarEnCache, cacheDisponible, cacheTimestamp, reportarFallo])
+
   // ── Función central de validación ────────────────────────────────────────
-  const validar = useCallback(async (endpoint, body) => {
+  // `dniFallback` es el DNI con el que buscar en la caché si el request no
+  // llega a destino. Va en null para el camino del QR.
+  const validar = useCallback(async (endpoint, body, dniFallback = null) => {
     if (procesandoRef.current) return
     procesandoRef.current = true
     setLoading(true)
     setError(null)
 
+    // El try/catch va partido en dos a propósito: solo el primero es un fallo
+    // de RED (timeout o fetch que no sale). Un 400 del backend ("formato de QR
+    // inválido") es una respuesta legítima y no tiene que disparar el modo
+    // offline — si no, un QR de Google nos dejaría el banner en ámbar.
+    let res
     try {
-      const res = await fetch(`${API}${endpoint}`, {
-        method: 'POST',
-        headers: {
-          Authorization:  `Bearer ${token}`,
-          'Content-Type': 'application/json',
+      res = await fetchConTimeout(
+        `${API}${endpoint}`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization:  `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(body),
         },
-        body: JSON.stringify(body),
-      })
+        TIMEOUT_VALIDACION_MS,
+      )
+    } catch {
+      resolverDesdeCache(dniFallback)
+      // El aviso de offline dura más que un error común: el portero tiene que
+      // alcanzar a leer que el dato no vino del servidor.
+      setTimeout(() => setError(null), 6000)
+      setLoading(false)
+      procesandoRef.current = false
+      return
+    }
 
+    // Hubo respuesta del servidor: la red está viva, pase lo que pase abajo.
+    reportarExito()
+
+    try {
       const data = await res.json()
 
       if (!res.ok) {
@@ -291,7 +484,8 @@ export default function AdminScanner() {
         throw new Error(textoError(data?.detail, `Error ${res.status}`))
       }
 
-      setResultado(data)   // UsuarioQRValidacionResponse — siempre viene en 2xx
+      // UsuarioQRValidacionResponse — siempre viene en 2xx
+      setResultado({ data, fuente: 'online', edadDato: null })
 
     } catch (err) {
       setError(err.message)
@@ -301,7 +495,7 @@ export default function AdminScanner() {
       setLoading(false)
       procesandoRef.current = false
     }
-  }, [token])
+  }, [token, resolverDesdeCache, reportarExito])
 
   // ── Handler del Scanner ───────────────────────────────────────────────────
   // onScan recibe IDetectedBarcode[] → usamos [0].rawValue
@@ -317,7 +511,7 @@ export default function AdminScanner() {
     e.preventDefault()
     const dni = manualDni.trim()
     if (!dni || procesandoRef.current) return
-    validar('/qr/validar-dni', { dni })
+    validar('/qr/validar-dni', { dni }, dni)
     setManualDni('')
   }
 
@@ -331,12 +525,31 @@ export default function AdminScanner() {
 
   // ── Render: tarjeta de resultado (full-screen) ────────────────────────────
   if (resultado) {
-    return <TarjetaResultado resultado={resultado} onSiguiente={resetScanner} />
+    return (
+      <TarjetaResultado
+        resultado={resultado.data}
+        fuente={resultado.fuente}
+        edadDato={resultado.edadDato}
+        onSiguiente={resetScanner}
+      />
+    )
   }
 
   // ── Render: visor ─────────────────────────────────────────────────────────
   return (
     <div className="flex flex-col min-h-[calc(100dvh-4rem)] bg-gray-950">
+
+      {/* Semáforo de conexión — arriba de todo y siempre visible */}
+      <BannerConexion
+        conexion={conexion}
+        reconectando={reconectando}
+        cacheDisponible={cacheDisponible}
+        cacheVieja={cacheVieja}
+        edadCache={edadCache}
+        totalCacheado={totalCacheado}
+        actualizando={actualizando}
+        onActualizar={actualizarCache}
+      />
 
       {/* Header compacto */}
       <div className="anim-entrada px-5 pt-5 pb-3 text-center">
@@ -450,11 +663,25 @@ export default function AdminScanner() {
           </div>
         )}
 
-        {/* Instrucción contextual */}
+        {/* Instrucción contextual.
+            Sin conexión avisamos ANTES de que escanee: el QR no se puede
+            resolver offline y esperar los 3 s del timeout para enterarse, con
+            gente haciendo cola, es exactamente lo que hay que evitar. */}
         {!modoDNI && !loading && !error && (
-          <p className="text-center text-gray-500 text-xs pb-2">
-            El escáner reconoce el código automáticamente.
-          </p>
+          conexion === 'offline' ? (
+            <button
+              onClick={() => setModoDNI(true)}
+              className="mx-auto mb-2 flex items-center gap-2 rounded-xl border border-amber-700
+                         bg-amber-900/40 px-4 py-2.5 text-xs font-semibold text-amber-200"
+            >
+              <Keyboard size={14} />
+              Sin conexión: el QR no se puede validar. Tocá acá para usar DNI manual.
+            </button>
+          ) : (
+            <p className="text-center text-gray-500 text-xs pb-2">
+              El escáner reconoce el código automáticamente.
+            </p>
+          )
         )}
       </div>
     </div>

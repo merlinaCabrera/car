@@ -2,7 +2,7 @@
 
 Guía de contexto para Claude Code. Leer antes de tocar cualquier archivo.
 
-_Última actualización: 2026-09-15._
+_Última actualización: 2026-09-16._
 
 ---
 
@@ -80,7 +80,7 @@ car/
 │   │   ├── admin_auditoria.py   # Historial de acciones admin
 │   │   ├── admin_comercios.py   # CRUD comercios adheridos
 │   │   ├── admin_productos.py   # CRUD catálogo de productos
-│   │   ├── socio_cuotas.py      # Estado de cuenta, historial, cobro manual admin
+│   │   ├── socio_cuotas.py      # Estado de cuenta, historial, cobro manual admin + POST /admin/cuotas/aviso-mail-masivo
 │   │   ├── socio_carrito.py     # Carrito, checkout, split-order
 │   │   ├── socio_reservas.py    # Pre-reserva de canchas/quincho (socio)
 │   │   ├── socio_billetera.py   # Saldo a favor del socio
@@ -99,6 +99,7 @@ car/
 │   └── utils/
 │       ├── s3.py        # upload_file_to_s3(), delete_file_from_s3(), presigned URLs, bucket público de sponsors
 │       ├── audit.py     # registrar_audit() — wrapper para AuditLog
+│       ├── recordatorios.py  # Plantilla del recordatorio de cuota, deep link wa.me, morosos
 │       └── ordenes.py   # Helpers del ciclo de vida de órdenes
 │
 ├── frontend/
@@ -284,6 +285,54 @@ La puerta del club tiene mala señal, así que `/admin/escaner` funciona sin red
   refresco del padrón (tolera el cold start de Render).
 - El banner de conexión arriba del escáner tiene cuatro estados: verde (en línea),
   ámbar (caché < 2 h), rojo (caché > 2 h) y gris (sin caché).
+- **La sesión sobrevive a una recarga sin señal.** `AuthContext` guarda el perfil
+  en `localStorage['car_user_profile']` y solo cierra sesión ante un 401/403
+  explícito de `/usuarios/me` — un fallo de red o un 502 del cold start de
+  Render ya no desloguean a nadie. Sin esto el modo offline servía únicamente
+  mientras la pestaña siguiera abierta, y en un celular el navegador la descarta
+  al bloquear la pantalla.
+
+## Recordatorio de cuota — WhatsApp y mail masivo
+
+Dos formas de avisarle a un socio moroso, **con un solo texto detrás**: la
+plantilla editable que vive en `configuracion_global`. El motor está en
+`backend/utils/recordatorios.py` — si alguna vez hay que cambiar cómo se arma
+el mensaje, es el único archivo que se toca.
+
+- **Plantilla:** `configuracion_global.plantilla_recordatorio` (NULL = usar
+  `PLANTILLA_DEFAULT` del código, así el texto de fábrica se puede corregir en
+  un deploy y no queda congelado en una fila). Variables: `{nombre}` `{mes}`
+  `{monto}` `{alias}` `{link_pago}`. `{mes}` es el período adeudado **más
+  viejo**, no el mes en curso. `{link_pago}` es `FRONTEND_URL/socio/cuotas`.
+  Se exige que la plantilla incluya `{mes}` y `{monto}`.
+- **Alias del club:** `configuracion_global.alias_transferencia`. Se edita en
+  la misma pantalla (`/admin/productos`, panel "Recordatorio de cuota") junto
+  con la plantilla y una vista previa con datos de ejemplo.
+- **Endpoints:**
+  - `GET|PATCH /admin/productos/configuracion/recordatorio` (PATCH solo
+    `admin_general`, como el resto de la config global).
+  - `GET /admin/usuarios/{id}/whatsapp-recordatorio` → devuelve el deep link
+    `wa.me`. **No manda nada y no escribe en `audit_log`**: pedir el link no es
+    haberlo usado. Va en `/admin/usuarios` porque ese es el prefijo del router;
+    `/admin/socios` es la ruta del frontend.
+  - `POST /admin/cuotas/aviso-mail-masivo` (router `router_admin_cuotas` en
+    `socio_cuotas.py`, registrado aparte en `main.py`). Sí escribe en
+    `audit_log` (`AVISO_MAIL_MASIVO_CUOTA`): manda mails reales a terceros.
+- **Quién recibe el mail masivo:** morosos activos sin beca vigente, con email,
+  y **sin** una orden de cuota en `pendiente_verificacion` — esos ya pagaron y
+  esperan al admin (BUG-02). Los tres filtros se informan por separado en la
+  respuesta.
+- ⚠️ **El envío es sincrónico**, no un BackgroundTask: el botón tiene que poder
+  decir "Aviso enviado a N socios". Con 80 ms entre mails, el padrón real tarda
+  cerca de un minuto. Rate limit de 3 disparos por hora y por IP (el daño de un
+  doble clic acá son 300 personas recibiendo dos mails).
+- **Teléfonos:** `normalizar_telefono_ar()` convierte lo que haya cargado
+  (`02355 15 123456`, `+54 9 …`, `(2355) 15-…`) al formato `549XXXXXXXXXX` que
+  pide `wa.me`. Si no llega a 10 dígitos nacionales devuelve None y el endpoint
+  responde 409 en vez de armar un link roto.
+- **Plantilla ≠ `str.format()`:** el texto lo escribe el admin en un textarea,
+  así que se renderiza con una regex sobre `{variable}`. Con `format()`, una
+  llave suelta sería un 500 y `{0.__class__}` un agujero.
 
 ## Flujo económico (carrito y órdenes)
 

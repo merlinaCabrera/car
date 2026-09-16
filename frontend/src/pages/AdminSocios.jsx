@@ -52,6 +52,7 @@ import {
   Mail,
   Cake,
   AlertTriangle,
+  MessageCircle,
 } from 'lucide-react'
 
 const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
@@ -1459,6 +1460,96 @@ function ComprasSocioModal({ socio, token, refreshTick, onClose, onCobrar }) {
   )
 }
 
+// ─── Botón de recordatorio por WhatsApp ────────────────────────────────────
+//
+// No manda nada: le pide al backend el deep link `wa.me` con el mensaje ya
+// armado (plantilla configurable + deuda real del socio) y lo abre. Quien
+// manda el mensaje es la persona, desde su propio WhatsApp.
+//
+// Detalle importante: la pestaña se abre ANTES del fetch, no después. Si se
+// llamara a window.open() cuando vuelve la respuesta, el navegador ya no lo
+// asocia al clic y lo bloquea como popup — el botón "no haría nada" y el
+// admin no tendría forma de saber por qué.
+function BotonWhatsApp({ socio, token, compacto = false }) {
+  const [cargando, setCargando] = useState(false)
+  const [error, setError]       = useState(null)
+
+  const sinTelefono = !socio.telefono
+
+  const handleClick = async (e) => {
+    e.stopPropagation()
+    if (cargando || sinTelefono) return
+
+    const pestania = window.open('', '_blank')
+    setCargando(true)
+    setError(null)
+
+    try {
+      const res = await fetch(
+        `${API}/admin/usuarios/${socio.id_usuario}/whatsapp-recordatorio`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      )
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(textoError(data?.detail, 'No se pudo armar el mensaje.'))
+
+      if (pestania) {
+        pestania.location.href = data.url
+      } else {
+        // El navegador bloqueó la pestaña igual. Mejor mandar al admin al
+        // link en la misma ventana que dejarlo sin nada.
+        window.location.href = data.url
+      }
+    } catch (err) {
+      if (pestania) pestania.close()
+      setError(err.message)
+      setTimeout(() => setError(null), 5000)
+    } finally {
+      setCargando(false)
+    }
+  }
+
+  const titulo = sinTelefono
+    ? 'Sin teléfono registrado'
+    : error || `Enviar recordatorio de cuota por WhatsApp al ${socio.telefono}`
+
+  const clases = sinTelefono
+    ? 'text-gray-300 cursor-not-allowed'
+    : error
+      ? 'text-red-600 bg-red-50'
+      : 'text-gray-500 hover:text-green-600 hover:bg-green-50'
+
+  if (compacto) {
+    return (
+      <button
+        type="button"
+        onClick={handleClick}
+        disabled={sinTelefono || cargando}
+        title={titulo}
+        className={`p-2 rounded-lg transition-colors ${clases}`}
+      >
+        {cargando
+          ? <Loader2 size={16} className="animate-spin" />
+          : <MessageCircle size={16} />}
+      </button>
+    )
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={handleClick}
+      disabled={sinTelefono || cargando}
+      title={titulo}
+      className={`flex-1 inline-flex items-center justify-center gap-1.5 p-2 rounded-lg transition-colors text-xs font-medium ${clases}`}
+    >
+      {cargando
+        ? <Loader2 size={16} className="animate-spin" />
+        : <MessageCircle size={16} />}
+      WhatsApp
+    </button>
+  )
+}
+
 // ─── Componente principal ─────────────────────────────────────────────────────
 
 // ─── Tarjeta de Socio — mobile ─────────────────────────────────────────────
@@ -1468,7 +1559,7 @@ function ComprasSocioModal({ socio, token, refreshTick, onClose, onCobrar }) {
 // patrón que las tarjetas de Pago en /admin/verificaciones, para no
 // desperdiciar espacio vertical en mobile.
 function TarjetaSocioMobile({
-  socio, precioCuota, diaVencimiento,
+  socio, precioCuota, diaVencimiento, token,
   onVerCompras, onEditar, onReactivar, onDarBaja,
 }) {
   const [expandido, setExpandido] = useState(false)
@@ -1532,6 +1623,13 @@ function TarjetaSocioMobile({
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
               {socioMesesAdeudados} mes{socioMesesAdeudados !== 1 ? 'es' : ''} adeudado{socioMesesAdeudados !== 1 ? 's' : ''} — {formatoMoneda.format(socioDeudaPesos)}
             </span>
+          )}
+
+          {/* Recordatorio de cuota — solo para quien realmente debe. */}
+          {!socio.fecha_baja && !socioBecaActiva && socioMoroso && (
+            <div className="flex items-center gap-1 pt-1 border-t border-gray-200 -mx-1">
+              <BotonWhatsApp socio={socio} token={token} />
+            </div>
           )}
 
           <div className="flex items-center gap-1 pt-1 border-t border-gray-200 -mx-1">
@@ -2316,6 +2414,7 @@ export default function AdminSocios() {
               socio={socio}
               precioCuota={precioCuota}
               diaVencimiento={diaVencimiento}
+              token={token}
               onVerCompras={setSocioCompras}
               onEditar={openModalForEdit}
               onReactivar={handleReactivateSocio}
@@ -2411,6 +2510,11 @@ export default function AdminSocios() {
                   )}
                 </td>
                 <td className="px-6 py-4 text-right space-x-1 whitespace-nowrap">
+                  {/* Recordatorio de cuota — solo para quien realmente debe. */}
+                  {!socio.fecha_baja && !socioBecaActiva2 && socioMoroso && (
+                    <BotonWhatsApp socio={socio} token={token} compacto />
+                  )}
+
                   {/* Ver Compras — abre historial + cobro desde ahí */}
                   {!socio.fecha_baja && (
                     <button

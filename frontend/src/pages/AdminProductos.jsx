@@ -37,6 +37,10 @@ import {
   Save,
   Filter,
   Percent,
+  MessageCircle,
+  RotateCcw,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react'
 
 const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
@@ -347,6 +351,19 @@ export default function AdminProductos() {
   const [errorDescuento,      setErrorDescuento]      = useState(null)
   const [successDescuento,    setSuccessDescuento]    = useState(null)
 
+  // ── Recordatorio de cuota (plantilla editable + alias del club) ──────────
+  // Alimenta los dos avisos al socio moroso: el botón de WhatsApp de
+  // /admin/socios y el mail masivo del panel. Se edita acá porque es
+  // configuración del club, igual que las tres cards de arriba.
+  const [recordatorio,      setRecordatorio]      = useState(null)
+  const [plantillaDraft,    setPlantillaDraft]    = useState('')
+  const [aliasDraft,        setAliasDraft]        = useState('')
+  const [isLoadingRec,      setIsLoadingRec]      = useState(true)
+  const [isSavingRec,       setIsSavingRec]       = useState(false)
+  const [errorRec,          setErrorRec]          = useState(null)
+  const [successRec,        setSuccessRec]        = useState(null)
+  const [panelRecAbierto,   setPanelRecAbierto]   = useState(false)
+
   const fetchProductos = useCallback(async () => {
     if (!token) return
     setLoading(true)
@@ -409,6 +426,67 @@ export default function AdminProductos() {
   }, [token])
 
   useEffect(() => { fetchDescuentoMenor() }, [fetchDescuentoMenor])
+
+  // ── Fetch de la plantilla del recordatorio ────────────────────────────────
+  const fetchRecordatorio = useCallback(async () => {
+    if (!token) return
+    setIsLoadingRec(true)
+    setErrorRec(null)
+    try {
+      const res = await fetch(`${API}/admin/productos/configuracion/recordatorio`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!res.ok) throw new Error('No se pudo cargar la plantilla del recordatorio.')
+      const data = await res.json()
+      setRecordatorio(data)
+      setPlantillaDraft(data.plantilla ?? '')
+      setAliasDraft(data.alias_transferencia ?? '')
+    } catch (err) {
+      setErrorRec(err.message)
+    } finally {
+      setIsLoadingRec(false)
+    }
+  }, [token])
+
+  useEffect(() => { fetchRecordatorio() }, [fetchRecordatorio])
+
+  // ── Guardar plantilla + alias (PATCH) ─────────────────────────────────────
+  // Los dos campos viajan siempre juntos: el backend interpreta la cadena
+  // vacía como "borrar", que para la plantilla significa volver a la de
+  // fábrica — eso es justo lo que hace el botón "Restaurar".
+  const guardarRecordatorio = async (plantilla, alias) => {
+    setIsSavingRec(true)
+    setErrorRec(null)
+    setSuccessRec(null)
+    try {
+      const res = await fetch(`${API}/admin/productos/configuracion/recordatorio`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ plantilla, alias_transferencia: alias }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(textoError(err?.detail, 'Error al guardar el recordatorio.'))
+      }
+      const data = await res.json()
+      setRecordatorio(data)
+      setPlantillaDraft(data.plantilla ?? '')
+      setAliasDraft(data.alias_transferencia ?? '')
+      setSuccessRec(
+        data.es_default
+          ? 'Se restauró la plantilla por defecto.'
+          : 'Recordatorio actualizado.',
+      )
+      setTimeout(() => setSuccessRec(null), 4000)
+    } catch (err) {
+      setErrorRec(err.message)
+    } finally {
+      setIsSavingRec(false)
+    }
+  }
 
   // ── Guardar % descuento menores (PATCH) ─────────────────────────────────────
   const handleSaveDescuentoMenor = async () => {
@@ -788,6 +866,132 @@ export default function AdminProductos() {
                 {errorDescuento && (
                   <p className="text-[9px] sm:text-xs text-red-700 font-medium mt-1">{errorDescuento}</p>
                 )}
+              </Fragment>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* ── Recordatorio de cuota ──────────────────────────────────────────
+          Colapsado por defecto: es configuración que se toca una vez cada
+          tanto, y abierto se come media pantalla en mobile. */}
+      <div className="bg-white border border-gray-200 rounded-xl sm:rounded-2xl shadow-sm overflow-hidden">
+        <button
+          type="button"
+          onClick={() => setPanelRecAbierto(v => !v)}
+          className="w-full flex items-center gap-3 px-3 sm:px-5 py-3 text-left hover:bg-gray-50 transition-colors"
+        >
+          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-green-50 text-green-600 flex items-center justify-center flex-shrink-0">
+            <MessageCircle size={16} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h2 className="text-xs sm:text-sm font-bold text-gray-900">Recordatorio de cuota</h2>
+            <p className="text-[10px] sm:text-xs text-gray-500 mt-0.5">
+              El texto que se le manda al socio moroso por WhatsApp y por mail, y el alias del club.
+            </p>
+          </div>
+          {panelRecAbierto
+            ? <ChevronUp size={18} className="text-gray-400 flex-shrink-0" />
+            : <ChevronDown size={18} className="text-gray-400 flex-shrink-0" />}
+        </button>
+
+        {panelRecAbierto && (
+          <div className="px-3 sm:px-5 pb-4 sm:pb-5 pt-1 border-t border-gray-100 space-y-4">
+            {isLoadingRec ? (
+              <div className="h-40 bg-gray-100 rounded-xl animate-pulse" />
+            ) : (
+              <Fragment>
+                {/* Alias de transferencia */}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">
+                    Alias de transferencia del club
+                  </label>
+                  <input
+                    type="text"
+                    value={aliasDraft}
+                    onChange={e => setAliasDraft(e.target.value)}
+                    placeholder="club.atletico.roberts"
+                    className="form-input text-sm px-3 py-2 w-full"
+                  />
+                  <p className="text-[11px] text-gray-500 mt-1">
+                    Es el valor que reemplaza a <code className="font-mono">{'{alias}'}</code> en el mensaje.
+                  </p>
+                </div>
+
+                {/* Plantilla */}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">
+                    Mensaje
+                  </label>
+                  <textarea
+                    value={plantillaDraft}
+                    onChange={e => setPlantillaDraft(e.target.value)}
+                    rows={5}
+                    className="form-input text-sm px-3 py-2 w-full font-mono leading-relaxed"
+                  />
+                  <div className="flex items-center justify-between gap-2 mt-1">
+                    <p className="text-[11px] text-gray-500">
+                      Variables disponibles:{' '}
+                      {(recordatorio?.variables_disponibles ?? []).map((v, i) => (
+                        <Fragment key={v}>
+                          {i > 0 && ' · '}
+                          <code className="font-mono text-gray-700">{`{${v}}`}</code>
+                        </Fragment>
+                      ))}
+                    </p>
+                    <span className="text-[11px] text-gray-400 flex-shrink-0">
+                      {plantillaDraft.length}/1000
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-gray-500 mt-1">
+                    <code className="font-mono">{'{mes}'}</code> es el período adeudado más viejo y{' '}
+                    <code className="font-mono">{'{monto}'}</code> la deuda total: los dos son obligatorios.
+                  </p>
+                </div>
+
+                {/* Vista previa — con datos de ejemplo del backend */}
+                {recordatorio?.vista_previa && (
+                  <div className="bg-green-50 border border-green-200 rounded-xl p-3">
+                    <p className="text-[10px] font-bold uppercase tracking-wide text-green-800 mb-1">
+                      Así se ve (datos de ejemplo)
+                    </p>
+                    <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap break-words">
+                      {recordatorio.vista_previa}
+                    </p>
+                    {recordatorio.es_default && (
+                      <p className="text-[11px] text-green-700 mt-2">
+                        Todavía nadie editó el mensaje: este es el texto por defecto.
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {errorRec && (
+                  <p className="text-xs text-red-700 font-medium">{errorRec}</p>
+                )}
+                {successRec && (
+                  <p className="text-xs text-green-700 font-medium">{successRec}</p>
+                )}
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => guardarRecordatorio(plantillaDraft, aliasDraft)}
+                    disabled={isSavingRec}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 transition-colors"
+                  >
+                    {isSavingRec ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
+                    Guardar
+                  </button>
+                  <button
+                    onClick={() => guardarRecordatorio('', aliasDraft)}
+                    disabled={isSavingRec || recordatorio?.es_default}
+                    title="Vuelve al texto original del sistema"
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 disabled:opacity-40 transition-colors"
+                  >
+                    <RotateCcw size={15} />
+                    Restaurar
+                  </button>
+                </div>
               </Fragment>
             )}
           </div>

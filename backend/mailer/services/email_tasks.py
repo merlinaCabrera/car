@@ -48,6 +48,14 @@ async def task_cuota_vencida(email_destino: str, nombre_socio: str, fecha_vencim
         logger.exception(f"Fallo al enviar mail 'cuota_vencida' a {email_destino}")
 
 
+async def task_recordatorio_cuota(email_destino: str, mensaje: str) -> None:
+    try:
+        await email_service.enviar_recordatorio_cuota(email_destino, mensaje)
+        logger.info(f"Mail 'recordatorio_cuota' enviado a {email_destino}")
+    except Exception:
+        logger.exception(f"Fallo al enviar mail 'recordatorio_cuota' a {email_destino}")
+
+
 async def task_convocatoria(email_destino: str, nombre_socio: str, titulo_evento: str, fecha_evento: str) -> None:
     try:
         await email_service.enviar_convocatoria(email_destino, nombre_socio, titulo_evento, fecha_evento)

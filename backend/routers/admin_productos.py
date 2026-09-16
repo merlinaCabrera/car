@@ -8,6 +8,15 @@ Endpoints:
   PATCH /admin/productos/{id_producto}→ Edición parcial (precio, stock,
                                           es_activo, etc.).
 
+Acá viven también los endpoints de ConfiguracionGlobal, porque comparten
+pantalla en el frontend (/admin/productos es "Catálogo y Configuración"):
+  GET   /admin/productos/configuracion/dia-vencimiento
+  PATCH /admin/productos/configuracion/dia-vencimiento
+  GET   /admin/productos/configuracion/descuento-menor
+  PATCH /admin/productos/configuracion/descuento-menor
+  GET   /admin/productos/configuracion/recordatorio   → plantilla + alias
+  PATCH /admin/productos/configuracion/recordatorio
+
 Todos los endpoints requieren rol 'admin_general' o 'personal_administrativo'.
 
 Decisiones técnicas:
@@ -38,6 +47,13 @@ import models
 import schemas
 from database import get_db
 from dependencies import get_current_user, require_roles
+from utils.recordatorios import (
+    MAX_LARGO_PLANTILLA,
+    PLANTILLA_DEFAULT,
+    VARIABLES_PLANTILLA,
+    obtener_plantilla,
+    renderizar_plantilla,
+)
 
 router = APIRouter(
     prefix="/admin/productos",
@@ -325,6 +341,162 @@ def actualizar_descuento_menor(
     db.commit()
     db.refresh(config)
     return config
+
+# ─── ENDPOINTS: Recordatorio de cuota (plantilla + alias) ─────────────────────
+#
+# La misma plantilla alimenta los dos caminos de aviso al socio moroso:
+#   · el deep link de WhatsApp de /admin/usuarios/{id}/whatsapp-recordatorio
+#   · el mail masivo de POST /admin/cuotas/aviso-mail-masivo
+# El texto se renderiza en utils/recordatorios.py, que es el único lugar que
+# sabe cómo se arma el mensaje.
+
+#: Socio de mentira para la vista previa. Los valores son evidentemente
+#: inventados a propósito: el admin tiene que ver que es un ejemplo y no
+#: confundirlo con un mensaje que ya se mandó.
+_EJEMPLO_VISTA_PREVIA = {
+    "nombre": "Juan",
+    "mes": "julio 2026",
+    "monto": "12.500,00",
+    "link_pago": "https://www.clubatleticoroberts.com/socio/cuotas",
+}
+
+
+def _armar_respuesta_recordatorio(
+    config: Optional[models.ConfiguracionGlobal],
+) -> schemas.ConfiguracionRecordatorioResponse:
+    plantilla = obtener_plantilla(config)
+    alias = config.alias_transferencia if config else None
+
+    return schemas.ConfiguracionRecordatorioResponse(
+        plantilla=plantilla,
+        es_default=not (config and config.plantilla_recordatorio),
+        alias_transferencia=alias,
+        variables_disponibles=list(VARIABLES_PLANTILLA),
+        vista_previa=renderizar_plantilla(
+            plantilla, {**_EJEMPLO_VISTA_PREVIA, "alias": alias or "club.atletico.roberts"},
+        ),
+    )
+
+
+@router.get(
+    "/configuracion/recordatorio",
+    response_model=schemas.ConfiguracionRecordatorioResponse,
+    summary="Obtener la plantilla del recordatorio de cuota y el alias del club",
+    tags=["Admin — Configuración Global"],
+)
+def obtener_config_recordatorio(
+    db: Session = Depends(get_db),
+    _admin: models.Usuario = Depends(require_roles(*_ROLES_ADMIN_PRODUCTOS)),
+) -> schemas.ConfiguracionRecordatorioResponse:
+    """
+    Devuelve la plantilla vigente, el alias de transferencia y una vista
+    previa con datos de ejemplo.
+
+    Si nunca se editó nada, `plantilla` trae la de fábrica y `es_default`
+    viene en True. Nunca devuelve la plantilla vacía: el frontend siempre
+    tiene algo que mostrar en el textarea.
+    """
+    return _armar_respuesta_recordatorio(db.query(models.ConfiguracionGlobal).first())
+
+
+@router.patch(
+    "/configuracion/recordatorio",
+    response_model=schemas.ConfiguracionRecordatorioResponse,
+    summary="Actualizar la plantilla del recordatorio de cuota y el alias del club",
+    tags=["Admin — Configuración Global"],
+)
+def actualizar_config_recordatorio(
+    payload: schemas.ConfiguracionRecordatorioUpdatePayload,
+    request: Request,
+    db: Session = Depends(get_db),
+    admin: models.Usuario = Depends(require_roles(*_ROLES_ADMIN_GENERAL)),
+) -> schemas.ConfiguracionRecordatorioResponse:
+    """
+    Guarda plantilla y/o alias. Requiere rol 'admin_general', igual que el
+    resto de la configuración global.
+
+    Semántica de los campos (los dos son opcionales):
+      · ausente        → no se toca.
+      · cadena vacía   → se borra (NULL). Para la plantilla eso significa
+                         volver a la de fábrica, no quedarse sin mensaje.
+      · con contenido  → se guarda tal cual, con los espacios de los bordes
+                         recortados.
+
+    Validación de la plantilla: se exige que mencione `{monto}` y `{mes}`. Sin
+    esos dos el recordatorio no dice cuánto se debe ni de cuándo, y el socio
+    recibe un mensaje inútil que además obliga a un ida y vuelta con la
+    administración. Las demás variables son opcionales.
+    """
+    config = db.query(models.ConfiguracionGlobal).first()
+
+    plantilla_nueva: Optional[str] = None
+    if payload.plantilla is not None:
+        plantilla_nueva = payload.plantilla.strip() or None
+        if plantilla_nueva:
+            if len(plantilla_nueva) > MAX_LARGO_PLANTILLA:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail=f"La plantilla no puede superar los {MAX_LARGO_PLANTILLA} caracteres.",
+                )
+            faltantes = [v for v in ("mes", "monto") if "{" + v + "}" not in plantilla_nueva]
+            if faltantes:
+                nombres = " y ".join("{" + f + "}" for f in faltantes)
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail=(
+                        f"La plantilla tiene que incluir {nombres}. Sin eso el socio "
+                        "no sabe cuánto debe ni de qué período."
+                    ),
+                )
+
+    alias_nuevo: Optional[str] = None
+    if payload.alias_transferencia is not None:
+        alias_nuevo = payload.alias_transferencia.strip() or None
+
+    antes = {
+        "plantilla_recordatorio": config.plantilla_recordatorio if config else None,
+        "alias_transferencia": config.alias_transferencia if config else None,
+    }
+
+    if config is None:
+        # Misma salvaguarda que los otros PATCH de configuración: si la fila
+        # singleton todavía no existe, se crea tomando el precio del producto
+        # de cuota social como valor base.
+        producto_cuota = db.query(models.ProductoServicio).filter(
+            models.ProductoServicio.categoria == "cuota_social",
+            models.ProductoServicio.es_activo.is_(True),
+        ).first()
+        config = models.ConfiguracionGlobal(
+            valor_cuota_base=producto_cuota.precio_actual if producto_cuota else Decimal("10000.00"),
+            actualizado_por=admin.id_usuario,
+            actualizado_at=func.now(),
+        )
+        db.add(config)
+        db.flush()
+
+    if payload.plantilla is not None:
+        config.plantilla_recordatorio = plantilla_nueva
+    if payload.alias_transferencia is not None:
+        config.alias_transferencia = alias_nuevo
+    config.actualizado_por = admin.id_usuario
+    config.actualizado_at = func.now()
+
+    _registrar_audit(
+        db=db, actor_id=admin.id_usuario, accion="EDITAR_CONFIG_GLOBAL",
+        tabla_afectada="configuracion_global", registro_id=config.id,
+        detalle={
+            "antes": antes,
+            "despues": {
+                "plantilla_recordatorio": config.plantilla_recordatorio,
+                "alias_transferencia": config.alias_transferencia,
+            },
+        },
+        ip=_extraer_ip(request),
+    )
+    db.commit()
+    db.refresh(config)
+    return _armar_respuesta_recordatorio(config)
+
 
 # ─── ENDPOINT: Editar producto (PATCH parcial) ────────────────────────────────
 

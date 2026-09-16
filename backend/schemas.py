@@ -116,6 +116,72 @@ class ConfiguracionGlobalResponse(ConfiguracionGlobalBase):
     actualizado_at: datetime
 
 
+# ── Recordatorio de cuota (WhatsApp + mail masivo) ───────────────────────────
+
+class ConfiguracionRecordatorioResponse(BaseModel):
+    """
+    Plantilla del recordatorio de cuota tal como la ve el admin.
+
+    `plantilla` NUNCA viene vacía: si la fila de config todavía no tiene una
+    cargada, se devuelve la de fábrica, y `es_default` avisa que lo que se
+    está viendo es eso y no algo que alguien haya escrito.
+    """
+    plantilla: str = Field(description="Texto con las variables sin reemplazar.")
+    es_default: bool = Field(
+        description="True = todavía nadie editó la plantilla; esto es PLANTILLA_DEFAULT."
+    )
+    alias_transferencia: Optional[str] = Field(
+        default=None, description="Alias/CBU del club. None = sin configurar."
+    )
+    variables_disponibles: List[str] = Field(
+        default_factory=list,
+        description="Nombres de las variables que la plantilla puede usar, sin las llaves.",
+    )
+    vista_previa: str = Field(
+        description=(
+            "La plantilla renderizada con datos de ejemplo. Permite al admin ver "
+            "el resultado sin tener que mandarle un mensaje a un socio real."
+        ),
+    )
+
+
+class ConfiguracionRecordatorioUpdatePayload(BaseModel):
+    """
+    Los dos campos se mandan juntos y los dos son opcionales: omitir uno lo
+    deja como estaba. Mandar cadena vacía en `alias_transferencia` lo borra
+    (vuelve a NULL); en `plantilla` vuelve a la de fábrica.
+    """
+    plantilla: Optional[str] = Field(default=None, max_length=1000)
+    alias_transferencia: Optional[str] = Field(default=None, max_length=100)
+
+
+class WhatsAppRecordatorioResponse(BaseModel):
+    """
+    Deep link listo para abrir en una pestaña nueva, más los datos con los que
+    se armó — el frontend los muestra en el tooltip para que el admin sepa qué
+    va a decir el mensaje antes de mandarlo.
+    """
+    url: str = Field(description="https://wa.me/<telefono>?text=<mensaje urlencoded>")
+    telefono: str = Field(description="Teléfono normalizado a formato internacional, solo dígitos.")
+    mensaje: str = Field(description="El texto ya renderizado, sin codificar.")
+    meses_adeudados: int = 0
+    monto_total: Decimal = Field(default=Decimal("0"), description="Deuda en pesos al día de hoy.")
+
+
+class AvisoMailMasivoResponse(BaseModel):
+    """Resultado del envío masivo. `fallidos` no aborta nada: se sigue con el
+    resto de la lista y se informa el conteo."""
+    enviados: int = Field(description="Mails efectivamente aceptados por Resend.")
+    fallidos: int = Field(default=0, description="Socios cuyo envío tiró error.")
+    sin_email: int = Field(default=0, description="Morosos sin email cargado.")
+    con_pago_pendiente: int = Field(
+        default=0,
+        description="Morosos salteados por tener una orden de cuota esperando aprobación.",
+    )
+    total_morosos: int = Field(description="Morosos detectados antes de aplicar los filtros.")
+    detalle: str = Field(description="Frase lista para mostrar en el toast.")
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # MÓDULO 1 · ROLES
 # ─────────────────────────────────────────────────────────────────────────────
@@ -375,6 +441,14 @@ class UsuarioListResponse(BaseModel):
     nombre: str
     apellido: str
     email: Optional[str] = None
+    telefono: Optional[str] = Field(
+        default=None,
+        description=(
+            "Necesario en el LISTADO para el botón de recordatorio por WhatsApp de "
+            "/admin/socios: sin teléfono el botón se muestra gris y deshabilitado, "
+            "y esa decisión se toma en la fila, sin pedir el detalle del socio."
+        ),
+    )
     fecha_baja: Optional[date] = None
     fecha_nacimiento: Optional[date] = Field(
         default=None,

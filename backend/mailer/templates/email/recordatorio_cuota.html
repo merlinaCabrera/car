@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{#
+  Recordatorio de cuota — aviso masivo desde el panel de admin.
+
+  A diferencia de `cuota_vencida.html` (que lo manda el scheduler con un texto
+  fijo), acá el cuerpo del mensaje lo escribe el admin: llega ya renderizado en
+  `mensaje_lineas`, con las variables {nombre} {mes} {monto} {alias}
+  {link_pago} reemplazadas por utils/recordatorios.py.
+
+  Se recorre línea por línea en vez de meter el texto crudo con `| safe`:
+  el admin escribe en un textarea, y si algún día pega HTML ahí adentro no
+  tiene que terminar ejecutándose en el cliente de correo de 300 socios.
+  El autoescape de Jinja lo neutraliza y los saltos de línea se respetan igual.
+#}
+{% block content %}
+<h2 style="margin:0 0 16px; color:#1b5e20; font-size:20px; font-weight:700;">
+  📅 Recordatorio de tu cuota social
+</h2>
+
+{% for linea in mensaje_lineas %}
+  {% if linea.strip() %}
+<p style="margin:0 0 12px; color:#333; font-size:15px; line-height:1.6;">{{ linea }}</p>
+  {% endif %}
+{% endfor %}
+
+<table cellpadding="0" cellspacing="0" width="100%" style="margin:20px 0 16px;">
+  <tr>
+    <td align="center">
+      <a href="{{ frontend_url }}/socio/cuotas"
+         style="display:inline-block; background-color:#1b5e20; color:#ffffff;
+                text-decoration:none; font-size:15px; font-weight:700;
+                padding:12px 32px; border-radius:6px;">
+        Ver mi estado de cuenta →
+      </a>
+    </td>
+  </tr>
+</table>
+
+<p style="margin:0; color:#666; font-size:13px; line-height:1.6;">
+  Si ya realizaste el pago y está pendiente de verificación, podés ignorar este mensaje.
+  Ante cualquier consulta, comunicate con la administración.
+</p>
+{% endblock %}

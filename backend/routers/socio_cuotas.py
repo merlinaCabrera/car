@@ -13,6 +13,12 @@ Endpoints:
 
 Todos los endpoints requieren rol 'socio' o 'jugador'.
 
+Al final del archivo hay un SEGUNDO router, `router_admin_cuotas`
+(prefijo /admin/cuotas), con el aviso masivo de cuota que dispara el admin
+desde el panel. Vive acá y no en admin_usuarios.py porque comparte el motor
+de deuda con el resto de este módulo — mismo criterio que
+`qr_auth.router_admin_escaner`. Se registra por separado en main.py.
+
 Decisiones técnicas:
   - El precio se calcula con utils.precios (fuente única de verdad), que
     aplica el descuento configurado en ConfiguracionGlobal.descuento_menor_pct
@@ -31,6 +37,8 @@ Decisiones técnicas:
 
 from __future__ import annotations
 
+import asyncio
+import logging
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from typing import List, Optional
@@ -53,6 +61,15 @@ import schemas
 from database import get_db
 from dependencies import get_current_user, require_roles
 from mailer.services import email_tasks
+from mailer.services.email_service import enviar_recordatorio_cuota
+from utils.ratelimit import limitar
+from utils.recordatorios import (
+    construir_recordatorio,
+    ids_con_orden_de_cuota_pendiente,
+    obtener_plantilla,
+    socios_morosos,
+    url_pago_socio,
+)
 from utils.s3 import generar_presigned_url
 from utils.comprobantes import (
     borrar_comprobante_anterior,
@@ -82,6 +99,8 @@ def _resolver_url_archivo(valor: str | None) -> str | None:
     if valor.startswith("/"):
         return valor  # ruta local legacy, el frontend la maneja como antes
     return generar_presigned_url(valor)
+
+logger = logging.getLogger("socio_cuotas")
 
 router = APIRouter(
     prefix="/socio/cuotas",
@@ -605,3 +624,176 @@ async def subir_comprobante(
         id_pago=pago.id_pago,
         comprobante_url=_resolver_url_archivo(pago.comprobante_url),
     )
+
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# ROUTER ADMIN — Aviso masivo de cuota
+# ══════════════════════════════════════════════════════════════════════════════
+
+router_admin_cuotas = APIRouter(
+    prefix="/admin/cuotas",
+    tags=["Admin — Cuotas"],
+)
+
+_ROLES_AVISO_MASIVO = ("admin_general", "personal_administrativo")
+
+#: Pausa entre mails. Resend no publica un límite duro para el plan gratuito,
+#: pero mandar 300 requests en ráfaga es la forma más rápida de comerse un 429
+#: y que la mitad de los socios no reciba nada. 80 ms ≈ 12 mails/s: para el
+#: padrón real (~300 socios, de los cuales son morosos bastantes menos) el
+#: envío completo queda por debajo del minuto.
+_DELAY_ENTRE_MAILS_SEG = 0.08
+
+
+@router_admin_cuotas.post(
+    "/aviso-mail-masivo",
+    response_model=schemas.AvisoMailMasivoResponse,
+    summary="Mandar el recordatorio de cuota por mail a todos los socios morosos",
+)
+def aviso_mail_masivo(
+    request: Request,
+    db: Session = Depends(get_db),
+    admin: models.Usuario = Depends(require_roles(*_ROLES_AVISO_MASIVO)),
+) -> schemas.AvisoMailMasivoResponse:
+    """
+    Le manda a cada socio moroso el recordatorio de cuota, usando la misma
+    plantilla configurable que el botón de WhatsApp de /admin/socios
+    (`GET /admin/productos/configuracion/recordatorio`).
+
+    Quién lo recibe: socios activos que HOY están en mora según
+    `calcular_estado_financiero`, sin beca vigente. Se saltean dos grupos y
+    los dos se informan por separado en la respuesta:
+      · sin email cargado — no hay a dónde mandarlo;
+      · con una orden de cuota esperando aprobación — ya pagaron y están
+        esperando al admin; para el sistema siguen figurando morosos
+        (BUG-02 de la QA del 08-09), pero mandarles un reclamo sería
+        justamente el reproche que ese bug ya generó una vez.
+
+    Por qué es sincrónico y no un BackgroundTask: el pedido es que el botón
+    devuelva "Aviso enviado a N socios". Un background task devuelve 202 y
+    nada más — el admin no sabría si salió. El endpoint es `def` (no `async
+    def`), así que FastAPI lo corre en el threadpool y el bucle de envío no
+    bloquea el event loop del server.
+
+    Rate limit de 3 por hora y por IP: el daño de un doble clic acá no es un
+    registro duplicado, son 300 personas recibiendo el mismo mail dos veces.
+    El frontend además deshabilita el botón mientras corre.
+
+    Sí escribe en `audit_log`: a diferencia del link de WhatsApp (que solo
+    arma una URL), esto manda mails reales a terceros y tiene que quedar
+    registrado quién lo disparó y a cuántos llegó.
+    """
+    limitar(request, "aviso_mail_masivo", maximo=3, ventana_seg=3600)
+
+    # ── Todo el trabajo con la base, primero y de una sola vez ────────────────
+    # Después de este bloque no se toca `db`: el bucle de envío solo maneja
+    # strings. Así una demora de Resend no deja una conexión de Neon abierta.
+    config = db.query(models.ConfiguracionGlobal).first()
+    dia_vencimiento = config.dia_vencimiento_cuota if config else 10
+    producto_cuota = obtener_producto_cuota_social(db)
+    descuento_menor_pct = obtener_descuento_menor_pct(db)
+
+    morosos = socios_morosos(db, dia_vencimiento)
+    con_pago_pendiente_ids = ids_con_orden_de_cuota_pendiente(db)
+
+    plantilla = obtener_plantilla(config)
+    alias = config.alias_transferencia if config else None
+    link = url_pago_socio()
+
+    destinatarios: list[tuple[str, str]] = []   # (email, mensaje)
+    sin_email = 0
+    con_pago_pendiente = 0
+
+    for socio in morosos:
+        if socio.id_usuario in con_pago_pendiente_ids:
+            con_pago_pendiente += 1
+            continue
+        if not socio.email:
+            sin_email += 1
+            continue
+        recordatorio = construir_recordatorio(
+            socio,
+            plantilla=plantilla,
+            alias=alias,
+            link_pago=link,
+            precio_base=producto_cuota.precio_actual,
+            descuento_menor_pct=descuento_menor_pct,
+            dia_vencimiento=dia_vencimiento,
+            db=db,
+        )
+        destinatarios.append((socio.email, recordatorio.mensaje))
+
+    # ── Envío ─────────────────────────────────────────────────────────────────
+    enviados, fallidos = _enviar_tanda(destinatarios)
+
+    _registrar_audit(
+        db=db,
+        actor_id=admin.id_usuario,
+        accion="AVISO_MAIL_MASIVO_CUOTA",
+        tabla_afectada="usuarios",
+        registro_id=None,
+        detalle={
+            "total_morosos": len(morosos),
+            "enviados": enviados,
+            "fallidos": fallidos,
+            "sin_email": sin_email,
+            "con_pago_pendiente": con_pago_pendiente,
+        },
+        ip=_extraer_ip(request),
+    )
+    db.commit()
+
+    return schemas.AvisoMailMasivoResponse(
+        enviados=enviados,
+        fallidos=fallidos,
+        sin_email=sin_email,
+        con_pago_pendiente=con_pago_pendiente,
+        total_morosos=len(morosos),
+        detalle=_frase_resultado(enviados, fallidos, sin_email, con_pago_pendiente),
+    )
+
+
+def _enviar_tanda(destinatarios: list[tuple[str, str]]) -> tuple[int, int]:
+    """
+    Manda la lista completa y devuelve (enviados, fallidos).
+
+    Un fallo individual no corta la tanda: si el mail 3 de 47 rebota, los 44
+    restantes se mandan igual y el conteo lo refleja. Todo el bucle va dentro
+    de UN solo `asyncio.run` para no crear un event loop por mail.
+    """
+    if not destinatarios:
+        return 0, 0
+
+    async def _correr() -> tuple[int, int]:
+        ok = 0
+        error = 0
+        for i, (email, mensaje) in enumerate(destinatarios):
+            if i:
+                await asyncio.sleep(_DELAY_ENTRE_MAILS_SEG)
+            try:
+                await enviar_recordatorio_cuota(email_destino=email, mensaje=mensaje)
+                ok += 1
+            except Exception:
+                logger.exception("Fallo el recordatorio de cuota para %s", email)
+                error += 1
+        return ok, error
+
+    return asyncio.run(_correr())
+
+
+def _frase_resultado(enviados: int, fallidos: int, sin_email: int, con_pago_pendiente: int) -> str:
+    """Texto listo para el toast del frontend."""
+    if enviados == 0 and fallidos == 0:
+        if sin_email or con_pago_pendiente:
+            return "No se envió ningún mail: todos los morosos quedaron filtrados."
+        return "No hay socios morosos a quienes avisarles."
+
+    partes = [f"Aviso enviado a {enviados} socio{'' if enviados == 1 else 's'}"]
+    if fallidos:
+        partes.append(f"{fallidos} falló{'' if fallidos == 1 else 'aron'}")
+    if sin_email:
+        partes.append(f"{sin_email} sin email")
+    if con_pago_pendiente:
+        partes.append(f"{con_pago_pendiente} con pago en verificación")
+    return " · ".join(partes) + "."

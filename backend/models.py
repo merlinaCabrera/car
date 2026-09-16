@@ -159,6 +159,25 @@ class ConfiguracionGlobal(Base):
         ),
     )
 
+    # Recordatorio de cuota (WhatsApp y mail masivo)
+    alias_transferencia: Mapped[Optional[str]] = mapped_column(
+        String(100), nullable=True,
+        comment=(
+            "Alias/CBU de la cuenta del club, tal cual se lo dicta al socio. "
+            "Se interpola como {alias} en la plantilla del recordatorio. "
+            "NULL = todavía no se cargó; el recordatorio lo reemplaza por un "
+            "guión para que se note que falta configurarlo."
+        ),
+    )
+    plantilla_recordatorio: Mapped[Optional[str]] = mapped_column(
+        Text, nullable=True,
+        comment=(
+            "Texto editable del recordatorio de cuota, con las variables "
+            "{nombre} {mes} {monto} {alias} {link_pago}. NULL = usar "
+            "utils/recordatorios.PLANTILLA_DEFAULT."
+        ),
+    )
+
     # Auditoría de cambios
     actualizado_por: Mapped[Optional[int]] = mapped_column(
         ForeignKey("usuarios.id_usuario", ondelete="SET NULL", use_alter=True,

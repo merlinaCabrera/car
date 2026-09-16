@@ -12,6 +12,14 @@ Todos los endpoints requieren rol 'admin_general' o 'personal_administrativo'.
     GET  /admin/roles                          → catálogo de roles disponibles
     PUT  /admin/usuarios/{id_usuario}/roles    → reemplaza los roles de un usuario
 ────────────────────────────────────────────────────────────────────────────────
+
+── Recordatorio de cuota ───────────────────────────────────────────────────────
+    GET  /admin/usuarios/{id_usuario}/whatsapp-recordatorio
+        → deep link de wa.me con el mensaje ya armado para ESE socio.
+        El texto sale de la plantilla configurable (utils/recordatorios.py),
+        la misma que usa el aviso masivo por mail de POST /admin/cuotas/
+        aviso-mail-masivo. No manda nada: solo devuelve la URL.
+────────────────────────────────────────────────────────────────────────────────
 """
 from datetime import date, datetime, timezone
 from decimal import Decimal
@@ -43,6 +51,13 @@ from utils.precios import (
     es_menor,
     obtener_descuento_menor_pct,
     obtener_producto_cuota_social,
+)
+from utils.recordatorios import (
+    armar_link_whatsapp,
+    construir_recordatorio,
+    normalizar_telefono_ar,
+    obtener_plantilla,
+    url_pago_socio,
 )
 
 router = APIRouter(
@@ -1429,6 +1444,78 @@ def ajustar_saldo(
     db.commit()
     db.refresh(usuario)
     return usuario
+
+
+@router.get(
+    "/{id_usuario}/whatsapp-recordatorio",
+    response_model=schemas.WhatsAppRecordatorioResponse,
+    summary="Deep link de WhatsApp con el recordatorio de cuota de un socio",
+)
+def whatsapp_recordatorio(
+    id_usuario: int,
+    db: Session = Depends(get_db),
+    _admin: models.Usuario = Depends(require_roles(*_ADMIN)),
+) -> schemas.WhatsAppRecordatorioResponse:
+    """
+    Arma el link `wa.me` para mandarle a UN socio el recordatorio de su cuota.
+
+    Este endpoint NO manda nada y no toca la base: devuelve una URL que el
+    navegador del admin abre en una pestaña nueva. Quien manda el mensaje es
+    la persona, desde su propio WhatsApp. Por eso tampoco escribe en
+    `audit_log`: pedir el link no es todavía haberlo usado, y un registro que
+    dice "se le avisó" cuando en realidad el admin cerró la pestaña sería
+    peor que no tener registro.
+
+    Va en `/admin/usuarios/...` y no en `/admin/socios/...` (como decía el
+    pedido) porque este router tiene prefijo `/admin/usuarios`; `/admin/socios`
+    es la ruta del FRONTEND, no de la API.
+
+    El monto y el período salen del mismo motor que la pantalla de cuotas del
+    socio (`calcular_estado_financiero` + `calcular_precio_cuota`), así el
+    WhatsApp no puede decir un número distinto al que el socio ve al entrar.
+
+    Errores:
+      · 404 → no existe el socio.
+      · 409 → no tiene teléfono cargado, o el que tiene no se puede convertir
+              a un número válido. El frontend ya deshabilita el botón cuando
+              falta el teléfono; esto cubre el caso de un teléfono cargado
+              pero ilegible ("no tiene", "casa de la madre").
+    """
+    socio = db.query(models.Usuario).filter(models.Usuario.id_usuario == id_usuario).first()
+    if not socio:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado.")
+
+    telefono = normalizar_telefono_ar(socio.telefono)
+    if not telefono:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                "El socio no tiene un teléfono válido cargado. "
+                "Editá su ficha y cargá el celular con característica (ej: 2355123456)."
+            ),
+        )
+
+    config = db.query(models.ConfiguracionGlobal).first()
+    producto_cuota = obtener_producto_cuota_social(db)
+
+    recordatorio = construir_recordatorio(
+        socio,
+        plantilla=obtener_plantilla(config),
+        alias=config.alias_transferencia if config else None,
+        link_pago=url_pago_socio(),
+        precio_base=producto_cuota.precio_actual,
+        descuento_menor_pct=obtener_descuento_menor_pct(db),
+        dia_vencimiento=_obtener_dia_vencimiento(db),
+        db=db,
+    )
+
+    return schemas.WhatsAppRecordatorioResponse(
+        url=armar_link_whatsapp(telefono, recordatorio.mensaje),
+        telefono=telefono,
+        mensaje=recordatorio.mensaje,
+        meses_adeudados=recordatorio.meses_adeudados,
+        monto_total=recordatorio.monto_total,
+    )
 
 
 @router.get(

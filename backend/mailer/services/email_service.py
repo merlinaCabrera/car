@@ -95,6 +95,27 @@ async def enviar_cuota_vencida(email_destino: str, nombre_socio: str, fecha_venc
     )
 
 
+async def enviar_recordatorio_cuota(email_destino: str, mensaje: str) -> None:
+    """
+    Aviso masivo de cuota pendiente, disparado a mano por el admin desde el
+    panel. El cuerpo ya viene renderizado por utils/recordatorios.py a partir
+    de la plantilla configurable — acá no se arma ningún texto.
+
+    Es distinto de `enviar_cuota_vencida`, que manda el scheduler todos los
+    días con un texto fijo. Los dos conviven a propósito: uno es automático y
+    el otro es una decisión del admin ("mandales a todos ahora").
+    """
+    await _enviar(
+        destinatarios=[email_destino],
+        asunto="Recordatorio: tu cuota social del club",
+        template_name="recordatorio_cuota.html",
+        body={
+            "mensaje_lineas": mensaje.splitlines() or [mensaje],
+            "frontend_url": FRONTEND_URL,
+        },
+    )
+
+
 async def enviar_convocatoria(email_destino: str, nombre_socio: str, titulo_evento: str, fecha_evento: str) -> None:
     await _enviar(
         destinatarios=[email_destino],

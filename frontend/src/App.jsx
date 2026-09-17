@@ -37,6 +37,7 @@ import AdminScannerCancha from './pages/AdminScannerCancha';
 import TecnicoEventos from './pages/TecnicoEventos';
 import SocioCancha from './pages/SocioCancha';
 import TransmisionEnVivo from './pages/TransmisionEnVivo';
+import ChatbotFlotante from './components/ChatbotFlotante';
 
 function App() {
   return (
@@ -118,6 +119,8 @@ function App() {
                 propia, reemplazar el Navigate por ella. */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
+          {/* Asistente IA Flotante del CAR (Camotero) */}
+          <ChatbotFlotante />
         </BrowserRouter>
       </CartProvider>
     </AuthProvider>

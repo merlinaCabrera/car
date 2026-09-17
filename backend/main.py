@@ -93,6 +93,7 @@ from routers import admin_sponsors
 from routers import sponsors as sponsors_publico
 from routers import beneficios
 from routers import transmisiones
+from routers import chatbot
 
 import scheduler
 
@@ -156,6 +157,7 @@ app.include_router(admin_sponsors.router)
 app.include_router(sponsors_publico.router)
 app.include_router(beneficios.router)
 app.include_router(transmisiones.router)
+app.include_router(chatbot.router)
 
 
 @app.get("/")

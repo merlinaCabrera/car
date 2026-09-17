@@ -92,7 +92,8 @@ car/
 │   │   ├── webhooks_mercadopago.py
 │   │   ├── admin_sponsors.py    # CRUD sponsors (admin)
 │   │   ├── sponsors.py          # Lectura pública de sponsors (landing) — se importa `as sponsors_publico`
-│   │   └── transmisiones.py     # Transmisiones PPV, sesiones protegidas, entradas invitados, player YouTube blindado, heartbeat
+│   │   ├── transmisiones.py     # Transmisiones PPV, sesiones protegidas, entradas invitados, player YouTube blindado, heartbeat
+│   │   └── chatbot.py           # Asistente virtual "Camotero" (Gemini Flash + contexto de BD en vivo + fallback)
 │   ├── mailer/
 │   │   ├── services/email_service.py   # Envío vía Resend
 │   │   ├── services/email_tasks.py     # Funciones de alto nivel por evento
@@ -115,6 +116,7 @@ car/
 │       │   ├── ReservaCalendar.jsx      # Grilla de turnos por instalación
 │       │   ├── ConfirmDialog.jsx        # Reemplaza window.confirm()
 │       │   ├── ModalAccesosTransmision.jsx # Gestión de accesos PPV, emisión manual (no-socios/morosos), WhatsApp, transferencias
+│       │   ├── ChatbotFlotante.jsx      # Widget flotante del asistente "Camotero" con IA, quick chips y responsive
 │       │   ├── RutaPrivada.jsx          # Wrapper de rutas protegidas (chequea auth + roles)
 │       │   ├── landing/                 # Bloques de la landing pública
 │       │   └── admin/                   # MetricCard, CategoriaOrdenBadge, FaqBlock, SponsorsBlock
@@ -151,6 +153,8 @@ RESEND_API_KEY=...
 MAIL_FROM=...                      # opcional, default onboarding@resend.dev
 MAIL_FROM_NAME=Club Atlético Roberts
 CLUB_EMAIL=clubatleticoroberts1@gmail.com
+GEMINI_API_KEY=...                 # opcional: activa respuestas conversacionales con IA en el chatbot (tier gratuito: 15 req/min)
+GEMINI_MODEL=gemini-2.5-flash      # modelo de Gemini por defecto
 ```
 
 `alembic/env.py` también lee `DATABASE_URL` de la env var (o del `.env` local) — `alembic.ini` ya no lleva la URL.
@@ -377,6 +381,32 @@ Permite al club emitir partidos en directo a través de la web oficial, monetiza
   - **Emisión a Socios Morosos:** Buscador en vivo de socios (`GET /transmisiones/buscar-usuarios`), badge indicativo de morosidad, desbloqueo inmediato del reproductor para su cuenta sin condonar ni alterar su deuda de cuota social, más botón de WhatsApp.
   - **Aprobación de Transferencias:** Listado de espectadores con filtro por transferencias pendientes y botón `[✓ Aprobar Pago]` en 1 clic.
   - **Control de Stream en vivo:** Switcher para alternar estado (`programada`, `en_vivo`, `pausada`, `finalizada`) y métricas en tiempo real (espectadores online, entradas vendidas, recaudación).
+
+## Asistente Virtual IA ("Camotero" / Chatbot)
+
+Asistente inteligente flotante integrado en la web (`ChatbotFlotante.jsx`), diseñado para responder consultas frecuentes de socios, hinchas y simpatizantes de manera instantánea, cálida y en criollo robertense.
+
+- **Backend y Endpoints (`backend/routers/chatbot.py`):**
+  - `GET /chatbot/info-inicial`: Retorna sugerencias rápidas, datos resumidos del club (próximo partido, alias, valor de cuota, WhatsApp).
+  - `POST /chatbot/mensaje`: Recibe `{ mensaje, historial }`, inyecta contexto en vivo desde la base de datos de Neon y consulta a Gemini Flash (`gemini-2.5-flash`).
+- **Contexto dinámico inyectado en vivo:**
+  - **Configuración del club:** alias de transferencias, valor de cuota base, día de vencimiento, WhatsApp oficial (`ConfiguracionGlobal`).
+  - **Fixture y Streaming:** próximo partido programado, rival, fecha, hora, condición y si tiene transmisión online activa (`Evento`).
+  - **Preguntas Frecuentes:** listado completo de preguntas y respuestas vigentes (`FaqEntry`).
+  - **Comercios adheridos:** lista de negocios y beneficios activos para socios (`ComercioAsociado`).
+- **Modo Fallback Resiliente (Costo $0 y sin clave):**
+  - Si `GEMINI_API_KEY` no está configurada o si la API de Gemini no responde / agota cuota, el backend conmuta de forma automática e imperceptible a un motor de reglas y búsqueda de FAQs por palabras clave. **Nunca arroja error 500.**
+- **Frontend y UX (`ChatbotFlotante.jsx` montado en `App.jsx`):**
+  - Botón flotante inferior derecho con escudo y badge "Online".
+  - Popover modal responsive: ventana flotante estilizada en desktop y modal cómodo adaptado en pantallas móviles (< 640px).
+  - **Botones rápidos de 1 toque (quick chips):**
+    - ⚽ Próximo partido y stream
+    - 💳 Pagar cuota / Alias bancario
+    - 🏟️ Alquiler de Canchas y Quincho
+    - 📝 Cómo hacerme socio
+    - 📲 Hablar por WhatsApp con Secretaría
+  - Renderizado automático de enlaces internos (`[Ver cuotas](/socio/cuotas)`, `[Ir a en vivo](/en-vivo)`, etc.) que navegan con React Router sin recargar la página.
+  - Persistencia del hilo en `sessionStorage` (el hincha puede navegar entre páginas del club sin perder su conversación).
 
 ## Flujo económico (carrito y órdenes)
 

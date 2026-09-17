@@ -33,5 +33,9 @@ class Settings(BaseSettings):
     frontend_url: str = "http://localhost:5173"
     backend_url: str = "http://localhost:8000"
 
+    # ── Google Gemini AI Chatbot ─────────────────────────────────────────────
+    gemini_api_key: str = ""
+    gemini_model: str = "gemini-2.5-flash"
+
 
 settings = Settings()

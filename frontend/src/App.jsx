@@ -119,7 +119,7 @@ function App() {
                 propia, reemplazar el Navigate por ella. */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
-          {/* Asistente IA Flotante del CAR (Camotero) */}
+          {/* Asistente IA Flotante del CAR (Camote) */}
           <ChatbotFlotante />
         </BrowserRouter>
       </CartProvider>

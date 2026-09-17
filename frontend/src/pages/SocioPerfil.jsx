@@ -676,7 +676,7 @@ export default function SocioPerfil() {
             if (perfil?.id_usuario) {
               localStorage.removeItem(`car_tour_socio_${perfil.id_usuario}`);
             }
-            navigate('/socio');
+            navigate('/socio?tour=1');
           }}
           className="flex-shrink-0 px-4 py-2.5 text-xs font-bold text-blue-700 bg-white border border-blue-200 rounded-xl hover:bg-blue-50 shadow-sm transition-all active:scale-95 whitespace-nowrap"
         >

@@ -94,12 +94,42 @@ const PASOS_TOUR_SOCIO = [
   },
   {
     targetId: 'tour-menu-btn',
-    titulo: 'Menú de Servicios y Transmisiones',
+    titulo: 'Menú Principal de la Aplicación',
     descripcion:
-      'Desde este botón accedés a todo: reservar turnos de canchas, alquilar el quincho para asados familiares, comprar en la tienda oficial y ver los partidos en vivo por streaming.',
-    badge: 'Todo en tu Mano',
+      'Desde este botón accedés a todas las secciones y servicios del club. ¡Vamos a abrirlo para conocer cada una!',
+    badge: 'Navegación',
     icono: 'menu',
-    tip: 'El menú está siempre disponible arriba a la izquierda.',
+    tip: 'Tocá "Siguiente" para desplegar el menú.',
+  },
+  {
+    targetId: 'tour-menu-instalaciones',
+    titulo: 'Bloque 1 · Canchas y Salón',
+    descripcion:
+      'Alquiler de canchas de fútbol 1 y 2 para jugar con amigos, y reserva del salón/quincho oficial para asados, cumpleaños y reuniones familiares.',
+    badge: 'Canchas & Quincho',
+    icono: 'menu',
+    abrirMenu: true,
+    tip: 'Podés consultar los días y horarios libres en la agenda en tiempo real.',
+  },
+  {
+    targetId: 'tour-menu-servicios',
+    titulo: 'Bloque 2 · Partidos en Vivo y Tienda',
+    descripcion:
+      'Mirá las transmisiones de los partidos de la Liga en vivo desde cualquier lugar y comprá indumentaria, camisetas y productos oficiales del club.',
+    badge: 'Streaming & Tienda',
+    icono: 'menu',
+    abrirMenu: true,
+    tip: 'Tus entradas virtuales y pedidos comprados quedan guardados en "Mis Compras".',
+  },
+  {
+    targetId: 'tour-menu-cuenta',
+    titulo: 'Bloque 3 · Tu Membresía y Perfil',
+    descripcion:
+      'Gestioná el pago de tus cuotas sociales, verificá comprobantes, modificá tus datos personales o volvé a iniciar esta guía cuando quieras.',
+    badge: 'Tu Perfil',
+    icono: 'cuotas',
+    abrirMenu: true,
+    tip: '¡Listo! Ya conocés el 100% de tu portal. ¡A disfrutar del club!',
   },
 ];
 

@@ -59,6 +59,22 @@ const NAV_SOCIO = [
   { name: 'Configuración', path: '/perfil', icon: Settings },
 ];
 
+const NAV_SOCIO_INSTALACIONES = [
+  { name: 'Reserva Canchas', path: '/socio/cancha', icon: Trophy },
+  { name: 'Reserva Salón / Quincho', path: '/socio/reservas', icon: Calendar },
+];
+
+const NAV_SOCIO_CLUB = [
+  { name: 'Transmisión en Vivo', path: '/en-vivo', icon: Tv },
+  { name: 'Tienda Oficial', path: '/shopping', icon: ShoppingBag },
+  { name: 'Mis Compras', path: '/mis-compras', icon: Package },
+];
+
+const NAV_SOCIO_CUENTA = [
+  { name: 'Gestión de Cuotas', path: '/socio/cuotas', icon: CreditCard },
+  { name: 'Configuración / Perfil', path: '/perfil', icon: Settings },
+];
+
 const NAV_JUGADOR = [
   { name: 'Mi Equipo', path: '/mi-equipo', icon: Users },
   { name: 'Calendario Deportivo', path: '/calendario-deportivo', icon: CalendarDays },
@@ -275,6 +291,18 @@ export default function MainLayout() {
       if (document.visibilityState === 'visible') checkPartidoEnVivo();
     }, 120_000);
     return () => clearInterval(intv);
+  }, []);
+
+  // Eventos de control para el Tour Guiado interactivo
+  useEffect(() => {
+    const handleAbrir = () => setIsMenuOpen(true);
+    const handleCerrar = () => setIsMenuOpen(false);
+    window.addEventListener('car:tour-abrir-menu', handleAbrir);
+    window.addEventListener('car:tour-cerrar-menu', handleCerrar);
+    return () => {
+      window.removeEventListener('car:tour-abrir-menu', handleAbrir);
+      window.removeEventListener('car:tour-cerrar-menu', handleCerrar);
+    };
   }, []);
 
   const handleLogout = () => {
@@ -661,12 +689,47 @@ export default function MainLayout() {
           {!esAdminGeneral && (
             <>
               {esSocio && (
-                <div>
-                  {NAV_SOCIO.map((link, i) => (
-                    <Link key={link.path} to={link.path} onClick={closeMenu} {...propsItem(link.path, i)}>
-                      <link.icon size={18} /><span>{link.name}</span>
-                    </Link>
-                  ))}
+                <div className="space-y-3">
+                  {/* Inicio */}
+                  <Link to="/socio" onClick={closeMenu} {...propsItem('/socio', 0)}>
+                    <Home size={18} /><span>Inicio</span>
+                  </Link>
+
+                  {/* Bloque 1: Instalaciones */}
+                  <div id="tour-menu-instalaciones" className="rounded-xl p-1.5 bg-white/5 border border-white/5 transition-all">
+                    <p className={ROTULO}>Instalaciones</p>
+                    <div className="space-y-0.5">
+                      {NAV_SOCIO_INSTALACIONES.map((link, i) => (
+                        <Link key={link.path} to={link.path} onClick={closeMenu} {...propsItem(link.path, i + 1)}>
+                          <link.icon size={18} /><span>{link.name}</span>
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Bloque 2: Club & Tienda */}
+                  <div id="tour-menu-servicios" className="rounded-xl p-1.5 bg-white/5 border border-white/5 transition-all">
+                    <p className={ROTULO}>Club & Tienda</p>
+                    <div className="space-y-0.5">
+                      {NAV_SOCIO_CLUB.map((link, i) => (
+                        <Link key={link.path} to={link.path} onClick={closeMenu} {...propsItem(link.path, i + 3)}>
+                          <link.icon size={18} /><span>{link.name}</span>
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Bloque 3: Mi Cuenta */}
+                  <div id="tour-menu-cuenta" className="rounded-xl p-1.5 bg-white/5 border border-white/5 transition-all">
+                    <p className={ROTULO}>Mi Membresía</p>
+                    <div className="space-y-0.5">
+                      {NAV_SOCIO_CUENTA.map((link, i) => (
+                        <Link key={link.path} to={link.path} onClick={closeMenu} {...propsItem(link.path, i + 6)}>
+                          <link.icon size={18} /><span>{link.name}</span>
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               )}
 

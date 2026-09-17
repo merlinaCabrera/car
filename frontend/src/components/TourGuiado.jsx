@@ -16,13 +16,16 @@ import camotiAzul from '../assets/camoti-azul.PNG';
 /**
  * TourGuiado — Onboarding interactivo con spotlight y globitos explicativos.
  *
- * Características:
- * - Diseñado especialmente para el primer ingreso de socios al Club Atlético Roberts.
- * - Utiliza Camote como anfitrión simpático e institucional.
- * - Efecto "Spotlight" con recorte luminoso y backdrop oscuro.
- * - Posicionamiento adaptativo y responsive (mobile-first y desktop).
- * - Scroll automático suave al elemento en foco.
- * - Persistencia por usuario en localStorage (se muestra SOLO en el primer ingreso).
+ * Mejoras aplicadas:
+ * 1. Protección estricta de "Primer Ingreso Único": No se dispara para socios existentes
+ *    a menos que vengan explícitamente con ?bienvenida=1 (tras cambio obligatorio de contraseña)
+ *    o ?tour=1 (desde el botón manual de perfil).
+ * 2. Posicionamiento Matemático Blindado: Clamp de margen superior/inferior para que
+ *    el globito JAMÁS se corte arriba (evita top < 16px).
+ * 3. Adaptación Mobile: En pantallas estrechas ancla el globito al pie con scroll al inicio
+ *    del elemento, evitando solapamientos con el carnet.
+ * 4. Integración con Menú Desplegable: Al llegar a los pasos del menú lateral, despacha
+ *    automáticamente el evento para abrir el menú y enfocar los bloques temáticos.
  */
 
 const ICONOS_DEFAULT = {
@@ -46,25 +49,32 @@ export default function TourGuiado({
   const [isMobile, setIsMobile] = useState(false);
   const tooltipRef = useRef(null);
 
-  // ─── Detección de primer ingreso o apertura manual ─────────────────────────
+  // ─── Detección de primer ingreso estricto o activación manual ──────────────
   useEffect(() => {
-    if (abiertoManual) {
+    const params = new URLSearchParams(window.location.search);
+    const esBienvenida = params.get('bienvenida') === '1';
+    const esTourManual = params.get('tour') === '1';
+
+    // 1. Si se activó manualmente (vía prop o ?tour=1 en URL)
+    if (abiertoManual || esTourManual) {
       setPasoActual(0);
       setActivo(true);
       return;
     }
 
-    try {
-      const yaVisto = localStorage.getItem(tourKey);
-      if (!yaVisto && pasos.length > 0) {
-        // Retraso de 700ms para permitir que el DOM y las animaciones de entrada terminen
-        const timer = setTimeout(() => {
-          setActivo(true);
-        }, 700);
-        return () => clearTimeout(timer);
+    // 2. SOLO si viene con ?bienvenida=1 (recién completó /cambiar-password-obligatorio)
+    if (esBienvenida) {
+      try {
+        const yaVisto = localStorage.getItem(tourKey);
+        if (!yaVisto && pasos.length > 0) {
+          const timer = setTimeout(() => {
+            setActivo(true);
+          }, 600);
+          return () => clearTimeout(timer);
+        }
+      } catch {
+        // Ignorar errores de almacenamiento
       }
-    } catch {
-      // Si localStorage está bloqueado o inaccesible, no rompemos la app
     }
   }, [tourKey, pasos.length, abiertoManual]);
 
@@ -77,6 +87,18 @@ export default function TourGuiado({
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
+
+  // ─── Manejo de apertura/cierre de menú según el paso actual ────────────────
+  useEffect(() => {
+    if (!activo || !pasos[pasoActual]) return;
+
+    const paso = pasos[pasoActual];
+    if (paso.abrirMenu) {
+      window.dispatchEvent(new CustomEvent('car:tour-abrir-menu'));
+    } else {
+      window.dispatchEvent(new CustomEvent('car:tour-cerrar-menu'));
+    }
+  }, [activo, pasoActual, pasos]);
 
   // ─── Medición y actualización del elemento en foco ────────────────────────
   const actualizarPosicion = useCallback(() => {
@@ -108,20 +130,25 @@ export default function TourGuiado({
     const elemento = document.getElementById(targetId);
 
     if (elemento) {
+      // En móvil o elementos altos, scroll hacia el inicio para no tapar la cabecera
+      const paso = pasos[pasoActual];
+      const scrollBlock = isMobile && !paso.abrirMenu ? 'start' : 'center';
+
       elemento.scrollIntoView({
         behavior: 'smooth',
-        block: 'center',
+        block: scrollBlock,
         inline: 'nearest',
       });
 
-      // Recalcular posición tras completarse el scroll suave
+      // Recalcular tras scroll o animación de apertura de menú
+      const delay = paso.abrirMenu ? 380 : 300;
       const timer = setTimeout(() => {
         actualizarPosicion();
-      }, 350);
+      }, delay);
 
       return () => clearTimeout(timer);
     }
-  }, [activo, pasoActual, pasos, actualizarPosicion]);
+  }, [activo, pasoActual, pasos, isMobile, actualizarPosicion]);
 
   // Escuchar scroll y resize para recalcular el spotlight
   useEffect(() => {
@@ -149,6 +176,22 @@ export default function TourGuiado({
     } catch {
       // Ignorar fallos de almacenamiento
     }
+
+    // Limpiar query params de la URL sin recargar
+    try {
+      const url = new URL(window.location.href);
+      if (url.searchParams.has('bienvenida') || url.searchParams.has('tour')) {
+        url.searchParams.delete('bienvenida');
+        url.searchParams.delete('tour');
+        window.history.replaceState({}, '', url.pathname + (url.search || ''));
+      }
+    } catch {
+      // Ignorar fallos de URL
+    }
+
+    // Asegurar cierre del menú si quedó abierto
+    window.dispatchEvent(new CustomEvent('car:tour-cerrar-menu'));
+
     setActivo(false);
     if (onFinalizar) onFinalizar();
   }, [tourKey, onFinalizar]);
@@ -185,48 +228,71 @@ export default function TourGuiado({
   const IconoPaso = ICONOS_DEFAULT[paso.icono] || ICONOS_DEFAULT.default;
   const esUltimoPaso = pasoActual === pasos.length - 1;
 
-  // ─── Cálculo de posición del Tooltip (Globito) ─────────────────────────────
+  // ─── Cálculo Matemático Blindado de Posición del Tooltip ────────────────────
   let tooltipStyle = {};
+  const margen = 16;
+  const tooltipH = tooltipRef.current?.offsetHeight || 250;
 
   if (isMobile) {
-    // En móviles: anclado cómodamente abajo para fácil alcance con el pulgar
+    // En móviles: Anclado abajo, con altura máxima acotada para no tapar toda la pantalla
     tooltipStyle = {
       position: 'fixed',
-      bottom: '1rem',
-      left: '1rem',
-      right: '1rem',
-      maxWidth: 'calc(100vw - 2rem)',
-      zIndex: 60,
+      bottom: '12px',
+      left: '12px',
+      right: '12px',
+      maxWidth: 'calc(100vw - 24px)',
+      maxHeight: '44vh',
+      overflowY: 'auto',
+      zIndex: 70,
     };
   } else if (targetRect) {
-    // En pantallas grandes: posicionado inteligente arriba o abajo del spotlight
-    const espacioAbajo = window.innerHeight - targetRect.bottom;
-    const colocarAbajo = espacioAbajo > 280;
-
     const anchoTooltip = 420;
-    let left = targetRect.left + targetRect.width / 2 - anchoTooltip / 2;
-    // Evitar que se salga de los márgenes laterales
-    left = Math.max(20, Math.min(left, window.innerWidth - anchoTooltip - 20));
 
-    if (colocarAbajo) {
+    if (paso.abrirMenu) {
+      // Si el elemento está adentro del menú lateral en desktop:
+      // Ubicar el globito a la derecha del menú lateral
+      const leftMenu = Math.min(window.innerWidth - anchoTooltip - margen, (targetRect.right || 288) + 24);
+      let topMenu = targetRect.top;
+      topMenu = Math.max(margen, Math.min(topMenu, window.innerHeight - tooltipH - margen));
+
       tooltipStyle = {
         position: 'fixed',
-        top: `${Math.min(targetRect.bottom + 16, window.innerHeight - 300)}px`,
-        left: `${left}px`,
+        top: `${topMenu}px`,
+        left: `${leftMenu}px`,
         width: `${anchoTooltip}px`,
-        zIndex: 60,
+        zIndex: 70,
       };
     } else {
+      // Elementos normales en el contenido principal
+      let left = targetRect.left + targetRect.width / 2 - anchoTooltip / 2;
+      left = Math.max(margen, Math.min(left, window.innerWidth - anchoTooltip - margen));
+
+      const espacioAbajo = window.innerHeight - targetRect.bottom;
+      const espacioArriba = targetRect.top;
+      let topPos;
+
+      if (espacioAbajo >= tooltipH + margen) {
+        topPos = targetRect.bottom + 12;
+      } else if (espacioArriba >= tooltipH + margen) {
+        topPos = targetRect.top - tooltipH - 12;
+      } else {
+        // Elemento muy alto (ej. Carnet): ubicar en el lado con más espacio visible
+        topPos = espacioAbajo >= espacioArriba ? window.innerHeight - tooltipH - margen : margen;
+      }
+
+      // CLAMP MATEMÁTICO ABSOLUTO: Nunca permitir top < margen ni desborde inferior
+      topPos = Math.max(margen, Math.min(topPos, window.innerHeight - tooltipH - margen));
+
       tooltipStyle = {
         position: 'fixed',
-        bottom: `${Math.max(window.innerHeight - targetRect.top + 16, 20)}px`,
+        top: `${topPos}px`,
         left: `${left}px`,
         width: `${anchoTooltip}px`,
-        zIndex: 60,
+        zIndex: 70,
       };
     }
   } else {
-    // Fallback centrado si el elemento no está visible aún
+    // Fallback centrado
     tooltipStyle = {
       position: 'fixed',
       top: '50%',
@@ -234,35 +300,34 @@ export default function TourGuiado({
       transform: 'translate(-50%, -50%)',
       width: '90%',
       maxWidth: '440px',
-      zIndex: 60,
+      zIndex: 70,
     };
   }
 
   return (
     <div className="fixed inset-0 z-50 overflow-hidden select-none animate-in fade-in duration-300">
-      {/* ─── Spotlight: Recorte iluminado con backdrop oscurecido ─────────── */}
+      {/* ─── Spotlight: Recorte iluminado con halo azul CAR ───────────────── */}
       {targetRect ? (
         <div
           className="fixed pointer-events-none transition-all duration-300 ease-out"
           style={{
-            top: targetRect.top - 8,
-            left: targetRect.left - 8,
-            width: targetRect.width + 16,
-            height: targetRect.height + 16,
+            top: Math.max(0, targetRect.top - 6),
+            left: Math.max(0, targetRect.left - 6),
+            width: targetRect.width + 12,
+            height: targetRect.height + 12,
             borderRadius: '1.25rem',
-            border: '2px solid rgba(59, 130, 246, 0.9)',
+            border: '2px solid rgba(59, 130, 246, 0.95)',
             boxShadow:
               '0 0 0 9999px rgba(10, 15, 30, 0.78), 0 0 25px rgba(59, 130, 246, 0.45)',
           }}
         >
-          {/* Pulso animado sutil en las esquinas */}
+          {/* Pulso de esquina */}
           <span className="absolute -top-1.5 -right-1.5 flex h-3.5 w-3.5">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
             <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-blue-500" />
           </span>
         </div>
       ) : (
-        // Backdrop uniforme mientras se calcula
         <div className="fixed inset-0 bg-gray-950/80 backdrop-blur-sm pointer-events-auto" />
       )}
 
@@ -270,18 +335,18 @@ export default function TourGuiado({
       <div
         ref={tooltipRef}
         style={tooltipStyle}
-        className="pointer-events-auto bg-white rounded-3xl p-5 sm:p-6 shadow-2xl border border-blue-100 ring-1 ring-black/5 text-gray-900 transition-all duration-200"
+        className="pointer-events-auto bg-white rounded-3xl p-4 sm:p-5 shadow-2xl border border-blue-100 ring-1 ring-black/5 text-gray-900 transition-all duration-200"
       >
         {/* Cabecera del Globito con Camote */}
-        <div className="flex items-center justify-between gap-3 pb-3 border-b border-gray-100">
-          <div className="flex items-center gap-3">
+        <div className="flex items-center justify-between gap-3 pb-2.5 border-b border-gray-100">
+          <div className="flex items-center gap-2.5">
             <div className="relative">
               <img
                 src={camotiAzul}
                 alt="Camote - Club Atlético Roberts"
-                className="h-11 w-11 object-contain drop-shadow-md"
+                className="h-10 w-10 sm:h-11 sm:w-11 object-contain drop-shadow-md"
               />
-              <span className="absolute -bottom-1 -right-1 bg-amber-400 text-[9px] font-black text-amber-950 px-1.5 py-0.2 rounded-full ring-2 ring-white">
+              <span className="absolute -bottom-1 -right-1 bg-amber-400 text-[9px] font-black text-amber-950 px-1 py-0.2 rounded-full ring-2 ring-white">
                 CAR
               </span>
             </div>
@@ -292,7 +357,7 @@ export default function TourGuiado({
                 </span>
                 <span className="text-xs text-gray-300">•</span>
                 <span className="text-[11px] font-semibold text-gray-400">
-                  Paso {pasoActual + 1} de {pasos.length}
+                  {pasoActual + 1}/{pasos.length}
                 </span>
               </div>
               <p className="text-xs text-gray-500 font-medium">
@@ -313,12 +378,12 @@ export default function TourGuiado({
         </div>
 
         {/* Cuerpo explicativo */}
-        <div className="py-3.5 space-y-2">
+        <div className="py-2.5 space-y-1.5">
           <div className="flex items-center gap-2 text-gray-900">
-            <div className="p-1.5 rounded-lg bg-blue-50 text-blue-600">
-              <IconoPaso size={18} />
+            <div className="p-1.5 rounded-lg bg-blue-50 text-blue-600 shrink-0">
+              <IconoPaso size={17} />
             </div>
-            <h3 className="font-display font-bold text-base sm:text-lg leading-tight">
+            <h3 className="font-display font-bold text-sm sm:text-base leading-tight">
               {paso.titulo}
             </h3>
           </div>
@@ -328,7 +393,7 @@ export default function TourGuiado({
           </p>
 
           {paso.tip && (
-            <div className="mt-2.5 p-2.5 rounded-xl bg-blue-50/70 border border-blue-100/80 text-[11px] text-blue-900 flex items-start gap-2">
+            <div className="mt-2 p-2 rounded-xl bg-blue-50/70 border border-blue-100/80 text-[11px] text-blue-900 flex items-start gap-1.5">
               <span className="text-blue-500 font-bold shrink-0">💡 Tip:</span>
               <span>{paso.tip}</span>
             </div>
@@ -336,31 +401,31 @@ export default function TourGuiado({
         </div>
 
         {/* Barra de progreso y botones de acción */}
-        <div className="pt-3 border-t border-gray-100 flex items-center justify-between gap-3">
+        <div className="pt-2.5 border-t border-gray-100 flex items-center justify-between gap-2">
           {/* Indicador de puntitos */}
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1">
             {pasos.map((_, i) => (
               <button
                 key={i}
                 type="button"
                 onClick={() => setPasoActual(i)}
                 aria-label={`Ir al paso ${i + 1}`}
-                className={`h-2 rounded-full transition-all duration-200 ${
+                className={`h-1.5 rounded-full transition-all duration-200 ${
                   i === pasoActual
-                    ? 'w-6 bg-blue-600'
-                    : 'w-2 bg-gray-200 hover:bg-gray-300'
+                    ? 'w-5 bg-blue-600'
+                    : 'w-1.5 bg-gray-200 hover:bg-gray-300'
                 }`}
               />
             ))}
           </div>
 
           {/* Botones */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             {pasoActual > 0 && (
               <button
                 type="button"
                 onClick={anteriorPaso}
-                className="px-3 py-1.5 rounded-xl text-xs font-semibold text-gray-600 hover:bg-gray-100 transition-colors flex items-center gap-1"
+                className="px-2.5 py-1.5 rounded-xl text-xs font-semibold text-gray-600 hover:bg-gray-100 transition-colors flex items-center gap-1"
               >
                 <ChevronLeft size={14} />
                 <span className="hidden sm:inline">Anterior</span>
@@ -370,7 +435,7 @@ export default function TourGuiado({
             <button
               type="button"
               onClick={siguientePaso}
-              className={`px-4 py-2 rounded-xl text-xs font-bold text-white transition-all duration-150 flex items-center gap-1.5 shadow-md active:scale-95 ${
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold text-white transition-all duration-150 flex items-center gap-1 shadow-md active:scale-95 ${
                 esUltimoPaso
                   ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20'
                   : 'bg-blue-600 hover:bg-blue-700 shadow-blue-600/20'
@@ -379,7 +444,7 @@ export default function TourGuiado({
               {esUltimoPaso ? (
                 <>
                   <CheckCircle size={14} />
-                  <span>¡Entendido, vamos!</span>
+                  <span>¡Entendido!</span>
                 </>
               ) : (
                 <>

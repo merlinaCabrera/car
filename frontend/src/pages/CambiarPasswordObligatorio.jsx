@@ -96,7 +96,8 @@ export default function CambiarPasswordObligatorio() {
       setExito(true)
 
       const destino = homePorRol(rolesDeUsuario(perfil ?? user))
-      navigate(destino, { replace: true })
+      const urlConBienvenida = destino === '/socio' ? '/socio?bienvenida=1' : destino
+      navigate(urlConBienvenida, { replace: true })
     } catch (err) {
       // `err.message` puede venir vacío (un TypeError sin texto, por ejemplo).
       // Si se pasara vacío, el <p> de error no renderiza nada y la pantalla

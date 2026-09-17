@@ -93,20 +93,24 @@ function App() {
                 <Route path="/admin/escaner-canchas" element={<AdminScannerCancha />} />
               </Route>
 
-              {/* Admin — solo staff */}
-              <Route element={<RequireRole any={['admin_general', 'personal_administrativo']} />}>
+              {/* Admin General — panel ejecutivo, finanzas, métricas y verificaciones */}
+              <Route element={<RequireRole any={['admin_general']} />}>
                 <Route path="/admin" element={<AdminInicio />} />
+                <Route path="/admin/estadisticas" element={<AdminEstadisticas />} />
                 <Route path="/admin/solicitudes" element={<AdminSolicitudes />} />
-                <Route path="/admin/socios" element={<AdminSocios />} />
-                <Route path="/admin/auditoria" element={<AdminAuditoria />} />
-                <Route path="/admin/comercios" element={<Navigate to="/admin/productos" replace />} />
-                <Route path="/admin/pagos" element={<Navigate to="/admin/verificaciones?tipo=cuota" replace />} />
                 <Route path="/admin/verificaciones" element={<AdminVerificaciones />} />
-                <Route path="/admin/reservas" element={<AdminReservas />} />
-                <Route path="/admin/productos" element={<AdminProductos />} />
+                <Route path="/admin/pagos" element={<Navigate to="/admin/verificaciones?tipo=cuota" replace />} />
                 <Route path="/admin/tienda" element={<Navigate to="/admin/verificaciones?tipo=compra" replace />} />
                 <Route path="/admin/alquileres" element={<Navigate to="/admin/verificaciones?tipo=alquiler" replace />} />
-                <Route path="/admin/estadisticas" element={<AdminEstadisticas />} />
+              </Route>
+
+              {/* Personal Administrativo + Admin General — gestión operativa */}
+              <Route element={<RequireRole any={['admin_general', 'personal_administrativo']} />}>
+                <Route path="/admin/socios" element={<AdminSocios />} />
+                <Route path="/admin/reservas" element={<AdminReservas />} />
+                <Route path="/admin/productos" element={<AdminProductos />} />
+                <Route path="/admin/auditoria" element={<AdminAuditoria />} />
+                <Route path="/admin/comercios" element={<Navigate to="/admin/productos" replace />} />
               </Route>
             </Route>
             </Route>

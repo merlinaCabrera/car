@@ -68,10 +68,24 @@ export default function Login() {
             // decide el destino POR DEFECTO (solo admin_general va a /admin);
             // acá hay una intención de navegación explícita de la persona, así
             // que alcanza con que la ruta le esté permitida.
-            const puedeEntrarAlPanel =
-                roles.includes('admin_general') || roles.includes('personal_administrativo');
             const next = searchParams.get('next');
-            if (next && next.startsWith('/admin') && puedeEntrarAlPanel) destino = next;
+            if (next && next.startsWith('/admin')) {
+                const esRutaAdminGeneral =
+                    next === '/admin' ||
+                    next === '/admin/' ||
+                    next.startsWith('/admin/estadisticas') ||
+                    next.startsWith('/admin/solicitudes') ||
+                    next.startsWith('/admin/verificaciones') ||
+                    next.startsWith('/admin/pagos') ||
+                    next.startsWith('/admin/tienda') ||
+                    next.startsWith('/admin/alquileres');
+
+                if (esRutaAdminGeneral && roles.includes('admin_general')) {
+                    destino = next;
+                } else if (!esRutaAdminGeneral && (roles.includes('admin_general') || roles.includes('personal_administrativo'))) {
+                    destino = next;
+                }
+            }
 
             navigate(destino, { replace: true });
         } catch (err) {

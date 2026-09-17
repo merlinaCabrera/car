@@ -286,7 +286,7 @@ export default function ChatbotFlotante() {
       {abierto && (
         <div
           className="fixed z-50 flex flex-col bg-white shadow-2xl border border-gray-200 overflow-hidden transition-all duration-200
-            inset-x-3 bottom-3 top-16 sm:inset-auto sm:bottom-22 sm:right-5 sm:w-96 sm:h-[580px] sm:max-h-[calc(100vh-7rem)] sm:rounded-2xl rounded-2xl"
+            inset-x-3 bottom-3 top-16 sm:inset-auto sm:bottom-[88px] sm:right-5 sm:w-[380px] sm:h-[580px] sm:max-h-[calc(100vh-7.5rem)] sm:rounded-2xl rounded-2xl"
         >
           {/* Encabezado */}
           <div className="bg-gradient-to-r from-roberts-700 via-roberts-600 to-roberts-700 text-white px-4 py-3.5 flex items-center justify-between shadow-md">
@@ -319,10 +319,10 @@ export default function ChatbotFlotante() {
               </button>
               <button
                 onClick={() => setAbierto(false)}
-                title="Minimizar"
+                title="Cerrar"
                 className="p-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition-colors"
               >
-                <ChevronDown size={18} />
+                <X size={18} />
               </button>
             </div>
           </div>

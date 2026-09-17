@@ -91,7 +91,8 @@ car/
 │   │   ├── faq.py               # FAQ público + CRUD admin de entradas
 │   │   ├── webhooks_mercadopago.py
 │   │   ├── admin_sponsors.py    # CRUD sponsors (admin)
-│   │   └── sponsors.py          # Lectura pública de sponsors (landing) — se importa `as sponsors_publico`
+│   │   ├── sponsors.py          # Lectura pública de sponsors (landing) — se importa `as sponsors_publico`
+│   │   └── transmisiones.py     # Transmisiones PPV, sesiones protegidas, entradas invitados, player YouTube blindado, heartbeat
 │   ├── mailer/
 │   │   ├── services/email_service.py   # Envío vía Resend
 │   │   ├── services/email_tasks.py     # Funciones de alto nivel por evento
@@ -113,6 +114,7 @@ car/
 │       │   ├── CalendarioMensual.jsx    # Grilla mensual reutilizable (eventos + reservas)
 │       │   ├── ReservaCalendar.jsx      # Grilla de turnos por instalación
 │       │   ├── ConfirmDialog.jsx        # Reemplaza window.confirm()
+│       │   ├── ModalAccesosTransmision.jsx # Gestión de accesos PPV, emisión manual (no-socios/morosos), WhatsApp, transferencias
 │       │   ├── RutaPrivada.jsx          # Wrapper de rutas protegidas (chequea auth + roles)
 │       │   ├── landing/                 # Bloques de la landing pública
 │       │   └── admin/                   # MetricCard, CategoriaOrdenBadge, FaqBlock, SponsorsBlock
@@ -121,7 +123,7 @@ car/
 │       │   ├── useEscanerCache.js       # Caché local del padrón para el escáner offline
 │       │   ├── useExportarConvocatoria.js  # PDF de lista de convocados (jsPDF dinámico)
 │       │   └── useExportarAsistencias.js   # Export asistencias
-│       └── pages/               # Una página por ruta
+│       └── pages/               # Una página por ruta (incluye TransmisionEnVivo.jsx)
 ```
 
 ---
@@ -212,6 +214,7 @@ staff = Depends(require_roles("admin_general", "personal_administrativo"))
 | `/registro` | Solicitud de alta de socio |
 | `/recuperar-password` | Recupero por email |
 | `/ayuda` | FAQ público |
+| `/en-vivo` y `/en-vivo/:idEvento` | Transmisión en vivo PPV (partido actual o específico, con player blindado o paywall) |
 
 ### Socio (requiere auth, cualquier rol)
 | Ruta | Página |
@@ -346,6 +349,35 @@ el mensaje, es el único archivo que se toca.
   así que se renderiza con una regex sobre `{variable}`. Con `format()`, una
   llave suelta sería un 500 y `{0.__class__}` un agujero.
 
+## Transmisiones en vivo (Streaming Pay-Per-View)
+
+Permite al club emitir partidos en directo a través de la web oficial, monetizando mediante entradas virtuales para simpatizantes/no-socios sin cuenta obligatoria, protegiendo el acceso para socios al día, y controlando la concurrencia.
+
+- **Modelo de datos unificado (`eventos` + `entradas_virtuales`):**
+  - `Evento`: concentra fixture y configuración de streaming (`tiene_transmision`, `transmision_estado`, `transmision_plataforma`, `transmision_video_id`, `transmision_precio`, `transmision_socio_gratis`, `transmision_es_publica`, más fixture: `rival`, `condicion`, `goles_local`, `goles_rival`).
+  - `EntradaVirtual`: soporta tanto a socios (`id_usuario`) como a simpatizantes sin cuenta (`email_invitado` + `ticket_token` criptográfico único).
+  - Migraciones: `e7b8c9d0f1a2_partidos_fixture_y_transmisiones.py` y `bc78e9102a34_entradas_virtuales_invitados.py`.
+- **"Player Blindado" para YouTube Oculto (Costo $0):**
+  - Diseñado para emitir videos Unlisted de YouTube sin costo de servidores ni CDN.
+  - Máscara invisible superior que bloquea clics en el título, logo de canal, avatar y botones de "Compartir" / "Mirar en YouTube".
+  - Máscara inferior que bloquea el logo/watermark de YouTube.
+  - Bloqueo de click derecho (`onContextMenu`) para evitar copiar la URL del video.
+  - Botón nativo de pantalla completa (API Fullscreen HTML5) y controles de Play/Pausa/Volumen operativos.
+  - Desacoplado: listo para alternar a Vimeo o a streaming directo HLS / OBS (Cloudflare Stream o Mux) cambiando la plataforma.
+- **Control de concurrencia de 1 espectador (Anti-compartir cuenta):**
+  - Al abrir el reproductor, el backend genera un `token_sesion` único.
+  - El frontend emite un heartbeat cada 30 segundos (`POST /transmisiones/{id_evento}/heartbeat`).
+  - Si un usuario o invitado abre el enlace en otro dispositivo o lo comparte, la nueva conexión adquiere el control y la pestaña anterior recibe un `409 Conflict`, pausando el reproductor al instante e informando que la sesión se abrió en otro lugar.
+- **Entradas para no-socios sin registro:**
+  - El hincha no necesita crearse cuenta ni recordar contraseñas: solo ingresa su email al pagar.
+  - Recibe un Magic Link (`/en-vivo/:id?ticket=XYZ`) que se almacena automáticamente en `localStorage['car_ticket_<id>']`. Si refresca la página (F5) o cierra el navegador, no pierde el acceso ni se le pide pagar de nuevo.
+- **Panel de control de accesos (`ModalAccesosTransmision.jsx`):**
+  - Integrado en `TecnicoEventos.jsx` con el botón `[🎟️ Accesos]` en la tarjeta de cada partido con streaming.
+  - **Emisión a No-Socios:** Ingreso de email + opcional nombre y teléfono. Emite el ticket y genera botón directo **"Enviar por WhatsApp"** (`wa.me`) con mensaje pre-redactado.
+  - **Emisión a Socios Morosos:** Buscador en vivo de socios (`GET /transmisiones/buscar-usuarios`), badge indicativo de morosidad, desbloqueo inmediato del reproductor para su cuenta sin condonar ni alterar su deuda de cuota social, más botón de WhatsApp.
+  - **Aprobación de Transferencias:** Listado de espectadores con filtro por transferencias pendientes y botón `[✓ Aprobar Pago]` en 1 clic.
+  - **Control de Stream en vivo:** Switcher para alternar estado (`programada`, `en_vivo`, `pausada`, `finalizada`) y métricas en tiempo real (espectadores online, entradas vendidas, recaudación).
+
 ## Flujo económico (carrito y órdenes)
 
 El sistema no usa gateway de pagos en tiempo real. El flujo es:
@@ -420,6 +452,7 @@ Templates existentes:
 | Gestión de socios | ✅ Funcional | Bugs menores en corrección |
 | Gestión de cuotas | ⚠️ En corrección | Ver bugs conocidos |
 | Alquileres | ✅ Funcional | Pendiente testeo completo |
+| Transmisiones en vivo (PPV) | ✅ Implementado | Streaming YouTube blindado, fixture, entradas invitados, concurrencia=1, panel accesos y WhatsApp |
 | Tienda | 🔲 Sin testear | |
 | Escáneres | 🔲 Sin testear | |
 | Módulo deportivo | 🔲 Sin testear | |

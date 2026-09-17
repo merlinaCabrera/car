@@ -10,6 +10,14 @@ import {
   CreditCard,
   ShoppingBag,
   Menu,
+  Bell,
+  ShoppingCart,
+  Home,
+  Tv,
+  Calendar,
+  Trophy,
+  Package,
+  Settings,
 } from 'lucide-react';
 import camotiAzul from '../assets/camoti-azul.PNG';
 
@@ -22,10 +30,10 @@ import camotiAzul from '../assets/camoti-azul.PNG';
  *    o ?tour=1 (desde el botón manual de perfil).
  * 2. Posicionamiento Matemático Blindado: Clamp de margen superior/inferior para que
  *    el globito JAMÁS se corte arriba (evita top < 16px).
- * 3. Adaptación Mobile: En pantallas estrechas ancla el globito al pie con scroll al inicio
- *    del elemento, evitando solapamientos con el carnet.
+ * 3. Adaptación Mobile: En pantallas estrechas ancla el globito al pie o a la parte superior
+ *    según la posición del elemento objetivo para evitar cualquier solapamiento o recorte.
  * 4. Integración con Menú Desplegable: Al llegar a los pasos del menú lateral, despacha
- *    automáticamente el evento para abrir el menú y enfocar los bloques temáticos.
+ *    automáticamente el evento para abrir el menú y enfocar ítem por ítem.
  */
 
 const ICONOS_DEFAULT = {
@@ -33,6 +41,15 @@ const ICONOS_DEFAULT = {
   cuotas: CreditCard,
   beneficios: ShoppingBag,
   menu: Menu,
+  notificaciones: Bell,
+  carrito: ShoppingCart,
+  inicio: Home,
+  stream: Tv,
+  salon: Calendar,
+  canchas: Trophy,
+  tienda: ShoppingBag,
+  compras: Package,
+  perfil: Settings,
   default: Sparkles,
 };
 
@@ -140,17 +157,19 @@ export default function TourGuiado({
         inline: 'nearest',
       });
 
-      // Recalcular tras scroll o animación de apertura de menú
-      const delay = paso.abrirMenu ? 380 : 300;
-      const timer = setTimeout(() => {
-        actualizarPosicion();
-      }, delay);
+      // Actualizar posición de inmediato y con delays para seguir animaciones/drawer
+      actualizarPosicion();
+      const t1 = setTimeout(actualizarPosicion, 80);
+      const t2 = setTimeout(actualizarPosicion, paso.abrirMenu ? 360 : 200);
 
-      return () => clearTimeout(timer);
+      return () => {
+        clearTimeout(t1);
+        clearTimeout(t2);
+      };
     }
   }, [activo, pasoActual, pasos, isMobile, actualizarPosicion]);
 
-  // Escuchar scroll y resize para recalcular el spotlight
+  // Escuchar scroll (con captura para detectar scroll dentro del menú lateral) y resize
   useEffect(() => {
     if (!activo) return;
 
@@ -158,13 +177,13 @@ export default function TourGuiado({
       requestAnimationFrame(actualizarPosicion);
     };
 
-    window.addEventListener('scroll', handleUpdate, { passive: true });
+    window.addEventListener('scroll', handleUpdate, { passive: true, capture: true });
     window.addEventListener('resize', handleUpdate, { passive: true });
 
     actualizarPosicion();
 
     return () => {
-      window.removeEventListener('scroll', handleUpdate);
+      window.removeEventListener('scroll', handleUpdate, { capture: true });
       window.removeEventListener('resize', handleUpdate);
     };
   }, [activo, actualizarPosicion]);
@@ -234,10 +253,14 @@ export default function TourGuiado({
   const tooltipH = tooltipRef.current?.offsetHeight || 250;
 
   if (isMobile) {
-    // En móviles: Anclado abajo, con altura máxima acotada para no tapar toda la pantalla
+    // En móviles: Si el elemento está en la mitad inferior de la pantalla,
+    // colocamos el globito arriba para que jamás lo tape. Si está en la mitad superior,
+    // lo colocamos abajo.
+    const elementoAbajo = targetRect && targetRect.top > window.innerHeight / 2;
     tooltipStyle = {
       position: 'fixed',
-      bottom: '12px',
+      top: elementoAbajo ? '12px' : 'auto',
+      bottom: elementoAbajo ? 'auto' : '12px',
       left: '12px',
       right: '12px',
       maxWidth: 'calc(100vw - 24px)',
@@ -305,7 +328,7 @@ export default function TourGuiado({
   }
 
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden select-none animate-in fade-in duration-300">
+    <div className="fixed inset-0 z-[60] overflow-hidden select-none animate-in fade-in duration-300">
       {/* ─── Spotlight: Recorte iluminado con halo azul CAR ───────────────── */}
       {targetRect ? (
         <div

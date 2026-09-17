@@ -59,21 +59,16 @@ const NAV_SOCIO = [
   { name: 'Configuración', path: '/perfil', icon: Settings },
 ];
 
-const NAV_SOCIO_INSTALACIONES = [
-  { name: 'Reserva Canchas', path: '/socio/cancha', icon: Trophy },
-  { name: 'Reserva Salón / Quincho', path: '/socio/reservas', icon: Calendar },
-];
-
-const NAV_SOCIO_CLUB = [
-  { name: 'Transmisión en Vivo', path: '/en-vivo', icon: Tv },
-  { name: 'Tienda Oficial', path: '/shopping', icon: ShoppingBag },
-  { name: 'Mis Compras', path: '/mis-compras', icon: Package },
-];
-
-const NAV_SOCIO_CUENTA = [
-  { name: 'Gestión de Cuotas', path: '/socio/cuotas', icon: CreditCard },
-  { name: 'Configuración / Perfil', path: '/perfil', icon: Settings },
-];
+const ID_TOUR_NAV = {
+  '/socio': 'tour-item-inicio',
+  '/en-vivo': 'tour-item-stream',
+  '/socio/cuotas': 'tour-item-cuotas',
+  '/socio/reservas': 'tour-item-salon',
+  '/socio/cancha': 'tour-item-canchas',
+  '/shopping': 'tour-item-tienda',
+  '/mis-compras': 'tour-item-compras',
+  '/perfil': 'tour-item-perfil',
+};
 
 const NAV_JUGADOR = [
   { name: 'Mi Equipo', path: '/mi-equipo', icon: Users },
@@ -531,6 +526,7 @@ export default function MainLayout() {
                 <div className="flex items-center gap-2 sm:gap-4">
                   {/* Notificaciones */}
                   <Link
+                    id="tour-notificaciones"
                     to="/notificaciones"
                     className="flex p-2 rounded-xl bg-white/10 text-white/90 hover:text-white hover:bg-white/20 transition-colors relative"
                   >
@@ -544,6 +540,7 @@ export default function MainLayout() {
 
                   {/* Carrito */}
                   <Link
+                    id="tour-carrito"
                     to="/carrito"
                     className="flex p-2 rounded-xl bg-white/10 text-white/90 hover:text-white hover:bg-white/20 transition-colors relative"
                   >
@@ -689,47 +686,18 @@ export default function MainLayout() {
           {!esAdminGeneral && (
             <>
               {esSocio && (
-                <div className="space-y-3">
-                  {/* Inicio */}
-                  <Link to="/socio" onClick={closeMenu} {...propsItem('/socio', 0)}>
-                    <Home size={18} /><span>Inicio</span>
-                  </Link>
-
-                  {/* Bloque 1: Instalaciones */}
-                  <div id="tour-menu-instalaciones" className="rounded-xl p-1.5 bg-white/5 border border-white/5 transition-all">
-                    <p className={ROTULO}>Instalaciones</p>
-                    <div className="space-y-0.5">
-                      {NAV_SOCIO_INSTALACIONES.map((link, i) => (
-                        <Link key={link.path} to={link.path} onClick={closeMenu} {...propsItem(link.path, i + 1)}>
-                          <link.icon size={18} /><span>{link.name}</span>
-                        </Link>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Bloque 2: Club & Tienda */}
-                  <div id="tour-menu-servicios" className="rounded-xl p-1.5 bg-white/5 border border-white/5 transition-all">
-                    <p className={ROTULO}>Club & Tienda</p>
-                    <div className="space-y-0.5">
-                      {NAV_SOCIO_CLUB.map((link, i) => (
-                        <Link key={link.path} to={link.path} onClick={closeMenu} {...propsItem(link.path, i + 3)}>
-                          <link.icon size={18} /><span>{link.name}</span>
-                        </Link>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Bloque 3: Mi Cuenta */}
-                  <div id="tour-menu-cuenta" className="rounded-xl p-1.5 bg-white/5 border border-white/5 transition-all">
-                    <p className={ROTULO}>Mi Membresía</p>
-                    <div className="space-y-0.5">
-                      {NAV_SOCIO_CUENTA.map((link, i) => (
-                        <Link key={link.path} to={link.path} onClick={closeMenu} {...propsItem(link.path, i + 6)}>
-                          <link.icon size={18} /><span>{link.name}</span>
-                        </Link>
-                      ))}
-                    </div>
-                  </div>
+                <div>
+                  {NAV_SOCIO.map((link, i) => (
+                    <Link
+                      key={link.path}
+                      id={ID_TOUR_NAV[link.path]}
+                      to={link.path}
+                      onClick={closeMenu}
+                      {...propsItem(link.path, i)}
+                    >
+                      <link.icon size={18} /><span>{link.name}</span>
+                    </Link>
+                  ))}
                 </div>
               )}
 

@@ -358,7 +358,7 @@ Tu personalidad y estilo:
     }
 
     try:
-        async with httpx.AsyncClient(timeout=12.0) as client:
+        async with httpx.AsyncClient(timeout=20.0) as client:
             res = await client.post(
                 url_gemini,
                 json=cuerpo_request,

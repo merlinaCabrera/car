@@ -372,16 +372,14 @@ export default function TransmisionEnVivo() {
       );
     }
 
-    // Custom Iframe
+    // URL directa o iframe sanitizado (extrae solo el src para erradicar XSS)
+    let iframeSrc = video_id;
     if (video_id.startsWith('<iframe')) {
-      return (
-        <div
-          ref={playerContainerRef}
-          className="relative w-full aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl border border-white/10 [&>iframe]:w-full [&>iframe]:h-full"
-          dangerouslySetInnerHTML={{ __html: video_id }}
-        />
-      );
+      const srcMatch = video_id.match(/src=["']([^"']+)["']/i);
+      iframeSrc = srcMatch ? srcMatch[1] : '';
     }
+
+    if (!iframeSrc) return null;
 
     return (
       <div
@@ -389,7 +387,7 @@ export default function TransmisionEnVivo() {
         className="relative w-full aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl border border-white/10"
       >
         <iframe
-          src={video_id}
+          src={iframeSrc}
           title="Transmisión en Vivo"
           allowFullScreen
           className="w-full h-full border-0"

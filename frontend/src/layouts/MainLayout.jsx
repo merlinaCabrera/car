@@ -352,6 +352,7 @@ export default function MainLayout() {
             {/* Menú Hamburguesa + En Vivo Badge */}
             <div className="flex items-center gap-2">
               <button
+                id="tour-menu-btn"
                 onClick={() => setIsMenuOpen(true)}
                 aria-label="Abrir menú"
                 aria-expanded={isMenuOpen}

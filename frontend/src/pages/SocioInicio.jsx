@@ -16,6 +16,7 @@ import {
   UserPlus,
 } from 'lucide-react';
 import Beneficios from '../components/landing/Beneficios';
+import TourGuiado from '../components/TourGuiado';
 import { Revelar } from '../components/landing/animaciones';
 import { calcularEstadoFinanciero } from '../utils/cuotas';
 import { resolverUrlArchivo } from '../utils/archivos';
@@ -61,6 +62,46 @@ function CardSkeleton({ className = '' }) {
     <div className={`rounded-2xl bg-gray-100 animate-pulse ${className}`} />
   );
 }
+
+// ─── Pasos del Tour Guiado con Camote ─────────────────────────────────────────
+const PASOS_TOUR_SOCIO = [
+  {
+    targetId: 'tour-carnet',
+    titulo: 'Tu Carnet Digital & QR Dinámico',
+    descripcion:
+      'Este es tu carnet oficial del Club Atlético Roberts. El código QR rota automáticamente cada 55 segundos para evitar fraudes y capturas: mostralo desde tu celular en las puertas del club o la cancha para ingresar al instante.',
+    badge: 'Acceso y Seguridad',
+    icono: 'carnet',
+    tip: 'Funciona incluso si te quedás sin señal por unos minutos si ya tenías la app abierta.',
+  },
+  {
+    targetId: 'tour-cuotas',
+    titulo: 'Estado de Cuotas y Pagos al Toque',
+    descripcion:
+      'Acá consultás en tiempo real si estás al día o si tenés cuotas pendientes. Podés abonar al instante con Mercado Pago o transferencia bancaria sin tener que ir a secretaría.',
+    badge: 'Cuotas Sociales',
+    icono: 'cuotas',
+    tip: 'El sistema actualiza tu carnet automáticamente apenas se confirma el pago.',
+  },
+  {
+    targetId: 'tour-beneficios',
+    titulo: 'Beneficios en Comercios de Roberts',
+    descripcion:
+      'Tu carnet de socio tiene valor comercial en el pueblo. Presentalo en los comercios adheridos para acceder a descuentos exclusivos para la comunidad del CAR.',
+    badge: 'Comunidad CAR',
+    icono: 'beneficios',
+    tip: 'Explorá la lista de negocios adheridos y sus promociones vigentes.',
+  },
+  {
+    targetId: 'tour-menu-btn',
+    titulo: 'Menú de Servicios y Transmisiones',
+    descripcion:
+      'Desde este botón accedés a todo: reservar turnos de canchas, alquilar el quincho para asados familiares, comprar en la tienda oficial y ver los partidos en vivo por streaming.',
+    badge: 'Todo en tu Mano',
+    icono: 'menu',
+    tip: 'El menú está siempre disponible arriba a la izquierda.',
+  },
+];
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 
@@ -218,6 +259,7 @@ export default function SocioInicio() {
       <div className="flex flex-col lg:flex-row gap-4 sm:gap-6">
         {/* Estado Financiero */}
         <div
+          id="tour-cuotas"
           className={`anim-entrada anim-d1 flex-1 rounded-2xl p-5 sm:p-6 border-2 flex flex-col justify-between min-h-[180px] sm:min-h-[200px] ${
             esMoroso ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-200'
           }`}
@@ -257,7 +299,10 @@ export default function SocioInicio() {
             QR, y el bloque de datos del socio (nombre en Playfair, datos en
             Inter). El Camotí va de marca de agua sutil — nunca sobre el QR,
             que necesita contraste limpio para que el escáner lo lea. */}
-        <div className="anim-escala anim-d2 flex-1 rounded-2xl overflow-hidden bg-white border border-gray-200 shadow-md">
+        <div
+          id="tour-carnet"
+          className="anim-escala anim-d2 flex-1 rounded-2xl overflow-hidden bg-white border border-gray-200 shadow-md"
+        >
 
           {/* Cabecera institucional */}
           <div className="flex items-center gap-3 px-5 py-4 bg-white border-b border-gray-200">
@@ -423,7 +468,7 @@ export default function SocioInicio() {
       </div>
 
       {/* Acceso rápido a Beneficios — mensaje contextual según estado financiero */}
-      <div className="anim-entrada anim-d3 pt-2">
+      <div id="tour-beneficios" className="anim-entrada anim-d3 pt-2">
         {enVerificacion ? (
           <div className="flex items-center gap-3 p-4 rounded-2xl bg-blue-50 border border-blue-200 text-blue-800">
             <AlertTriangle size={20} className="flex-shrink-0" />
@@ -459,6 +504,13 @@ export default function SocioInicio() {
         )}
         <Revelar><Beneficios /></Revelar>
       </div>
+
+      {/* ─── Tour Guiado con Camote para el primer ingreso del socio ─── */}
+      <TourGuiado
+        pasos={PASOS_TOUR_SOCIO}
+        tourKey={user?.id_usuario ? `car_tour_socio_${user.id_usuario}` : 'car_tour_socio_invitado'}
+        nombreUsuario={nombreCorto}
+      />
     </div>
   );
 }

@@ -631,8 +631,13 @@ npm run dev
 | Base de datos | Neon (PostgreSQL) | Gratuito | merlinacabreramc@gmail.com |
 | Frontend | S3 + CloudFront | Pago por uso ~USD 1/mes | clubatleticoroberts1@gmail.com (AWS) |
 | Archivos (fotos/comprobantes) | Amazon S3 | Pago por uso ~USD 1/mes | clubatleticoroberts1@gmail.com (AWS) |
+| Streaming en vivo (PPV) | YouTube Oculto (actual) / Amazon IVS (Etapa 2) | Costo variable (~USD 6/partido) | clubatleticoroberts1@gmail.com (AWS) |
 | Mail transaccional | Resend | Gratuito | — |
 | Dominio | Namecheap → CloudFront | ~USD 12/año | clubatleticoroberts1@gmail.com |
+
+**Documentación técnica reciente:**
+- `docs/infraestructura.md`: Separación de branches Neon (`main` y `dev`), deploys dev/prod y helper de migraciones.
+- `docs/propuesta-streaming-ivs.md`: Propuesta de transmisión segura con Amazon IVS (Revisión V2: Playback Authorization JWT ECDSA, costos reales por espectador-hora, prueba previa de uplink 4G y salvaguardas).
 
 **Pendiente antes del MVP:**
 - Rotar todas las claves (AWS, MP, Resend, `SECRET_KEY`, password de Neon) — ver "Secretos filtrados en el historial de git". Idealmente también limpiar el historial (`git filter-repo`) o asumir que quedan expuestas y rotar.

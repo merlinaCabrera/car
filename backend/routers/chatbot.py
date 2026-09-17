@@ -1,6 +1,6 @@
 # backend/routers/chatbot.py
 """
-Router del Asistente Virtual CAR ("Camote").
+Router del Asistente Virtual CAR ("Camotito").
 Permite interactuar en lenguaje natural sobre cuotas, partidos, streaming,
 alquileres, trámites y beneficios del Club Atlético Roberts.
 
@@ -14,7 +14,7 @@ import logging
 import os
 import re
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -71,14 +71,38 @@ _EMOJI_REGEX = re.compile(
 
 
 def _sanitizar_respuesta_chatbot(texto: str) -> str:
-    """Garantiza la regla estricta de Cero Emojis y renombra 'Camotero' a 'Camote'."""
+    """Garantiza la regla estricta de Cero Emojis y renombra 'Camotero' y 'Camote' a 'Camotito'."""
     if not texto:
         return ""
-    # Reemplazar 'Camotero' por 'Camote'
-    texto = re.sub(r"\bCamotero\b", "Camote", texto, flags=re.IGNORECASE)
+    # Reemplazar 'Camotero' y 'Camote' por 'Camotito'
+    texto = re.sub(r"\bCamotero\b", "Camotito", texto, flags=re.IGNORECASE)
+    texto = re.sub(r"\bCamote\b", "Camotito", texto, flags=re.IGNORECASE)
     # Limpiar cualquier emoji
     texto = _EMOJI_REGEX.sub("", texto)
     return texto.strip()
+
+
+def _obtener_sugerencias_socio() -> List[Dict[str, str]]:
+    """Opciones rápidas y consultas frecuentes para socios autenticados."""
+    return [
+        {"id": "partido", "label": "Próximo partido y stream", "prompt": "¿Cuándo juega el CAR y hay transmisión en vivo?"},
+        {"id": "cuota", "label": "Mis cuotas y pagos", "prompt": "¿Cómo consulto mis cuotas y cargo mi comprobante?"},
+        {"id": "alquiler", "label": "Reservar cancha o quincho", "prompt": "¿Cómo reservo un turno para una cancha o el quincho?"},
+        {"id": "comercios", "label": "Comercios con descuento", "prompt": "¿Qué comercios tienen descuentos para socios al día?"},
+        {"id": "tour", "label": "Tour guiado por la app", "prompt": "Quiero hacer el tour guiado de la app", "accion": "tour"},
+        {"id": "contacto", "label": "Contactar por WhatsApp", "prompt": "¿Cuál es el número de WhatsApp de la secretaría?"},
+    ]
+
+
+def _obtener_sugerencias_publicas() -> List[Dict[str, str]]:
+    """Opciones rápidas y consultas frecuentes para visitantes no registrados."""
+    return [
+        {"id": "partido", "label": "Próximo partido y stream", "prompt": "¿Cuándo juega el CAR y hay transmisión en vivo?"},
+        {"id": "cuota", "label": "Cuota social y alias", "prompt": "¿Cuánto sale la cuota y cuál es el alias para transferir?"},
+        {"id": "socio", "label": "Cómo hacerme socio", "prompt": "¿Cuáles son los requisitos y cómo me hago socio online?"},
+        {"id": "alquiler", "label": "Alquiler de canchas y quincho", "prompt": "¿Cómo hago para alquilar una cancha o el quincho?"},
+        {"id": "contacto", "label": "Contactar por WhatsApp", "prompt": "¿Cuál es el número de WhatsApp de la secretaría?"},
+    ]
 
 
 def _construir_contexto_club(db: Session) -> Dict[str, Any]:
@@ -234,7 +258,7 @@ def _responder_por_reglas_fallback(
     autenticado: bool = False,
     rol: str = "anonimo",
     nombre_usuario: str = "",
-) -> str:
+) -> Tuple[str, Optional[List[Dict[str, str]]]]:
     """Motor de contingencia por reglas cuando Gemini API no está configurada o excede cuota."""
     msg = mensaje.lower().strip()
     alias = datos["alias"]
@@ -247,18 +271,45 @@ def _responder_por_reglas_fallback(
     es_admin = rol_clean in ["admin", "tesorero", "profesor"]
 
     # 1. Saludos breves
-    if msg in ["hola", "buenas", "buen dia", "buen día", "buenas tardes", "buenas noches", "hey", "hola camote", "que tal", "qué tal"]:
+    if msg in [
+        "hola", "buenas", "buen dia", "buen día", "buenas tardes", "buenas noches",
+        "hey", "hola camotito", "hola camote", "que tal", "qué tal", "como estas",
+        "cómo estás", "como andas", "cómo andás", "todo bien", "buenas!"
+    ]:
         nombre_str = f" {nombre_usuario}" if (autenticado and nombre_usuario) else ""
         return (
-            f"¡Hola{nombre_str}! Soy **Camote**, el asistente virtual del Club Atlético Roberts.\n\n"
+            f"¡Hola{nombre_str}! Soy **Camotito**, el asistente virtual del Club Atlético Roberts.\n\n"
             "¿En qué te puedo ayudar hoy? Podés consultarme sobre cuotas sociales, alquiler de canchas, el próximo partido o cómo asociarte online."
-        )
+        ), None
 
     # 2. Agradecimientos o despedidas
     if any(w in msg for w in ["gracias", "muchas gracias", "joya", "perfecto", "genial", "chau", "adios", "adiós", "nos vemos", "listo"]):
-        return "¡De nada! Si te surge cualquier otra duda sobre el club, acá estoy para ayudarte. ¡Vamos Roberts!"
+        return "¡De nada! Si te surge cualquier otra duda sobre el club, acá estoy para ayudarte. ¡Vamos Roberts!", None
 
-    # 3. Frustración / incomprensión / feedback negativo
+    # 3. Solicitud de Tour Guiado interactivo de la app
+    if any(w in msg for w in ["tour", "guia", "guía", "recorrer", "tutorial", "como funciona la app", "cómo funciona la app", "explicame la app", "explicar la app"]):
+        if autenticado:
+            return (
+                "¡Excelente! Te acompaño a recorrer tu portal paso a paso con la **Guía interactiva de Camotito** para que conozcas tu carnet digital con QR dinámico, cuotas, reservas de canchas y servicios del club.\n\n"
+                "[Iniciar Tour Guiado](/socio?tour=1)"
+            ), None
+        else:
+            return (
+                "El tour interactivo guiado por Camotito está disponible para socios dentro de su portal personal.\n\n"
+                "Si ya sos socio del club, podés [Iniciar sesión](/login) para recorrer la plataforma. Si todavía no te asociaste, podés [Completar solicitud de socio](/registro) en 2 minutos."
+            ), None
+
+    # 4. Solicitud explícita de Menú / Opciones / Consultas frecuentes
+    if msg in ["menu", "menú", "opciones", "ayuda", "consultas", "consultas frecuentes", "que podes hacer", "qué podés hacer", "comandos"]:
+        nombre_str = f" {nombre_usuario}" if (autenticado and nombre_usuario) else ""
+        texto = (
+            f"Hola{nombre_str}. Soy **Camotito**, el asistente virtual del Club Atlético Roberts.\n\n"
+            "Escribime tu consulta o elegí una de las opciones frecuentes acá abajo:"
+        )
+        sugs = _obtener_sugerencias_socio() if autenticado else _obtener_sugerencias_publicas()
+        return texto, sugs
+
+    # 5. Frustración / incomprensión / feedback negativo
     if any(w in msg for w in ["no me sirve", "no entendi", "no entendí", "no entiendo", "no era eso", "no ayuda", "muy malo", "horrible", "nada que ver", "no entiendo nada"]):
         return (
             "Disculpá la confusión. Podés consultarme puntualmente sobre:\n\n"
@@ -267,15 +318,15 @@ def _responder_por_reglas_fallback(
             "- Alquiler de canchas de fútbol y quincho (para socios y no socios)\n"
             "- Cómo asociarte online paso a paso\n\n"
             "O si preferís que te atienda una persona de Secretaría, avisame y te paso el contacto directo."
-        )
+        ), None
 
-    # 4. Dudas generales preliminares ("no soy socio tengo una duda", "te hago una pregunta")
+    # 6. Dudas generales preliminares
     if any(w in msg for w in ["tengo una duda", "tengo una pregunta", "te hago una pregunta", "te consulto", "tengo dudas", "consulta"]) and len(msg.split()) <= 7:
         return (
             "¡Por supuesto! Decime qué duda tenés. Te puedo informar sobre cómo hacerte socio, valores de cuotas, alquiler de canchas, partidos o cualquier trámite del club."
-        )
+        ), None
 
-    # 5. Menores de edad / Descuento para menores / Hijos / Cadetes
+    # 7. Menores de edad / Descuento para menores / Hijos / Cadetes
     if any(w in msg for w in ["menor", "menores", "edad", "descuento", "cadete", "cadetes", "chico", "chicos", "hijo", "hijos", "hija", "hijas", "niño", "niños"]):
         return (
             "**Cuota Social para Menores de 18 años:**\n\n"
@@ -284,31 +335,31 @@ def _responder_por_reglas_fallback(
             f"- Cuota menores (con {descuento_menor} de descuento): **{cuota_menor}** por mes.\n\n"
             f"Las cuotas se abonan transfiriendo al alias oficial: **`{alias}`**.\n\n"
             "Para asociar a un menor, podés completar la solicitud online en 2 minutos desde [Completar solicitud de socio](/registro)."
-        )
+        ), None
 
-    # 6. Alquiler de instalaciones / canchas / quincho (diferenciando socios y no socios)
+    # 8. Alquiler de instalaciones / canchas / quincho (diferenciando socios y no socios)
     if any(w in msg for w in ["cancha", "canchas", "quincho", "alquiler", "alquilar", "alquilo", "alquila", "alquilan", "reserva", "reservar", "reservo", "turno", "turnos"]):
         if any(w in msg for w in ["no socio", "no soy socio", "sin ser socio", "sin socio", "externo", "externos", "particular", "particulares"]):
             return (
                 "**Alquiler de Canchas y Quincho para No Socios:**\n\n"
                 "El sistema de reservas online a través del portal está disponible exclusivamente para socios activos del club con cuota al día.\n\n"
                 "Si no sos socio y querés alquilar la Cancha 1 (sintético), Cancha 2 o el Quincho social para un evento, podés comunicarte directamente con Secretaría para consultar disponibilidad y aranceles para particulares, o asociarte desde [Completar solicitud de socio](/registro)."
-            )
+            ), None
         else:
             if autenticado:
                 return (
                     "**Alquiler de Canchas y Quincho:**\n\n"
                     "El club cuenta con Cancha 1 (sintético), Cancha 2 y Quincho social para eventos familiares y peñas.\n\n"
                     "Podés consultar la disponibilidad de turnos e iniciar tu reserva online desde [Reservar instalaciones](/socio/reservas) o [Reservar cancha](/socio/cancha)."
-                )
+                ), None
             else:
                 return (
                     "**Alquiler de Canchas y Quincho:**\n\n"
                     "El club cuenta con Cancha 1 (sintético), Cancha 2 y Quincho social para eventos familiares y peñas.\n\n"
                     "Para reservar turnos online como socio, ingresá a [Iniciar sesión](/login). Si todavía no sos socio, podés asociarte completando tu solicitud en [Completar solicitud de socio](/registro)."
-                )
+                ), None
 
-    # 7. Pagos manuales / administración de cobros
+    # 9. Pagos manuales / administración de cobros
     if any(w in msg for w in ["pago manual", "pagos manuales", "cobro manual", "cargar pago", "asentar pago", "registrar pago", "cobrar cuota", "cobrar manual"]):
         if es_admin:
             return (
@@ -319,35 +370,35 @@ def _responder_por_reglas_fallback(
                 "3. En las acciones del socio, seleccioná **Cobro manual**.\n"
                 "4. Seleccioná los meses a cubrir y confirmá la operación.\n\n"
                 "Si el socio transfirió por banco o Mercado Pago y subió comprobante, podés verificarlo y aprobarlo desde [Verificaciones de pagos](/admin/verificaciones)."
-            )
+            ), None
         else:
             if autenticado:
                 return (
                     f"Para abonar tus cuotas podés transferir al alias oficial: **`{alias}`**.\n\n"
                     "Luego ingresá a [Consultar cuotas](/socio/cuotas) para cargar tu comprobante de transferencia y tener tu carnet al día."
-                )
+                ), None
             else:
                 return (
                     f"Para abonar cuotas sociales podés transferir directamente al alias oficial: **`{alias}`**.\n\n"
                     "Si ya sos socio, ingresá a [Iniciar sesión](/login) para subir tu comprobante. Si todavía no sos socio, podés sumarte completando el formulario en [Completar solicitud de socio](/registro)."
-                )
+                ), None
 
-    # 8. Acceso a cuenta / login / contraseña
+    # 10. Acceso a cuenta / login / contraseña
     if any(w in msg for w in ["no puedo entrar", "no puedo ingresar", "acceder a su cuenta", "acceder a mi cuenta", "olvidé mi contraseña", "olvide mi contraseña", "primer ingreso", "iniciar sesion", "iniciar sesión", "clave"]):
         return (
             "**Acceso a la Cuenta:**\n\n"
             "- Para ingresar al portal, entrá a [Iniciar sesión](/login) con tu número de **DNI** y contraseña.\n"
             "- Si es tu primer ingreso o no recordás la contraseña, podés restablecerla desde [Recuperar contraseña](/recuperar-password) indicando tu email registrado."
-        )
+        ), None
 
-    # 9. Partidos y fixture
+    # 11. Partidos y fixture
     if any(w in msg for w in ["partido", "partidos", "juegan", "jugamos", "fixture", "domingo", "stream", "transmision", "transmisión", "en vivo", "hora", "rival", "fecha"]):
         return (
             f"Próximo Partido y Transmisión:\n\n{partido}\n\n"
             "Podés seguir todos los detalles y mirar el partido en vivo desde [Ver transmisión en vivo](/en-vivo)."
-        )
+        ), None
 
-    # 10. Cuotas y pagos
+    # 12. Cuotas y pagos
     if any(w in msg for w in ["cuota", "cuotas", "pagar", "alias", "cbu", "transferir", "transferencia", "precio", "cuánto sale", "cuanto sale", "banco"]):
         if autenticado:
             return (
@@ -355,72 +406,63 @@ def _responder_por_reglas_fallback(
                 f"La cuota social actual es de **{cuota}** por mes.\n"
                 f"Podés transferir directamente al alias oficial del club: **`{alias}`**.\n\n"
                 f"Podés consultar tu estado de cuotas y subir tu comprobante desde [Consultar cuotas](/socio/cuotas)."
-            )
+            ), None
         else:
             return (
                 f"Cuota Social y Pagos:\n\n"
                 f"La cuota social actual es de **{cuota}** por mes.\n"
                 f"Podés transferir directamente al alias oficial del club: **`{alias}`**.\n\n"
                 f"Si ya sos socio, ingresá a [Iniciar sesión](/login) para ver tus cuotas y subir tu comprobante. Si querés asociarte, podés completar tu solicitud online en 2 minutos desde [Completar solicitud de socio](/registro)."
-            )
+            ), None
 
-    # 11. Hacerme socio
+    # 13. Hacerme socio
     if any(w in msg for w in ["hacerme socio", "hacerme socia", "asociarme", "hacerse socio", "cómo ser socio", "como ser socio", "quiero ser socio", "alta de socio", "anotarme", "inscribirme", "registro", "solicitud"]):
         return (
             "Cómo hacerte socio del CAR:\n\n"
             "Podés completar tu solicitud de alta online en 2 minutos desde [Completar solicitud de socio](/registro).\n\n"
             "Una vez aprobada tu solicitud, vas a poder ingresar a tu panel con tu DNI, tener tu carnet QR digital y disfrutar de todos los beneficios."
-        )
+        ), None
 
-    # 12. Comercios adheridos
+    # 14. Comercios adheridos
     if any(w in msg for w in ["comercio", "comercios", "descuento", "descuentos", "beneficio", "beneficios", "farmacia", "tienda"]):
         return (
             "Beneficios en Comercios Adheridos:\n\n"
             "Presentando tu carnet QR de socio al día contás con importantes descuentos en comercios de Roberts.\n\n"
             "Podés ver el listado actualizado de comercios y promociones en [Preguntas frecuentes](/ayuda)."
-        )
+        ), None
 
-    # 13. Contacto Secretaría / WhatsApp
+    # 15. Contacto Secretaría / WhatsApp
     if any(w in msg for w in ["contacto", "secretaria", "secretaría", "teléfono", "telefono", "whatsapp", "hablar", "comision", "directiva", "número", "numero"]):
         wa_link = f"https://wa.me/{datos['whatsapp_clean']}" if datos.get("whatsapp_clean") else "https://wa.me/"
         return (
             "Contacto con Secretaría:\n\n"
             f"Podés comunicarte directamente con la secretaría del club al WhatsApp {wa} para consultas administrativas o trámites presenciales:\n\n"
             f"[Escribir a Secretaría por WhatsApp]({wa_link})"
-        )
+        ), None
 
-    # 14. Buscar coincidencia en FAQs cargadas (estricta con stopwords)
+    # 16. Buscar coincidencia en FAQs cargadas (estricta con stopwords)
     STOPWORDS = {"como", "cómo", "para", "donde", "dónde", "cuando", "cuándo", "cual", "cuál", "hago", "hacer", "puedo", "tener", "club", "socio", "socios", "roberts"}
     for faq in datos.get("faqs", []):
         palabras_faq = [p for p in re.findall(r"\w+", faq.pregunta.lower()) if len(p) > 3 and p not in STOPWORDS]
         palabras_msg = [p for p in re.findall(r"\w+", msg) if len(p) > 3 and p not in STOPWORDS]
         coincidencias = set(palabras_faq).intersection(set(palabras_msg))
         if len(coincidencias) >= 2 or (len(palabras_faq) == 1 and len(coincidencias) == 1):
-            return f"**{faq.pregunta}**\n\n{faq.respuesta}"
+            return f"**{faq.pregunta}**\n\n{faq.respuesta}", None
 
-    # 15. Respuesta genérica con bienvenida y opciones
+    # 17. Respuesta genérica cuando no reconoce la consulta: envía el menú interactivo
     if autenticado:
         nombre_str = f" {nombre_usuario}" if nombre_usuario else ""
-        return (
-            f"Hola{nombre_str}. Soy **Camote**, el asistente virtual del Club Atlético Roberts.\n\n"
-            "Te puedo ayudar con información sobre:\n"
-            "- Próximo partido y streaming en vivo: [Ver transmisión en vivo](/en-vivo)\n"
-            "- Estado de cuotas y pagos: [Consultar cuotas](/socio/cuotas)\n"
-            "- Alquiler de canchas y quincho: [Reservar instalaciones](/socio/reservas)\n"
-            "- Comercios con descuentos: [Preguntas frecuentes](/ayuda)\n\n"
-            "Escribime tu consulta o elegí una de las opciones rápidas."
+        texto = (
+            f"Hola{nombre_str}. Soy **Camotito**, el asistente virtual del Club Atlético Roberts. ¿En qué te puedo ayudar hoy?\n\n"
+            "Escribime tu consulta o elegí una de las opciones frecuentes acá abajo:"
         )
+        return texto, _obtener_sugerencias_socio()
     else:
-        return (
-            "Hola. Soy **Camote**, el asistente virtual del Club Atlético Roberts.\n\n"
-            "Te puedo ayudar con información sobre:\n"
-            "- Próximo partido y streaming en vivo: [Ver transmisión en vivo](/en-vivo)\n"
-            "- Valor de cuota y alias bancario oficial\n"
-            "- Alquiler de canchas y quincho social\n"
-            "- Cómo hacerte socio online: [Completar solicitud de socio](/registro)\n"
-            "- Acceso a tu cuenta: [Iniciar sesión](/login)\n\n"
-            "Escribime tu consulta o elegí una de las opciones rápidas."
+        texto = (
+            "Hola. Soy **Camotito**, el asistente virtual del Club Atlético Roberts. ¿En qué te puedo ayudar hoy?\n\n"
+            "Escribime tu consulta o elegí una de las opciones frecuentes acá abajo:"
         )
+        return texto, _obtener_sugerencias_publicas()
 
 
 @router.get(
@@ -438,26 +480,14 @@ def obtener_info_inicial(
     usa_ia = bool(api_key)
 
     if autenticado:
-        saludo = f"Hola{f' {nombre}' if nombre else ''}. Soy Camote, el asistente virtual del Club Atlético Roberts. ¿En qué te puedo ayudar hoy?"
-        sugerencias = [
-            {"id": "partido", "label": "Próximo partido y stream", "prompt": "¿Cuándo juega el CAR y hay transmisión en vivo?"},
-            {"id": "cuota", "label": "Mis cuotas y pagos", "prompt": "¿Cómo consulto mis cuotas y cargo mi comprobante?"},
-            {"id": "alquiler", "label": "Reservar cancha o quincho", "prompt": "¿Cómo reservo un turno para una cancha o el quincho?"},
-            {"id": "comercios", "label": "Comercios con descuento", "prompt": "¿Qué comercios tienen descuentos para socios al día?"},
-            {"id": "contacto", "label": "Contactar por WhatsApp", "prompt": "¿Cuál es el número de WhatsApp de la secretaría?"},
-        ]
+        saludo = f"Hola{f' {nombre}' if nombre else ''}. Soy Camotito, el asistente virtual del Club Atlético Roberts. ¿En qué te puedo ayudar hoy?"
+        sugerencias = _obtener_sugerencias_socio()
     else:
-        saludo = "Hola. Soy Camote, el asistente virtual del Club Atlético Roberts. ¿En qué te puedo ayudar hoy?"
-        sugerencias = [
-            {"id": "partido", "label": "Próximo partido y stream", "prompt": "¿Cuándo juega el CAR y hay transmisión en vivo?"},
-            {"id": "cuota", "label": "Cuota social y alias", "prompt": "¿Cuánto sale la cuota y cuál es el alias para transferir?"},
-            {"id": "socio", "label": "Cómo hacerme socio", "prompt": "¿Cuáles son los requisitos y cómo me hago socio online?"},
-            {"id": "alquiler", "label": "Alquiler de canchas y quincho", "prompt": "¿Cómo hago para alquilar una cancha o el quincho?"},
-            {"id": "contacto", "label": "Contactar por WhatsApp", "prompt": "¿Cuál es el número de WhatsApp de la secretaría?"},
-        ]
+        saludo = "Hola. Soy Camotito, el asistente virtual del Club Atlético Roberts. ¿En qué te puedo ayudar hoy?"
+        sugerencias = _obtener_sugerencias_publicas()
 
     return {
-        "nombre_asistente": "Camote",
+        "nombre_asistente": "Camotito",
         "saludo_inicial": saludo,
         "sugerencias": sugerencias,
         "alias_transferencia": datos["alias"],
@@ -490,9 +520,29 @@ async def procesar_mensaje_chatbot(
     nombre_user = (payload.nombre_usuario or "").strip()
     es_admin = rol_usuario in ["admin", "tesorero", "profesor"]
 
+    # Interceptar solicitudes directas de menú o de tour guiado para responder inmediatamente
+    msg_clean = mensaje_usuario.lower().strip()
+    es_menu = msg_clean in ["menu", "menú", "opciones", "ayuda", "consultas", "consultas frecuentes", "que podes hacer", "qué podés hacer", "comandos"]
+    es_tour = any(w in msg_clean for w in ["tour", "guia", "guía", "recorrer", "tutorial", "como funciona la app", "cómo funciona la app", "explicame la app"])
+
+    if es_menu or es_tour:
+        resp_dir, sugs_dir = _responder_por_reglas_fallback(
+            mensaje_usuario,
+            datos,
+            autenticado=autenticado,
+            rol=rol_usuario,
+            nombre_usuario=nombre_user,
+        )
+        return {
+            "respuesta": resp_dir,
+            "origen": "regla_directa",
+            "sugerencias": sugs_dir,
+            "whatsapp_url": None,
+        }
+
     # Si no hay API key configurada, responder con el motor de contingencia por reglas
     if not api_key:
-        respuesta_texto = _responder_por_reglas_fallback(
+        respuesta_texto, sugs_resp = _responder_por_reglas_fallback(
             mensaje_usuario,
             datos,
             autenticado=autenticado,
@@ -502,6 +552,7 @@ async def procesar_mensaje_chatbot(
         return {
             "respuesta": respuesta_texto,
             "origen": "fallback_reglas",
+            "sugerencias": sugs_resp,
             "whatsapp_url": None,
         }
 
@@ -533,6 +584,7 @@ INFORMACIÓN DEL USUARIO ACTUAL:
     - [Consultar cuotas](/socio/cuotas)
     - [Reservar instalaciones](/socio/reservas) o [Reservar cancha](/socio/cancha)
     - [Ver transmisión en vivo](/en-vivo)
+    - [Iniciar Tour Guiado](/socio?tour=1)
     - [Preguntas frecuentes](/ayuda)
     - [Tienda oficial](/shopping)
     - [Mi perfil](/socio/perfil)
@@ -559,8 +611,8 @@ INFORMACIÓN DEL USUARIO ACTUAL:
 
     # Llamar a Google Gemini Flash API
     system_instruction = f"""
-Eres "Camote", el asistente virtual oficial del Club Atlético Roberts (CAR), fundado en 1920 en la localidad de Roberts, Provincia de Buenos Aires, Argentina.
-Tus colores son el Rojo y el Blanco. Tu nombre es estricta y únicamente "Camote". NUNCA te llames "Camotero".
+Eres "Camotito", el asistente virtual oficial del Club Atlético Roberts (CAR), fundado en 1920 en la localidad de Roberts, Provincia de Buenos Aires, Argentina.
+Tus colores son el Rojo y el Blanco. Tu nombre es estricta y únicamente "Camotito". NUNCA te llames "Camote" ni "Camotero".
 
 Tus directivas obligatorias:
 1. PROHIBICIÓN ESTRICTA DE EMOJIS: Está terminantemente PROHIBIDO usar emojis, emoticones o pictogramas. No uses pelotas, ni círculos de colores, ni flechitas ni ningún emoji. Respuestas 100% limpias de emojis.
@@ -570,6 +622,7 @@ Tus directivas obligatorias:
 5. FORMATO DE ENLACES: NUNCA muestres rutas técnicas crudas como "(/en-vivo)", ni barras sueltas como "/en-vivo", ni "[/en-vivo](/en-vivo)". SIEMPRE utiliza frases legibles en español como texto del enlace en formato markdown. Por ejemplo: [Ver transmisión en vivo](/en-vivo).
 6. NUNCA inventes alias bancarios ni números de cuenta que no figuren en los datos oficiales.
 7. REGLA ESTRICTA DE WHATSAPP: PROHIBIDO incluir enlaces, números o invitaciones a WhatsApp por defecto o al final de tus respuestas comunes. ÚNICAMENTE debes proporcionar el enlace de WhatsApp si el usuario pregunta EXPLÍCITAMENTE por contactar a Secretaría, hablar con una persona, número de teléfono o WhatsApp. En ese caso particular, incluye el enlace en formato: [Escribir a Secretaría por WhatsApp]({wa_link_oficial}). NUNCA lo agregues en respuestas sobre cuotas, canchas, fixture, transmisiones, etc.
+8. GUÍA Y TOUR INTERACTIVO: Si el socio pregunta por un tour guiado, tutorial o cómo usar la app o el portal, invítalo con entusiasmo y facilítale el enlace: [Iniciar Tour Guiado](/socio?tour=1).
 
 {seguridad_instrucciones}
 
@@ -644,7 +697,7 @@ Tus directivas obligatorias:
             logger.warning(f"Error conectando con Gemini API ({modelo}): {exc}. Probando siguiente candidato...")
 
     # Si falló la llamada a Gemini, usamos el motor de contingencia
-    respuesta_fallback = _responder_por_reglas_fallback(
+    respuesta_fallback, sugs_fallback = _responder_por_reglas_fallback(
         mensaje_usuario,
         datos,
         autenticado=autenticado,
@@ -654,6 +707,7 @@ Tus directivas obligatorias:
     return {
         "respuesta": _sanitizar_respuesta_chatbot(respuesta_fallback),
         "origen": "fallback_reglas",
+        "sugerencias": sugs_fallback,
         "whatsapp_url": None,
     }
 

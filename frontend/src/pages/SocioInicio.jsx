@@ -63,7 +63,7 @@ function CardSkeleton({ className = '' }) {
   );
 }
 
-// ─── Pasos del Tour Guiado con Camote ─────────────────────────────────────────
+// ─── Pasos del Tour Guiado con Camotito ───────────────────────────────────────
 const PASOS_TOUR_SOCIO = [
   {
     targetId: 'tour-carnet',
@@ -603,7 +603,7 @@ export default function SocioInicio() {
         <Revelar><Beneficios /></Revelar>
       </div>
 
-      {/* ─── Tour Guiado con Camote para el primer ingreso del socio ─── */}
+      {/* ─── Tour Guiado con Camotito para el primer ingreso del socio ─── */}
       <TourGuiado
         pasos={PASOS_TOUR_SOCIO}
         tourKey={user?.id_usuario ? `car_tour_socio_${user.id_usuario}` : 'car_tour_socio_invitado'}

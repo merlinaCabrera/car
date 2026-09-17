@@ -185,18 +185,25 @@ token_jwt = security.create_access_token({"sub": token_dni, "id_usuario": id_usu
 reporter.check("Generación de JWT Token", bool(token_jwt) and len(token_jwt) > 20)
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 4. ASISTENTE VIRTUAL "CAMOTE" (PRUEBAS EXHAUSTIVAS POR ROL)
+# 4. ASISTENTE VIRTUAL "CAMOTITO" (PRUEBAS EXHAUSTIVAS POR ROL)
 # ─────────────────────────────────────────────────────────────────────────────
-print(f"\n{BOLD}4. Asistente Virtual 'CAMOTE' — Respuestas y Blindaje de Permisos{RESET}")
+print(f"\n{BOLD}4. Asistente Virtual 'Camotito' — Respuestas y Blindaje de Permisos{RESET}")
 
 # 4.0 Estado Inicial
 res_info = client.get("/chatbot/info-inicial")
 reporter.check("GET /chatbot/info-inicial HTTP 200", res_info.status_code == 200)
 if res_info.status_code == 200:
     data_info = res_info.json()
-    reporter.check("Identidad es 'Camote' (no Camotero)", data_info.get("nombre_asistente") == "Camote")
+    reporter.check("Identidad es 'Camotito' (no Camote ni Camotero)", data_info.get("nombre_asistente") == "Camotito")
     reporter.check("Chips de sugerencias públicas presentes", len(data_info.get("sugerencias", [])) >= 4)
     reporter.check("Info inicial Cero Emojis", not bool(EMOJI_PATTERN.search(str(data_info))))
+
+# 4.0.1 Estado Inicial Socio (verifica presencia de sugerencia tour)
+res_info_socio = client.get("/chatbot/info-inicial?rol=socio&autenticado=true&nombre=Carlos")
+if res_info_socio.status_code == 200:
+    data_socio = res_info_socio.json()
+    sugs_socio = [s.get("id") for s in data_socio.get("sugerencias", [])]
+    reporter.check("Sugerencias de socio incluyen opción 'tour'", "tour" in sugs_socio)
 
 # 4.1 Consulta de Cuota Social y Alias por Visitante Anónimo (Prompt del Chip Oficial)
 res_cuota = client.post("/chatbot/mensaje", json={"mensaje": "¿Cuánto sale la cuota y cuál es el alias para transferir?"})
@@ -250,6 +257,27 @@ if res_wa.status_code == 200:
     rep_wa = res_wa.json().get("respuesta", "")
     reporter.check("WhatsApp link generado a pedido explícito", "wa.me" in rep_wa or "WhatsApp" in rep_wa)
     reporter.check("WhatsApp respuesta Cero Emojis", not bool(EMOJI_PATTERN.search(rep_wa)))
+
+# 4.7 Consulta de Saludo "como estas?"
+res_saludo = client.post("/chatbot/mensaje", json={"mensaje": "como estas?"})
+if res_saludo.status_code == 200:
+    rep_saludo = res_saludo.json().get("respuesta", "")
+    reporter.check("Saludo 'como estas?' identifica como Camotito", "Camotito" in rep_saludo)
+    reporter.check("Saludo 'como estas?' no tira viñetas de links markdown", "- Próximo" not in rep_saludo and "- Mis cuotas" not in rep_saludo)
+
+# 4.8 Consulta desconcertante / menú devuelve chips de sugerencias
+res_menu = client.post("/chatbot/mensaje", json={"mensaje": "asdfghjkl", "rol": "socio", "autenticado": True, "nombre_usuario": "Travis"})
+if res_menu.status_code == 200:
+    body_menu = res_menu.json()
+    sugs_ret = body_menu.get("sugerencias")
+    reporter.check("Fallback devuelve array de sugerencias interactivas", isinstance(sugs_ret, list) and len(sugs_ret) >= 4)
+    reporter.check("Fallback no muestra lista cruda de viñetas en texto", "- Próximo" not in body_menu.get("respuesta", ""))
+
+# 4.9 Solicitud de Tour Guiado
+res_tour = client.post("/chatbot/mensaje", json={"mensaje": "quiero hacer el tour guiado", "rol": "socio", "autenticado": True})
+if res_tour.status_code == 200:
+    rep_tour = res_tour.json().get("respuesta", "")
+    reporter.check("Tour guiado entrega link a /socio?tour=1", "/socio?tour=1" in rep_tour)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 5. STREAMING PPV, EVENTOS Y TABLAS EN BD

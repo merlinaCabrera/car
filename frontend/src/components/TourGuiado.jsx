@@ -68,6 +68,18 @@ export default function TourGuiado({
 
   // ─── Detección de primer ingreso estricto o activación manual ──────────────
   useEffect(() => {
+    const handleIniciarTour = () => {
+      try {
+        localStorage.removeItem(tourKey);
+      } catch {
+        // Ignorar
+      }
+      setPasoActual(0);
+      setActivo(true);
+    };
+
+    window.addEventListener('car:tour-iniciar', handleIniciarTour);
+
     const params = new URLSearchParams(window.location.search);
     const esBienvenida = params.get('bienvenida') === '1';
     const esTourManual = params.get('tour') === '1';
@@ -76,7 +88,7 @@ export default function TourGuiado({
     if (abiertoManual || esTourManual) {
       setPasoActual(0);
       setActivo(true);
-      return;
+      return () => window.removeEventListener('car:tour-iniciar', handleIniciarTour);
     }
 
     // 2. SOLO si viene con ?bienvenida=1 (recién completó /cambiar-password-obligatorio)
@@ -87,12 +99,17 @@ export default function TourGuiado({
           const timer = setTimeout(() => {
             setActivo(true);
           }, 600);
-          return () => clearTimeout(timer);
+          return () => {
+            clearTimeout(timer);
+            window.removeEventListener('car:tour-iniciar', handleIniciarTour);
+          };
         }
       } catch {
         // Ignorar errores de almacenamiento
       }
     }
+
+    return () => window.removeEventListener('car:tour-iniciar', handleIniciarTour);
   }, [tourKey, pasos.length, abiertoManual]);
 
   // ─── Detección de pantalla móvil ───────────────────────────────────────────
@@ -360,13 +377,13 @@ export default function TourGuiado({
         style={tooltipStyle}
         className="pointer-events-auto bg-white rounded-3xl p-4 sm:p-5 shadow-2xl border border-blue-100 ring-1 ring-black/5 text-gray-900 transition-all duration-200"
       >
-        {/* Cabecera del Globito con Camote */}
+        {/* Cabecera del Globito con Camotito */}
         <div className="flex items-center justify-between gap-3 pb-2.5 border-b border-gray-100">
           <div className="flex items-center gap-2.5">
             <div className="relative">
               <img
                 src={camotiAzul}
-                alt="Camote - Club Atlético Roberts"
+                alt="Camotito - Club Atlético Roberts"
                 className="h-10 w-10 sm:h-11 sm:w-11 object-contain drop-shadow-md"
               />
               <span className="absolute -bottom-1 -right-1 bg-amber-400 text-[9px] font-black text-amber-950 px-1 py-0.2 rounded-full ring-2 ring-white">
@@ -376,7 +393,7 @@ export default function TourGuiado({
             <div>
               <div className="flex items-center gap-1.5">
                 <span className="text-xs font-black uppercase tracking-wider text-blue-600">
-                  Guía con Camote
+                  Guía con Camotito
                 </span>
                 <span className="text-xs text-gray-300">•</span>
                 <span className="text-[11px] font-semibold text-gray-400">

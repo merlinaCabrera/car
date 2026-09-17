@@ -14,7 +14,7 @@ import { useAuth } from '../context/useAuth'
 import camotiAzul from '../assets/camoti-azul.PNG'
 
 const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
-const STORAGE_KEY_PREFIX = 'car_chatbot_historial_v3'
+const STORAGE_KEY_PREFIX = 'car_chatbot_historial_v4'
 const STORAGE_OPEN_KEY = 'car_chatbot_abierto'
 
 // Limpiador estricto de emojis
@@ -23,10 +23,12 @@ const limpiarEmojis = (str) => {
   return str.replace(/\p{Extended_Pictographic}/gu, '')
 }
 
-// Sanitizar nombre para que sea siempre estrictamente CAMOTE
-const sanitizarNombreCamote = (str) => {
+// Sanitizar nombre para que sea siempre estrictamente Camotito
+const sanitizarNombreCamotito = (str) => {
   if (!str) return ''
-  return limpiarEmojis(str).replace(/\bCamotero\b/gi, 'Camote')
+  return limpiarEmojis(str)
+    .replace(/\bCamotero\b/gi, 'Camotito')
+    .replace(/\bCamote\b/gi, 'Camotito')
 }
 
 export default function ChatbotFlotante() {
@@ -51,11 +53,12 @@ export default function ChatbotFlotante() {
   const inputRef = useRef(null)
   const ultimoUserKeyRef = useRef(userSessionKey)
 
-  // Limpiar cachés antiguas con el nombre anterior para evitar persistencia de 'Camotero'
+  // Limpiar cachés antiguas con el nombre anterior para evitar persistencia de 'Camote' o 'Camotero'
   useEffect(() => {
     try {
       sessionStorage.removeItem('car_chatbot_historial')
       sessionStorage.removeItem('car_chatbot_historial_v2')
+      sessionStorage.removeItem('car_chatbot_historial_v3')
     } catch {
       // Ignorar restricciones de storage
     }
@@ -93,7 +96,7 @@ export default function ChatbotFlotante() {
           // Sanitizar cualquier remanente
           const limpio = parseado.map((m) => ({
             ...m,
-            texto: sanitizarNombreCamote(m.texto),
+            texto: sanitizarNombreCamotito(m.texto),
           }))
           setMensajes(limpio)
           return
@@ -114,7 +117,7 @@ export default function ChatbotFlotante() {
       if (res.ok) {
         const data = await res.json()
         setInfoInicial(data)
-        const saludoLimpio = sanitizarNombreCamote(data.saludo_inicial)
+        const saludoLimpio = sanitizarNombreCamotito(data.saludo_inicial)
         setMensajes([
           {
             id: `saludo_${Date.now()}`,
@@ -129,8 +132,8 @@ export default function ChatbotFlotante() {
     } catch (err) {
       console.error('Error cargando bienvenida de chatbot:', err)
       const saludoFallback = estaAutenticado && usuarioActual?.nombre
-        ? `Hola ${usuarioActual.nombre}. Soy Camote, el asistente virtual del Club Atlético Roberts. ¿En qué te puedo ayudar hoy?`
-        : 'Hola. Soy Camote, el asistente virtual del Club Atlético Roberts. ¿En qué te puedo ayudar hoy?'
+        ? `Hola ${usuarioActual.nombre}. Soy Camotito, el asistente virtual del Club Atlético Roberts. ¿En qué te puedo ayudar hoy?`
+        : 'Hola. Soy Camotito, el asistente virtual del Club Atlético Roberts. ¿En qué te puedo ayudar hoy?'
       setMensajes([
         {
           id: `saludo_${Date.now()}`,
@@ -160,7 +163,7 @@ export default function ChatbotFlotante() {
 
   // Enviar mensaje al backend
   const enviarMensaje = async (textoAEnviar) => {
-    const textoLimpio = sanitizarNombreCamote(textoAEnviar || inputTexto).trim()
+    const textoLimpio = sanitizarNombreCamotito(textoAEnviar || inputTexto).trim()
     if (!textoLimpio || cargando) return
 
     setConfirmandoReinicio(false)
@@ -203,7 +206,8 @@ export default function ChatbotFlotante() {
       const mensajeBot = {
         id: (Date.now() + 1).toString(),
         rol: 'bot',
-        texto: sanitizarNombreCamote(data.respuesta),
+        texto: sanitizarNombreCamotito(data.respuesta),
+        sugerencias: data.sugerencias || null,
         whatsapp_url: data.whatsapp_url,
         hora: new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }),
       }
@@ -248,6 +252,13 @@ export default function ChatbotFlotante() {
   const navegarRutaSegura = (url) => {
     if (!url) return
 
+    if (url.includes('tour=1')) {
+      setAbierto(false)
+      window.dispatchEvent(new CustomEvent('car:tour-iniciar'))
+      navigate(url)
+      return
+    }
+
     // Rutas exclusivas de administración
     if (url.startsWith('/admin')) {
       const esAdmin = isAuthenticated && ['admin', 'tesorero', 'profesor'].includes(user?.rol)
@@ -279,6 +290,7 @@ export default function ChatbotFlotante() {
     '/socio/reservas': 'Reservar instalaciones',
     '/socio/cancha': 'Reservar cancha',
     '/socio/perfil': 'Mi perfil de socio',
+    '/socio?tour=1': 'Iniciar Tour Guiado',
     '/registro': 'Completar solicitud de socio',
     '/shopping': 'Tienda oficial',
     '/ayuda': 'Preguntas frecuentes',
@@ -293,7 +305,7 @@ export default function ChatbotFlotante() {
   const obtenerNombreAmigable = (label, url) => {
     if (NOMBRES_RUTAS[url]) return NOMBRES_RUTAS[url]
     if (NOMBRES_RUTAS[label]) return NOMBRES_RUTAS[label]
-    if (label && !label.startsWith('/')) return sanitizarNombreCamote(label)
+    if (label && !label.startsWith('/')) return sanitizarNombreCamotito(label)
     const limpia = (url || label || '').replace(/^\//, '').replace(/-/g, ' ')
     return limpia ? limpia.charAt(0).toUpperCase() + limpia.slice(1) : 'Abrir sección'
   }
@@ -343,7 +355,7 @@ export default function ChatbotFlotante() {
   const renderizarTextoConLinks = (textoOriginal) => {
     if (!textoOriginal) return null
 
-    let texto = sanitizarNombreCamote(textoOriginal)
+    let texto = sanitizarNombreCamotito(textoOriginal)
 
     // Normalizar patrones crudos como "(/en-vivo)" que NO estén precedidos por "]" (para no duplicar links existentes)
     texto = texto.replace(/(?<!\])\((\/[a-zA-Z0-9_-]+(?:\/[a-zA-Z0-9_-]+)*)\)/g, (match, path) => {
@@ -415,13 +427,13 @@ export default function ChatbotFlotante() {
             onClick={() => setAbierto(true)}
             className="hidden sm:inline-flex items-center px-3 py-1.5 rounded-full bg-gray-900 text-white text-xs font-semibold shadow-lg hover:bg-gray-800 transition-all cursor-pointer"
           >
-            <span>Consultas con CAMOTE</span>
+            <span>Consultas con Camotito</span>
           </button>
         )}
 
         <button
           onClick={() => setAbierto((prev) => !prev)}
-          title={abierto ? 'Cerrar asistente' : 'Abrir asistente virtual CAMOTE'}
+          title={abierto ? 'Cerrar asistente' : 'Abrir asistente virtual Camotito'}
           className={`relative w-14 h-14 rounded-full flex items-center justify-center shadow-2xl transition-all duration-300 border-2 border-white focus:outline-none focus:ring-4 focus:ring-roberts-300 cursor-pointer ${
             abierto
               ? 'bg-gray-900 text-white rotate-90 scale-95'
@@ -442,13 +454,13 @@ export default function ChatbotFlotante() {
           className="fixed z-50 flex flex-col bg-white shadow-2xl border border-gray-200 overflow-hidden transition-all duration-200
             inset-x-3 bottom-3 top-16 sm:inset-auto sm:bottom-[88px] sm:right-5 sm:w-[380px] sm:h-[580px] sm:max-h-[calc(100vh-7.5rem)] sm:rounded-2xl rounded-2xl"
         >
-          {/* Encabezado: estrictamente el logo del Camotí y CAMOTE */}
+          {/* Encabezado: estrictamente el logo del Camotí y Camotito */}
           <div className="bg-gradient-to-r from-roberts-700 via-roberts-600 to-roberts-700 text-white px-4 py-3 flex items-center justify-between shadow-md">
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center p-0.5 border border-white/40 shadow-xs overflow-hidden flex-shrink-0">
-                <img src={camotiAzul} alt="CAMOTE" className="w-full h-full object-contain" />
+                <img src={camotiAzul} alt="Camotito" className="w-full h-full object-contain" />
               </div>
-              <h3 className="font-bold text-base tracking-wider uppercase text-white">CAMOTE</h3>
+              <h3 className="font-bold text-base tracking-wider uppercase text-white">Camotito</h3>
             </div>
 
             <div className="flex items-center gap-1">
@@ -518,7 +530,7 @@ export default function ChatbotFlotante() {
                     )}
                   </div>
 
-                  {/* Sugerencias si es el mensaje de bienvenida */}
+                  {/* Sugerencias si el mensaje tiene opciones rápidas */}
                   {msg.sugerencias && msg.sugerencias.length > 0 && (
                     <div className="pt-2 w-full space-y-1.5">
                       <span className="text-2xs font-bold uppercase tracking-wider text-gray-500 px-1">
@@ -529,11 +541,19 @@ export default function ChatbotFlotante() {
                           <button
                             key={sug.id}
                             type="button"
-                            onClick={() => enviarMensaje(sug.prompt)}
+                            onClick={() => {
+                              if (sug.id === 'tour' || sug.accion === 'tour') {
+                                setAbierto(false)
+                                window.dispatchEvent(new CustomEvent('car:tour-iniciar'))
+                                navigate('/socio?tour=1')
+                              } else {
+                                enviarMensaje(sug.prompt)
+                              }
+                            }}
                             disabled={cargando}
                             className="w-full text-left px-3 py-2 rounded-xl bg-white border border-gray-200 hover:border-roberts-300 hover:bg-roberts-50/40 text-xs font-semibold text-gray-700 hover:text-roberts-700 transition-all flex items-center justify-between shadow-2xs group cursor-pointer"
                           >
-                            <span>{sanitizarNombreCamote(sug.label)}</span>
+                            <span>{sanitizarNombreCamotito(sug.label)}</span>
                             <ArrowRight
                               size={12}
                               className="text-gray-400 group-hover:text-roberts-600 group-hover:translate-x-0.5 transition-transform"
@@ -588,7 +608,7 @@ export default function ChatbotFlotante() {
               </button>
             </form>
             <p className="text-3xs text-center text-gray-400 mt-1.5">
-              Club Atlético Roberts • Asistente Oficial CAMOTE
+              Club Atlético Roberts • Asistente Oficial Camotito
             </p>
           </div>
         </div>

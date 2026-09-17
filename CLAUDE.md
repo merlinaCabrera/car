@@ -93,7 +93,7 @@ car/
 │   │   ├── admin_sponsors.py    # CRUD sponsors (admin)
 │   │   ├── sponsors.py          # Lectura pública de sponsors (landing) — se importa `as sponsors_publico`
 │   │   ├── transmisiones.py     # Transmisiones PPV, sesiones protegidas, entradas invitados, player YouTube blindado, heartbeat
-│   │   └── chatbot.py           # Asistente virtual "Camotero" (Gemini Flash + contexto de BD en vivo + fallback)
+│   │   └── chatbot.py           # Asistente virtual "Camotito" (Gemini Flash + contexto de BD en vivo + fallback)
 │   ├── mailer/
 │   │   ├── services/email_service.py   # Envío vía Resend
 │   │   ├── services/email_tasks.py     # Funciones de alto nivel por evento

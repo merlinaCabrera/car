@@ -25,12 +25,11 @@
 
 import { textoError } from '../utils/errores';
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/useAuth'
 import {
   User, Camera, Phone, MapPin, Mail, IdCard, Cake,
   Save, Loader2, AlertCircle, CheckCircle2, KeyRound,
-  Eye, EyeOff, ShieldCheck, HelpCircle,
+  Eye, EyeOff, ShieldCheck,
 } from 'lucide-react'
 
 const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
@@ -271,7 +270,6 @@ function PerfilSkeleton() {
 
 export default function SocioPerfil() {
   const { token, actualizarUsuario, aplicarToken } = useAuth()
-  const navigate = useNavigate()
 
   const [perfil,       setPerfil]       = useState(null)
   const [loading,      setLoading]      = useState(true)
@@ -657,31 +655,6 @@ export default function SocioPerfil() {
             </div>
           </form>
         )}
-      </div>
-
-      {/* ── Guía Interactiva del Socio ─────────────────────────── */}
-      <div className="anim-entrada anim-d3 bg-gradient-to-br from-blue-50 to-indigo-50/40 rounded-2xl border border-blue-200/70 p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3.5">
-          <div className="p-2.5 rounded-2xl bg-blue-600 text-white shadow-md shadow-blue-500/20 flex-shrink-0">
-            <HelpCircle size={22} />
-          </div>
-          <div>
-            <h3 className="text-sm font-bold text-gray-900">¿Querés repasar cómo funciona tu portal?</h3>
-            <p className="text-xs text-gray-500 mt-0.5">Volvé a iniciar la guía interactiva con Camote sobre el carnet, cuotas y servicios del club.</p>
-          </div>
-        </div>
-        <button
-          type="button"
-          onClick={() => {
-            if (perfil?.id_usuario) {
-              localStorage.removeItem(`car_tour_socio_${perfil.id_usuario}`);
-            }
-            navigate('/socio?tour=1');
-          }}
-          className="flex-shrink-0 px-4 py-2.5 text-xs font-bold text-blue-700 bg-white border border-blue-200 rounded-xl hover:bg-blue-50 shadow-sm transition-all active:scale-95 whitespace-nowrap"
-        >
-          Iniciar guía interactiva
-        </button>
       </div>
 
     </div>

@@ -43,6 +43,8 @@ son desde el celular (porteros en puertas, socios en el campo).
 - **Estilos:** Tailwind CSS
 - **Íconos:** Lucide React
 - **QR:** `qrcode.react` (generación) + `@yudiel/react-qr-scanner` (lectura cámara)
+- **Asistente Virtual:** "Camotito" (`ChatbotFlotante.jsx`) — Gemini Flash / Fallback por reglas, botonera de consultas frecuentes, blindaje por rol y cero emojis.
+- **Onboarding:** Tour Guiado Interactivo (`TourGuiado.jsx`) — 14 pasos para nuevos socios tras primer cambio de clave o a demanda vía chat de Camotito.
 - **Deploy:** S3 + CloudFront (migrado desde Vercel Hobby, que no permite uso comercial)
 - **CI/CD:** GitHub Actions → build → S3 sync → invalidar CloudFront
 
@@ -638,6 +640,7 @@ npm run dev
 **Documentación técnica reciente:**
 - `docs/infraestructura.md`: Separación de branches Neon (`main` y `dev`), deploys dev/prod y helper de migraciones.
 - `docs/propuesta-streaming-ivs.md`: Propuesta de transmisión segura con Amazon IVS (Revisión V2: Playback Authorization JWT ECDSA, costos reales por espectador-hora, prueba previa de uplink 4G y salvaguardas).
+- `docs/qa-manual-2026-09-16.md`: Guía de QA exhaustiva para Streaming PPV (§I), Asistente Virtual Camotito (§J) y Tour Guiado Interactivo (§K).
 
 **Pendiente antes del MVP:**
 - Rotar todas las claves (AWS, MP, Resend, `SECRET_KEY`, password de Neon) — ver "Secretos filtrados en el historial de git". Idealmente también limpiar el historial (`git filter-repo`) o asumir que quedan expuestas y rotar.

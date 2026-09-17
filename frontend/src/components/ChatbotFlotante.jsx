@@ -300,15 +300,17 @@ export default function ChatbotFlotante() {
 
   // Helper para renderizar negritas (**texto**) y código (`texto`) dentro de fragmentos
   const renderizarFormatoInline = (textoPlano, prefijoKey) => {
-    if (!textoPlano) return null
+    if (!textoPlano) return []
+    // Eliminar corchetes sobrantes o sueltos para que nunca se muestren [...] literales
+    const textoLimpio = textoPlano.replace(/[[\]]/g, '')
     const regex = /(\*\*[^*]+\*\*|`[^`]+`)/g
     const elementos = []
     let ultimoIndex = 0
     let match
 
-    while ((match = regex.exec(textoPlano)) !== null) {
+    while ((match = regex.exec(textoLimpio)) !== null) {
       if (match.index > ultimoIndex) {
-        elementos.push(textoPlano.substring(ultimoIndex, match.index))
+        elementos.push(textoLimpio.substring(ultimoIndex, match.index))
       }
       const token = match[1]
       if (token.startsWith('**') && token.endsWith('**')) {
@@ -330,8 +332,8 @@ export default function ChatbotFlotante() {
       ultimoIndex = regex.lastIndex
     }
 
-    if (ultimoIndex < textoPlano.length) {
-      elementos.push(textoPlano.substring(ultimoIndex))
+    if (ultimoIndex < textoLimpio.length) {
+      elementos.push(textoLimpio.substring(ultimoIndex))
     }
 
     return elementos
@@ -343,8 +345,8 @@ export default function ChatbotFlotante() {
 
     let texto = sanitizarNombreCamote(textoOriginal)
 
-    // Normalizar patrones crudos como "(/en-vivo)" o "(/socio/reservas)" que el modelo pudiera escribir sueltos
-    texto = texto.replace(/\((\/[a-zA-Z0-9_-]+(\/[a-zA-Z0-9_-]+)*)\)/g, (match, path) => {
+    // Normalizar patrones crudos como "(/en-vivo)" que NO estén precedidos por "]" (para no duplicar links existentes)
+    texto = texto.replace(/(?<!\])\((\/[a-zA-Z0-9_-]+(?:\/[a-zA-Z0-9_-]+)*)\)/g, (match, path) => {
       const nombre = NOMBRES_RUTAS[path] || 'Abrir sección'
       return `[${nombre}](${path})`
     })
@@ -513,21 +515,6 @@ export default function ChatbotFlotante() {
                       <p className="whitespace-pre-line leading-relaxed">{msg.texto}</p>
                     ) : (
                       renderizarTextoConLinks(msg.texto)
-                    )}
-
-                    {/* Botón de WhatsApp oficial si el mensaje lo incluye */}
-                    {msg.whatsapp_url && (
-                      <div className="mt-2.5 pt-2 border-t border-gray-100">
-                        <a
-                          href={msg.whatsapp_url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-colors shadow-xs"
-                        >
-                          <span>Escribir a Secretaría por WhatsApp</span>
-                          <ExternalLink size={11} />
-                        </a>
-                      </div>
                     )}
                   </div>
 

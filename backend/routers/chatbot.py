@@ -122,7 +122,7 @@ def _construir_contexto_club(db: Session) -> Dict[str, Any]:
 DATOS OFICIALES Y EN TIEMPO REAL DEL CLUB ATLÉTICO ROBERTS (CAR):
 - Entidad: Club Atlético Roberts (CAR), fundado en Roberts, Partido de Lincoln, Provincia de Buenos Aires.
 - Apodo del club y sus hinchas: El Camotero / Los Camoteros.
-- Colores representativos: Rojo y Blanco (🔴⚪).
+- Colores representativos: Rojo y Blanco.
 - Alias oficial para transferencias bancarias: {alias}
 - Cuota social actual: {valor_cuota_str} por mes (vence el día {dia_venc} de cada mes). Socios menores de 18 años tienen 40% de descuento.
 - WhatsApp de atención de secretaría: {whatsapp_raw}
@@ -133,15 +133,17 @@ DATOS OFICIALES Y EN TIEMPO REAL DEL CLUB ATLÉTICO ROBERTS (CAR):
 - Beneficios en Comercios Adheridos (con carnet/QR al día):
 {comercios_texto}
 
-RUTAS INTERNAS DE LA PLATAFORMA WEB:
-- Pagar cuota social o ver estado de cuenta: /socio/cuotas
-- Ver transmisión en vivo de partidos: /en-vivo
-- Ver fixture y partidos: /gestion-eventos o /calendario-deportivo
-- Asociarse online (solicitud de alta): /registro
-- Reservar Canchas o Quincho: /socio/reservas y /socio/cancha
-- Ver comercios con descuento: sección Comercios en /
-- Tienda oficial de indumentaria: /shopping
-- Preguntas frecuentes completas: /ayuda
+RUTAS INTERNAS Y FORMATO DE ENLACES:
+Cuando menciones una acción o pantalla, usa SIEMPRE texto descriptivo legible dentro de corchetes en formato markdown. NUNCA escribas la barra sola ni pongas enlaces crudos como (/en-vivo) o [/en-vivo](/en-vivo).
+Ejemplos obligatorios:
+- Para ver partidos o streaming: [Ver transmisión en vivo](/en-vivo)
+- Para pagar cuota o deudas: [Consultar cuotas](/socio/cuotas)
+- Para asociarse: [Completar solicitud de socio](/registro)
+- Para canchas o quincho: [Reservar instalaciones](/socio/reservas) o [Reservar cancha](/socio/cancha)
+- Para preguntas frecuentes o comercios: [Preguntas frecuentes](/ayuda)
+- Para indumentaria: [Tienda oficial](/shopping)
+- Para administración de socios: [Administración de socios](/admin/socios)
+- Para verificar comprobantes: [Verificaciones de pagos](/admin/verificaciones)
 """
 
     return {
@@ -168,64 +170,64 @@ def _responder_por_reglas_fallback(mensaje: str, datos: Dict[str, Any]) -> str:
     # 0. Pagos manuales / administración de cobros
     if any(w in msg for w in ["pago manual", "pagos manuales", "cobro manual", "cargar pago", "asentar pago", "registrar pago", "cobrar cuota", "cobrar manual"]):
         return (
-            "💼 **Registro de Pago Manual (Administración):**\n\n"
+            "**Registro de Pago Manual (Administración):**\n\n"
             "Si sos administrador y necesitás registrarle un pago en efectivo o imputarle cuotas a un socio:\n\n"
-            "1. Ingresá a [/admin/socios](/admin/socios).\n"
+            "1. Ingresá a [Administración de socios](/admin/socios).\n"
             "2. Buscá al socio por nombre, apellido o número de DNI.\n"
             "3. En las acciones del socio, seleccioná **Cobro manual**.\n"
             "4. Seleccioná los meses a cubrir y confirmá la operación.\n\n"
-            "Si el socio transfirió por banco o Mercado Pago y subió comprobante, podés verificarlo y aprobarlo en 1 clic desde [/admin/verificaciones](/admin/verificaciones)."
+            "Si el socio transfirió por banco o Mercado Pago y subió comprobante, podés verificarlo y aprobarlo en 1 clic desde [Verificaciones de pagos](/admin/verificaciones)."
         )
 
     # 1. Acceso a cuenta / login / contraseña
     if any(w in msg for w in ["no puedo entrar", "no puedo ingresar", "acceder a su cuenta", "acceder a mi cuenta", "olvidé mi contraseña", "olvide mi contraseña", "primer ingreso", "iniciar sesion", "iniciar sesión", "clave"]):
         return (
-            "🔐 **Acceso a la Cuenta:**\n\n"
-            "• Para ingresar al portal, el socio debe entrar a [/login](/login) con su número de **DNI** y contraseña.\n"
-            "• Si es su primer ingreso o no recuerda la contraseña, puede generarla o restablecerla desde [/recuperar-password](/recuperar-password) indicando su email registrado."
+            "**Acceso a la Cuenta:**\n\n"
+            "- Para ingresar al portal, el socio debe entrar a [Iniciar sesión](/login) con su número de **DNI** y contraseña.\n"
+            "- Si es su primer ingreso o no recuerda la contraseña, puede generarla o restablecerla desde [Recuperar contraseña](/recuperar-password) indicando su email registrado."
         )
 
     if any(w in msg for w in ["partido", "partidos", "juegan", "jugamos", "fixture", "domingo", "stream", "transmision", "transmisión", "en vivo", "hora", "rival", "fecha"]):
-        resp = f"⚽ **Próximo Partido y Transmisión:**\n\n{partido}\n\nPodés seguir todos los detalles y mirar el partido en vivo desde nuestra sección [/en-vivo](/en-vivo) de la web."
+        resp = f"Próximo Partido y Transmisión:\n\n{partido}\n\nPodés seguir todos los detalles y mirar el partido en vivo desde [Ver transmisión en vivo](/en-vivo)."
         return resp
 
     if any(w in msg for w in ["cuota", "cuotas", "pagar", "alias", "cbu", "transferir", "transferencia", "precio", "cuánto sale", "cuanto sale", "banco"]):
         resp = (
-            f"💳 **Cuota Social y Pagos:**\n\n"
+            f"Cuota Social y Pagos:\n\n"
             f"La cuota social actual es de **{cuota}** por mes.\n"
             f"Podés transferir directamente al alias oficial del club: **`{alias}`**.\n\n"
-            f"Si ya sos socio, podés gestionar tus cuotas y subir tu comprobante desde [/socio/cuotas](/socio/cuotas)."
+            f"Si ya sos socio, podés gestionar tus cuotas y subir tu comprobante desde [Consultar cuotas](/socio/cuotas)."
         )
         return resp
 
     if any(w in msg for w in ["cancha", "canchas", "quincho", "alquiler", "alquilar", "reserva", "reservar", "turno", "pelota"]):
         resp = (
-            "🏟️ **Alquiler de Canchas y Quincho:**\n\n"
+            "Alquiler de Canchas y Quincho:\n\n"
             "El club cuenta con Cancha 1 (sintético), Cancha 2 y el Quincho social para eventos familiares o peñas.\n\n"
-            "Podés consultar la disponibilidad de turnos e iniciar tu reserva online desde [/socio/reservas](/socio/reservas) o [/socio/cancha](/socio/cancha)."
+            "Podés consultar la disponibilidad de turnos e iniciar tu reserva online desde [Reservar instalaciones](/socio/reservas) o [Reservar cancha](/socio/cancha)."
         )
         return resp
 
     if any(w in msg for w in ["hacerme socio", "hacerme socia", "asociarme", "hacerse socio", "cómo ser socio", "como ser socio", "quiero ser socio", "alta de socio", "anotarme", "inscribirme", "registro", "solicitud"]):
         resp = (
-            "📝 **Cómo hacerte socio del CAR:**\n\n"
-            "¡Sumate a la familia camotera! Podés completar tu solicitud de alta online en 2 minutos desde [/registro](/registro).\n\n"
+            "Cómo hacerte socio del CAR:\n\n"
+            "Sumate a la familia del club. Podés completar tu solicitud de alta online en 2 minutos desde [Completar solicitud de socio](/registro).\n\n"
             "Una vez aprobada tu solicitud, vas a poder ingresar a tu panel con tu DNI, tener tu carnet QR digital y disfrutar de todos los beneficios."
         )
         return resp
 
     if any(w in msg for w in ["comercio", "comercios", "descuento", "descuentos", "beneficio", "beneficios", "farmacia", "tienda"]):
         resp = (
-            "🛍️ **Beneficios en Comercios Adheridos:**\n\n"
+            "Beneficios en Comercios Adheridos:\n\n"
             "Presentando tu carnet QR de socio al día contás con importantes descuentos en comercios de Roberts.\n\n"
-            "Podés ver el listado actualizado de comercios y promociones en la página principal de la web o en [/ayuda](/ayuda)."
+            "Podés ver el listado actualizado de comercios y promociones en la página principal de la web o en [Preguntas frecuentes](/ayuda)."
         )
         return resp
 
     if any(w in msg for w in ["contacto", "secretaria", "teléfono", "telefono", "whatsapp", "hablar", "comision", "directiva"]):
         resp = (
-            f"📲 **Contacto con Secretaría:**\n\n"
-            f"Podés comunicarte directamente con la secretaría del club al WhatsApp **{wa}** para consultas administrativas o trámites presenciales."
+            f"Contacto con Secretaría:\n\n"
+            f"Podés comunicarte directamente con la secretaría del club al WhatsApp {wa} para consultas administrativas o trámites presenciales."
         )
         return resp
 
@@ -233,17 +235,17 @@ def _responder_por_reglas_fallback(mensaje: str, datos: Dict[str, Any]) -> str:
     for faq in datos.get("faqs", []):
         palabras_pregunta = [p for p in re.findall(r"\w+", faq.pregunta.lower()) if len(p) > 3]
         if any(p in msg for p in palabras_pregunta):
-            return f"ℹ️ **{faq.pregunta}**\n\n{faq.respuesta}"
+            return f"{faq.pregunta}\n\n{faq.respuesta}"
 
     # Respuesta genérica con bienvenida y opciones
     return (
-        "¡Hola! Soy **Camotero**, el asistente virtual del Club Atlético Roberts 🔴⚪.\n\n"
+        "Hola. Soy **Camote**, el asistente virtual del Club Atlético Roberts.\n\n"
         "Te puedo ayudar con información sobre:\n"
-        "• ⚽ **Próximo partido y transmisiones en vivo** ([/en-vivo](/en-vivo))\n"
-        "• 💳 **Valor de cuota y alias para transferir** (`" + alias + "`)\n"
-        "• 🏟️ **Alquiler de canchas y quincho** ([/socio/reservas](/socio/reservas))\n"
-        "• 📝 **Hacerte socio online** ([/registro](/registro))\n"
-        "• 📲 **Contacto directo con Secretaría**\n\n"
+        "- Próximo partido y streaming: [Ver transmisión en vivo](/en-vivo)\n"
+        "- Valor de cuota y alias: [Consultar cuotas](/socio/cuotas)\n"
+        "- Alquiler de canchas y quincho: [Reservar instalaciones](/socio/reservas)\n"
+        "- Hacerte socio online: [Completar solicitud de socio](/registro)\n"
+        "- Contacto directo con Secretaría por WhatsApp\n\n"
         "Escribime tu consulta o elegí una de las opciones rápidas."
     )
 
@@ -258,16 +260,16 @@ def obtener_info_inicial(db: Session = Depends(get_db)):
     usa_ia = bool(api_key.strip())
 
     sugerencias = [
-        {"id": "partido", "label": "⚽ Próximo partido y stream", "prompt": "¿Cuándo juega el CAR y hay transmisión en vivo?"},
-        {"id": "cuota", "label": "💳 Cuota social y Alias", "prompt": "¿Cuánto sale la cuota y cuál es el alias para transferir?"},
-        {"id": "alquiler", "label": "🏟️ Alquiler de canchas y quincho", "prompt": "¿Cómo hago para alquilar una cancha o el quincho?"},
-        {"id": "socio", "label": "📝 Cómo hacerme socio", "prompt": "¿Cuáles son los requisitos y cómo me hago socio?"},
-        {"id": "contacto", "label": "📲 Contactar por WhatsApp", "prompt": "¿Cuál es el número de WhatsApp de la secretaría?"},
+        {"id": "partido", "label": "Próximo partido y stream", "prompt": "¿Cuándo juega el CAR y hay transmisión en vivo?"},
+        {"id": "cuota", "label": "Cuota social y alias", "prompt": "¿Cuánto sale la cuota y cuál es el alias para transferir?"},
+        {"id": "alquiler", "label": "Alquiler de canchas y quincho", "prompt": "¿Cómo hago para alquilar una cancha o el quincho?"},
+        {"id": "socio", "label": "Cómo hacerme socio", "prompt": "¿Cuáles son los requisitos y cómo me hago socio?"},
+        {"id": "contacto", "label": "Contactar por WhatsApp", "prompt": "¿Cuál es el número de WhatsApp de la secretaría?"},
     ]
 
     return {
-        "nombre_asistente": "Camotero",
-        "saludo_inicial": "¡Hola! Soy Camotero, el asistente virtual del Club Atlético Roberts 🔴⚪. ¿En qué te puedo ayudar hoy?",
+        "nombre_asistente": "Camote",
+        "saludo_inicial": "Hola. Soy Camote, el asistente virtual del Club Atlético Roberts. ¿En qué te puedo ayudar hoy?",
         "sugerencias": sugerencias,
         "alias_transferencia": datos["alias"],
         "whatsapp_club": datos["whatsapp_raw"],
@@ -305,23 +307,24 @@ async def procesar_mensaje_chatbot(
 
     # Llamar a Google Gemini Flash API con streaming o content generation
     system_instruction = f"""
-Eres "Camotero", el asistente virtual oficial del Club Atlético Roberts (CAR), fundado en 1920 en la localidad de Roberts, Provincia de Buenos Aires, Argentina.
-Tus colores son el Rojo y el Blanco (🔴⚪).
+Eres "Camote", el asistente virtual oficial del Club Atlético Roberts (CAR), fundado en 1920 en la localidad de Roberts, Provincia de Buenos Aires, Argentina.
+Tus colores son el Rojo y el Blanco.
 
-Tu personalidad y estilo:
-- Habla en español rioplatense / argentino con tono cálido, educado, entusiasta y futbolero de club de pueblo.
-- Eres servicial y siempre dispuesto a ayudar a socios, hinchas, jugadores y vecinos.
-- Usa emoticones con buen gusto (⚽, 🔴⚪, 💳, 🏟️).
+Tu personalidad y directivas obligatorias:
+- PROHIBICIÓN ESTRICTA DE EMOJIS: Está terminantemente PROHIBIDO usar emojis, emoticones o pictogramas. No uses pelotas, ni círculos de colores, ni flechitas ni ningún emoji. Respuestas 100% limpias de emojis.
+- Habla en español rioplatense / argentino con tono sobrio, educado, cercano, claro y respetuoso.
 - Respuestas directas, concisas y útiles (máximo 2 o 3 párrafos breves).
-- Cuando menciones una sección de la web, indícala con formato markdown como link interno, por ejemplo:
-  * Para pagar cuota o deudas: [/socio/cuotas](/socio/cuotas)
-  * Para transmisiones en vivo: [/en-vivo](/en-vivo)
-  * Para asociarse: [/registro](/registro)
-  * Para canchas o quincho: [/socio/reservas](/socio/reservas) o [/socio/cancha](/socio/cancha)
-  * Para ayuda o preguntas frecuentes: [/ayuda](/ayuda)
-  * Para la tienda de indumentaria: [/shopping](/shopping)
+- FORMATO DE ENLACES: NUNCA muestres rutas técnicas crudas como "(/en-vivo)", ni barras sueltas como "/en-vivo", ni "[/en-vivo](/en-vivo)". SIEMPRE utiliza frases legibles en español como texto del enlace en formato markdown. Por ejemplo:
+  * Para transmisiones: [Ver transmisión en vivo](/en-vivo)
+  * Para pagar cuotas: [Consultar cuotas](/socio/cuotas)
+  * Para asociarse: [Completar solicitud de socio](/registro)
+  * Para canchas o quincho: [Reservar instalaciones](/socio/reservas) o [Reservar cancha](/socio/cancha)
+  * Para comercios o ayuda: [Preguntas frecuentes](/ayuda)
+  * Para la tienda de indumentaria: [Tienda oficial](/shopping)
+  * Para administración de socios: [Administración de socios](/admin/socios)
+  * Para verificar pagos: [Verificaciones de pagos](/admin/verificaciones)
 - NUNCA inventes alias bancarios ni números de cuenta que no figuren en los datos oficiales.
-- Si te preguntan algo que no figura en los datos oficiales o que requiere atención humana particular (casos de directiva, trámites específicos de tesorería), invítalos amablemente a escribir al WhatsApp de secretaría ({datos['whatsapp_raw']}).
+- Si te preguntan algo que no figura en los datos oficiales o que requiere atención humana particular, invítalos amablemente a escribir al WhatsApp de secretaría ({datos['whatsapp_raw']}).
 
 {datos['contexto_prompt']}
 """

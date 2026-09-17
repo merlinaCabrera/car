@@ -14,6 +14,7 @@ import {
   Shield,
   HelpCircle,
 } from 'lucide-react'
+import camotiAzul from '../assets/camoti-azul.PNG'
 
 const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 const STORAGE_KEY = 'car_chatbot_historial'
@@ -160,7 +161,7 @@ export default function ChatbotFlotante() {
 
   const reiniciarChat = () => {
     if (window.confirm('¿Deseás reiniciar la conversación?')) {
-      const saludo = infoInicial?.saludo_inicial || '¡Hola! ¿En qué te puedo ayudar hoy?'
+      const saludo = infoInicial?.saludo_inicial || 'Hola. ¿En qué te puedo ayudar hoy?'
       setMensajes([
         {
           id: Date.now().toString(),
@@ -179,6 +180,37 @@ export default function ChatbotFlotante() {
       e.preventDefault()
       enviarMensaje()
     }
+  }
+
+  // Limpiador estricto de emojis
+  const limpiarEmojis = (str) => {
+    if (!str) return ''
+    return str.replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{27BF}\u{1F1E0}-\u{1F1FF}\u{1F000}-\u{1F02F}\u{1F0A0}-\u{1F0FF}\u{2300}-\u{23FF}\u{2B50}\u{2B55}\u{FE0F}]/gu, '')
+  }
+
+  // Mapa de nombres amigables para rutas del sistema (para nunca mostrar rutas técnicas)
+  const NOMBRES_RUTAS = {
+    '/en-vivo': 'Ver transmisión en vivo',
+    '/socio/cuotas': 'Consultar cuotas y pagos',
+    '/socio/reservas': 'Reservar instalaciones',
+    '/socio/cancha': 'Reservar cancha',
+    '/registro': 'Completar solicitud de socio',
+    '/shopping': 'Tienda oficial',
+    '/ayuda': 'Preguntas frecuentes',
+    '/login': 'Iniciar sesión',
+    '/recuperar-password': 'Recuperar contraseña',
+    '/admin/socios': 'Administración de socios',
+    '/admin/verificaciones': 'Verificaciones de pagos',
+    '/admin/eventos': 'Gestión de eventos',
+    '/admin/escaner': 'Escáner de acceso',
+  }
+
+  const obtenerNombreAmigable = (label, url) => {
+    if (NOMBRES_RUTAS[url]) return NOMBRES_RUTAS[url]
+    if (NOMBRES_RUTAS[label]) return NOMBRES_RUTAS[label]
+    if (label && !label.startsWith('/')) return limpiarEmojis(label)
+    const limpia = (url || label || '').replace(/^\//, '').replace(/-/g, ' ')
+    return limpia ? limpia.charAt(0).toUpperCase() + limpia.slice(1) : 'Abrir sección'
   }
 
   // Helper para renderizar negritas (**texto**) y código (`texto`) dentro de fragmentos
@@ -220,11 +252,20 @@ export default function ChatbotFlotante() {
     return elementos
   }
 
-  // Helper para renderizar texto con links formateados en markdown [texto](url), negritas y código
-  const renderizarTextoConLinks = (texto) => {
-    if (!texto) return null
+  // Helper para renderizar texto con links formateados en botones amigables, negritas y código
+  const renderizarTextoConLinks = (textoOriginal) => {
+    if (!textoOriginal) return null
 
-    // Regex para detectar [etiqueta](url)
+    // 1. Quitar emojis
+    let texto = limpiarEmojis(textoOriginal)
+
+    // 2. Normalizar patrones crudos como "(/en-vivo)" o "(/socio/reservas)" que el modelo pudiera escribir sueltos
+    texto = texto.replace(/\((\/[a-zA-Z0-9_-]+(\/[a-zA-Z0-9_-]+)*)\)/g, (match, path) => {
+      const nombre = NOMBRES_RUTAS[path] || 'Abrir sección'
+      return `[${nombre}](${path})`
+    })
+
+    // 3. Detectar [etiqueta](url)
     const partes = []
     const linkRegex = /\[([^\]]+)\]\(([^)]+)\)/g
     let lastIndex = 0
@@ -235,11 +276,12 @@ export default function ChatbotFlotante() {
         const chunk = texto.substring(lastIndex, match.index)
         partes.push(...renderizarFormatoInline(chunk, `pre-${lastIndex}`))
       }
-      const label = match[1]
+      const rawLabel = match[1]
       const url = match[2]
+      const label = obtenerNombreAmigable(rawLabel, url)
 
       if (url.startsWith('/')) {
-        // Link interno
+        // Botón interactivo amigable con estilo de píldora
         partes.push(
           <button
             key={`link-${match.index}`}
@@ -249,10 +291,10 @@ export default function ChatbotFlotante() {
               // En móvil cerramos el chat para ver la página; en desktop lo mantenemos
               if (window.innerWidth < 640) setAbierto(false)
             }}
-            className="inline-flex items-center gap-1 font-bold text-roberts-600 hover:text-roberts-700 underline mx-0.5"
+            className="inline-flex items-center gap-1.5 font-semibold text-roberts-700 bg-roberts-50 hover:bg-roberts-100 hover:text-roberts-900 border border-roberts-200/90 px-2.5 py-1 rounded-lg text-xs transition-colors my-1 mx-0.5 shadow-2xs cursor-pointer"
           >
             <span>{label}</span>
-            <ArrowRight size={12} />
+            <ArrowRight size={11} className="text-roberts-500" />
           </button>
         )
       } else {
@@ -263,10 +305,10 @@ export default function ChatbotFlotante() {
             href={url}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center gap-1 font-bold text-roberts-600 hover:text-roberts-700 underline mx-0.5"
+            className="inline-flex items-center gap-1.5 font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2.5 py-1 rounded-lg text-xs transition-colors my-1 mx-0.5 shadow-2xs"
           >
             <span>{label}</span>
-            <ExternalLink size={11} />
+            <ExternalLink size={11} className="text-emerald-600" />
           </a>
         )
       }
@@ -279,7 +321,7 @@ export default function ChatbotFlotante() {
     }
 
     return (
-      <div className="whitespace-pre-line text-sm leading-relaxed">
+      <div className="whitespace-pre-line text-sm leading-relaxed text-gray-800">
         {partes}
       </div>
     )
@@ -293,10 +335,9 @@ export default function ChatbotFlotante() {
         {!abierto && (
           <button
             onClick={() => setAbierto(true)}
-            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-900 text-white text-xs font-semibold shadow-lg hover:bg-gray-800 transition-all animate-bounce"
+            className="hidden sm:inline-flex items-center px-3 py-1.5 rounded-full bg-gray-900 text-white text-xs font-semibold shadow-lg hover:bg-gray-800 transition-all"
           >
-            <Sparkles size={12} className="text-amber-400" />
-            <span>¿Dudas? Hablá con Camotero</span>
+            <span>Consultas con Camote</span>
           </button>
         )}
 
@@ -332,13 +373,13 @@ export default function ChatbotFlotante() {
           {/* Encabezado */}
           <div className="bg-gradient-to-r from-roberts-700 via-roberts-600 to-roberts-700 text-white px-4 py-3.5 flex items-center justify-between shadow-md">
             <div className="flex items-center gap-2.5">
-              <div className="relative w-9 h-9 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-white font-black text-sm">
-                🔴⚪
-                <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-400 border border-roberts-700"></span>
+              <div className="relative w-9 h-9 rounded-full bg-white flex items-center justify-center p-1 border border-white/40 shadow-xs overflow-hidden">
+                <img src={camotiAzul} alt="Camote" className="w-full h-full object-contain" />
+                <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-400 border border-white"></span>
               </div>
               <div>
                 <div className="flex items-center gap-1.5">
-                  <h3 className="font-bold text-sm tracking-tight">Camotero</h3>
+                  <h3 className="font-bold text-sm tracking-tight uppercase">Camote</h3>
                   <span className="text-2xs bg-white/20 px-1.5 py-0.2 rounded text-white/90 font-medium">
                     Asistente CAR
                   </span>
@@ -400,7 +441,7 @@ export default function ChatbotFlotante() {
                           rel="noreferrer"
                           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-colors shadow-xs"
                         >
-                          <span>📲 Escribir a Secretaría</span>
+                          <span>Escribir a Secretaría por WhatsApp</span>
                           <ExternalLink size={11} />
                         </a>
                       </div>
@@ -419,9 +460,9 @@ export default function ChatbotFlotante() {
                             key={sug.id}
                             onClick={() => enviarMensaje(sug.prompt)}
                             disabled={cargando}
-                            className="w-full text-left px-3 py-2 rounded-xl bg-white border border-gray-200 hover:border-roberts-300 hover:bg-roberts-50/40 text-xs font-semibold text-gray-700 hover:text-roberts-700 transition-all flex items-center justify-between shadow-2xs group"
+                            className="w-full text-left px-3 py-2 rounded-xl bg-white border border-gray-200 hover:border-roberts-300 hover:bg-roberts-50/40 text-xs font-semibold text-gray-700 hover:text-roberts-700 transition-all flex items-center justify-between shadow-2xs group cursor-pointer"
                           >
-                            <span>{sug.label}</span>
+                            <span>{limpiarEmojis(sug.label)}</span>
                             <ArrowRight
                               size={12}
                               className="text-gray-400 group-hover:text-roberts-600 group-hover:translate-x-0.5 transition-transform"

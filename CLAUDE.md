@@ -382,13 +382,13 @@ Permite al club emitir partidos en directo a través de la web oficial, monetiza
   - **Aprobación de Transferencias:** Listado de espectadores con filtro por transferencias pendientes y botón `[✓ Aprobar Pago]` en 1 clic.
   - **Control de Stream en vivo:** Switcher para alternar estado (`programada`, `en_vivo`, `pausada`, `finalizada`) y métricas en tiempo real (espectadores online, entradas vendidas, recaudación).
 
-## Asistente Virtual IA ("Camotero" / Chatbot)
+## Asistente Virtual IA ("Camote" / Chatbot)
 
-Asistente inteligente flotante integrado en la web (`ChatbotFlotante.jsx`), diseñado para responder consultas frecuentes de socios, hinchas y simpatizantes de manera instantánea, cálida y en criollo robertense.
+Asistente inteligente flotante integrado en la web (`ChatbotFlotante.jsx`), diseñado para responder consultas frecuentes de socios, hinchas y simpatizantes de manera instantánea, sobria y clara.
 
 - **Backend y Endpoints (`backend/routers/chatbot.py`):**
   - `GET /chatbot/info-inicial`: Retorna sugerencias rápidas, datos resumidos del club (próximo partido, alias, valor de cuota, WhatsApp).
-  - `POST /chatbot/mensaje`: Recibe `{ mensaje, historial }`, inyecta contexto en vivo desde la base de datos de Neon y consulta a Gemini Flash (`gemini-2.5-flash`).
+  - `POST /chatbot/mensaje`: Recibe `{ mensaje, historial }`, inyecta contexto en vivo desde la base de datos de Neon y consulta a Gemini Flash (`gemini-3.6-flash`).
 - **Contexto dinámico inyectado en vivo:**
   - **Configuración del club:** alias de transferencias, valor de cuota base, día de vencimiento, WhatsApp oficial (`ConfiguracionGlobal`).
   - **Fixture y Streaming:** próximo partido programado, rival, fecha, hora, condición y si tiene transmisión online activa (`Evento`).
@@ -397,15 +397,17 @@ Asistente inteligente flotante integrado en la web (`ChatbotFlotante.jsx`), dise
 - **Modo Fallback Resiliente (Costo $0 y sin clave):**
   - Si `GEMINI_API_KEY` no está configurada o si la API de Gemini no responde / agota cuota, el backend conmuta de forma automática e imperceptible a un motor de reglas y búsqueda de FAQs por palabras clave. **Nunca arroja error 500.**
 - **Frontend y UX (`ChatbotFlotante.jsx` montado en `App.jsx`):**
-  - Botón flotante inferior derecho con escudo y badge "Online".
+  - Botón flotante inferior derecho con badge "Online".
+  - Avatar oficial con el logo del Camotí (`camoti-azul.PNG`), sin emojis ni globos.
+  - Cero emojis en toda la interfaz y respuestas.
+  - Enlaces con nombres amigables (ej. "Ver transmisión en vivo", "Consultar cuotas y pagos") estilizados como botones interactivos en lugar de rutas técnicas con barras.
   - Popover modal responsive: ventana flotante estilizada en desktop y modal cómodo adaptado en pantallas móviles (< 640px).
   - **Botones rápidos de 1 toque (quick chips):**
-    - ⚽ Próximo partido y stream
-    - 💳 Pagar cuota / Alias bancario
-    - 🏟️ Alquiler de Canchas y Quincho
-    - 📝 Cómo hacerme socio
-    - 📲 Hablar por WhatsApp con Secretaría
-  - Renderizado automático de enlaces internos (`[Ver cuotas](/socio/cuotas)`, `[Ir a en vivo](/en-vivo)`, etc.) que navegan con React Router sin recargar la página.
+    - Próximo partido y stream
+    - Cuota social y alias
+    - Alquiler de canchas y quincho
+    - Cómo hacerme socio
+    - Contactar por WhatsApp con Secretaría
   - Persistencia del hilo en `sessionStorage` (el hincha puede navegar entre páginas del club sin perder su conversación).
 
 ## Flujo económico (carrito y órdenes)

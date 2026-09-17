@@ -181,7 +181,46 @@ export default function ChatbotFlotante() {
     }
   }
 
-  // Helper para renderizar texto con links formateados en markdown [texto](url)
+  // Helper para renderizar negritas (**texto**) y código (`texto`) dentro de fragmentos
+  const renderizarFormatoInline = (textoPlano, prefijoKey) => {
+    if (!textoPlano) return null
+    const regex = /(\*\*[^*]+\*\*|`[^`]+`)/g
+    const elementos = []
+    let ultimoIndex = 0
+    let match
+
+    while ((match = regex.exec(textoPlano)) !== null) {
+      if (match.index > ultimoIndex) {
+        elementos.push(textoPlano.substring(ultimoIndex, match.index))
+      }
+      const token = match[1]
+      if (token.startsWith('**') && token.endsWith('**')) {
+        elementos.push(
+          <strong key={`${prefijoKey}-b-${match.index}`} className="font-bold text-gray-900">
+            {token.slice(2, -2)}
+          </strong>
+        )
+      } else if (token.startsWith('`') && token.endsWith('`')) {
+        elementos.push(
+          <code
+            key={`${prefijoKey}-c-${match.index}`}
+            className="bg-gray-100 text-roberts-700 font-mono text-xs px-1.5 py-0.5 rounded border border-gray-200"
+          >
+            {token.slice(1, -1)}
+          </code>
+        )
+      }
+      ultimoIndex = regex.lastIndex
+    }
+
+    if (ultimoIndex < textoPlano.length) {
+      elementos.push(textoPlano.substring(ultimoIndex))
+    }
+
+    return elementos
+  }
+
+  // Helper para renderizar texto con links formateados en markdown [texto](url), negritas y código
   const renderizarTextoConLinks = (texto) => {
     if (!texto) return null
 
@@ -193,7 +232,8 @@ export default function ChatbotFlotante() {
 
     while ((match = linkRegex.exec(texto)) !== null) {
       if (match.index > lastIndex) {
-        partes.push(texto.substring(lastIndex, match.index))
+        const chunk = texto.substring(lastIndex, match.index)
+        partes.push(...renderizarFormatoInline(chunk, `pre-${lastIndex}`))
       }
       const label = match[1]
       const url = match[2]
@@ -202,7 +242,7 @@ export default function ChatbotFlotante() {
         // Link interno
         partes.push(
           <button
-            key={match.index}
+            key={`link-${match.index}`}
             type="button"
             onClick={() => {
               navigate(url)
@@ -219,7 +259,7 @@ export default function ChatbotFlotante() {
         // Link externo
         partes.push(
           <a
-            key={match.index}
+            key={`link-${match.index}`}
             href={url}
             target="_blank"
             rel="noreferrer"
@@ -234,7 +274,8 @@ export default function ChatbotFlotante() {
     }
 
     if (lastIndex < texto.length) {
-      partes.push(texto.substring(lastIndex))
+      const chunk = texto.substring(lastIndex)
+      partes.push(...renderizarFormatoInline(chunk, `post-${lastIndex}`))
     }
 
     return (

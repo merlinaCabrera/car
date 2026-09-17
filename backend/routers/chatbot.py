@@ -165,11 +165,31 @@ def _responder_por_reglas_fallback(mensaje: str, datos: Dict[str, Any]) -> str:
     partido = datos["info_partido"]
     wa = datos["whatsapp_raw"]
 
-    if any(w in msg for w in ["partido", "partidos", "juegan", "jugamos", "fixture", "domingo", "stream", "transmision", "en vivo", "hora", "rival", "fecha"]):
+    # 0. Pagos manuales / administración de cobros
+    if any(w in msg for w in ["pago manual", "pagos manuales", "cobro manual", "cargar pago", "asentar pago", "registrar pago", "cobrar cuota", "cobrar manual"]):
+        return (
+            "💼 **Registro de Pago Manual (Administración):**\n\n"
+            "Si sos administrador y necesitás registrarle un pago en efectivo o imputarle cuotas a un socio:\n\n"
+            "1. Ingresá a [/admin/socios](/admin/socios).\n"
+            "2. Buscá al socio por nombre, apellido o número de DNI.\n"
+            "3. En las acciones del socio, seleccioná **Cobro manual**.\n"
+            "4. Seleccioná los meses a cubrir y confirmá la operación.\n\n"
+            "Si el socio transfirió por banco o Mercado Pago y subió comprobante, podés verificarlo y aprobarlo en 1 clic desde [/admin/verificaciones](/admin/verificaciones)."
+        )
+
+    # 1. Acceso a cuenta / login / contraseña
+    if any(w in msg for w in ["no puedo entrar", "no puedo ingresar", "acceder a su cuenta", "acceder a mi cuenta", "olvidé mi contraseña", "olvide mi contraseña", "primer ingreso", "iniciar sesion", "iniciar sesión", "clave"]):
+        return (
+            "🔐 **Acceso a la Cuenta:**\n\n"
+            "• Para ingresar al portal, el socio debe entrar a [/login](/login) con su número de **DNI** y contraseña.\n"
+            "• Si es su primer ingreso o no recuerda la contraseña, puede generarla o restablecerla desde [/recuperar-password](/recuperar-password) indicando su email registrado."
+        )
+
+    if any(w in msg for w in ["partido", "partidos", "juegan", "jugamos", "fixture", "domingo", "stream", "transmision", "transmisión", "en vivo", "hora", "rival", "fecha"]):
         resp = f"⚽ **Próximo Partido y Transmisión:**\n\n{partido}\n\nPodés seguir todos los detalles y mirar el partido en vivo desde nuestra sección [/en-vivo](/en-vivo) de la web."
         return resp
 
-    if any(w in msg for w in ["cuota", "pagar", "alias", "cbu", "transferir", "transferencia", "precio", "cuánto sale", "cuanto sale", "banco"]):
+    if any(w in msg for w in ["cuota", "cuotas", "pagar", "alias", "cbu", "transferir", "transferencia", "precio", "cuánto sale", "cuanto sale", "banco"]):
         resp = (
             f"💳 **Cuota Social y Pagos:**\n\n"
             f"La cuota social actual es de **{cuota}** por mes.\n"
@@ -186,7 +206,7 @@ def _responder_por_reglas_fallback(mensaje: str, datos: Dict[str, Any]) -> str:
         )
         return resp
 
-    if any(w in msg for w in ["socio", "hacerme socio", "asociarme", "anotarme", "inscribirme", "registro", "alta", "carnet"]):
+    if any(w in msg for w in ["hacerme socio", "hacerme socia", "asociarme", "hacerse socio", "cómo ser socio", "como ser socio", "quiero ser socio", "alta de socio", "anotarme", "inscribirme", "registro", "solicitud"]):
         resp = (
             "📝 **Cómo hacerte socio del CAR:**\n\n"
             "¡Sumate a la familia camotera! Podés completar tu solicitud de alta online en 2 minutos desde [/registro](/registro).\n\n"
@@ -306,7 +326,7 @@ Tu personalidad y estilo:
 {datos['contexto_prompt']}
 """
 
-    modelo = settings.gemini_model or "gemini-2.5-flash"
+    modelo = settings.gemini_model or "gemini-3.6-flash"
     url_gemini = f"https://generativelanguage.googleapis.com/v1beta/models/{modelo}:generateContent?key={api_key}"
 
     # Construir historial para Gemini

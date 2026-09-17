@@ -57,16 +57,76 @@ def _normalizar_telefono_ar(tel: Optional[str]) -> str:
     return digits
 
 
+_EMOJI_REGEX = re.compile(
+    r"[\U0001F600-\U0001F64F"  # emoticons
+    r"\U0001F300-\U0001F5FF"  # symbols & pictographs
+    r"\U0001F680-\U0001F6FF"  # transport & map
+    r"\U0001F1E0-\U0001F1FF"  # flags
+    r"\U00002702-\U000027B0"  # dingbats
+    r"\U0001F900-\U0001F9FF"  # supplemental symbols
+    r"\U0001FA70-\U0001FAFF"  # symbols & pictographs extended-a
+    r"]+",
+    flags=re.UNICODE,
+)
+
+
+def _sanitizar_respuesta_chatbot(texto: str) -> str:
+    """Garantiza la regla estricta de Cero Emojis y renombra 'Camotero' a 'Camote'."""
+    if not texto:
+        return ""
+    # Reemplazar 'Camotero' por 'Camote'
+    texto = re.sub(r"\bCamotero\b", "Camote", texto, flags=re.IGNORECASE)
+    # Limpiar cualquier emoji
+    texto = _EMOJI_REGEX.sub("", texto)
+    return texto.strip()
+
+
 def _construir_contexto_club(db: Session) -> Dict[str, Any]:
     """Extrae en tiempo real los datos institucionales, deportivos y financieros del club."""
     # 1. Configuración financiera e institucional
     config = db.query(models.ConfiguracionGlobal).first()
     alias = (config.alias_transferencia if config and config.alias_transferencia else "clubatleticoroberts.mp")
-    valor_cuota_num = int(config.valor_cuota_base) if config and config.valor_cuota_base else None
-    valor_cuota_str = f"${valor_cuota_num:,}".replace(",", ".") if valor_cuota_num else "a consultar en secretaría"
+
+    # Extraer precio de cuota base desde ProductoServicio (o configuracion_global de respaldo)
+    producto_cuota = (
+        db.query(models.ProductoServicio)
+        .filter(
+            models.ProductoServicio.categoria == "cuota_social",
+            models.ProductoServicio.es_activo.is_(True),
+        )
+        .first()
+    )
+    if producto_cuota and producto_cuota.precio_actual:
+        valor_cuota_num = int(producto_cuota.precio_actual)
+    elif config and config.valor_cuota_base:
+        valor_cuota_num = int(config.valor_cuota_base)
+    else:
+        valor_cuota_num = 5000
+
+    valor_cuota_str = f"${valor_cuota_num:,}".replace(",", ".")
     dia_venc = config.dia_vencimiento_cuota if config else 10
     whatsapp_raw = config.whatsapp_club if config and config.whatsapp_club else "2355 123456"
     whatsapp_clean = _normalizar_telefono_ar(whatsapp_raw)
+
+    # Cálculo 100% dinámico de cuota para menores según porcentaje configurado en BD
+    descuento_menor_pct = float(config.descuento_menor_pct) if (config and config.descuento_menor_pct is not None) else 40.0
+    descuento_menor_str = f"{int(descuento_menor_pct)}%" if descuento_menor_pct.is_integer() else f"{descuento_menor_pct}%"
+    valor_menor_num = int(round(valor_cuota_num * (1 - descuento_menor_pct / 100)))
+    valor_menor_str = f"${valor_menor_num:,}".replace(",", ".")
+
+    # Tarifas vigentes de alquileres (canchas y quincho) desde ProductoServicio
+    alquileres_activos = (
+        db.query(models.ProductoServicio)
+        .filter(
+            models.ProductoServicio.categoria == "alquiler",
+            models.ProductoServicio.es_activo.is_(True),
+        )
+        .all()
+    )
+    if alquileres_activos:
+        tarifas_alquiler_str = "\n".join([f"  * {a.nombre}: ${int(a.precio_actual):,}".replace(",", ".") for a in alquileres_activos])
+    else:
+        tarifas_alquiler_str = "  * Canchas y Quincho: consultar aranceles vigentes en Secretaría."
 
     # 2. Próximo partido en agenda / en vivo
     ahora = datetime.now(timezone.utc)
@@ -127,10 +187,13 @@ DATOS OFICIALES Y EN TIEMPO REAL DEL CLUB ATLÉTICO ROBERTS (CAR):
 - Apodo del club y sus hinchas: El Camotero / Los Camoteros.
 - Colores representativos: Rojo y Blanco.
 - Alias oficial para transferencias bancarias: {alias}
-- Cuota social actual: {valor_cuota_str} por mes (vence el día {dia_venc} de cada mes). Socios menores de 18 años tienen 40% de descuento ($2.400 por mes).
+- Cuota social actual (mayores / tarifa general): {valor_cuota_str} por mes (vence el día {dia_venc} de cada mes).
+- Cuota social menores de 18 años: cuenta con {descuento_menor_str} de descuento, quedando en {valor_menor_str} por mes.
+- Tarifas vigentes de alquileres e instalaciones:
+{tarifas_alquiler_str}
+  IMPORTANTE: Las reservas online por la web son exclusivas para socios con cuota al día. Si un no socio consulta cómo alquilar, aclárale que el portal web es para socios y que para alquileres particulares debe consultar a Secretaría o asociarse online desde [Completar solicitud de socio](/registro).
 - WhatsApp de atención de secretaría: {whatsapp_raw}
 - Próximo partido / fixture: {info_partido}
-- Instalaciones para alquiler: Cancha 1 (fútbol 5/sintético), Cancha 2, Quincho social para cumpleaños, peñas y eventos familiares. IMPORTANTE: Las reservas online por la web son exclusivas para socios con cuota al día. Si un no socio consulta cómo alquilar, aclárale que el portal web es para socios y que para alquileres particulares debe consultar a Secretaría o asociarse online desde [Completar solicitud de socio](/registro).
 - Preguntas Frecuentes oficiales del club:
 {faqs_texto}
 - Beneficios en Comercios Adheridos (con carnet/QR al día):
@@ -153,6 +216,9 @@ Ejemplos obligatorios:
         "contexto_prompt": contexto_prompt,
         "alias": alias,
         "valor_cuota_str": valor_cuota_str,
+        "valor_menor_str": valor_menor_str,
+        "descuento_menor_str": descuento_menor_str,
+        "tarifas_alquiler_str": tarifas_alquiler_str,
         "info_partido": info_partido,
         "tiene_stream": tiene_stream,
         "id_evento_stream": id_evento_stream,
@@ -173,6 +239,8 @@ def _responder_por_reglas_fallback(
     msg = mensaje.lower().strip()
     alias = datos["alias"]
     cuota = datos["valor_cuota_str"]
+    cuota_menor = datos.get("valor_menor_str", "$3.000")
+    descuento_menor = datos.get("descuento_menor_str", "40%")
     partido = datos["info_partido"]
     wa = datos["whatsapp_raw"]
     rol_clean = (rol or "anonimo").lower()
@@ -211,9 +279,9 @@ def _responder_por_reglas_fallback(
     if any(w in msg for w in ["menor", "menores", "edad", "descuento", "cadete", "cadetes", "chico", "chicos", "hijo", "hijos", "hija", "hijas", "niño", "niños"]):
         return (
             "**Cuota Social para Menores de 18 años:**\n\n"
-            "Los socios menores de 18 años cuentan con un **40% de descuento** sobre la cuota social:\n\n"
+            f"Los socios menores de 18 años cuentan con un **{descuento_menor} de descuento** sobre la cuota social:\n\n"
             f"- Cuota mayores / general: **{cuota}** por mes.\n"
-            "- Cuota menores (con 40% de descuento): **$2.400** por mes.\n\n"
+            f"- Cuota menores (con {descuento_menor} de descuento): **{cuota_menor}** por mes.\n\n"
             f"Las cuotas se abonan transfiriendo al alias oficial: **`{alias}`**.\n\n"
             "Para asociar a un menor, podés completar la solicitud online en 2 minutos desde [Completar solicitud de socio](/registro)."
         )
@@ -498,9 +566,10 @@ Tus directivas obligatorias:
 1. PROHIBICIÓN ESTRICTA DE EMOJIS: Está terminantemente PROHIBIDO usar emojis, emoticones o pictogramas. No uses pelotas, ni círculos de colores, ni flechitas ni ningún emoji. Respuestas 100% limpias de emojis.
 2. Habla en español rioplatense / argentino con tono sobrio, educado, cercano, claro y respetuoso.
 3. Respuestas directas, concisas y útiles (máximo 2 o 3 párrafos breves).
-4. FORMATO DE ENLACES: NUNCA muestres rutas técnicas crudas como "(/en-vivo)", ni barras sueltas como "/en-vivo", ni "[/en-vivo](/en-vivo)". SIEMPRE utiliza frases legibles en español como texto del enlace en formato markdown. Por ejemplo: [Ver transmisión en vivo](/en-vivo).
-5. NUNCA inventes alias bancarios ni números de cuenta que no figuren en los datos oficiales.
-6. REGLA ESTRICTA DE WHATSAPP: PROHIBIDO incluir enlaces, números o invitaciones a WhatsApp por defecto o al final de tus respuestas comunes. ÚNICAMENTE debes proporcionar el enlace de WhatsApp si el usuario pregunta EXPLÍCITAMENTE por contactar a Secretaría, hablar con una persona, número de teléfono o WhatsApp. En ese caso particular, incluye el enlace en formato: [Escribir a Secretaría por WhatsApp]({wa_link_oficial}). NUNCA lo agregues en respuestas sobre cuotas, canchas, fixture, transmisiones, etc.
+4. FORMATO DE PRECIOS Y CIFRAS: Expresa SIEMPRE los importes, valores de cuota, aranceles, descuentos y porcentajes con formato numérico y símbolos correspondientes (por ejemplo: $5.000, $3.000, 40%, $25.000). NUNCA escribas los números de precios o porcentajes con palabras (evita 'tres mil pesos' o 'cuarenta por ciento').
+5. FORMATO DE ENLACES: NUNCA muestres rutas técnicas crudas como "(/en-vivo)", ni barras sueltas como "/en-vivo", ni "[/en-vivo](/en-vivo)". SIEMPRE utiliza frases legibles en español como texto del enlace en formato markdown. Por ejemplo: [Ver transmisión en vivo](/en-vivo).
+6. NUNCA inventes alias bancarios ni números de cuenta que no figuren en los datos oficiales.
+7. REGLA ESTRICTA DE WHATSAPP: PROHIBIDO incluir enlaces, números o invitaciones a WhatsApp por defecto o al final de tus respuestas comunes. ÚNICAMENTE debes proporcionar el enlace de WhatsApp si el usuario pregunta EXPLÍCITAMENTE por contactar a Secretaría, hablar con una persona, número de teléfono o WhatsApp. En ese caso particular, incluye el enlace en formato: [Escribir a Secretaría por WhatsApp]({wa_link_oficial}). NUNCA lo agregues en respuestas sobre cuotas, canchas, fixture, transmisiones, etc.
 
 {seguridad_instrucciones}
 
@@ -559,8 +628,7 @@ Tus directivas obligatorias:
                         parts = data["candidates"][0]["content"]["parts"]
                         text_parts = [p["text"] for p in parts if "text" in p and not p.get("thought", False)]
                         texto_respuesta = "\n".join(text_parts).strip() if text_parts else parts[0].get("text", "").strip()
-                        # Sanitize any accidental Camotero to Camote
-                        texto_respuesta = re.sub(r"\bCamotero\b", "Camote", texto_respuesta, flags=re.IGNORECASE)
+                        texto_respuesta = _sanitizar_respuesta_chatbot(texto_respuesta)
                         return {
                             "respuesta": texto_respuesta,
                             "origen": "gemini_ai",
@@ -584,7 +652,8 @@ Tus directivas obligatorias:
         nombre_usuario=nombre_user,
     )
     return {
-        "respuesta": respuesta_fallback,
+        "respuesta": _sanitizar_respuesta_chatbot(respuesta_fallback),
         "origen": "fallback_reglas",
         "whatsapp_url": None,
     }
+

@@ -14,13 +14,16 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
+import os
+import sys
+
+backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, backend_dir)
+
 from dotenv import load_dotenv
+load_dotenv(os.path.join(backend_dir, ".env"))
 load_dotenv()
 
-import sys
-import os
-# Aseguramos que Python lea la carpeta backend correctamente
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # La URL de la base se toma de la env var DATABASE_URL (mismo valor que usa la
 # app). alembic.ini NO debe contener credenciales — su sqlalchemy.url queda vacío

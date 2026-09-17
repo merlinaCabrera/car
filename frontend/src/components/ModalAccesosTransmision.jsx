@@ -14,19 +14,12 @@ import {
   Check,
   Send,
   Trash2,
-  Radio,
   Eye,
   Tv,
   ExternalLink,
   ShieldAlert,
   ShieldCheck,
-  CreditCard,
-  Building2,
-  ArrowRight,
-  UserCheck,
-  UserX,
   UserPlus,
-  DollarSign,
   Clock,
 } from 'lucide-react'
 
@@ -423,6 +416,12 @@ export default function ModalAccesosTransmision({ evento, onClose, onActualizarE
             </button>
           </div>
         </div>
+
+        {errorMetricas && (
+          <div className="bg-red-50 text-red-700 px-5 py-2.5 text-xs font-medium border-b border-red-200">
+            {errorMetricas}
+          </div>
+        )}
 
         {/* ── CONTROL DE ESTADO DEL STREAM + MÉTRICAS ────────────────────── */}
         <div className="bg-gray-50 px-5 py-3 border-b border-gray-200">

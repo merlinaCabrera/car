@@ -577,6 +577,13 @@ def editar_producto(
     for campo, valor in cambios.items():
         setattr(producto, campo, valor)
 
+    # Si se actualizó el precio de la cuota social, sincronizar configuracion_global.valor_cuota_base
+    if producto.categoria == "cuota_social" and "precio_actual" in cambios:
+        config = db.query(models.ConfiguracionGlobal).first()
+        if config:
+            config.valor_cuota_base = producto.precio_actual
+            config.actualizado_at = func.now()
+
     _registrar_audit(
         db=db,
         actor_id=admin.id_usuario,

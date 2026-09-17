@@ -55,7 +55,7 @@ import models  # noqa: E402  (después de setear el env)
 from database import SessionLocal  # noqa: E402
 from security import get_password_hash  # noqa: E402
 
-ALEMBIC_HEAD = "f2a3b4c5d6e7"  # actualizar al agregar migraciones
+ALEMBIC_HEAD = "bc78e9102a34"  # actualizar al agregar migraciones (entradas_virtuales_invitados)
 
 ROLES = [
     ("admin_general", 100, True),

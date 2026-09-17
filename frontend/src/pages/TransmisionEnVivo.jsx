@@ -1,11 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
+import { useParams, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../context/useAuth';
 import {
   Tv,
   Play,
   Lock,
-  CheckCircle,
   AlertCircle,
   Clock,
   MapPin,
@@ -13,12 +12,7 @@ import {
   CreditCard,
   Building2,
   RefreshCw,
-  ExternalLink,
-  Users,
-  Trophy,
-  Share2,
   ChevronLeft,
-  ArrowRight,
   Maximize2,
   Copy,
   Key,
@@ -30,7 +24,6 @@ const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8000';
 
 export default function TransmisionEnVivo() {
   const { idEvento: idEventoParam } = useParams();
-  const navigate = useNavigate();
   const location = useLocation();
   const { user, token } = useAuth();
 

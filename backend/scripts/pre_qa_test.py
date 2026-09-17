@@ -265,13 +265,24 @@ if res_saludo.status_code == 200:
     reporter.check("Saludo 'como estas?' identifica como Camotito", "Camotito" in rep_saludo)
     reporter.check("Saludo 'como estas?' no tira viñetas de links markdown", "- Próximo" not in rep_saludo and "- Mis cuotas" not in rep_saludo)
 
-# 4.8 Consulta desconcertante / menú devuelve chips de sugerencias
-res_menu = client.post("/chatbot/mensaje", json={"mensaje": "asdfghjkl", "rol": "socio", "autenticado": True, "nombre_usuario": "Travis"})
+# 4.8 Solicitud de Menú / Opciones devuelve chips de sugerencias interactivas
+res_menu = client.post("/chatbot/mensaje", json={"mensaje": "menu", "rol": "socio", "autenticado": True, "nombre_usuario": "Travis"})
 if res_menu.status_code == 200:
     body_menu = res_menu.json()
     sugs_ret = body_menu.get("sugerencias")
-    reporter.check("Fallback devuelve array de sugerencias interactivas", isinstance(sugs_ret, list) and len(sugs_ret) >= 4)
-    reporter.check("Fallback no muestra lista cruda de viñetas en texto", "- Próximo" not in body_menu.get("respuesta", ""))
+    reporter.check("Menú devuelve array de sugerencias interactivas", isinstance(sugs_ret, list) and len(sugs_ret) >= 4)
+    reporter.check("Menú no muestra lista cruda de viñetas en texto", "- Próximo" not in body_menu.get("respuesta", ""))
+
+# 4.8.1 Motor de contingencia / Fallback general (Regla 17)
+from routers.chatbot import _responder_por_reglas_fallback, _construir_contexto_club
+db_chat = SessionLocal()
+try:
+    ctx_chat = _construir_contexto_club(db_chat)
+    txt_fall, sugs_fall = _responder_por_reglas_fallback("asdfghjkl", ctx_chat, autenticado=True, nombre_usuario="Travis")
+    reporter.check("Fallback (Regla 17) devuelve sugerencias", isinstance(sugs_fall, list) and len(sugs_fall) >= 4)
+    reporter.check("Fallback (Regla 17) no contiene viñetas markdown", "- Próximo" not in txt_fall and "- Mis cuotas" not in txt_fall)
+finally:
+    db_chat.close()
 
 # 4.9 Solicitud de Tour Guiado
 res_tour = client.post("/chatbot/mensaje", json={"mensaje": "quiero hacer el tour guiado", "rol": "socio", "autenticado": True})

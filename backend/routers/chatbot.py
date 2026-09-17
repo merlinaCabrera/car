@@ -260,7 +260,8 @@ def _responder_por_reglas_fallback(
     nombre_usuario: str = "",
 ) -> Tuple[str, Optional[List[Dict[str, str]]]]:
     """Motor de contingencia por reglas cuando Gemini API no está configurada o excede cuota."""
-    msg = mensaje.lower().strip()
+    msg_raw = mensaje.lower().strip()
+    msg = re.sub(r"[^\w\s]", "", msg_raw).strip()
     alias = datos["alias"]
     cuota = datos["valor_cuota_str"]
     cuota_menor = datos.get("valor_menor_str", "$3.000")
@@ -272,9 +273,10 @@ def _responder_por_reglas_fallback(
 
     # 1. Saludos breves
     if msg in [
-        "hola", "buenas", "buen dia", "buen día", "buenas tardes", "buenas noches",
-        "hey", "hola camotito", "hola camote", "que tal", "qué tal", "como estas",
-        "cómo estás", "como andas", "cómo andás", "todo bien", "buenas!"
+        "hola", "buenas", "buen dia", "buenas tardes", "buenas noches",
+        "hey", "hola camotito", "hola camote", "que tal", "como estas",
+        "como andas", "todo bien", "buenas", "saludos", "hola como estas",
+        "hola como andas", "buenas como andas", "buenas como estas"
     ]:
         nombre_str = f" {nombre_usuario}" if (autenticado and nombre_usuario) else ""
         return (
@@ -520,12 +522,19 @@ async def procesar_mensaje_chatbot(
     nombre_user = (payload.nombre_usuario or "").strip()
     es_admin = rol_usuario in ["admin", "tesorero", "profesor"]
 
-    # Interceptar solicitudes directas de menú o de tour guiado para responder inmediatamente
+    # Interceptar solicitudes directas de saludo, menú o de tour guiado para responder inmediatamente
     msg_clean = mensaje_usuario.lower().strip()
-    es_menu = msg_clean in ["menu", "menú", "opciones", "ayuda", "consultas", "consultas frecuentes", "que podes hacer", "qué podés hacer", "comandos"]
+    msg_letras = re.sub(r"[^\w\s]", "", msg_clean).strip()
+    es_saludo = msg_letras in [
+        "hola", "buenas", "buen dia", "buenas tardes", "buenas noches",
+        "hey", "hola camotito", "hola camote", "que tal", "como estas",
+        "como andas", "todo bien", "buenas", "saludos", "hola como estas",
+        "hola como andas", "buenas como andas", "buenas como estas"
+    ]
+    es_menu = msg_letras in ["menu", "opciones", "ayuda", "consultas", "consultas frecuentes", "que podes hacer", "comandos"]
     es_tour = any(w in msg_clean for w in ["tour", "guia", "guía", "recorrer", "tutorial", "como funciona la app", "cómo funciona la app", "explicame la app"])
 
-    if es_menu or es_tour:
+    if es_saludo or es_menu or es_tour:
         resp_dir, sugs_dir = _responder_por_reglas_fallback(
             mensaje_usuario,
             datos,

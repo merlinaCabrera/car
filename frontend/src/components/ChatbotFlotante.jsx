@@ -20,10 +20,7 @@ const STORAGE_OPEN_KEY = 'car_chatbot_abierto'
 // Limpiador estricto de emojis
 const limpiarEmojis = (str) => {
   if (!str) return ''
-  return str.replace(
-    /[\u{1F300}-\u{1F9FF}\u{2600}-\u{27BF}\u{1F1E0}-\u{1F1FF}\u{1F000}-\u{1F02F}\u{1F0A0}-\u{1F0FF}\u{2300}-\u{23FF}\u{2B50}\u{2B55}\u{FE0F}]/gu,
-    ''
-  )
+  return str.replace(/\p{Extended_Pictographic}/gu, '')
 }
 
 // Sanitizar nombre para que sea siempre estrictamente CAMOTE
@@ -238,6 +235,13 @@ export default function ChatbotFlotante() {
       // ignorar
     }
     inicializarChatParaUsuario(userSessionKey, user, isAuthenticated)
+  }
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      enviarMensaje()
+    }
   }
 
   // Navegación segura con protección de roles y estado de autenticación

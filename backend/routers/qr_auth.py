@@ -199,9 +199,10 @@ def _registrar_audit(
 def _extraer_ip(request: Request) -> Optional[str]:
     """Extrae la IP real considerando proxies (X-Forwarded-For)."""
     forwarded = request.headers.get("X-Forwarded-For")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
-    return getattr(request.client, "host", None)
+    cand = forwarded.split(",")[0].strip() if forwarded else getattr(request.client, "host", None)
+    if not cand or cand == "testclient":
+        return "127.0.0.1" if cand == "testclient" else None
+    return cand
 
 
 def _calcular_antiguedad_meses(fecha_ingreso) -> int:

@@ -2,7 +2,7 @@
 
 Guía de contexto para Claude Code. Leer antes de tocar cualquier archivo.
 
-_Última actualización: 2026-09-16._
+_Última actualización: 2026-09-18._
 
 ---
 
@@ -118,7 +118,7 @@ car/
 │       │   ├── ReservaCalendar.jsx      # Grilla de turnos por instalación
 │       │   ├── ConfirmDialog.jsx        # Reemplaza window.confirm()
 │       │   ├── ModalAccesosTransmision.jsx # Gestión de accesos PPV, emisión manual (no-socios/morosos), WhatsApp, transferencias
-│       │   ├── ChatbotFlotante.jsx      # Widget flotante del asistente "Camotero" con IA, quick chips y responsive
+│       │   ├── ChatbotFlotante.jsx      # Widget flotante del asistente "Camotito" con IA, quick chips y responsive
 │       │   ├── RutaPrivada.jsx          # Wrapper de rutas protegidas (chequea auth + roles)
 │       │   ├── landing/                 # Bloques de la landing pública
 │       │   └── admin/                   # MetricCard, CategoriaOrdenBadge, FaqBlock, SponsorsBlock
@@ -249,22 +249,22 @@ staff = Depends(require_roles("admin_general", "personal_administrativo"))
 | `/gestion-eventos` | Lista/calendario de eventos, convocatorias |
 | `/asistencias` | Registro de asistencia post-evento |
 
-### Admin (requiere `admin_general` o `personal_administrativo`)
-| Ruta | Página |
-|------|--------|
-| `/admin` | Panel: métricas, pendientes, accesos rápidos |
-| `/admin/solicitudes` | Aprobar/rechazar solicitudes de alta |
-| `/admin/socios` | CRUD socios, filtros, roles, beca, saldo |
-| `/admin/verificaciones` | Bandeja de comprobantes pendientes (filtra por `?tipo=cuota\|compra\|alquiler`) |
-| `/admin/pagos`, `/admin/tienda`, `/admin/alquileres` | Redirects a `/admin/verificaciones?tipo=...` (no son páginas propias) |
-| `/admin/reservas` | Agenda de canchas y quincho |
-| `/admin/escaner` | Escáner QR general (portero) |
-| `/admin/escaner-evento` | Escáner QR para eventos deportivos |
-| `/admin/escaner-canchas` | Escáner QR para reintegro en canchas |
-| `/admin/productos` | CRUD catálogo |
-| `/admin/comercios` | CRUD comercios adheridos |
-| `/admin/auditoria` | Historial de acciones (audit_log) |
-| `/admin/estadisticas` | Estadísticas y reportes |
+### Admin
+| Ruta | Página | Roles permitidos |
+|------|--------|------------------|
+| `/admin` | Panel ejecutivo: métricas, pendientes, accesos rápidos | `admin_general` |
+| `/admin/estadisticas` | Estadísticas y reportes ejecutivos | `admin_general` |
+| `/admin/solicitudes` | Aprobar/rechazar solicitudes de alta | `admin_general` |
+| `/admin/verificaciones` | Bandeja de comprobantes pendientes (`?tipo=cuota\|compra\|alquiler`) | `admin_general` |
+| `/admin/pagos`, `/admin/tienda`, `/admin/alquileres` | Redirects a `/admin/verificaciones?tipo=...` | `admin_general` |
+| `/admin/socios` | CRUD socios, filtros, roles, beca, saldo | `admin_general`, `personal_administrativo` |
+| `/admin/reservas` | Agenda de canchas y quincho | `admin_general`, `personal_administrativo` |
+| `/admin/productos` | CRUD catálogo (productos, comercios, sponsors, FAQ, recordatorios) | `admin_general`, `personal_administrativo` |
+| `/admin/comercios` | Redirect a `/admin/productos` | `admin_general`, `personal_administrativo` |
+| `/admin/auditoria` | Historial de acciones (audit_log) | `admin_general`, `personal_administrativo` |
+| `/admin/escaner` | Escáner QR general (portero) | `admin_general`, `personal_administrativo`, `admin_temporal` |
+| `/admin/escaner-evento` | Escáner QR para eventos deportivos | `admin_general`, `personal_administrativo`, `admin_temporal` |
+| `/admin/escaner-canchas` | Escáner QR para reintegro en canchas | `admin_general`, `personal_administrativo`, `admin_temporal` |
 
 ---
 
@@ -640,7 +640,8 @@ npm run dev
 **Documentación técnica reciente:**
 - `docs/infraestructura.md`: Separación de branches Neon (`main` y `dev`), deploys dev/prod y helper de migraciones.
 - `docs/propuesta-streaming-ivs.md`: Propuesta de transmisión segura con Amazon IVS (Revisión V2: Playback Authorization JWT ECDSA, costos reales por espectador-hora, prueba previa de uplink 4G y salvaguardas).
-- `docs/qa-manual-2026-09-16.md`: Guía de QA exhaustiva para Streaming PPV (§I), Asistente Virtual Camotito (§J) y Tour Guiado Interactivo (§K).
+- `docs/qa-manual-2026-09-16.md`: Guía de QA exhaustiva para Streaming PPV (§I), Asistente Virtual Camotito (§J), Tour Guiado Interactivo (§K) y sesiones automatizadas de Pre-QA (56 tests) y QA Extendido (69 tests).
+- `backend/scripts/extended_qa_test.py`: Suite de 69 tests automatizados que valida Neon en vivo, RBAC, cuotas, WhatsApp, escáner, reservas, streaming y chatbot antes del QA manual.
 
 **Pendiente antes del MVP:**
 - Rotar todas las claves (AWS, MP, Resend, `SECRET_KEY`, password de Neon) — ver "Secretos filtrados en el historial de git". Idealmente también limpiar el historial (`git filter-repo`) o asumir que quedan expuestas y rotar.

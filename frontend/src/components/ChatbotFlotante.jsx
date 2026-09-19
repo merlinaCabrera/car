@@ -33,7 +33,7 @@ const sanitizarNombreCamotito = (str) => {
 
 export default function ChatbotFlotante() {
   const navigate = useNavigate()
-  const { user, isAuthenticated } = useAuth()
+  const { user, isAuthenticated, token } = useAuth()
 
   // Clave de sesión en storage diferenciada por usuario para no mezclar historial entre invitado y socio
   const userSessionKey = isAuthenticated && user?.id_usuario ? `socio_${user.id_usuario}` : 'anonimo'
@@ -106,14 +106,12 @@ export default function ChatbotFlotante() {
       // Continuar cargando info fresca
     }
 
-    // Si no hay historial guardado para esta sesión, consultar info inicial al backend
+    // Si no hay historial guardado para esta sesión, consultar info inicial al backend.
+    // El rol/nombre los resuelve el backend a partir del JWT (si hay uno), nunca de
+    // lo que mande el front, así que acá solo mandamos el token cuando existe.
     try {
-      const params = new URLSearchParams({
-        rol: usuarioActual?.rol || 'anonimo',
-        autenticado: estaAutenticado ? 'true' : 'false',
-        nombre: usuarioActual?.nombre || '',
-      })
-      const res = await fetch(`${API}/chatbot/info-inicial?${params.toString()}`)
+      const headers = token ? { Authorization: `Bearer ${token}` } : {}
+      const res = await fetch(`${API}/chatbot/info-inicial`, { headers })
       if (res.ok) {
         const data = await res.json()
         setInfoInicial(data)
@@ -143,7 +141,7 @@ export default function ChatbotFlotante() {
         },
       ])
     }
-  }, [])
+  }, [token])
 
   // Detectar cambios de sesión (ej: abrió como anónimo, consultó, se registró/logueó o cerró sesión)
   useEffect(() => {
@@ -188,13 +186,13 @@ export default function ChatbotFlotante() {
 
       const res = await fetch(`${API}/chatbot/mensaje`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({
           mensaje: textoLimpio,
           historial: historialPayload,
-          autenticado: isAuthenticated,
-          rol: user?.rol || 'anonimo',
-          nombre_usuario: user?.nombre || '',
         }),
       })
 

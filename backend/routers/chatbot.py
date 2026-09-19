@@ -14,6 +14,7 @@ import logging
 import os
 import re
 from datetime import datetime, timedelta, timezone
+from decimal import Decimal
 from typing import Any, Dict, List, Optional, Tuple
 
 import httpx
@@ -24,6 +25,9 @@ from sqlalchemy.orm import Session
 import models
 from config import settings
 from database import get_db
+from dependencies import get_current_user_optional
+from utils.recordatorios import beca_activa, socios_morosos
+from utils.fechas import hoy_club
 
 logger = logging.getLogger("car.chatbot")
 
@@ -32,6 +36,29 @@ router = APIRouter(
     tags=["Chatbot Asistente Virtual CAR"],
 )
 
+# Los 3 "super-roles" del chatbot. El rol real y el estado de autenticación
+# NUNCA se toman del body (es un dato que manda el cliente y cualquiera podría
+# falsear): siempre se derivan del JWT via get_current_user_optional. Por eso
+# MensajeChatbotPayload ya no acepta rol/autenticado/nombre_usuario del front.
+SUPER_ROL_ADMIN = "admin"
+SUPER_ROL_SOCIO = "socio"
+SUPER_ROL_NO_REGISTRADO = "no_registrado"
+
+_ROLES_DB_ADMIN = {"admin_general", "personal_administrativo"}
+
+
+def _super_rol(current_user: Optional[models.Usuario]) -> str:
+    if current_user is None:
+        return SUPER_ROL_NO_REGISTRADO
+    nombres_roles = {
+        ur.rol.nombre
+        for ur in current_user.roles_asignados
+        if ur.rol.es_activo
+    }
+    if nombres_roles.intersection(_ROLES_DB_ADMIN):
+        return SUPER_ROL_ADMIN
+    return SUPER_ROL_SOCIO
+
 
 class MensajeChatbotPayload(BaseModel):
     mensaje: str = Field(..., min_length=1, max_length=1000)
@@ -39,9 +66,6 @@ class MensajeChatbotPayload(BaseModel):
         default=[],
         description="Historial previo [{'rol': 'user'|'model', 'texto': '...'}]",
     )
-    rol: Optional[str] = Field(default="anonimo", description="Rol del usuario actual si está logueado")
-    autenticado: Optional[bool] = Field(default=False, description="True si tiene sesión iniciada")
-    nombre_usuario: Optional[str] = Field(default="", description="Nombre del usuario si está logueado")
 
 
 def _normalizar_telefono_ar(tel: Optional[str]) -> str:
@@ -250,6 +274,114 @@ Ejemplos obligatorios:
         "whatsapp_clean": whatsapp_clean,
         "faqs": faqs,
     }
+
+
+def _construir_contexto_admin(db: Session) -> Dict[str, Any]:
+    """
+    Métricas agregadas de SOLO LECTURA para el modo "superusuario" del admin.
+    Nunca se usa para ejecutar acciones — únicamente consultas de conteo/suma
+    sobre la base, calcadas de la misma lógica que ya usan los paneles admin
+    (socios_morosos, beca_activa) para no reimplementar la regla de morosidad.
+    """
+    hoy = hoy_club()
+    config = db.query(models.ConfiguracionGlobal).first()
+    dia_venc = config.dia_vencimiento_cuota if config else 10
+
+    total_activos = (
+        db.query(models.Usuario).filter(models.Usuario.fecha_baja.is_(None)).count()
+    )
+    total_bajas = (
+        db.query(models.Usuario).filter(models.Usuario.fecha_baja.isnot(None)).count()
+    )
+    morosos = socios_morosos(db, dia_venc, hoy)
+    cantidad_morosos = len(morosos)
+
+    activos_todos = (
+        db.query(models.Usuario).filter(models.Usuario.fecha_baja.is_(None)).all()
+    )
+    cantidad_becados = sum(1 for s in activos_todos if beca_activa(s, hoy))
+
+    ordenes_pendientes = (
+        db.query(models.Orden)
+        .filter(models.Orden.estado == "pendiente_verificacion")
+        .count()
+    )
+    ordenes_aprobadas_mes = (
+        db.query(models.Orden)
+        .filter(
+            models.Orden.estado == "aprobada",
+            models.Orden.aprobada_at.isnot(None),
+            models.Orden.aprobada_at >= datetime(hoy.year, hoy.month, 1, tzinfo=timezone.utc),
+        )
+        .all()
+    )
+    cantidad_ordenes_mes = len(ordenes_aprobadas_mes)
+    recaudacion_mes = sum((o.monto_total for o in ordenes_aprobadas_mes), start=Decimal("0"))
+
+    reservas_pendientes = (
+        db.query(models.ReservaInstalacion)
+        .filter(models.ReservaInstalacion.estado == "bloqueada")
+        .count()
+    )
+
+    contexto_prompt_admin = f"""
+DATOS INTERNOS EN TIEMPO REAL (SOLO LECTURA — exclusivos de administración, hoy {hoy.isoformat()}):
+- Socios activos: {total_activos}
+- Socios dados de baja (histórico): {total_bajas}
+- Socios morosos actualmente: {cantidad_morosos}
+- Socios con beca activa: {cantidad_becados}
+- Órdenes/pagos pendientes de verificación: {ordenes_pendientes}
+- Órdenes aprobadas este mes: {cantidad_ordenes_mes}
+- Recaudación aprobada este mes: ${recaudacion_mes:,.0f}
+- Reservas de instalaciones bloqueadas (turno tomado, pago aún no confirmado): {reservas_pendientes}
+"""
+
+    return {
+        "total_activos": total_activos,
+        "total_bajas": total_bajas,
+        "cantidad_morosos": cantidad_morosos,
+        "cantidad_becados": cantidad_becados,
+        "ordenes_pendientes": ordenes_pendientes,
+        "cantidad_ordenes_mes": cantidad_ordenes_mes,
+        "recaudacion_mes": recaudacion_mes,
+        "reservas_pendientes": reservas_pendientes,
+        "contexto_prompt_admin": contexto_prompt_admin,
+    }
+
+
+def _responder_consulta_admin_por_reglas(mensaje: str, admin_datos: Dict[str, Any]) -> Optional[str]:
+    """
+    Intercepta preguntas frecuentes de admin ("¿cuántos socios morosos hay?")
+    y responde directo con el número real de la base, sin pasar por el LLM.
+    Evita cualquier riesgo de que el modelo invente una cifra.
+    """
+    msg = re.sub(r"[^\w\s]", "", mensaje.lower()).strip()
+
+    if any(w in msg for w in ["moroso", "morosos", "deudor", "deudores", "deuda"]):
+        return f"Actualmente hay **{admin_datos['cantidad_morosos']}** socios morosos."
+
+    if any(w in msg for w in ["cuantos socios", "cantidad de socios", "socios activos", "cuántos socios", "total de socios"]):
+        return (
+            f"Hay **{admin_datos['total_activos']}** socios activos "
+            f"y **{admin_datos['total_bajas']}** dados de baja en el histórico."
+        )
+
+    if any(w in msg for w in ["becado", "becados", "beca"]):
+        return f"Actualmente hay **{admin_datos['cantidad_becados']}** socios con beca activa."
+
+    if any(w in msg for w in ["pendiente de verificacion", "pendientes de verificacion", "comprobante pendiente", "pagos pendientes", "ordenes pendientes", "órdenes pendientes"]):
+        return f"Hay **{admin_datos['ordenes_pendientes']}** órdenes/comprobantes pendientes de verificación."
+
+    if any(w in msg for w in ["recaudacion", "recaudación", "cuanto se recaudo", "cuánto se recaudó", "ingresos del mes"]):
+        return (
+            f"Este mes se aprobaron **{admin_datos['cantidad_ordenes_mes']}** órdenes, "
+            f"por un total de **${admin_datos['recaudacion_mes']:,.0f}**."
+        )
+
+    if any(w in msg for w in ["reserva bloqueada", "reservas bloqueadas", "turnos bloqueados", "canchas bloqueadas"]):
+        return f"Hay **{admin_datos['reservas_pendientes']}** reservas bloqueadas con el turno tomado y el pago aún sin confirmar."
+
+    return None
 
 
 def _responder_por_reglas_fallback(
@@ -472,16 +604,17 @@ def _responder_por_reglas_fallback(
     summary="Obtener estado inicial y sugerencias del chatbot",
 )
 def obtener_info_inicial(
-    rol: Optional[str] = "anonimo",
-    autenticado: Optional[bool] = False,
-    nombre: Optional[str] = "",
     db: Session = Depends(get_db),
+    current_user: Optional[models.Usuario] = Depends(get_current_user_optional),
 ):
     datos = _construir_contexto_club(db)
     api_key = (settings.gemini_api_key or os.getenv("GEMINI_API_KEY", "")).strip()
     usa_ia = bool(api_key)
 
-    if autenticado:
+    super_rol = _super_rol(current_user)
+    nombre = current_user.nombre if current_user else ""
+
+    if super_rol != SUPER_ROL_NO_REGISTRADO:
         saludo = f"Hola{f' {nombre}' if nombre else ''}. Soy Camotito, el asistente virtual del Club Atlético Roberts. ¿En qué te puedo ayudar hoy?"
         sugerencias = _obtener_sugerencias_socio()
     else:
@@ -506,6 +639,7 @@ def obtener_info_inicial(
 async def procesar_mensaje_chatbot(
     payload: MensajeChatbotPayload,
     db: Session = Depends(get_db),
+    current_user: Optional[models.Usuario] = Depends(get_current_user_optional),
 ):
     mensaje_usuario = payload.mensaje.strip()
     if not mensaje_usuario:
@@ -517,10 +651,29 @@ async def procesar_mensaje_chatbot(
     datos = _construir_contexto_club(db)
     api_key = (settings.gemini_api_key or os.getenv("GEMINI_API_KEY", "")).strip()
 
-    rol_usuario = (payload.rol or "anonimo").lower()
-    autenticado = bool(payload.autenticado)
-    nombre_user = (payload.nombre_usuario or "").strip()
-    es_admin = rol_usuario in ["admin", "tesorero", "profesor"]
+    # El rol/autenticación NUNCA sale del payload (lo puede mandar cualquiera):
+    # se deriva siempre del JWT verificado en get_current_user_optional.
+    super_rol = _super_rol(current_user)
+    autenticado = super_rol != SUPER_ROL_NO_REGISTRADO
+    es_admin = super_rol == SUPER_ROL_ADMIN
+    nombre_user = (current_user.nombre if current_user else "") or ""
+    rol_usuario = super_rol
+
+    admin_datos = _construir_contexto_admin(db) if es_admin else None
+
+    # Modo "superusuario" de solo lectura: si el admin pregunta algo que
+    # matchea una métrica conocida, se responde directo con el dato real de
+    # la base (sin pasar por el LLM, así no hay riesgo de que se invente un
+    # número) y sin ofrecer ninguna acción de escritura.
+    if es_admin and admin_datos is not None:
+        respuesta_admin_directa = _responder_consulta_admin_por_reglas(mensaje_usuario, admin_datos)
+        if respuesta_admin_directa is not None:
+            return {
+                "respuesta": respuesta_admin_directa,
+                "origen": "consulta_admin_db",
+                "sugerencias": None,
+                "whatsapp_url": None,
+            }
 
     # Interceptar solicitudes directas de saludo, menú o de tour guiado para responder inmediatamente
     msg_clean = mensaje_usuario.lower().strip()
@@ -570,7 +723,7 @@ async def procesar_mensaje_chatbot(
         if es_admin:
             seguridad_instrucciones = f"""
 INFORMACIÓN DEL USUARIO ACTUAL:
-- Estado: AUTENTICADO COMO ADMINISTRADOR / DIRECTIVO.
+- Estado: AUTENTICADO COMO ADMINISTRADOR / DIRECTIVO (superusuario de SOLO LECTURA).
 - Nombre del usuario: {nombre_user if nombre_user else "Administrador"}
 - Rol: {rol_usuario}
 - PERMISOS DE ENLACES:
@@ -580,6 +733,12 @@ INFORMACIÓN DEL USUARIO ACTUAL:
     - [Gestión de eventos](/admin/eventos)
     - [Escáner de acceso](/admin/escaner)
   * También puede recibir enlaces de socio y públicos ([Ver transmisión en vivo](/en-vivo), [Consultar cuotas](/socio/cuotas), [Reservar instalaciones](/socio/reservas), [Preguntas frecuentes](/ayuda), [Tienda oficial](/shopping)).
+- MODO SUPERUSUARIO DE SOLO LECTURA:
+  * Podés responder con los datos reales de la sección "DATOS INTERNOS EN TIEMPO REAL" de más abajo (cantidad de socios, morosos, becados, órdenes pendientes, recaudación, etc.). Son datos reales de la base, no los inventes ni los redondees de más.
+  * PROHIBICIÓN ABSOLUTA DE ACCIONES: NUNCA digas que dieron de baja, aprobaron, rechazaron, cobraron o modificaron algo. Vos NO ejecutás ninguna acción, solo leés y reportás información.
+  * Si el admin pide "dar de baja a X", "aprobar la orden Y", "cobrarle a Z" o cualquier acción de escritura, respondé que Camotito solo puede consultar información y que esa acción se hace manualmente desde el panel correspondiente (indicá el enlace si corresponde), nunca la ejecutes ni digas que la hiciste.
+  * Si te preguntan un dato que no está en "DATOS INTERNOS EN TIEMPO REAL", decí que no tenés esa información cargada en este momento en vez de estimarla o inventarla.
+{admin_datos['contexto_prompt_admin'] if admin_datos else ""}
 """
         else:
             seguridad_instrucciones = f"""
@@ -632,6 +791,7 @@ Tus directivas obligatorias:
 6. NUNCA inventes alias bancarios ni números de cuenta que no figuren en los datos oficiales.
 7. REGLA ESTRICTA DE WHATSAPP: PROHIBIDO incluir enlaces, números o invitaciones a WhatsApp por defecto o al final de tus respuestas comunes. ÚNICAMENTE debes proporcionar el enlace de WhatsApp si el usuario pregunta EXPLÍCITAMENTE por contactar a Secretaría, hablar con una persona, número de teléfono o WhatsApp. En ese caso particular, incluye el enlace en formato: [Escribir a Secretaría por WhatsApp]({wa_link_oficial}). NUNCA lo agregues en respuestas sobre cuotas, canchas, fixture, transmisiones, etc.
 8. GUÍA Y TOUR INTERACTIVO: Si el socio pregunta por un tour guiado, tutorial o cómo usar la app o el portal, invítalo con entusiasmo y facilítale el enlace: [Iniciar Tour Guiado](/socio?tour=1).
+9. SOS DE SOLO LECTURA, SIEMPRE: aunque hables con un administrador, vos NUNCA ejecutás altas, bajas, aprobaciones, rechazos, cobros ni ninguna escritura sobre la base de datos. Como máximo informás los datos que ya te dieron o indicás en qué pantalla del panel se hace esa acción manualmente.
 
 {seguridad_instrucciones}
 

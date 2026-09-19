@@ -28,6 +28,7 @@ import {
   ChevronDown,
   TrendingUp,
   User as UserIcon,
+  MessageCircle,
   Tv,
 } from 'lucide-react'
 
@@ -111,8 +112,9 @@ const NAV_INVITADO = [
   { name: 'Escáner General', path: '/admin/escaner', icon: ScanLine },
 ];
 
-// Menú curado del admin_general (7 ítems junto con Inicio):
-// Inicio, Socios, Verificaciones, Alquileres, Eventos, Planteles, Catálogo.
+// Menú curado del admin_general: Socios, Verificaciones, Alquileres, Eventos,
+// Planteles, Catálogo y Mensajería (Inicio vive en el menú de administración
+// de la barra azul, no acá — ver MENU_ADMINISTRACION más abajo).
 const NAV_ADMIN_GENERAL = [
   { name: 'Socios', path: '/admin/socios', icon: Users },
   { name: 'Verificaciones', path: '/admin/verificaciones', icon: Wallet },
@@ -120,6 +122,7 @@ const NAV_ADMIN_GENERAL = [
   { name: 'Eventos', path: '/gestion-eventos', icon: CalendarDays },
   { name: 'Planteles', path: '/gestion-planteles', icon: ClipboardList },
   { name: 'Catálogo', path: '/admin/productos', icon: Package },
+  { name: 'Mensajería', path: '/admin/mensajeria', icon: MessageCircle },
 ];
 
 export default function MainLayout() {
@@ -456,6 +459,14 @@ export default function MainLayout() {
                       Administración
                     </div>
                     <Link
+                      to="/admin"
+                      onClick={() => setAdminDropdownOpen(false)}
+                      className="flex items-center gap-2.5 px-3.5 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors"
+                    >
+                      <LayoutDashboard size={16} className="text-gray-400" />
+                      <span>Inicio</span>
+                    </Link>
+                    <Link
                       to="/perfil"
                       onClick={() => setAdminDropdownOpen(false)}
                       className="flex items-center gap-2.5 px-3.5 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors"
@@ -624,13 +635,9 @@ export default function MainLayout() {
               bloque desplegable más abajo, junto al resto de roles) ══ */}
           {esAdminGeneral && (
             <div>
-              <Link to="/admin" onClick={closeMenu} {...propsItem('/admin', 0)}>
-                <LayoutDashboard size={18} /><span>Inicio</span>
-              </Link>
-              <hr className="border-white/10 my-2" />
               <p className={ROTULO}>Gestión</p>
               {NAV_ADMIN_GENERAL.map((link, i) => (
-                <Link key={link.path} to={link.path} onClick={closeMenu} {...propsItem(link.path, i + 1)}>
+                <Link key={link.path} to={link.path} onClick={closeMenu} {...propsItem(link.path, i)}>
                   <link.icon size={18} /><span>{link.name}</span>
                 </Link>
               ))}
@@ -654,7 +661,7 @@ export default function MainLayout() {
                 <div
                   key={key}
                   className={isMenuOpen ? 'anim-menu-item' : ''}
-                  style={retrasoBloque(idx, NAV_ADMIN_GENERAL.length + 1)}
+                  style={retrasoBloque(idx, NAV_ADMIN_GENERAL.length)}
                 >
                   <button onClick={() => toggleSeccion(key)} className={TRIGGER}>
                     <span className="flex items-center gap-3"><Icon size={18} /> {label}</span>

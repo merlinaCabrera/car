@@ -33,8 +33,9 @@
  * necesita tu atención hoy) — se mantienen separados a propósito.
  *
  * El aviso de cuota por mail masivo ("Enviar aviso a todos los morosos") se
- * mudó a /admin/socios (AvisoCuotaMasivo, en components/admin/) — queda
- * junto a la gestión del padrón de socios en vez de en este panel ejecutivo.
+ * sacó: Resend limita a 100 mails/día en el plan gratuito y un solo clic
+ * bastaba para agotarlo. El recordatorio de cuota (plantilla + WhatsApp)
+ * vive en /admin/socios (RecordatorioCuota, en components/admin/).
  *
  * "Reservas sin Reparto" (turnos confirmados sin reintegro QR configurado)
  * ya NO vive acá: es un riesgo operativo, no una tarea de aprobación de

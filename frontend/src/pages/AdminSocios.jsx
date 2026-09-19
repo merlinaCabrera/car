@@ -13,7 +13,6 @@
 
 import { textoError } from '../utils/errores';
 import ComprobantePago from '../components/admin/ComprobantePago'
-import AvisoCuotaMasivo from '../components/admin/AvisoCuotaMasivo'
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useAuth } from '../context/useAuth'
 import ConfirmDialog from '../components/ConfirmDialog'
@@ -2259,8 +2258,9 @@ export default function AdminSocios() {
         />
       )}
 
-      {/* ── Aviso de cuota por mail ─────────────────────────────────────── */}
-      <AvisoCuotaMasivo />
+      {/* El editor de la plantilla de recordatorio (WhatsApp) se mudó a
+          /admin/mensajeria — el botón de WhatsApp por socio sigue acá abajo,
+          en cada fila. */}
 
       {/* Header */}
       <div className="space-y-4">

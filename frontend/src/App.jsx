@@ -25,6 +25,7 @@ import JugadorCalendario from './pages/JugadorCalendario';
 import AdminReservas from './pages/AdminReservas';
 import AdminScanner from './pages/AdminScanner';
 import AdminProductos from './pages/AdminProductos';
+import AdminMensajeria from './pages/AdminMensajeria';
 import AdminEstadisticas from './pages/AdminEstadisticas';
 import SocioCompras from "./pages/SocioCompras";
 import Reservas from './pages/Reservas';
@@ -100,6 +101,7 @@ function App() {
                 <Route path="/admin/estadisticas" element={<AdminEstadisticas />} />
                 <Route path="/admin/solicitudes" element={<AdminSolicitudes />} />
                 <Route path="/admin/verificaciones" element={<AdminVerificaciones />} />
+                <Route path="/admin/mensajeria" element={<AdminMensajeria />} />
                 <Route path="/admin/pagos" element={<Navigate to="/admin/verificaciones?tipo=cuota" replace />} />
                 <Route path="/admin/tienda" element={<Navigate to="/admin/verificaciones?tipo=compra" replace />} />
                 <Route path="/admin/alquileres" element={<Navigate to="/admin/verificaciones?tipo=alquiler" replace />} />

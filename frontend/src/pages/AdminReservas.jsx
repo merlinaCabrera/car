@@ -947,148 +947,189 @@ function Leyenda() {
 
 // ─── Agenda del quincho ───────────────────────────────────────────────────────
 
-function AgendaQuincho({ reservas, anio, mes, onCambiarMes, onAbrirTurno, onTurnoLibre }) {
-  // Estable por render: si se construye suelto, cambia de identidad en cada
-  // render y recalcula todos los useMemo que dependen de él.
-  const hoy = useMemo(() => {
-    const d = new Date()
-    d.setHours(0, 0, 0, 0)
-    return d
-  }, [])
+function AgendaQuincho({
+  reservas, anio, mes, onCambiarMes,
+  diaSeleccionado, onSeleccionarDia,
+  onAbrirTurno, onTurnoLibre,
+}) {
+  const hoy = new Date()
+  hoy.setHours(0, 0, 0, 0)
 
-  const dias = useMemo(() => {
+  // Celdas del mes con relleno, para que el día caiga bajo su día de semana
+  // — mismo patrón que AgendaCanchas, para que ambos calendarios se vean y
+  // ocupen igual (antes el quincho mostraba el mes entero con sus 2 turnos
+  // por día a la vez, y en mobile eran ~3 pantallas de scroll).
+  const celdas = useMemo(() => {
     const total = diasEnMes(anio, mes)
-    return Array.from({ length: total }, (_, i) => {
-      const dia = i + 1
-      const fecha = fechaLocal(anio, mes, dia)
-      return {
-        dia,
-        nombreDiaSemana: NOMBRES_DIA_SEMANA[indiceDiaSemana(fecha)],
-        esHoy: fecha.getTime() === hoy.getTime(),
-        esPasado: fecha.getTime() < hoy.getTime(),
-      }
-    })
-  }, [anio, mes, hoy])
+    const primerDia = fechaLocal(anio, mes, 1)
+    const relleno = indiceDiaSemana(primerDia)
+    return [
+      ...Array.from({ length: relleno }, () => null),
+      ...Array.from({ length: total }, (_, i) => i + 1),
+    ]
+  }, [anio, mes])
 
-  const resumen = useMemo(() => {
-    let libres = 0, ocupados = 0, bloqueados = 0
-    dias.forEach(({ dia }) => {
+  // Ocupación por día, para el puntito del calendario.
+  const ocupacionPorDia = useMemo(() => {
+    const mapa = new Map()
+    const total = diasEnMes(anio, mes)
+    for (let dia = 1; dia <= total; dia++) {
+      let ocupados = 0, bloqueados = 0
       Object.keys(TURNOS_QUINCHO).forEach(key => {
         const { inicio, fin } = rangoTurnoQuincho(anio, mes, dia, key)
         const estado = estadoDeTurno(reservas, inicio, fin)
-        if (estado.tipo === 'libre') libres++
-        else if (estado.tipo === 'bloqueo') bloqueados++
-        else ocupados++
+        if (estado.tipo === 'bloqueo') bloqueados++
+        else if (estado.tipo === 'reserva') ocupados++
       })
-    })
-    return { libres, ocupados, bloqueados }
-  }, [dias, reservas, anio, mes])
+      mapa.set(dia, { ocupados, bloqueados })
+    }
+    return mapa
+  }, [reservas, anio, mes])
+
+  const fechaDia = diaSeleccionado ? fechaLocal(anio, mes, diaSeleccionado) : null
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-      <div className="px-4 sm:px-5 pt-4 sm:pt-5 pb-4 border-b border-gray-200">
-        <NavegadorMes anio={anio} mes={mes} onCambiar={onCambiarMes}>
-          <h2 className="text-base font-bold text-gray-900 flex items-center gap-2">
-            <Tent size={17} className="text-gray-400 flex-shrink-0" />
-            Quincho
-          </h2>
-          <p className="text-xs text-gray-400 mt-0.5">
-            Turno <strong className="text-gray-600">Día</strong> ({TURNOS_QUINCHO.dia.horaInicio}:00–{TURNOS_QUINCHO.dia.horaFin}:00) ·{' '}
-            Turno <strong className="text-gray-600">Noche</strong> ({TURNOS_QUINCHO.noche.horaInicio}:00–00:00)
-          </p>
-        </NavegadorMes>
-
-        <div className="flex flex-wrap gap-2 sm:gap-3 mt-3">
-          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-green-700">
-            <span className="w-2 h-2 rounded-full bg-green-500 inline-block" />
-            {resumen.libres} libre{resumen.libres !== 1 ? 's' : ''}
-          </span>
-          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-blue-700">
-            <span className="w-2 h-2 rounded-full bg-blue-500 inline-block" />
-            {resumen.ocupados} reservado{resumen.ocupados !== 1 ? 's' : ''}
-          </span>
-          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-red-600">
-            <span className="w-2 h-2 rounded-full bg-red-500 inline-block" />
-            {resumen.bloqueados} inhabilitado{resumen.bloqueados !== 1 ? 's' : ''}
-          </span>
+    <div className="space-y-4">
+      {/* Calendario mensual: elegir día */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+        <div className="px-4 sm:px-5 pt-4 sm:pt-5 pb-4 border-b border-gray-200">
+          <NavegadorMes anio={anio} mes={mes} onCambiar={onCambiarMes}>
+            <h2 className="text-base font-bold text-gray-900 flex items-center gap-2">
+              <Tent size={17} className="text-gray-400 flex-shrink-0" />
+              Quincho
+            </h2>
+            <p className="text-xs text-gray-400 mt-0.5">
+              Elegí un día para ver sus 2 turnos.
+            </p>
+          </NavegadorMes>
         </div>
-      </div>
 
-      <div className="p-3 sm:p-4">
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
-          {dias.map(({ dia, nombreDiaSemana, esHoy, esPasado }) => (
-            <div
-              key={dia}
-              className={`rounded-xl border p-2 flex flex-col gap-1.5 ${
-                esHoy ? 'ring-2 ring-blue-400 ring-offset-1 border-gray-200' : 'border-gray-200'
-              } ${esPasado ? 'bg-gray-50' : 'bg-white'}`}
-            >
-              <div className="flex items-baseline justify-between px-0.5">
-                <span className={`text-sm font-bold ${esPasado ? 'text-gray-400' : 'text-gray-800'}`}>{dia}</span>
-                <span className="text-[10px] text-gray-400 uppercase">{nombreDiaSemana}</span>
-              </div>
-
-              <div className="flex flex-col gap-1">
-                {Object.keys(TURNOS_QUINCHO).map(key => {
-                  const { inicio, fin } = rangoTurnoQuincho(anio, mes, dia, key)
-                  const estado = estadoDeTurno(reservas, inicio, fin)
-                  const Icon = ICONOS_TURNO_QUINCHO[key]
-                  const libre = estado.tipo === 'libre'
-                  // Un turno que ya pasó y quedó libre no tiene nada que
-                  // hacerse: inhabilitarlo hacia atrás no cambia nada.
-                  const inerte = libre && esPasado
-                  const clases = libre
-                    ? esPasado
-                      ? 'bg-gray-50 border-gray-200 text-gray-300 cursor-default'
-                      : 'bg-green-50 border-green-200 text-green-700 hover:bg-green-100'
-                    : colorDeReserva(estado.reserva).celda
-
-                  return (
-                    <button
-                      key={key}
-                      type="button"
-                      disabled={inerte}
-                      onClick={() => libre
-                        ? onTurnoLibre({
-                            instalacion: 'quincho', inicio, fin,
-                            etiqueta: `${dia}/${mes} · Turno ${TURNOS_QUINCHO[key].label}`,
-                          })
-                        : onAbrirTurno(estado.reserva)}
-                      title={libre
-                        ? esPasado
-                          ? `${TURNOS_QUINCHO[key].label} — pasó libre`
-                          : `${TURNOS_QUINCHO[key].label} — libre. Click para asignarlo o inhabilitarlo.`
-                        : `${TURNOS_QUINCHO[key].label} — ${etiquetaCorta(estado)}`}
-                      className={`w-full rounded-lg border px-1.5 py-1 text-left transition-colors ${clases}`}
-                    >
-                      <span className="flex items-center gap-1 text-[11px] font-bold">
-                        <Icon size={10} className="flex-shrink-0" />
-                        {TURNOS_QUINCHO[key].label}
-                      </span>
-                      <span className="block text-[10px] leading-tight truncate opacity-90">
-                        {etiquetaCorta(estado)}
-                      </span>
-                      {estado.tipo === 'reserva' && estado.reserva.dni_responsable && (
-                        <span className="block text-[9px] leading-tight truncate opacity-70">
-                          DNI {estado.reserva.dni_responsable}
-                        </span>
-                      )}
-                    </button>
-                  )
-                })}
-              </div>
+        <div className="grid grid-cols-7 border-b border-gray-200">
+          {NOMBRES_DIA_SEMANA.map(d => (
+            <div key={d} className="py-1.5 text-center text-[9px] sm:text-[11px] font-semibold text-gray-400 uppercase tracking-wide">
+              {d}
             </div>
           ))}
         </div>
+
+        <div className="grid grid-cols-7 gap-px bg-gray-50 p-px">
+          {celdas.map((dia, idx) => {
+            if (dia === null) return <div key={`v-${idx}`} className="bg-white min-h-[52px]" />
+            const fecha = fechaLocal(anio, mes, dia)
+            const esHoy = fecha.getTime() === hoy.getTime()
+            const esPasado = fecha.getTime() < hoy.getTime()
+            const oc = ocupacionPorDia.get(dia)
+            const seleccionado = dia === diaSeleccionado
+
+            return (
+              <button
+                key={dia}
+                onClick={() => onSeleccionarDia(dia)}
+                className={`bg-white min-h-[52px] sm:min-h-[62px] p-1 flex flex-col items-center justify-start gap-1 transition-colors ${
+                  seleccionado ? 'ring-2 ring-inset ring-gray-900 bg-gray-50' : 'hover:bg-gray-50'
+                }`}
+              >
+                <span className={`text-xs font-semibold w-6 h-6 flex items-center justify-center rounded-full ${
+                  esHoy ? 'bg-blue-600 text-white' : esPasado ? 'text-gray-400' : 'text-gray-700'
+                }`}>
+                  {dia}
+                </span>
+                <span className="flex items-center gap-0.5">
+                  {oc.ocupados > 0 && (
+                    <span className="text-[9px] font-bold text-blue-600">{oc.ocupados}</span>
+                  )}
+                  {oc.bloqueados > 0 && (
+                    <span className="text-[9px] font-bold text-red-500">·{oc.bloqueados}</span>
+                  )}
+                  {oc.ocupados === 0 && oc.bloqueados === 0 && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-400 inline-block" />
+                  )}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+
+        <div className="px-4 sm:px-5 py-3">
+          <Leyenda />
+        </div>
       </div>
 
-      <div className="px-4 sm:px-5 pb-4">
-        <Leyenda />
-        <p className="text-[11px] text-gray-400 mt-2">
-          Tocá un turno libre para asignarlo a un socio o inhabilitarlo, o uno
-          ocupado para ver el detalle.
-        </p>
-      </div>
+      {/* Turnos del día elegido */}
+      {fechaDia && (
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+          <div className="px-4 sm:px-5 py-3.5 border-b border-gray-200 flex items-center justify-between gap-3">
+            <h3 className="text-sm font-bold text-gray-900 capitalize">
+              {fechaDia.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })}
+            </h3>
+            <span className="text-xs text-gray-400 flex-shrink-0">Quincho</span>
+          </div>
+
+          <ul className="divide-y divide-gray-50">
+            {Object.keys(TURNOS_QUINCHO).map(key => {
+              const { inicio, fin } = rangoTurnoQuincho(anio, mes, diaSeleccionado, key)
+              const estado = estadoDeTurno(reservas, inicio, fin)
+              const Icon = ICONOS_TURNO_QUINCHO[key]
+              const esPasado = fin.getTime() <= Date.now()
+              const color = estado.tipo === 'libre' ? null : colorDeReserva(estado.reserva)
+
+              return (
+                <li key={key} className="flex items-center gap-3 px-4 sm:px-5 py-3">
+                  <span className={`flex items-center gap-1.5 text-sm font-bold flex-shrink-0 w-[90px] ${esPasado ? 'text-gray-300' : 'text-gray-700'}`}>
+                    <Icon size={13} className="flex-shrink-0" />
+                    {TURNOS_QUINCHO[key].label}
+                  </span>
+
+                  {estado.tipo === 'libre' ? (
+                    <>
+                      <span className={`flex-1 flex items-center gap-2 text-sm font-semibold min-w-0 ${
+                        esPasado ? 'text-gray-300' : 'text-green-700'
+                      }`}>
+                        <span className={`w-2 h-2 rounded-full inline-block flex-shrink-0 ${
+                          esPasado ? 'bg-gray-200' : 'bg-green-500'
+                        }`} />
+                        Libre
+                      </span>
+                      {!esPasado && (
+                        <button
+                          onClick={() => onTurnoLibre({
+                            instalacion: 'quincho', inicio, fin,
+                            etiqueta: `${fechaDia.toLocaleDateString('es-AR')} · Turno ${TURNOS_QUINCHO[key].label}`,
+                          })}
+                          className="flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-semibold text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-colors"
+                        >
+                          <PlusCircle size={13} />
+                          Usar turno
+                        </button>
+                      )}
+                    </>
+                  ) : (
+                    <button
+                      onClick={() => onAbrirTurno(estado.reserva)}
+                      className="flex-1 flex items-center gap-2 min-w-0 text-left group"
+                    >
+                      {estado.tipo === 'bloqueo'
+                        ? <Ban size={14} className="text-red-500 flex-shrink-0" />
+                        : <User size={14} className="text-blue-500 flex-shrink-0" />}
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-sm font-semibold text-gray-800 truncate group-hover:underline">
+                          {etiquetaCorta(estado)}
+                        </span>
+                        {estado.tipo === 'reserva' && estado.reserva.dni_responsable && (
+                          <span className="block text-xs text-gray-400">DNI {estado.reserva.dni_responsable}</span>
+                        )}
+                      </span>
+                      <span className={`flex-shrink-0 text-[10px] font-bold px-2 py-1 rounded-full ${color.badge}`}>
+                        {color.label}
+                      </span>
+                    </button>
+                  )}
+                </li>
+              )
+            })}
+          </ul>
+        </div>
+      )}
     </div>
   )
 }
@@ -1563,6 +1604,8 @@ export default function AdminReservas() {
           anio={anio}
           mes={mes}
           onCambiarMes={cambiarMes}
+          diaSeleccionado={diaSeleccionado}
+          onSeleccionarDia={setDiaSeleccionado}
           onAbrirTurno={setReservaDetalle}
           onTurnoLibre={setTurnoElegido}
         />

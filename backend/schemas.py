@@ -171,6 +171,52 @@ class ConfiguracionRecordatorioUpdatePayload(BaseModel):
     )
 
 
+# ── Plantillas de mail transaccional (/admin/mensajeria) ─────────────────────
+
+class PlantillaMailResumen(BaseModel):
+    """Una fila del listado de mails editables."""
+    clave: str
+    etiqueta: str
+    destino: str = Field(description="'socio' o 'club' — quién lo recibe.")
+    editable_cuerpo: bool = Field(
+        description=(
+            "False = el cuerpo tiene lógica Jinja2 (listas, condicionales) y "
+            "solo se puede editar el asunto."
+        ),
+    )
+    personalizado: bool = Field(
+        description="True = alguien ya editó el asunto y/o el cuerpo de este mail.",
+    )
+
+
+class PlantillaMailDetalle(PlantillaMailResumen):
+    """
+    El mail completo, como lo ve el editor.
+
+    `asunto` y `cuerpo` nunca vienen vacíos: si no hay override guardado se
+    devuelve el texto de fábrica, y `asunto_es_default` / `cuerpo_es_default`
+    avisan que eso es lo que se está viendo. `cuerpo` es None cuando
+    `editable_cuerpo` es False.
+    """
+    asunto: str
+    asunto_es_default: bool
+    cuerpo: Optional[str] = None
+    cuerpo_es_default: bool = True
+    variables_disponibles: List[str] = Field(default_factory=list)
+    vista_previa_asunto: str = Field(
+        description="El asunto renderizado con datos de ejemplo.",
+    )
+
+
+class PlantillaMailUpdatePayload(BaseModel):
+    """
+    Los dos campos son opcionales: omitir uno lo deja como estaba, mandar
+    cadena vacía lo vuelve al texto de fábrica (borra el override).
+    """
+    asunto: Optional[str] = Field(default=None, max_length=200)
+    cuerpo: Optional[str] = Field(default=None, max_length=20000)
+
+
 class WhatsAppRecordatorioResponse(BaseModel):
     """
     Deep link listo para abrir en una pestaña nueva, más los datos con los que

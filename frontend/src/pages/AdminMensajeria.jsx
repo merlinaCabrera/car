@@ -6,6 +6,7 @@
 // editor en /admin/productos), y las plantillas de mail transaccional.
 import { MessageCircle } from 'lucide-react'
 import RecordatorioCuota from '../components/admin/RecordatorioCuota'
+import PlantillasMailBlock from '../components/admin/PlantillasMailBlock'
 
 export default function AdminMensajeria() {
   return (
@@ -21,6 +22,7 @@ export default function AdminMensajeria() {
       </div>
 
       <RecordatorioCuota />
+      <PlantillasMailBlock />
     </div>
   )
 }

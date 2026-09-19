@@ -221,6 +221,50 @@ class ConfiguracionGlobal(Base):
         return f"<ConfiguracionGlobal cuota={self.valor_cuota_base} vence_dia={self.dia_vencimiento_cuota}>"
 
 
+class PlantillaMail(Base):
+    """
+    Overrides editables del asunto/cuerpo de los mails transaccionales.
+
+    Una fila por evento (`clave`, ver mailer/registry.py — NO es 1:1 con los
+    archivos .html de mailer/templates/email/: dos eventos con asuntos
+    distintos pueden compartir el mismo .html, como aviso_club_pago.html).
+    NULL en `asunto` o `cuerpo` = usar el default del código (texto de
+    fábrica); no hace falta que exista la fila para que un mail funcione.
+
+    `cuerpo` solo se usa si `mailer.registry.REGISTRY[clave]["editable_cuerpo"]`
+    es True. Esa lista se limita a los templates que son pura interpolación
+    `{{ variable }}` sin `{% if %}` ni `{% for %}` — los que tienen lógica real
+    (compra_confirmada con su lista de ítems, aviso_admin_jugador_categoria con
+    colores calculados en Python) quedan con el cuerpo fijo: un admin editando
+    HTML con Jinja2 de verdad puede romper la sintaxis sin darse cuenta, y ese
+    mail deja de mandarse en silencio (el error solo se loguea). El asunto,
+    en cambio, es siempre texto plano interpolado con la misma regex sobre
+    `{variable}` que ya usa utils/recordatorios.py — cero riesgo de sintaxis.
+    """
+    __tablename__ = "plantillas_mail"
+
+    clave: Mapped[str] = mapped_column(String(60), primary_key=True)
+
+    asunto: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+    cuerpo: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    actualizado_por: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("usuarios.id_usuario", ondelete="SET NULL", use_alter=True,
+                   name="fk_plantilla_mail_actualizado_por"),
+        nullable=True,
+    )
+    actualizado_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now(),
+    )
+
+    admin_actualizador: Mapped[Optional["Usuario"]] = relationship(
+        "Usuario", foreign_keys=[actualizado_por],
+    )
+
+    def __repr__(self) -> str:
+        return f"<PlantillaMail clave={self.clave}>"
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # MÓDULO 1 · IDENTIDAD & ACCESOS
 # ─────────────────────────────────────────────────────────────────────────────

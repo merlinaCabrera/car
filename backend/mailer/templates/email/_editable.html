@@ -1,0 +1,9 @@
+{# Wrapper genérico para el cuerpo editado desde /admin/mensajeria.
+   `contenido_html` ya viene renderizado (placeholders {variable} sustituidos
+   por email_service._resolver_evento) — acá solo se inserta dentro del mismo
+   layout que usan el resto de los mails. `| safe` porque el contenido es HTML
+   a propósito (el admin escribe con tags simples, no texto plano). #}
+{% extends "base.html" %}
+{% block content %}
+{{ contenido_html | safe }}
+{% endblock %}

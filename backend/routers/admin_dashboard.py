@@ -105,6 +105,38 @@ class EstadisticasDashboardResponse(BaseModel):
     productos_mas_vendidos: List[ProductoMasVendidoResponse]
 
 
+class RolConteoResponse(BaseModel):
+    rol: str
+    cantidad: int
+
+
+class EstadisticasSociosResponse(BaseModel):
+    total_activos: int
+    altas_30_dias: int
+    bajas_30_dias: int
+    becados_activos: int
+    adherentes: int
+    por_rol: List[RolConteoResponse]
+
+
+class EventoTipoConteoResponse(BaseModel):
+    tipo: str
+    cantidad: int
+
+
+class EstadisticasEventosResponse(BaseModel):
+    eventos_periodo: int
+    eventos_por_tipo: List[EventoTipoConteoResponse]
+    eventos_finalizados_periodo: int
+    proximos_7_dias: int
+    asistencia_promedio: Optional[Decimal] = Field(
+        default=None,
+        description="Promedio de asistentes por evento finalizado en el período. "
+                     "None si no hubo eventos finalizados.",
+    )
+    convocatorias_sin_responder: int
+
+
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 
 def _inicio_de_mes_actual() -> datetime:
@@ -343,4 +375,173 @@ def obtener_estadisticas_dashboard(
         ingresos_por_mes=ingresos_por_mes,
         variacion_mes_pct=variacion_mes_pct,
         productos_mas_vendidos=productos_mas_vendidos,
+    )
+
+
+# ─── ENDPOINT: Estadísticas de socios, para la pestaña "Socios" ────────────────
+
+@router.get(
+    "/estadisticas-socios",
+    response_model=EstadisticasSociosResponse,
+    summary="Composición del padrón (altas, bajas, becas, roles), para /admin/estadisticas",
+)
+def obtener_estadisticas_socios(
+    db: Session = Depends(get_db),
+    _admin: models.Usuario = Depends(require_roles(*_ROLES_DASHBOARD)),
+) -> EstadisticasSociosResponse:
+    ahora = datetime.now(timezone.utc)
+    hace_30_dias = (ahora - timedelta(days=30)).date()
+
+    total_activos = (
+        db.query(func.count(models.Usuario.id_usuario))
+        .filter(models.Usuario.fecha_baja.is_(None))
+        .scalar()
+    ) or 0
+
+    altas_30_dias = (
+        db.query(func.count(models.Usuario.id_usuario))
+        .filter(
+            models.Usuario.fecha_baja.is_(None),
+            models.Usuario.fecha_ingreso >= hace_30_dias,
+        )
+        .scalar()
+    ) or 0
+
+    bajas_30_dias = (
+        db.query(func.count(models.Usuario.id_usuario))
+        .filter(
+            models.Usuario.fecha_baja.isnot(None),
+            models.Usuario.fecha_baja >= hace_30_dias,
+        )
+        .scalar()
+    ) or 0
+
+    becados_activos = (
+        db.query(func.count(models.Usuario.id_usuario))
+        .filter(
+            models.Usuario.fecha_baja.is_(None),
+            models.Usuario.es_becado.is_(True),
+        )
+        .scalar()
+    ) or 0
+
+    adherentes = (
+        db.query(func.count(models.Usuario.id_usuario))
+        .filter(
+            models.Usuario.fecha_baja.is_(None),
+            models.Usuario.id_titular.isnot(None),
+        )
+        .scalar()
+    ) or 0
+
+    filas_rol = (
+        db.query(models.Rol.nombre, func.count(models.UsuarioRol.id_usuario))
+        .join(models.UsuarioRol, models.UsuarioRol.id_rol == models.Rol.id_rol)
+        .join(models.Usuario, models.Usuario.id_usuario == models.UsuarioRol.id_usuario)
+        .filter(models.Usuario.fecha_baja.is_(None))
+        .group_by(models.Rol.nombre)
+        .order_by(func.count(models.UsuarioRol.id_usuario).desc())
+        .all()
+    )
+
+    return EstadisticasSociosResponse(
+        total_activos=total_activos,
+        altas_30_dias=altas_30_dias,
+        bajas_30_dias=bajas_30_dias,
+        becados_activos=becados_activos,
+        adherentes=adherentes,
+        por_rol=[RolConteoResponse(rol=nombre, cantidad=cantidad) for nombre, cantidad in filas_rol],
+    )
+
+
+# ─── ENDPOINT: Estadísticas de eventos, para la pestaña "Eventos" ──────────────
+
+@router.get(
+    "/estadisticas-eventos",
+    response_model=EstadisticasEventosResponse,
+    summary="Actividad deportiva/institucional (eventos, asistencia, convocatorias), para /admin/estadisticas",
+)
+def obtener_estadisticas_eventos(
+    dias: int = Query(
+        30, ge=1, le=365,
+        description="Ventana hacia atrás (en días) para contar eventos y calcular asistencia promedio.",
+    ),
+    db: Session = Depends(get_db),
+    _admin: models.Usuario = Depends(require_roles(*_ROLES_DASHBOARD)),
+) -> EstadisticasEventosResponse:
+    ahora = datetime.now(timezone.utc)
+    inicio_periodo = ahora - timedelta(days=dias)
+    fin_semana = ahora + timedelta(days=7)
+
+    eventos_periodo = (
+        db.query(func.count(models.Evento.id_evento))
+        .filter(models.Evento.fecha_inicio >= inicio_periodo, models.Evento.fecha_inicio <= ahora)
+        .scalar()
+    ) or 0
+
+    filas_tipo = (
+        db.query(models.Evento.tipo, func.count(models.Evento.id_evento))
+        .filter(models.Evento.fecha_inicio >= inicio_periodo, models.Evento.fecha_inicio <= ahora)
+        .group_by(models.Evento.tipo)
+        .order_by(func.count(models.Evento.id_evento).desc())
+        .all()
+    )
+
+    eventos_finalizados_periodo = (
+        db.query(func.count(models.Evento.id_evento))
+        .filter(
+            models.Evento.estado == "finalizado",
+            models.Evento.fecha_inicio >= inicio_periodo,
+            models.Evento.fecha_inicio <= ahora,
+        )
+        .scalar()
+    ) or 0
+
+    proximos_7_dias = (
+        db.query(func.count(models.Evento.id_evento))
+        .filter(
+            models.Evento.estado.in_(("programado", "en_curso")),
+            models.Evento.fecha_inicio >= ahora,
+            models.Evento.fecha_inicio <= fin_semana,
+        )
+        .scalar()
+    ) or 0
+
+    total_asistencias = (
+        db.query(func.count(models.Asistencia.id_asistencia))
+        .join(models.Evento, models.Evento.id_evento == models.Asistencia.id_evento)
+        .filter(
+            models.Evento.estado == "finalizado",
+            models.Evento.fecha_inicio >= inicio_periodo,
+            models.Evento.fecha_inicio <= ahora,
+        )
+        .scalar()
+    ) or 0
+
+    asistencia_promedio: Optional[Decimal] = None
+    if eventos_finalizados_periodo > 0:
+        asistencia_promedio = (
+            Decimal(total_asistencias) / Decimal(eventos_finalizados_periodo)
+        ).quantize(Decimal("0.1"))
+
+    convocatorias_sin_responder = (
+        db.query(func.count())
+        .select_from(models.Convocatoria)
+        .join(models.Evento, models.Evento.id_evento == models.Convocatoria.id_evento)
+        .filter(
+            models.Convocatoria.estado == "citado",
+            models.Evento.fecha_inicio >= ahora,
+        )
+        .scalar()
+    ) or 0
+
+    return EstadisticasEventosResponse(
+        eventos_periodo=eventos_periodo,
+        eventos_por_tipo=[
+            EventoTipoConteoResponse(tipo=tipo, cantidad=cantidad) for tipo, cantidad in filas_tipo
+        ],
+        eventos_finalizados_periodo=eventos_finalizados_periodo,
+        proximos_7_dias=proximos_7_dias,
+        asistencia_promedio=asistencia_promedio,
+        convocatorias_sin_responder=convocatorias_sin_responder,
     )

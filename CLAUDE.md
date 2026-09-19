@@ -82,7 +82,8 @@ car/
 │   │   ├── admin_auditoria.py   # Historial de acciones admin
 │   │   ├── admin_comercios.py   # CRUD comercios adheridos
 │   │   ├── admin_productos.py   # CRUD catálogo de productos
-│   │   ├── socio_cuotas.py      # Estado de cuenta, historial, cobro manual admin + POST /admin/cuotas/aviso-mail-masivo
+│   │   ├── socio_cuotas.py      # Estado de cuenta, historial, cobro manual admin + POST /admin/cuotas/aviso-mail-masivo (huérfano, ver Mensajería)
+│   │   ├── admin_mensajeria.py  # Plantillas de mail transaccional (asunto/cuerpo editables)
 │   │   ├── socio_carrito.py     # Carrito, checkout, split-order
 │   │   ├── socio_reservas.py    # Pre-reserva de canchas/quincho (socio)
 │   │   ├── socio_billetera.py   # Saldo a favor del socio
@@ -97,9 +98,11 @@ car/
 │   │   ├── transmisiones.py     # Transmisiones PPV, sesiones protegidas, entradas invitados, player YouTube blindado, heartbeat
 │   │   └── chatbot.py           # Asistente virtual "Camotito" (Gemini Flash + contexto de BD en vivo + fallback)
 │   ├── mailer/
+│   │   ├── registry.py                 # Catálogo de eventos de mail editables (asunto/cuerpo)
+│   │   ├── plantillas.py               # Resuelve overrides de plantillas_mail vs. defaults
 │   │   ├── services/email_service.py   # Envío vía Resend
 │   │   ├── services/email_tasks.py     # Funciones de alto nivel por evento
-│   │   └── templates/email/            # Templates HTML con Jinja2
+│   │   └── templates/email/            # Templates HTML con Jinja2 (+ _editable.html, wrapper de overrides)
 │   └── utils/
 │       ├── s3.py        # upload_file_to_s3(), delete_file_from_s3(), presigned URLs, bucket público de sponsors
 │       ├── audit.py     # registrar_audit() — wrapper para AuditLog
@@ -259,7 +262,8 @@ staff = Depends(require_roles("admin_general", "personal_administrativo"))
 | `/admin/pagos`, `/admin/tienda`, `/admin/alquileres` | Redirects a `/admin/verificaciones?tipo=...` | `admin_general` |
 | `/admin/socios` | CRUD socios, filtros, roles, beca, saldo | `admin_general`, `personal_administrativo` |
 | `/admin/reservas` | Agenda de canchas y quincho | `admin_general`, `personal_administrativo` |
-| `/admin/productos` | CRUD catálogo (productos, comercios, sponsors, FAQ, recordatorios) | `admin_general`, `personal_administrativo` |
+| `/admin/productos` | CRUD catálogo (productos, comercios, sponsors, FAQ) | `admin_general`, `personal_administrativo` |
+| `/admin/mensajeria` | Plantillas de mail + recordatorio de cuota por WhatsApp | `admin_general` |
 | `/admin/comercios` | Redirect a `/admin/productos` | `admin_general`, `personal_administrativo` |
 | `/admin/auditoria` | Historial de acciones (audit_log) | `admin_general`, `personal_administrativo` |
 | `/admin/escaner` | Escáner QR general (portero) | `admin_general`, `personal_administrativo`, `admin_temporal` |
@@ -301,12 +305,20 @@ La puerta del club tiene mala señal, así que `/admin/escaner` funciona sin red
   mientras la pestaña siguiera abierta, y en un celular el navegador la descarta
   al bloquear la pantalla.
 
-## Recordatorio de cuota — WhatsApp y mail masivo
+## Recordatorio de cuota — WhatsApp
 
-Dos formas de avisarle a un socio moroso, **con un solo texto detrás**: la
-plantilla editable que vive en `configuracion_global`. El motor está en
+Se le avisa al socio moroso **uno por uno, por WhatsApp**, con la plantilla
+editable que vive en `configuracion_global`. El motor está en
 `backend/utils/recordatorios.py` — si alguna vez hay que cambiar cómo se arma
 el mensaje, es el único archivo que se toca.
+
+⚠️ **El aviso masivo por mail se sacó de la UI (2026-09-19).** Resend limita a
+100 mails/día en el plan gratuito y un solo disparo del broadcast lo agotó: el
+botón se quedó cargando, se canceló a mitad de camino y llegó el aviso de
+límite alcanzado. El endpoint sigue existiendo pero **ya no hay nada en el
+frontend que lo llame**. Antes de reponer cualquier envío masivo hay que
+resolver el límite de mail de fondo (plan pago o cola con throttling), porque
+el mismo techo lo va a chocar un fin de semana de partido con muchas compras.
 
 - **Plantilla:** `configuracion_global.plantilla_recordatorio` (NULL = usar
   `PLANTILLA_DEFAULT` del código, así el texto de fábrica se puede corregir en
@@ -320,8 +332,9 @@ el mensaje, es el único archivo que se toca.
   `{monto}` — ojo que `{mes}` y `{meses}` son variables distintas y la
   validación no detecta que se haya puesto una por la otra.
 - **Alias del club:** `configuracion_global.alias_transferencia`. Se edita en
-  la misma pantalla (`/admin/productos`, panel "Recordatorio de cuota") junto
-  con la plantilla y una vista previa con datos de ejemplo.
+  la misma pantalla (`/admin/mensajeria`, panel "Recordatorio de cuota") junto
+  con la plantilla y una vista previa con datos de ejemplo. El endpoint sigue
+  colgando de `/admin/productos/...` (ahí nació), pero la UI se mudó.
 - **Número de WhatsApp del club:** `configuracion_global.whatsapp_club`, en el
   mismo panel. Es **informativo y nada más**: no se interpola en la plantilla,
   no interviene en el deep link y ninguna lógica del servidor lo lee. `wa.me`
@@ -337,16 +350,12 @@ el mensaje, es el único archivo que se toca.
     haberlo usado. Va en `/admin/usuarios` porque ese es el prefijo del router;
     `/admin/socios` es la ruta del frontend.
   - `POST /admin/cuotas/aviso-mail-masivo` (router `router_admin_cuotas` en
-    `socio_cuotas.py`, registrado aparte en `main.py`). Sí escribe en
-    `audit_log` (`AVISO_MAIL_MASIVO_CUOTA`): manda mails reales a terceros.
-- **Quién recibe el mail masivo:** morosos activos sin beca vigente, con email,
-  y **sin** una orden de cuota en `pendiente_verificacion` — esos ya pagaron y
-  esperan al admin (BUG-02). Los tres filtros se informan por separado en la
-  respuesta.
-- ⚠️ **El envío es sincrónico**, no un BackgroundTask: el botón tiene que poder
-  decir "Aviso enviado a N socios". Con 80 ms entre mails, el padrón real tarda
-  cerca de un minuto. Rate limit de 3 disparos por hora y por IP (el daño de un
-  doble clic acá son 300 personas recibiendo dos mails).
+    `socio_cuotas.py`, registrado aparte en `main.py`). **Huérfano desde el
+    2026-09-19**: sigue vivo pero ningún componente del frontend lo llama (ver
+    el aviso de arriba). Escribe en `audit_log` (`AVISO_MAIL_MASIVO_CUOTA`).
+    Destinatarios: morosos activos sin beca vigente, con email, y **sin** una
+    orden de cuota en `pendiente_verificacion` — esos ya pagaron y esperan al
+    admin (BUG-02).
 - **Teléfonos:** `normalizar_telefono_ar()` convierte lo que haya cargado
   (`02355 15 123456`, `+54 9 …`, `(2355) 15-…`) al formato `549XXXXXXXXXX` que
   pide `wa.me`. Si no llega a 10 dígitos nacionales devuelve None y el endpoint
@@ -354,6 +363,48 @@ el mensaje, es el único archivo que se toca.
 - **Plantilla ≠ `str.format()`:** el texto lo escribe el admin en un textarea,
   así que se renderiza con una regex sobre `{variable}`. Con `format()`, una
   llave suelta sería un 500 y `{0.__class__}` un agujero.
+
+## Mensajería — plantillas de mail editables (`/admin/mensajeria`)
+
+El admin puede reescribir el asunto (y a veces el cuerpo) de los mails
+transaccionales sin tocar código. Pantalla: `/admin/mensajeria`, que además
+aloja el panel del recordatorio de cuota por WhatsApp.
+
+- **Catálogo:** `backend/mailer/registry.py`. Una entrada por **evento**, no
+  por archivo `.html`: `aviso_club_pago_recibido` y `aviso_club_efectivo`
+  comparten `aviso_club_pago.html` con asuntos distintos. Son 24 eventos.
+  Quedan afuera a propósito `recordatorio_cuota` (ya tiene su propio editor en
+  `configuracion_global`) y `orden_generada` (función sin uso, BUG D5).
+- **Overrides:** tabla `plantillas_mail` (`models.PlantillaMail`), una fila por
+  clave con `asunto` y `cuerpo` nullables. **Sin fila, o con el campo en NULL,
+  el mail usa el texto de fábrica del código** — el comportamiento por defecto
+  es idéntico al de antes de esta función. Guardar cadena vacía borra el
+  override (vuelve al default); no hay DELETE.
+- **`editable_cuerpo`:** solo los templates que son **pura interpolación
+  `{{ variable }}`**, sin `{% if %}` ni `{% for %}`. Los 5 con lógica real
+  (`compra_confirmada` con su lista de ítems, `aviso_admin_jugador_categoria`
+  con colores calculados en Python, `reserva_suspendida`,
+  `bienvenida_alta_manual`, `solicitud_rechazada`) son **solo asunto**: un
+  admin editando Jinja2 a mano puede romper la sintaxis sin darse cuenta y ese
+  mail deja de mandarse **en silencio** (`email_tasks.py` loguea y sigue, no
+  revienta el request que lo disparó).
+- **Cómo se renderiza un override:** con la misma regex sobre `{variable}` de
+  `utils/recordatorios.renderizar_plantilla` — **nunca con Jinja2**. El HTML
+  resultante se inserta en `_editable.html`, que extiende `base.html`, así el
+  encabezado y el pie siguen siendo los de siempre. Por eso un placeholder mal
+  escrito se ve tal cual en el mail en vez de tirar un error.
+- **El cuerpo de fábrica que ve el editor** no está guardado en ningún lado: se
+  deriva al vuelo del `.html` real (`mailer/plantillas.cuerpo_default`), que
+  saca el `{% block content %}` y convierte `{{ var }}` → `{var}`. Así no hay
+  una copia del texto que se desincronice del template.
+- **Los asuntos ya no son f-strings** en `email_service.py`: viven en el
+  registro como plantillas con `{variable}`. Cada `enviar_*` llama a
+  `_enviar_evento(clave, destinatarios, contexto)`, que abre una sesión corta
+  de DB para leer el override. Se hizo así para no cambiar la firma de ninguna
+  función de envío ni de sus decenas de llamadores.
+- **Permisos:** lectura `admin_general` + `personal_administrativo`, escritura
+  solo `admin_general` (mismo criterio que el resto de la config del club).
+  El PATCH escribe en `audit_log` (`EDITAR_PLANTILLA_MAIL`).
 
 ## Transmisiones en vivo (Streaming Pay-Per-View)
 
@@ -471,6 +522,16 @@ Cinco jobs en `backend/scheduler.py`. Todos usan `BackgroundScheduler` (no async
 ## Mails transaccionales
 
 Servicio: Resend. Templates en `mailer/templates/email/` (Jinja2 + HTML).
+
+⚠️ **El asunto y (en la mayoría) el cuerpo se pueden editar desde
+`/admin/mensajeria`** — ver esa sección. Los textos de acá son los de fábrica:
+si en producción un mail dice otra cosa, buscar primero un override en
+`plantillas_mail`.
+
+⚠️ **Límite de Resend: 100 mails/día en el plan gratuito** (3000/mes). Es el
+techo real del sistema, no una estimación: ya se alcanzó una vez y por eso se
+sacó el aviso masivo de cuota. Cualquier función nueva que mande mails en
+lote tiene que contar contra ese límite.
 
 Los templates usan `FRONTEND_URL` del backend para armar links (lo lee `mailer/services/email_service.py` con `os.getenv`, default `http://localhost:5173`). Si `FRONTEND_URL` está mal en Render, todos los links del mail van al lugar equivocado.
 

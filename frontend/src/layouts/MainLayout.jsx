@@ -24,7 +24,6 @@ import {
   UserCheck,
   LayoutDashboard,
   Wallet,
-  Trophy,
   CalendarClock,
   ChevronDown,
   TrendingUp,
@@ -50,22 +49,20 @@ import { resolverUrlArchivo } from '../utils/archivos';
 
 const NAV_SOCIO = [
   { name: 'Inicio', path: '/socio', icon: Home },
-  { name: 'Transmisión en Vivo', path: '/en-vivo', icon: Tv },
-  { name: 'Gestión de Cuotas', path: '/socio/cuotas', icon: CreditCard },
-  { name: 'Reserva Salón', path: '/socio/reservas', icon: Calendar },
-  { name: 'Reserva Canchas', path: '/socio/cancha', icon: Trophy }, 
+  { name: 'Cuotas', path: '/socio/cuotas', icon: CreditCard },
   { name: 'Tienda', path: '/shopping', icon: ShoppingBag },
+  { name: 'Reservas', path: '/socio/reservas', icon: Calendar },
+  { name: 'Partidos', path: '/socio/partidos', icon: Tv },
   { name: 'Mis Compras', path: '/mis-compras', icon: Package },
   { name: 'Configuración', path: '/perfil', icon: Settings },
 ];
 
 const ID_TOUR_NAV = {
   '/socio': 'tour-item-inicio',
-  '/en-vivo': 'tour-item-stream',
   '/socio/cuotas': 'tour-item-cuotas',
-  '/socio/reservas': 'tour-item-salon',
-  '/socio/cancha': 'tour-item-canchas',
   '/shopping': 'tour-item-tienda',
+  '/socio/reservas': 'tour-item-reservas',
+  '/socio/partidos': 'tour-item-partidos',
   '/mis-compras': 'tour-item-compras',
   '/perfil': 'tour-item-perfil',
 };

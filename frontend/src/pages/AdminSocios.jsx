@@ -13,6 +13,7 @@
 
 import { textoError } from '../utils/errores';
 import ComprobantePago from '../components/admin/ComprobantePago'
+import AvisoCuotaMasivo from '../components/admin/AvisoCuotaMasivo'
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useAuth } from '../context/useAuth'
 import ConfirmDialog from '../components/ConfirmDialog'
@@ -2257,6 +2258,9 @@ export default function AdminSocios() {
           diaVencimiento={diaVencimiento}
         />
       )}
+
+      {/* ── Aviso de cuota por mail ─────────────────────────────────────── */}
+      <AvisoCuotaMasivo />
 
       {/* Header */}
       <div className="space-y-4">

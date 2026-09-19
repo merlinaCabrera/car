@@ -1781,6 +1781,7 @@ class EventoBase(BaseModel):
     transmision_estado: str = "programada"
     transmision_plataforma: str = "youtube"
     transmision_precio: Decimal = Decimal("0.00")
+    transmision_precio_moroso: Optional[Decimal] = None
     transmision_socio_gratis: bool = True
     transmision_es_publica: bool = False
 
@@ -1839,6 +1840,7 @@ class EventoUpdate(BaseModel):
     transmision_plataforma: Optional[str] = None
     transmision_video_id: Optional[str] = None
     transmision_precio: Optional[Decimal] = None
+    transmision_precio_moroso: Optional[Decimal] = None
     transmision_socio_gratis: Optional[bool] = None
     transmision_es_publica: Optional[bool] = None
 
@@ -2187,8 +2189,10 @@ class TransmisionAccesoResponse(BaseModel):
     tiene_acceso: bool
     motivo: str  # 'admin' | 'socio_al_dia' | 'entrada_comprada' | 'transmision_publica' | 'sin_acceso' | 'no_autenticado' | 'pago_pendiente'
     precio: Decimal
+    precio_aplicable: Decimal  # precio real a cobrar: transmision_precio_moroso si es socio moroso y está seteado, si no `precio`
     socio_al_dia: bool
     es_socio: bool
+    es_moroso: bool
     estado_transmision: str
     transmision_socio_gratis: bool
     transmision_es_publica: bool

@@ -36,6 +36,7 @@ import schemas
 from config import settings
 from database import get_db
 from dependencies import get_current_user, get_current_user_optional, require_roles
+from utils.cuotas_periodos import calcular_estado_financiero
 
 logger = logging.getLogger("car.transmisiones")
 
@@ -62,22 +63,57 @@ def _obtener_evento_transmision_o_404(db: Session, id_evento: int) -> models.Eve
     return evento
 
 
+def _estado_socio(usuario: models.Usuario, db: Session) -> tuple[bool, bool, bool]:
+    """
+    Retorna (es_socio, socio_al_dia, es_moroso) para un usuario autenticado,
+    usando el motor oficial de morosidad (igual que /socio/cuotas).
+    """
+    roles_usuario = {ur.rol.nombre for ur in usuario.roles_asignados}
+    es_socio = "socio" in roles_usuario or usuario.tipo_socio is not None
+
+    config = db.query(models.ConfiguracionGlobal).first()
+    dia_vencimiento = config.dia_vencimiento_cuota if config else 10
+    estado_financiero = calcular_estado_financiero(
+        usuario.mes_cubierto_hasta, usuario.fecha_ingreso, dia_vencimiento, date.today()
+    )
+    es_moroso = estado_financiero.moroso and not usuario.es_becado
+    socio_al_dia = bool(usuario.es_becado or not estado_financiero.moroso)
+    return es_socio, socio_al_dia, es_moroso
+
+
+def _precio_aplicable(evento: models.Evento, es_socio: bool, es_moroso: bool) -> Decimal:
+    """
+    Precio real a cobrar por la entrada virtual: los socios morosos pagan
+    `transmision_precio_moroso` si el club lo configuró (si no, el mismo
+    precio que un no-socio). Existe para sugerirle al moroso que le conviene
+    ponerse al día en vez de pagar entrada por entrada.
+    """
+    if es_socio and es_moroso and evento.transmision_precio_moroso is not None:
+        return evento.transmision_precio_moroso
+    return evento.transmision_precio or Decimal("0.00")
+
+
 def _verificar_acceso_usuario(
     evento: models.Evento,
     usuario: Optional[models.Usuario],
     db: Session,
     ticket: Optional[str] = None,
-) -> tuple[bool, str, bool, bool, Optional[str], Optional[str]]:
+) -> tuple[bool, str, bool, bool, bool, Optional[str], Optional[str]]:
     """
     Evalúa si un usuario o poseedor de ticket tiene autorización para ver la transmisión.
-    Retorna: (tiene_acceso, motivo, es_socio, socio_al_dia, ticket_token, email_invitado)
+    Retorna: (tiene_acceso, motivo, es_socio, socio_al_dia, es_moroso, ticket_token, email_invitado)
+
+    `socio_al_dia`/`es_moroso` se calculan con el motor oficial de morosidad
+    (utils/cuotas_periodos.calcular_estado_financiero), el mismo que usa
+    /socio/cuotas — antes esta función tenía su propia heurística simplificada
+    que podía divergir de "moroso" en el resto del sistema.
     """
     if not evento.tiene_transmision:
-        return False, "sin_transmision", False, False, None, None
+        return False, "sin_transmision", False, False, False, None, None
 
     # 1. Si la transmisión es pública y abierta
     if evento.transmision_es_publica:
-        return True, "transmision_publica", False, False, ticket, None
+        return True, "transmision_publica", False, False, False, ticket, None
 
     # 2. Si se proporciona un ticket de invitado
     if ticket:
@@ -92,32 +128,26 @@ def _verificar_acceso_usuario(
         )
         if entrada_ticket:
             if entrada_ticket.id_pago is None:
-                return True, "entrada_comprada", False, False, entrada_ticket.ticket_token, entrada_ticket.email_invitado
+                return True, "entrada_comprada", False, False, False, entrada_ticket.ticket_token, entrada_ticket.email_invitado
             if entrada_ticket.pago and entrada_ticket.pago.estado == "verificado":
-                return True, "entrada_comprada", False, False, entrada_ticket.ticket_token, entrada_ticket.email_invitado
+                return True, "entrada_comprada", False, False, False, entrada_ticket.ticket_token, entrada_ticket.email_invitado
             if entrada_ticket.pago and entrada_ticket.pago.estado == "pendiente":
-                return False, "pago_pendiente", False, False, entrada_ticket.ticket_token, entrada_ticket.email_invitado
+                return False, "pago_pendiente", False, False, False, entrada_ticket.ticket_token, entrada_ticket.email_invitado
 
     if usuario is None:
-        return False, "no_autenticado", False, False, None, None
+        return False, "no_autenticado", False, False, False, None, None
 
     roles_usuario = {ur.rol.nombre for ur in usuario.roles_asignados}
     es_staff = bool(roles_usuario & set(_ROLES_STAFF))
-    es_socio = "socio" in roles_usuario or usuario.tipo_socio is not None
-
-    hoy = date.today()
-    socio_al_dia = bool(
-        usuario.es_becado
-        or (usuario.mes_cubierto_hasta is not None and hoy <= usuario.mes_cubierto_hasta)
-    )
+    es_socio, socio_al_dia, es_moroso = _estado_socio(usuario, db)
 
     # 3. Staff / Admin / Técnico siempre tiene acceso
     if es_staff:
-        return True, "admin", es_socio, socio_al_dia, None, None
+        return True, "admin", es_socio, socio_al_dia, es_moroso, None, None
 
     # 4. Socios al día si la transmisión es gratis para socios
     if evento.transmision_socio_gratis and es_socio and socio_al_dia:
-        return True, "socio_al_dia", es_socio, socio_al_dia, None, None
+        return True, "socio_al_dia", es_socio, socio_al_dia, es_moroso, None, None
 
     # 5. Verificar si compró entrada virtual por cuenta de usuario
     entrada = (
@@ -133,14 +163,14 @@ def _verificar_acceso_usuario(
     if entrada:
         # Entrada de cortesía / manual
         if entrada.id_pago is None:
-            return True, "entrada_comprada", es_socio, socio_al_dia, entrada.ticket_token, None
+            return True, "entrada_comprada", es_socio, socio_al_dia, es_moroso, entrada.ticket_token, None
         # Entrada asociada a un pago
         if entrada.pago and entrada.pago.estado == "verificado":
-            return True, "entrada_comprada", es_socio, socio_al_dia, entrada.ticket_token, None
+            return True, "entrada_comprada", es_socio, socio_al_dia, es_moroso, entrada.ticket_token, None
         if entrada.pago and entrada.pago.estado == "pendiente":
-            return False, "pago_pendiente", es_socio, socio_al_dia, entrada.ticket_token, None
+            return False, "pago_pendiente", es_socio, socio_al_dia, es_moroso, entrada.ticket_token, None
 
-    return False, "sin_acceso", es_socio, socio_al_dia, None, None
+    return False, "sin_acceso", es_socio, socio_al_dia, es_moroso, None, None
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -203,6 +233,36 @@ def obtener_info_transmision(
 
 
 @router.get(
+    "/proximos-partidos",
+    response_model=List[schemas.EventoResponse],
+    summary="Próximos partidos del mes en curso (para la sección Partidos del socio)",
+)
+def listar_proximos_partidos(
+    db: Session = Depends(get_db),
+) -> List[models.Evento]:
+    """
+    Partidos (`tipo == 'partido'`) con `fecha_inicio` entre ahora y el fin del
+    mes en curso, ordenados cronológicamente. Sin auth: alimenta tanto la
+    página /socio/partidos como, a futuro, un bloque equivalente en la
+    landing pública.
+    """
+    ahora = datetime.now(timezone.utc)
+    primer_dia_prox_mes = (ahora.replace(day=1) + timedelta(days=32)).replace(day=1)
+
+    return (
+        db.query(models.Evento)
+        .options(joinedload(models.Evento.categoria))
+        .filter(
+            models.Evento.tipo == "partido",
+            models.Evento.fecha_inicio >= ahora - timedelta(hours=4),
+            models.Evento.fecha_inicio < primer_dia_prox_mes,
+        )
+        .order_by(models.Evento.fecha_inicio.asc())
+        .all()
+    )
+
+
+@router.get(
     "/{id_evento}/acceso",
     response_model=schemas.TransmisionAccesoResponse,
     summary="Verificar derecho de acceso del usuario o invitado al stream",
@@ -214,7 +274,7 @@ def verificar_acceso_stream(
     usuario: Optional[models.Usuario] = Depends(get_current_user_optional),
 ) -> schemas.TransmisionAccesoResponse:
     evento = _obtener_evento_transmision_o_404(db, id_evento)
-    tiene_acceso, motivo, es_socio, socio_al_dia, ticket_token, email_invitado = _verificar_acceso_usuario(
+    tiene_acceso, motivo, es_socio, socio_al_dia, es_moroso, ticket_token, email_invitado = _verificar_acceso_usuario(
         evento, usuario, db, ticket=ticket
     )
 
@@ -223,8 +283,10 @@ def verificar_acceso_stream(
         tiene_acceso=tiene_acceso,
         motivo=motivo,
         precio=evento.transmision_precio or Decimal("0.00"),
+        precio_aplicable=_precio_aplicable(evento, es_socio, es_moroso),
         socio_al_dia=socio_al_dia,
         es_socio=es_socio,
+        es_moroso=es_moroso,
         estado_transmision=evento.transmision_estado,
         transmision_socio_gratis=evento.transmision_socio_gratis,
         transmision_es_publica=evento.transmision_es_publica,
@@ -251,7 +313,7 @@ def obtener_stream(
     3. Retorna la plataforma y el `video_id` / embed junto al token de sesión.
     """
     evento = _obtener_evento_transmision_o_404(db, id_evento)
-    tiene_acceso, motivo, _, _, ticket_token, _ = _verificar_acceso_usuario(
+    tiene_acceso, motivo, _, _, _, ticket_token, _ = _verificar_acceso_usuario(
         evento, usuario, db, ticket=ticket
     )
 
@@ -430,7 +492,11 @@ def comprar_entrada_mp(
             detail="Ya contás con una entrada activa para esta transmisión.",
         )
 
-    precio = evento.transmision_precio or Decimal("0.00")
+    if usuario:
+        es_socio, _, es_moroso = _estado_socio(usuario, db)
+        precio = _precio_aplicable(evento, es_socio, es_moroso)
+    else:
+        precio = evento.transmision_precio or Decimal("0.00")
     ticket_token = (
         entrada_existente.ticket_token
         if (entrada_existente and entrada_existente.ticket_token)
@@ -563,7 +629,6 @@ def comprar_entrada_transferencia(
             detail="Este evento no tiene transmisión en vivo habilitada.",
         )
 
-    precio = evento.transmision_precio or Decimal("0.00")
     email_comprador: Optional[str] = None
     entrada_existente: Optional[models.EntradaVirtual] = None
 
@@ -577,7 +642,10 @@ def comprar_entrada_transferencia(
             )
             .first()
         )
+        es_socio, _, es_moroso = _estado_socio(usuario, db)
+        precio = _precio_aplicable(evento, es_socio, es_moroso)
     else:
+        precio = evento.transmision_precio or Decimal("0.00")
         if not payload or not payload.email or not str(payload.email).strip():
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,

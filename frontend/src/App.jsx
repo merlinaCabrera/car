@@ -35,8 +35,8 @@ import TecnicoAsistencias from './pages/TecnicoAsistencias';
 import AdminScannerEvento from './pages/AdminScannerEvento';
 import AdminScannerCancha from './pages/AdminScannerCancha';
 import TecnicoEventos from './pages/TecnicoEventos';
-import SocioCancha from './pages/SocioCancha';
 import TransmisionEnVivo from './pages/TransmisionEnVivo';
+import SocioPartidos from './pages/SocioPartidos';
 import ChatbotFlotante from './components/ChatbotFlotante';
 
 function App() {
@@ -73,7 +73,8 @@ function App() {
                 <Route path="/perfil" element={<SocioPerfil />} />
                 <Route path="/mis-compras" element={<SocioCompras />} />
                 <Route path="/socio/reservas" element={<Reservas />} />
-                <Route path="/socio/cancha" element={<SocioCancha />} />
+                <Route path="/socio/cancha" element={<Navigate to="/socio/reservas" replace />} />
+                <Route path="/socio/partidos" element={<SocioPartidos />} />
                 <Route path="/notificaciones" element={<SocioNotificaciones />} />
                 <Route path="/mi-equipo" element={<JugadorEquipo />} />
                 <Route path="/calendario-deportivo" element={<JugadorCalendario />} />

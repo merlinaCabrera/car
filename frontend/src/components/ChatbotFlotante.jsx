@@ -286,9 +286,9 @@ export default function ChatbotFlotante() {
   // Mapa de nombres amigables para rutas del sistema (para nunca mostrar rutas técnicas)
   const NOMBRES_RUTAS = {
     '/en-vivo': 'Ver transmisión en vivo',
+    '/socio/partidos': 'Ver próximos partidos',
     '/socio/cuotas': 'Consultar cuotas y pagos',
-    '/socio/reservas': 'Reservar instalaciones',
-    '/socio/cancha': 'Reservar cancha',
+    '/socio/reservas': 'Reservar cancha o salón',
     '/socio/perfil': 'Mi perfil de socio',
     '/socio?tour=1': 'Iniciar Tour Guiado',
     '/registro': 'Completar solicitud de socio',

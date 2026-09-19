@@ -1319,6 +1319,10 @@ class Evento(Base):
         Numeric(10, 2), nullable=False, server_default=text("0.00"),
         comment="Precio de la entrada virtual para no-socios.",
     )
+    transmision_precio_moroso: Mapped[Optional[Decimal]] = mapped_column(
+        Numeric(10, 2), nullable=True,
+        comment="Precio de la entrada virtual para socios morosos. NULL = usar transmision_precio.",
+    )
     transmision_socio_gratis: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default=text("true"),
         comment="Si es true, los socios con cuota al día miran gratis.",

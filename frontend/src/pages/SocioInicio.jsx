@@ -130,18 +130,8 @@ const PASOS_TOUR_SOCIO = [
     tip: 'También podés tocar el escudo del CAR en la barra superior para volver al inicio.',
   },
   {
-    targetId: 'tour-item-stream',
-    titulo: '2. Transmisión en Vivo',
-    descripcion:
-      'Mirá los partidos del Club Atlético Roberts en vivo con transmisión oficial desde cualquier dispositivo, estés donde estés.',
-    badge: 'Menú · Streaming',
-    icono: 'stream',
-    abrirMenu: true,
-    tip: 'Los días de partido vas a ver un botón rojo titilando con la leyenda "VIVO" en el encabezado.',
-  },
-  {
     targetId: 'tour-item-cuotas',
-    titulo: '3. Gestión de Cuotas',
+    titulo: '2. Cuotas',
     descripcion:
       'Revisá tu historial de pagos, descargá tus comprobantes oficiales, pagá cuotas pendientes o adelantá meses futuros en segundos.',
     badge: 'Menú · Tesorería',
@@ -150,28 +140,8 @@ const PASOS_TOUR_SOCIO = [
     tip: 'Podés pagar con tarjeta, débito o dinero en cuenta mediante Mercado Pago, o adjuntando transferencia.',
   },
   {
-    targetId: 'tour-item-salon',
-    titulo: '4. Reserva de Salón / Quincho',
-    descripcion:
-      'Alquilá las instalaciones y el quincho del club para cumpleaños, asados o reuniones familiares, consultando fechas y horarios disponibles.',
-    badge: 'Menú · Salón',
-    icono: 'salon',
-    abrirMenu: true,
-    tip: 'Como socio al día accedés a aranceles preferenciales para el uso del quincho.',
-  },
-  {
-    targetId: 'tour-item-canchas',
-    titulo: '5. Reserva de Canchas',
-    descripcion:
-      'Asegurá tu turno de fútbol con amigos en las canchas de sintético del club con disponibilidad en tiempo real.',
-    badge: 'Menú · Deportes',
-    icono: 'canchas',
-    abrirMenu: true,
-    tip: 'Elegí el día, horario libre y señá tu cancha online al instante.',
-  },
-  {
     targetId: 'tour-item-tienda',
-    titulo: '6. Tienda Oficial',
+    titulo: '3. Tienda Oficial',
     descripcion:
       'Indumentaria deportiva, camisetas oficiales del CAR, shorts, buzos, gorras y merchandising para llevar los colores del club a todos lados.',
     badge: 'Menú · Tienda',
@@ -180,8 +150,28 @@ const PASOS_TOUR_SOCIO = [
     tip: 'Comprás online y retirás directamente por la secretaría del club.',
   },
   {
+    targetId: 'tour-item-reservas',
+    titulo: '4. Reservas',
+    descripcion:
+      'Reservá cancha para jugar con amigos o el salón/quincho para cumpleaños y reuniones, con disponibilidad en tiempo real. Las dos opciones están juntas, en dos desplegables.',
+    badge: 'Menú · Reservas',
+    icono: 'reservas',
+    abrirMenu: true,
+    tip: 'Elegí el día y horario libre, y señá al instante desde tu carrito.',
+  },
+  {
+    targetId: 'tour-item-partidos',
+    titulo: '5. Partidos',
+    descripcion:
+      'Mirá los próximos partidos del mes y accedé a la transmisión en vivo del Club Atlético Roberts desde cualquier dispositivo, estés donde estés.',
+    badge: 'Menú · Streaming',
+    icono: 'partidos',
+    abrirMenu: true,
+    tip: 'Los días de partido vas a ver un botón rojo titilando con la leyenda "VIVO" en el encabezado.',
+  },
+  {
     targetId: 'tour-item-compras',
-    titulo: '7. Mis Compras',
+    titulo: '6. Mis Compras',
     descripcion:
       'Seguimiento en vivo de tus pedidos de la tienda, códigos de retiro en sede y comprobantes de compras realizadas.',
     badge: 'Menú · Historial',
@@ -191,7 +181,7 @@ const PASOS_TOUR_SOCIO = [
   },
   {
     targetId: 'tour-item-perfil',
-    titulo: '8. Configuración / Mi Perfil',
+    titulo: '7. Configuración / Mi Perfil',
     descripcion:
       'Modificá tus datos personales, actualizá tu foto de perfil, cambiá tu contraseña y, si querés, podés volver a iniciar este tour cuando gustes.',
     badge: 'Menú · Mi Perfil',

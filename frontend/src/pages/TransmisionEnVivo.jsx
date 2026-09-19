@@ -675,7 +675,8 @@ export default function TransmisionEnVivo() {
                           <AlertCircle size={14} /> Cuota Social Pendiente
                         </h4>
                         <p className="text-xs text-amber-200/90">
-                          Los socios con cuota al día acceden sin cargo a la transmisión. Regularizá tu cuota para habilitar el reproductor inmediatamente.
+                          Los socios con cuota al día acceden sin cargo a la transmisión. Regularizá tu cuota para habilitar el reproductor inmediatamente
+                          {' '}— o comprá la entrada individual a precio de socio moroso.
                         </p>
                       </div>
 
@@ -699,7 +700,7 @@ export default function TransmisionEnVivo() {
                         className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm transition-colors disabled:opacity-50 shadow-lg shadow-blue-600/20"
                       >
                         {comprandoMP ? <RefreshCw size={16} className="animate-spin" /> : <Play size={16} />}
-                        Comprar Entrada Virtual (${evento.transmision_precio || '0'})
+                        Comprar Entrada Virtual (${Number(accesoInfo?.precio_aplicable ?? evento.transmision_precio ?? 0).toLocaleString('es-AR')})
                       </button>
                     </div>
                   ) : (
@@ -751,7 +752,7 @@ export default function TransmisionEnVivo() {
                         <div>
                           <span className="text-xs text-gray-400 block">Precio Entrada</span>
                           <span className="text-2xl font-black text-white">
-                            ${Number(evento.transmision_precio || 0).toLocaleString('es-AR')}{' '}
+                            ${Number(accesoInfo?.precio_aplicable ?? evento.transmision_precio ?? 0).toLocaleString('es-AR')}{' '}
                             <span className="text-xs font-medium text-gray-400">ARS</span>
                           </span>
                         </div>

@@ -114,8 +114,8 @@ try:
     head_rev = script_dir.get_current_head()
 
     reporter.check(
-        "Alembic Head sincronizada con Neon (bc78e9102a34)",
-        current_rev == head_rev and head_rev == "bc78e9102a34",
+        f"Alembic Head sincronizada con Neon ({head_rev})",
+        current_rev == head_rev,
         f"Actual: {current_rev} | Repo: {head_rev}"
     )
 
@@ -372,7 +372,7 @@ sugs_anon = [s.get("prompt", "") for s in data_info_anon.get("sugerencias", [])]
 reporter.check("Visitante anónimo NO recibe opción de cuotas privadas", not any("/socio/cuotas" in s for s in sugs_anon))
 
 # 7.2 Info inicial Socio
-r_info_socio = client.get("/chatbot/info-inicial?rol=socio&autenticado=true&nombre=Mauro")
+r_info_socio = client.get("/chatbot/info-inicial?rol=socio&autenticado=true&nombre=Mauro", headers=h_socio)
 data_info_socio = r_info_socio.json() if r_info_socio.status_code == 200 else {}
 sugs_socio_ids = [s.get("id", "") for s in data_info_socio.get("sugerencias", [])]
 reporter.check("Socio recibe sugerencia de 'Tour guiado por la app'", "tour" in sugs_socio_ids)
@@ -385,7 +385,8 @@ r_msg_tour = client.post(
         "rol": "socio",
         "autenticado": True,
         "nombre_usuario": "Mauro"
-    }
+    },
+    headers=h_socio
 )
 data_msg_tour = r_msg_tour.json() if r_msg_tour.status_code == 200 else {}
 reporter.check("Mensaje pidiendo tour entrega link a /socio?tour=1", "/socio?tour=1" in data_msg_tour.get("respuesta", ""))
@@ -399,7 +400,8 @@ r_saludo = client.post(
         "rol": "socio",
         "autenticado": True,
         "nombre_usuario": "Carlos"
-    }
+    },
+    headers=h_socio
 )
 data_saludo = r_saludo.json() if r_saludo.status_code == 200 else {}
 resp_saludo = data_saludo.get("respuesta", "")

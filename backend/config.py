@@ -35,7 +35,7 @@ class Settings(BaseSettings):
 
     # ── Google Gemini AI Chatbot ─────────────────────────────────────────────
     gemini_api_key: str = ""
-    gemini_model: str = "gemini-3.5-flash-lite"
+    gemini_model: str = "gemini-flash-lite-latest"
 
 
 settings = Settings()

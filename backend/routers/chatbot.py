@@ -13,13 +13,15 @@ from __future__ import annotations
 import logging
 import os
 import re
-from datetime import datetime, timedelta, timezone
+import uuid
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Any, Dict, List, Optional, Tuple
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 import models
@@ -279,9 +281,8 @@ Ejemplos obligatorios:
 def _construir_contexto_admin(db: Session) -> Dict[str, Any]:
     """
     Métricas agregadas de SOLO LECTURA para el modo "superusuario" del admin.
-    Nunca se usa para ejecutar acciones — únicamente consultas de conteo/suma
-    sobre la base, calcadas de la misma lógica que ya usan los paneles admin
-    (socios_morosos, beca_activa) para no reimplementar la regla de morosidad.
+    Calcula totales en tiempo real directamente sobre Neon para respuestas inmediatas
+    y provee el esquema de tablas para consultas dinámicas con el LLM.
     """
     hoy = hoy_club()
     config = db.query(models.ConfiguracionGlobal).first()
@@ -295,6 +296,19 @@ def _construir_contexto_admin(db: Session) -> Dict[str, Any]:
     )
     morosos = socios_morosos(db, dia_venc, hoy)
     cantidad_morosos = len(morosos)
+    socios_al_dia = max(0, total_activos - cantidad_morosos)
+
+    hace_18 = hoy.replace(year=hoy.year - 18)
+    socios_menores = (
+        db.query(models.Usuario)
+        .filter(
+            models.Usuario.fecha_baja.is_(None),
+            models.Usuario.fecha_nacimiento.isnot(None),
+            models.Usuario.fecha_nacimiento > hace_18,
+        )
+        .count()
+    )
+    socios_mayores = max(0, total_activos - socios_menores)
 
     activos_todos = (
         db.query(models.Usuario).filter(models.Usuario.fecha_baja.is_(None)).all()
@@ -326,20 +340,37 @@ def _construir_contexto_admin(db: Session) -> Dict[str, Any]:
 
     contexto_prompt_admin = f"""
 DATOS INTERNOS EN TIEMPO REAL (SOLO LECTURA — exclusivos de administración, hoy {hoy.isoformat()}):
-- Socios activos: {total_activos}
+- Socios activos: {total_activos} (Al día: {socios_al_dia} | Morosos: {cantidad_morosos} | Menores de 18: {socios_menores} | Mayores: {socios_mayores})
 - Socios dados de baja (histórico): {total_bajas}
+- Socios al día actualmente: {socios_al_dia}
 - Socios morosos actualmente: {cantidad_morosos}
+- Socios menores de edad: {socios_menores}
+- Socios mayores de edad: {socios_mayores}
 - Socios con beca activa: {cantidad_becados}
 - Órdenes/pagos pendientes de verificación: {ordenes_pendientes}
 - Órdenes aprobadas este mes: {cantidad_ordenes_mes}
 - Recaudación aprobada este mes: ${recaudacion_mes:,.0f}
 - Reservas de instalaciones bloqueadas (turno tomado, pago aún no confirmado): {reservas_pendientes}
+
+TABLAS POSTGRESQL PRINCIPALES (ACCESO SOLO LECTURA MEDIANTE ejecutar_consulta_sql_lectura):
+- usuarios: id_usuario, dni, nombre, apellido, email, telefono, direccion, fecha_nacimiento, fecha_ingreso, fecha_baja, motivo_baja, saldo_a_favor, mes_cubierto_hasta, es_becado, beca_motivo
+  * Activo: fecha_baja IS NULL | Al día: CURRENT_DATE <= mes_cubierto_hasta | Moroso: CURRENT_DATE > mes_cubierto_hasta
+- ordenes: id_orden, id_usuario, estado ('pendiente_pago', 'pendiente_verificacion', 'aprobada', 'rechazada', 'cancelada'), monto_total, metodo_pago, created_at, aprobada_at
+- items_orden: id_item, id_orden, tipo_item ('cuota', 'alquiler', 'producto'), id_producto, cantidad, precio_unitario, subtotal
+- productos_servicios: id_producto, nombre, categoria ('cuota_social', 'alquiler', 'tienda'), precio_actual, es_activo
+- reservas_instalaciones: id_reserva, id_usuario, id_producto, fecha_reserva, hora_inicio, hora_fin, estado ('bloqueada', 'confirmada', 'cancelada'), precio_reserva
+- eventos: id_evento, titulo, tipo ('partido', 'torneo', 'social'), fecha_inicio, rival, tiene_transmision, transmision_precio, transmision_estado
+- transmisiones_entradas: id_entrada, id_evento, id_usuario, email_invitado, nombre_invitado, estado_pago ('pendiente', 'verificado', 'cortesia'), precio_pagado
+- configuracion_global: valor_cuota_base, descuento_menor_pct, dia_vencimiento_cuota, alias_transferencia, whatsapp_club
 """
 
     return {
         "total_activos": total_activos,
         "total_bajas": total_bajas,
         "cantidad_morosos": cantidad_morosos,
+        "socios_al_dia": socios_al_dia,
+        "socios_menores": socios_menores,
+        "socios_mayores": socios_mayores,
         "cantidad_becados": cantidad_becados,
         "ordenes_pendientes": ordenes_pendientes,
         "cantidad_ordenes_mes": cantidad_ordenes_mes,
@@ -349,35 +380,144 @@ DATOS INTERNOS EN TIEMPO REAL (SOLO LECTURA — exclusivos de administración, h
     }
 
 
-def _responder_consulta_admin_por_reglas(mensaje: str, admin_datos: Dict[str, Any]) -> Optional[str]:
-    """
-    Intercepta preguntas frecuentes de admin ("¿cuántos socios morosos hay?")
-    y responde directo con el número real de la base, sin pasar por el LLM.
-    Evita cualquier riesgo de que el modelo invente una cifra.
-    """
-    msg = re.sub(r"[^\w\s]", "", mensaje.lower()).strip()
+_FORBIDDEN_SQL_WORDS = re.compile(
+    r"\b(INSERT|UPDATE|DELETE|DROP|ALTER|TRUNCATE|GRANT|REVOKE|CREATE|REPLACE|EXECUTE|SET|VACUUM|ANALYZE|COPY|LOCK|INTO)\b",
+    re.IGNORECASE,
+)
 
+
+def _ejecutar_consulta_sql_lectura(db: Session, sql_query: str) -> Dict[str, Any]:
+    """
+    Ejecuta de forma ultra segura una consulta SQL de SOLO LECTURA sobre PostgreSQL (Neon).
+    Valida que sea estrictamente SELECT o WITH ... SELECT, sin escrituras ni sentencias múltiples.
+    """
+    cleaned_sql = sql_query.strip().rstrip(";").strip()
+
+    if ";" in cleaned_sql:
+        return {"error": "Solo se permite una única sentencia SQL por consulta."}
+
+    if not re.match(r"^\s*(SELECT|WITH)\b", cleaned_sql, re.IGNORECASE):
+        return {"error": "La consulta debe comenzar con SELECT o WITH (solo lectura)."}
+
+    match_prohibido = _FORBIDDEN_SQL_WORDS.search(cleaned_sql)
+    if match_prohibido:
+        return {"error": f"Acción denegada: comando no permitido '{match_prohibido.group(1)}'. Modo estrictamente de solo lectura."}
+
+    # Asegurar un LIMIT razonable para no saturar memoria ni tokens
+    if not re.search(r"\bLIMIT\s+\d+\b", cleaned_sql, re.IGNORECASE):
+        cleaned_sql += " LIMIT 50"
+
+    try:
+        result = db.execute(text(cleaned_sql))
+        if not result.returns_rows:
+            return {"total_filas": 0, "filas": []}
+
+        columns = list(result.keys())
+        raw_rows = result.fetchall()
+
+        filas = []
+        for row in raw_rows:
+            fila_dict = {}
+            for col, val in zip(columns, row):
+                if isinstance(val, (datetime, date)):
+                    fila_dict[col] = val.isoformat()
+                elif isinstance(val, Decimal):
+                    fila_dict[col] = float(val)
+                elif isinstance(val, uuid.UUID):
+                    fila_dict[col] = str(val)
+                else:
+                    fila_dict[col] = val
+            filas.append(fila_dict)
+
+        return {
+            "total_filas": len(filas),
+            "columnas": columns,
+            "filas": filas,
+        }
+    except Exception as e:
+        logger.warning(f"Error en consulta SQL ejecutada por Camotito: {e}")
+        return {"error": f"Error ejecutando SQL: {str(e)}"}
+
+
+def _responder_consulta_admin_por_reglas(mensaje: str, admin_datos: Dict[str, Any], db: Session) -> Optional[str]:
+    """
+    Intercepta preguntas frecuentes de admin y responde directo con el número real de la base.
+    """
+    msg_raw = mensaje.lower().strip()
+    msg = re.sub(r"[^\w\s]", "", msg_raw).strip()
+
+    # 1. Búsqueda directa de socio por DNI
+    match_dni = re.search(r"\b(\d{7,8})\b", msg_raw)
+    if match_dni and any(w in msg for w in ["socio", "dni", "quien es", "quién es", "datos", "buscar", "info", "cuenta"]):
+        dni_num = match_dni.group(1)
+        socio = db.query(models.Usuario).filter(models.Usuario.dni == dni_num).first()
+        if socio:
+            hoy = hoy_club()
+            esta_activo = socio.fecha_baja is None
+            al_dia = (socio.mes_cubierto_hasta is not None and socio.mes_cubierto_hasta >= hoy) if esta_activo else False
+            estado_cuota = "Al día" if al_dia else ("Moroso" if esta_activo else "Baja")
+            cubierto_str = socio.mes_cubierto_hasta.strftime("%d/%m/%Y") if socio.mes_cubierto_hasta else "Sin registro"
+            estado_str = "Activo" if esta_activo else f"Dado de baja ({socio.motivo_baja or 'sin motivo'})"
+            return (
+                f"**Datos del socio:**\n"
+                f"- **Nombre:** {socio.nombre} {socio.apellido}\n"
+                f"- **DNI:** {socio.dni}\n"
+                f"- **Estado:** {estado_str}\n"
+                f"- **Cuota social:** {estado_cuota} (cubierto hasta {cubierto_str})\n"
+                f"- **Teléfono:** {socio.telefono or 'No registrado'}\n"
+                f"- **Email:** {socio.email or 'No registrado'}\n"
+                f"- **Beca:** {'Sí' if socio.es_becado else 'No'}\n"
+                f"- **Saldo a favor:** ${socio.saldo_a_favor:,.2f}"
+            )
+        else:
+            return f"No se encontró ningún socio registrado con el DNI **{dni_num}** en la base de datos."
+
+    # 2. Socios al día
+    if any(w in msg for w in ["al dia", "al día", "al corriente", "habilitado", "habilitados", "no moroso", "no morosos", "cuantos al dia", "cuántos al día", "socios al dia"]):
+        return (
+            f"Actualmente hay **{admin_datos['socios_al_dia']}** socios al día con su cuota social "
+            f"(de un total de **{admin_datos['total_activos']}** socios activos)."
+        )
+
+    # 3. Socios morosos
     if any(w in msg for w in ["moroso", "morosos", "deudor", "deudores", "deuda"]):
-        return f"Actualmente hay **{admin_datos['cantidad_morosos']}** socios morosos."
+        return (
+            f"Actualmente hay **{admin_datos['cantidad_morosos']}** socios morosos "
+            f"(de un total de **{admin_datos['total_activos']}** socios activos)."
+        )
 
-    if any(w in msg for w in ["cuantos socios", "cantidad de socios", "socios activos", "cuántos socios", "total de socios"]):
+    # 4. Total de socios / Padrón
+    if any(w in msg for w in ["cuantos socios", "cantidad de socios", "socios activos", "cuántos socios", "total de socios", "padron", "padrón", "cuantos son"]):
         return (
             f"Hay **{admin_datos['total_activos']}** socios activos "
+            f"({admin_datos['socios_mayores']} mayores y {admin_datos['socios_menores']} menores) "
             f"y **{admin_datos['total_bajas']}** dados de baja en el histórico."
         )
 
-    if any(w in msg for w in ["becado", "becados", "beca"]):
+    # 5. Menores de edad
+    if any(w in msg for w in ["menor", "menores", "cadete", "cadetes", "chicos"]):
+        return f"Actualmente hay **{admin_datos['socios_menores']}** socios menores de 18 años activos."
+
+    # 6. Mayores de edad
+    if any(w in msg for w in ["mayor", "mayores", "adultos"]):
+        return f"Actualmente hay **{admin_datos['socios_mayores']}** socios mayores de 18 años activos."
+
+    # 7. Becados
+    if any(w in msg for w in ["becado", "becados", "beca", "becas"]):
         return f"Actualmente hay **{admin_datos['cantidad_becados']}** socios con beca activa."
 
-    if any(w in msg for w in ["pendiente de verificacion", "pendientes de verificacion", "comprobante pendiente", "pagos pendientes", "ordenes pendientes", "órdenes pendientes"]):
-        return f"Hay **{admin_datos['ordenes_pendientes']}** órdenes/comprobantes pendientes de verificación."
+    # 8. Órdenes / comprobantes pendientes
+    if any(w in msg for w in ["pendiente de verificacion", "pendientes de verificacion", "comprobante pendiente", "comprobantes pendientes", "pagos pendientes", "ordenes pendientes", "órdenes pendientes", "verificaciones", "pendientes"]):
+        return f"Hay **{admin_datos['ordenes_pendientes']}** órdenes/comprobantes pendientes de verificación en Secretaría."
 
-    if any(w in msg for w in ["recaudacion", "recaudación", "cuanto se recaudo", "cuánto se recaudó", "ingresos del mes"]):
+    # 9. Recaudación / ingresos
+    if any(w in msg for w in ["recaudacion", "recaudación", "cuanto se recaudo", "cuánto se recaudó", "ingresos del mes", "ingresos", "caja"]):
         return (
             f"Este mes se aprobaron **{admin_datos['cantidad_ordenes_mes']}** órdenes, "
-            f"por un total de **${admin_datos['recaudacion_mes']:,.0f}**."
+            f"por un total recaudado de **${admin_datos['recaudacion_mes']:,.0f}**."
         )
 
+    # 10. Reservas bloqueadas
     if any(w in msg for w in ["reserva bloqueada", "reservas bloqueadas", "turnos bloqueados", "canchas bloqueadas"]):
         return f"Hay **{admin_datos['reservas_pendientes']}** reservas bloqueadas con el turno tomado y el pago aún sin confirmar."
 
@@ -401,7 +541,7 @@ def _responder_por_reglas_fallback(
     partido = datos["info_partido"]
     wa = datos["whatsapp_raw"]
     rol_clean = (rol or "anonimo").lower()
-    es_admin = rol_clean in ["admin", "tesorero", "profesor"]
+    es_admin = rol_clean in ["admin", "admin_general", "personal_administrativo", "tesorero", "profesor"]
 
     # 1. Saludos breves
     if msg in [
@@ -411,6 +551,11 @@ def _responder_por_reglas_fallback(
         "hola como andas", "buenas como andas", "buenas como estas"
     ]:
         nombre_str = f" {nombre_usuario}" if (autenticado and nombre_usuario) else ""
+        if es_admin:
+            return (
+                f"¡Hola{nombre_str}! Soy **Camotito**, tu asistente de gestión del Club Atlético Roberts en modo Administrador General.\n\n"
+                "Tengo acceso de solo lectura a la base de datos en tiempo real. ¿Qué dato o reporte del club necesitás consultar?"
+            ), None
         return (
             f"¡Hola{nombre_str}! Soy **Camotito**, el asistente virtual del Club Atlético Roberts.\n\n"
             "¿En qué te puedo ayudar hoy? Podés consultarme sobre cuotas sociales, alquiler de canchas, el próximo partido o cómo asociarte online."
@@ -436,6 +581,11 @@ def _responder_por_reglas_fallback(
     # 4. Solicitud explícita de Menú / Opciones / Consultas frecuentes
     if msg in ["menu", "menú", "opciones", "ayuda", "consultas", "consultas frecuentes", "que podes hacer", "qué podés hacer", "comandos"]:
         nombre_str = f" {nombre_usuario}" if (autenticado and nombre_usuario) else ""
+        if es_admin:
+            return (
+                f"Hola{nombre_str}. Soy **Camotito**, en modo Administrador General con acceso de solo lectura a toda la base de datos en tiempo real.\n\n"
+                "Podés consultarme sobre socios (al día, morosos, becados, menores), recaudación, órdenes pendientes de verificación, reservas de canchas y eventos deportivos."
+            ), None
         texto = (
             f"Hola{nombre_str}. Soy **Camotito**, el asistente virtual del Club Atlético Roberts.\n\n"
             "Escribime tu consulta o elegí una de las opciones frecuentes acá abajo:"
@@ -584,7 +734,15 @@ def _responder_por_reglas_fallback(
             return f"**{faq.pregunta}**\n\n{faq.respuesta}", None
 
     # 17. Respuesta genérica cuando no reconoce la consulta: envía el menú interactivo
-    if autenticado:
+    if es_admin:
+        nombre_str = f" {nombre_usuario}" if nombre_usuario else ""
+        texto = (
+            f"Hola{nombre_str}. Como asistente de administración del club puedo informarte en tiempo real sobre socios (activos, al día, morosos, menores, becados), "
+            "recaudación, órdenes pendientes de verificación, reservas de canchas y eventos deportivos.\n\n"
+            "¿Qué dato específico sobre la base de datos necesitás consultar?"
+        )
+        return texto, None
+    elif autenticado:
         nombre_str = f" {nombre_usuario}" if nombre_usuario else ""
         texto = (
             f"Hola{nombre_str}. Soy **Camotito**, el asistente virtual del Club Atlético Roberts. ¿En qué te puedo ayudar hoy?\n\n"
@@ -614,7 +772,10 @@ def obtener_info_inicial(
     super_rol = _super_rol(current_user)
     nombre = current_user.nombre if current_user else ""
 
-    if super_rol != SUPER_ROL_NO_REGISTRADO:
+    if super_rol == SUPER_ROL_ADMIN:
+        saludo = f"Hola{f' {nombre}' if nombre else ''}. Soy Camotito, tu asistente de gestión del club. Tengo acceso de solo lectura a toda la base de datos en tiempo real. ¿Qué dato o reporte necesitás consultar?"
+        sugerencias = []
+    elif super_rol != SUPER_ROL_NO_REGISTRADO:
         saludo = f"Hola{f' {nombre}' if nombre else ''}. Soy Camotito, el asistente virtual del Club Atlético Roberts. ¿En qué te puedo ayudar hoy?"
         sugerencias = _obtener_sugerencias_socio()
     else:
@@ -666,7 +827,7 @@ async def procesar_mensaje_chatbot(
     # la base (sin pasar por el LLM, así no hay riesgo de que se invente un
     # número) y sin ofrecer ninguna acción de escritura.
     if es_admin and admin_datos is not None:
-        respuesta_admin_directa = _responder_consulta_admin_por_reglas(mensaje_usuario, admin_datos)
+        respuesta_admin_directa = _responder_consulta_admin_por_reglas(mensaje_usuario, admin_datos, db)
         if respuesta_admin_directa is not None:
             return {
                 "respuesta": respuesta_admin_directa,
@@ -698,7 +859,7 @@ async def procesar_mensaje_chatbot(
         return {
             "respuesta": resp_dir,
             "origen": "regla_directa",
-            "sugerencias": sugs_dir,
+            "sugerencias": None if es_admin else sugs_dir,
             "whatsapp_url": None,
         }
 
@@ -714,7 +875,7 @@ async def procesar_mensaje_chatbot(
         return {
             "respuesta": respuesta_texto,
             "origen": "fallback_reglas",
-            "sugerencias": sugs_resp,
+            "sugerencias": None if es_admin else sugs_resp,
             "whatsapp_url": None,
         }
 
@@ -800,10 +961,34 @@ Tus directivas obligatorias:
 
     # Candidatos de modelos con alta disponibilidad y cuota amplia
     modelos_candidatos = [
-        settings.gemini_model or "gemini-3.5-flash-lite",
+        settings.gemini_model or "gemini-flash-lite-latest",
         "gemini-flash-lite-latest",
-        "gemini-3.5-flash",
+        "gemini-3.5-flash-lite",
+        "gemini-3.6-flash",
     ]
+
+    # Herramienta de consulta SQL directa exclusiva para Administrador General
+    tools_config = None
+    if es_admin:
+        tools_config = [{
+            "function_declarations": [{
+                "name": "ejecutar_consulta_sql_lectura",
+                "description": (
+                    "Ejecuta una consulta SQL SELECT en la base de datos PostgreSQL de Neon del Club Atlético Roberts. "
+                    "Úsala para consultar datos de socios, cuotas, morosos, órdenes, pagos, reservas, eventos o cualquier dato que solicite el administrador."
+                ),
+                "parameters": {
+                    "type": "OBJECT",
+                    "properties": {
+                        "sql": {
+                            "type": "STRING",
+                            "description": "Consulta SQL SELECT válida para PostgreSQL."
+                        }
+                    },
+                    "required": ["sql"]
+                }
+            }]
+        }]
 
     # Construir historial para Gemini
     contents = []
@@ -828,10 +1013,12 @@ Tus directivas obligatorias:
         },
         "contents": contents,
         "generationConfig": {
-            "temperature": 0.4,
-            "maxOutputTokens": 600,
+            "temperature": 0.2 if es_admin else 0.4,
+            "maxOutputTokens": 800,
         },
     }
+    if tools_config:
+        cuerpo_request["tools"] = tools_config
 
     # Intentar con la lista de modelos candidatos
     for modelo in modelos_candidatos:
@@ -846,14 +1033,76 @@ Tus directivas obligatorias:
 
                 if res.status_code == 200:
                     data = res.json()
+                    candidate = data.get("candidates", [{}])[0]
+                    parts = candidate.get("content", {}).get("parts", [])
+
+                    # Manejo de llamada a función para el administrador
+                    func_call_part = next((p for p in parts if "functionCall" in p), None)
+                    if func_call_part and es_admin:
+                        func_call = func_call_part["functionCall"]
+                        func_name = func_call.get("name")
+                        args = func_call.get("args", {})
+                        call_id = func_call.get("id")
+
+                        if func_name == "ejecutar_consulta_sql_lectura" and "sql" in args:
+                            resultado_sql = _ejecutar_consulta_sql_lectura(db, args["sql"])
+
+                            resp_part = {
+                                "functionResponse": {
+                                    "name": func_name,
+                                    "response": {"output": resultado_sql}
+                                }
+                            }
+                            if call_id:
+                                resp_part["functionResponse"]["id"] = call_id
+
+                            contents_turno2 = list(contents)
+                            contents_turno2.append({
+                                "role": "model",
+                                "parts": [func_call_part],  # preserva thoughtSignature requerida
+                            })
+                            contents_turno2.append({
+                                "role": "user",
+                                "parts": [resp_part],
+                            })
+
+                            cuerpo_turno2 = {
+                                "system_instruction": cuerpo_request["system_instruction"],
+                                "contents": contents_turno2,
+                                "generationConfig": cuerpo_request["generationConfig"],
+                            }
+                            if tools_config:
+                                cuerpo_turno2["tools"] = tools_config
+
+                            try:
+                                res2 = await client.post(
+                                    url_gemini,
+                                    json=cuerpo_turno2,
+                                    headers={"Content-Type": "application/json"},
+                                    timeout=22.0,
+                                )
+                                if res2.status_code == 200:
+                                    data2 = res2.json()
+                                    parts2 = data2.get("candidates", [{}])[0].get("content", {}).get("parts", [])
+                                    text_parts2 = [p["text"] for p in parts2 if "text" in p and not p.get("thought", False)]
+                                    texto_resp2 = "\n".join(text_parts2).strip() if text_parts2 else parts2[0].get("text", "").strip()
+                                    return {
+                                        "respuesta": _sanitizar_respuesta_chatbot(texto_resp2),
+                                        "origen": "gemini_ai_sql",
+                                        "sugerencias": None,
+                                        "whatsapp_url": None,
+                                    }
+                            except Exception as exc_turno2:
+                                logger.warning(f"Error en segundo turno de Gemini SQL: {exc_turno2}")
+
                     try:
-                        parts = data["candidates"][0]["content"]["parts"]
                         text_parts = [p["text"] for p in parts if "text" in p and not p.get("thought", False)]
                         texto_respuesta = "\n".join(text_parts).strip() if text_parts else parts[0].get("text", "").strip()
                         texto_respuesta = _sanitizar_respuesta_chatbot(texto_respuesta)
                         return {
                             "respuesta": texto_respuesta,
                             "origen": "gemini_ai",
+                            "sugerencias": None if es_admin else None,
                             "whatsapp_url": None,
                         }
                     except (KeyError, IndexError) as e:
@@ -876,7 +1125,7 @@ Tus directivas obligatorias:
     return {
         "respuesta": _sanitizar_respuesta_chatbot(respuesta_fallback),
         "origen": "fallback_reglas",
-        "sugerencias": sugs_fallback,
+        "sugerencias": None if es_admin else sugs_fallback,
         "whatsapp_url": None,
     }
 
